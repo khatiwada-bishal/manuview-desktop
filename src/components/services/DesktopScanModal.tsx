@@ -22,7 +22,7 @@ import { FullReviewReport } from "@/lib/types";
 interface DesktopScanModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onComplete: (paper: PaperItem, data: DesktopDashboardData) => void;
+  onComplete: (paper: PaperItem, data: DesktopDashboardData, fullReport?: any) => void;
 }
 
 const SAMPLE_PREPRINT = {
@@ -167,7 +167,7 @@ export function DesktopScanModal({
       clearTimeout(t2);
       clearTimeout(t3);
       clearTimeout(t4);
-      onComplete(newPaper, dashboardData);
+      onComplete(newPaper, dashboardData, fullReport);
       onClose();
     } catch (err: any) {
       clearTimeout(t1);
