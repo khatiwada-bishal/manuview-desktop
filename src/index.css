@@ -1,0 +1,168 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #08090D;
+  --foreground: #FFFFFF;
+  --canvas-dark: #08090D;
+  --surface-dark: #11141D;
+  --paper-white: #FFFFFF;
+  --ink-primary: #111827;
+  --ink-body: #374151;
+  --ink-muted: #6B7280;
+  --border-hairline: #E5E7EB;
+  --surface-muted: #F9FAFB;
+}
+
+body {
+  color: #FFFFFF;
+  background-color: #08090D;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, "Apple Color Emoji", Arial, sans-serif;
+  overflow-x: hidden;
+  letter-spacing: -0.015em;
+  line-height: 1.55;
+}
+
+/* Atmospheric Ambient Canvas Gradients */
+.aura-bg-gradient {
+  background-image: 
+    radial-gradient(1000px 500px at 50% -50px, rgba(99, 102, 241, 0.15), rgba(16, 185, 129, 0.05) 45%, transparent 75%),
+    radial-gradient(800px 400px at 90% 20%, rgba(139, 92, 246, 0.08), transparent 70%),
+    radial-gradient(600px 400px at 10% 40%, rgba(59, 130, 246, 0.08), transparent 70%);
+}
+
+.aura-grid-pattern {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* Glassmorphic Specular Panels */
+.aura-glass {
+  background-color: rgba(17, 20, 29, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+}
+
+.aura-glass-interactive {
+  background-color: rgba(17, 20, 29, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.aura-glass-interactive:hover {
+  background-color: rgba(22, 26, 38, 0.85);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12), 0 8px 24px -4px rgba(0, 0, 0, 0.4);
+}
+
+/* High-Contrast Alabaster Paper Sheets */
+.aura-paper-sheet {
+  background-color: #FFFFFF;
+  color: #111827;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Subtle scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: #08090D;
+}
+::-webkit-scrollbar-thumb {
+  background: #202430;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #323848;
+}
+
+/* Notion-style subtle focus rings */
+*:focus-visible {
+  outline: 2px solid rgba(99, 102, 241, 0.6);
+  outline-offset: 1px;
+}
+
+/* ==========================================================================
+   Scholarly Report Print Styles (PDF Export Optimization)
+   ========================================================================== */
+@media print {
+  @page {
+    margin: 10mm 12mm;
+    size: A4 portrait;
+  }
+
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  html,
+  body,
+  #__next,
+  main {
+    background: #ffffff !important;
+    color: #111111 !important;
+    font-size: 10pt !important;
+    line-height: 1.4 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide interactive web UI controls during print */
+  nav,
+  footer,
+  button,
+  .print\:hidden,
+  .web-only-ui,
+  input,
+  select,
+  textarea,
+  [role="dialog"] {
+    display: none !important;
+  }
+
+  /* Reveal dedicated print-only containers */
+  .print\:block,
+  .print-only-report {
+    display: block !important;
+  }
+
+  /* Prevent awkward page breaks across cards, tables, and sections */
+  h1, h2, h3, h4, h5, h6 {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  .rounded-xl,
+  .rounded-2xl,
+  .avoid-break,
+  table,
+  tr,
+  blockquote {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Clean borders for printing */
+  .border {
+    border-color: #d8d8d6 !important;
+  }
+
+  /* Do not append link URLs in print */
+  a[href]::after {
+    content: "" !important;
+  }
+}
+
