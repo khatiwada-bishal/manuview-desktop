@@ -389,21 +389,22 @@ export default function App() {
 
       {/* Main Layout: Sidebar + Active View */}
       <div className="flex-1 flex overflow-hidden">
-        {sidebarOpen && (
-          <DesktopSidebar
-            papers={papers}
-            activePaperId={activeTabId}
-            activeView={activeView}
-            isConnected={isConnected}
-            provider={provider}
-            onSelectPaper={handleOpenArticle}
-            onSelectView={(view) => setActiveView(view)}
-            onOpenSearch={() => setIsSearchOpen(true)}
-            onNewReview={() => handleOpenService("ai-review")}
-            onOpenSettings={() => setIsSettingsOpen(true)}
-            onSelectService={handleOpenService}
-          />
-        )}
+        <DesktopSidebar
+          papers={papers}
+          activePaperId={activeTabId}
+          activeView={activeView}
+          isConnected={isConnected}
+          provider={provider}
+          activeModelName={modelName}
+          isCollapsed={!sidebarOpen}
+          onToggleCollapse={() => setSidebarOpen((prev) => !prev)}
+          onSelectPaper={handleOpenArticle}
+          onSelectView={(view) => setActiveView(view)}
+          onOpenSearch={() => setIsSearchOpen(true)}
+          onNewReview={() => handleOpenService("ai-review")}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onSelectService={handleOpenService}
+        />
 
         {/* View Content */}
         {renderActiveTabContent()}

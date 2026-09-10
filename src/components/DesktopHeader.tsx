@@ -2,7 +2,6 @@
 
 import React from "react";
 import {
-  Sidebar as SidebarIcon,
   X,
   FileText,
   Compass,
@@ -43,7 +42,6 @@ export function DesktopHeader({
   activeTabId,
   onSelectTab,
   onCloseTab,
-  onToggleSidebar,
   sidebarOpen = true,
 }: DesktopHeaderProps) {
   const tabsScrollRef = React.useRef<HTMLDivElement>(null);
@@ -51,6 +49,32 @@ export function DesktopHeader({
   const [canScrollLeft, setCanScrollLeft] = React.useState(false);
   const [canScrollRight, setCanScrollRight] = React.useState(false);
   const [hasOverflow, setHasOverflow] = React.useState(false);
+
+  // Window drag handler for Tauri native window
+  const handleHeaderMouseDown = async (e: React.MouseEvent) => {
+    // Only primary (left) button
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    // Don't drag if interacting with buttons, inputs, tabs, or non-draggable elements
+    if (
+      target.closest("button") ||
+      target.closest("input") ||
+      target.closest("select") ||
+      target.closest("textarea") ||
+      target.closest("[data-no-drag]")
+    ) {
+      return;
+    }
+    try {
+      const { getCurrentWindow } = await import("@tauri-apps/api/window");
+      const appWin = getCurrentWindow();
+      if (appWin) {
+        await appWin.startDragging();
+      }
+    } catch {
+      // Browser preview fallback
+    }
+  };
 
   const checkScroll = React.useCallback(() => {
     const el = tabsScrollRef.current;
@@ -122,34 +146,25 @@ export function DesktopHeader({
   return (
     <header
       data-tauri-drag-region
-      className="h-[52px] border-b border-[#E5E7EB] bg-[#F3F4F6] flex select-none shrink-0 z-20"
+      onMouseDown={handleHeaderMouseDown}
+      className="h-[52px] border-b border-[#E5E7EB] bg-[#F3F4F6] flex select-none shrink-0 z-20 cursor-default"
     >
-      {/* LEFT CONTROLS (Window Traffic Light Spacer + Sidebar Toggle + Sidebar Separation) */}
+      {/* LEFT CONTROLS (Window Traffic Light Spacer + Sidebar Separation) */}
       <div
-        className={`h-full flex items-end pb-1 border-r border-[#E5E7EB] bg-[#F9FAFB] transition-all duration-150 shrink-0 ${
-          sidebarOpen ? "w-64" : "w-auto"
+        data-tauri-drag-region
+        className={`h-full flex items-end pb-1 border-r border-[#E5E7EB] bg-[#F9FAFB] transition-all duration-200 shrink-0 ${
+          sidebarOpen ? "w-64" : "w-[68px]"
         }`}
       >
-        {/* macOS traffic light spacer (covers 0..88px: traffic lights from x=16..68px with a 20px gap) */}
-        <div className="w-[88px] shrink-0" />
-
-        {/* Sidebar Toggle Button (positioned with mb-[6px], zero margin on icon) */}
-        {onToggleSidebar && (
-          <button
-            type="button"
-            onClick={onToggleSidebar}
-            title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[#E5E7EB] text-neutral-500 hover:text-neutral-800 transition cursor-pointer mb-[6px]"
-          >
-            <SidebarIcon className="w-4 h-4 m-0" strokeWidth={1.75} />
-          </button>
-        )}
-
-        {!sidebarOpen && <div className="w-3 shrink-0" />}
+        {/* macOS traffic light spacer (covers window traffic controls) */}
+        <div data-tauri-drag-region className="w-[68px] h-full shrink-0" />
       </div>
 
       {/* CENTER: BROWSER-STYLE SCROLLABLE TAB BAR WITH OVERFLOW ARROWS */}
-      <div className="flex-1 h-full flex items-end pb-1 min-w-0 px-1 relative">
+      <div
+        data-tauri-drag-region
+        className="flex-1 h-full flex items-end pb-1 min-w-0 px-1 relative"
+      >
         {/* Left Scroll Arrow (Shown when tabs overflow) */}
         {hasOverflow && (
           <button
@@ -179,6 +194,7 @@ export function DesktopHeader({
             return (
               <div
                 key={tab.id}
+                data-no-drag
                 ref={isActive ? activeTabRef : undefined}
                 onClick={() => onSelectTab(tab.id)}
                 title={tab.title}
