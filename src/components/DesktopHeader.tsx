@@ -82,15 +82,15 @@ export function DesktopHeader({
         {/* macOS traffic light spacer (covers 0..88px: traffic lights from x=16..68px with a 20px gap) */}
         <div className="w-[88px] shrink-0" />
 
-        {/* Sidebar Toggle Button (positioned 14px up) */}
+        {/* Sidebar Toggle Button (positioned with mb-[6px], zero margin on icon) */}
         {onToggleSidebar && (
           <button
             type="button"
             onClick={onToggleSidebar}
             title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[#E5E7EB] text-neutral-500 hover:text-neutral-800 transition cursor-pointer mb-[14px]"
+            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[#E5E7EB] text-neutral-500 hover:text-neutral-800 transition cursor-pointer mb-[6px]"
           >
-            <SidebarIcon className="w-4 h-4" strokeWidth={1.75} />
+            <SidebarIcon className="w-4 h-4 m-0" strokeWidth={1.75} />
           </button>
         )}
 
