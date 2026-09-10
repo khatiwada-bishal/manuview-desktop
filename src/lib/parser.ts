@@ -51,34 +51,45 @@ export async function extractTextFromFile(file: File): Promise<string> {
   return await file.text();
 }
 
-/**
- * Heuristically classifies uploaded/pasted text into document categories
- * to distinguish authentic academic manuscripts from code, resumes, proposals, or random files.
- */
 export function classifyDocument(rawText: string, filename?: string): DocumentClassification {
   const clean = rawText.trim();
+  const wordCount = clean.split(/\s+/).filter(Boolean).length;
   const lower = clean.toLowerCase();
-  const ext = filename ? filename.split('.').pop()?.toLowerCase() : undefined;
+  const ext = filename ? filename.split('.').pop()?.toLowerCase() : '';
 
-  // 1. Check for Academic Manuscript Features
-  const hasAbstract = /(?:^|\n)\s*(?:Abstract|Summary)\s*[:\n\r]/i.test(clean);
-  const hasIntro = /(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Introduction|Background|Literature Review)\s*[:\n\r]/i.test(clean);
-  const hasMethodsOrModel = /(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Methods|Materials and Methods|Methodology|Model Development|Mathematical Formulation|Theoretical Framework|System Model|Assumptions|Problem Formulation|Proposed Approach)\s*[:\n\r]/i.test(clean);
-  const hasResultsOrNumerical = /(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Results|Findings|Numerical Example|Numerical Analysis|Numerical Results|Simulation Results|Computational Experiments|Sensitivity Analysis|Case Study)\s*[:\n\r]/i.test(clean);
-  const hasDiscussion = /(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Discussion|Managerial Insights|Practical Implications)\s*[:\n\r]/i.test(clean);
-  const hasConclusion = /(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Conclusion|Conclusions|Concluding Remarks)\s*[:\n\r]/i.test(clean);
-  const hasReferences = /(?:^|\n)\s*(?:References|Bibliography|Literature Cited|Works Cited)\s*[:\n\r]/i.test(clean) ||
-                        /(?:\[\d+\]|\bdoi:\s*10\.\d{4,9}\/)/i.test(clean);
-  const hasScholarlyMeta = /(?:Department of|Faculty of|University|Institute of|School of|Correspondence:|Key\s*words\b|PACS\b|MSC\b|\bORCID\b)/i.test(clean);
-  const hasAcademicTerms = /(?:hypothesis|p\s*<\s*0\.\d+|statistically significant|confidence interval|standard deviation|theorem\b|lemma\b|proposition\b|corollary\b|objective function|decision variable|kkt\b|lagrangian|in vivo|in vitro|western blot|crispr|flow cytometry|cohort\b)/i.test(clean);
+  // =========================================================================
+  // 1. ACADEMIC MANUSCRIPT DETECTION (Primary Comprehensive Check)
+  // Evaluates whether this document possesses authentic scholarly architecture:
+  // - Empirical & Clinical Science
+  // - Theoretical & Mathematical / Operations Research Formulations
+  // - Computational & Machine Learning Articles
+  // - Systematic Reviews & Meta-Analyses
+  // =========================================================================
+
+  const hasAbstract = /(?:^|\n)\s*(?:Abstract|Summary)\s*[:\n\r]/i.test(clean) || /^\s*Abstract\b/im.test(clean);
+  const hasIntro = /(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Introduction|Background|Literature Review)\b/i.test(clean);
+  const hasMethodsOrModel = /(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Methods|Materials and Methods|Methodology|Model Development|Mathematical Formulation|Theoretical Framework|System Model|Problem Formulation|Assumptions|Solution Procedure|Algorithm \d+)\b/i.test(clean);
+  const hasResultsOrNumerical = /(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Results|Findings|Numerical Example|Numerical Analysis|Numerical Results|Simulation Results|Computational Experiments|Sensitivity Analysis|Case Study)\b/i.test(clean);
+  const hasDiscussionOrImplications = /(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Discussion|Practical Implications|Managerial Insights)\b/i.test(clean);
+  const hasConclusion = /(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Conclusion|Conclusions|Concluding Remarks|Summary and Outlook)\b/i.test(clean);
+  
+  const hasReferences = /(?:^|\n)\s*(?:References|Bibliography|Works Cited|Literature Cited)\s*[:\n\r]/i.test(clean) ||
+                        /DOI:\s*10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+/i.test(clean) ||
+                        /(?:\n\s*(?:\[\d+\]|\d+\.)\s+[A-Z][a-z]+,\s*[A-Z])/i.test(clean);
+
+  // Scholarly metadata (publishers, peer review status, university affiliation, editorial tracking)
+  const hasScholarlyMeta = /(?:Department of\s+|Faculty of\s+|University\b|Institute of\s+|doi:\s*10\.\d+|Received:\s*\d|Accepted:\s*\d|©\s*The Author|Keywords\s*[:\s]|Index Terms|Corresponding author|Springer|Elsevier|IEEE|Nature|Wiley)/i.test(clean);
+
+  // Domain scientific & quantitative vocabulary across disciplines
+  const hasAcademicTerms = /(?:statistically\s+significant|p\s*[<=]\s*0\.\d+|confidence\s+interval|optimization|equilibrium|formulation|theorem|lemma|proposition|sensitivity analysis|simulation|algorithm|objective function|decision variable|supply chain|carbon tax|cap-and-trade|hypothesis|empirical|regression|in\s+vivo|in\s+vitro|assay|cohort|organoid)/i.test(clean);
 
   let academicScore = 0;
-  if (hasAbstract) academicScore += 2;
-  if (hasIntro) academicScore += 1;
+  if (hasAbstract) academicScore += 3;
+  if (hasReferences) academicScore += 3;
+  if (hasIntro) academicScore += 2;
   if (hasMethodsOrModel) academicScore += 2;
   if (hasResultsOrNumerical) academicScore += 2;
-  if (hasReferences) academicScore += 3;
-  if (hasDiscussion) academicScore += 1;
+  if (hasDiscussionOrImplications) academicScore += 1;
   if (hasConclusion) academicScore += 1;
   if (hasScholarlyMeta) academicScore += 2;
   if (hasAcademicTerms) academicScore += 1;
@@ -119,16 +130,161 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
     };
   }
 
-  // 2. Fallback: Generic document
+  // =========================================================================
+  // 2. Source Code / Software Script Detection
+  // Only flags true source code repositories or standalone scripts, never scholarly papers with math or algorithms.
+  // =========================================================================
+  const codeExtensions = ['py', 'js', 'ts', 'tsx', 'jsx', 'java', 'cpp', 'c', 'h', 'cs', 'go', 'rs', 'rb', 'php', 'swift', 'kt', 'sh', 'bash', 'sql'];
+  const isCodeFileExt = codeExtensions.includes(ext || '');
+
+  const lines = clean.split('\n').map(l => l.trim()).filter(Boolean);
+  const codeLines = lines.filter(l => 
+    /^(?:import\s+.+from|from\s+\w+\s+import|const\s+\w+\s*=|let\s+\w+\s*=|var\s+\w+\s*=|def\s+\w+\(|function\s+\w*\(|public\s+class\s+\w+|class\s+\w+[\s\w]*\{|#include\s+<|package\s+[\w\.]+;|console\.log\(|return\s+.*;|if\s*\(.+\)\s*\{|}\s*else\s*\{|\/\*|\*\/|\/\/)/.test(l)
+  );
+  const codeRatio = lines.length > 0 ? codeLines.length / lines.length : 0;
+  const isCode = isCodeFileExt || (codeRatio > 0.35 && lines.length > 5);
+
+  if (isCode) {
+    return {
+      category: 'source_code',
+      categoryLabel: 'Source Code / Software Script',
+      isAcademicManuscript: false,
+      confidence: 0.95,
+      detectedFeatures: [
+        'Programming language syntax and structure detected',
+        'Functions, classes, or package declarations identified',
+        'Absence of empirical scholarly IMRaD sections'
+      ],
+      salutation: 'Hello Developer / Software Engineer',
+      advisoryMessage: 'We detected that this file is source code or a software script rather than an academic research manuscript. While computational code is critical for reproducibility, ManuView is calibrated for scientific peer review of empirical and theoretical manuscripts (research hypotheses, experimental design, causal inferences, and reference integrity).',
+      customGuidance: 'If you are preparing a computational methods paper or software article for a journal (e.g., Nature Methods, Bioinformatics, JOSS), please provide the full manuscript draft including Abstract, Methodology, Benchmarking, and Literature Citations alongside your code.'
+    };
+  }
+
+  // =========================================================================
+  // 3. Resume / Curriculum Vitae
+  // =========================================================================
+  const resumeHeadingRegex = /(?:\bcurriculum\s+vitae\b|\bresume\b|work\s+experience|professional\s+experience|employment\s+history|education\s*(?::|\n)|technical\s+skills|certifications\s*(?::|\n)|honors\s*(&|and)\s*awards|references\s+available\s+upon\s+request)/i;
+  const contactPatternRegex = /(?:email\s*:|phone\s*:|linkedin\.com\/|github\.com\/|\bgpa\s*:\s*\d)/i;
+  const isResume = resumeHeadingRegex.test(clean) && (contactPatternRegex.test(clean) || lower.includes('curriculum vitae') || lower.includes('resume'));
+
+  if (isResume) {
+    return {
+      category: 'resume_cv',
+      categoryLabel: 'Curriculum Vitae / Resume',
+      isAcademicManuscript: false,
+      confidence: 0.92,
+      detectedFeatures: [
+        'Curriculum Vitae or Resume section headings identified',
+        'Professional experience, education, or skill listings detected',
+        'Contact details or biographical profile structure'
+      ],
+      salutation: 'Hello Candidate / Academic Professional',
+      advisoryMessage: 'We detected that this document is a Curriculum Vitae or professional resume. Standard journal peer-review metrics (such as experimental controls, sample size justification, and desk-rejection hazards) do not apply to professional qualification records.',
+      customGuidance: 'To evaluate scientific research readiness, please submit an empirical manuscript, preprint draft, or grant research narrative.'
+    };
+  }
+
+  // =========================================================================
+  // 4. Grant / Research Project Proposal
+  // =========================================================================
+  const grantProposalRegex = /(?:specific\s+aims|broader\s+impacts|intellectual\s+merit|project\s+narrative|budget\s+justification|principal\s+investigator|co-pi\b|nih\s+grant|nsf\s+proposal|funding\s+opportunity)/i;
+  if (grantProposalRegex.test(clean) && !lower.includes('journal') && !lower.includes('peer review')) {
+    return {
+      category: 'grant_proposal',
+      categoryLabel: 'Grant / Project Proposal',
+      isAcademicManuscript: false,
+      confidence: 0.88,
+      detectedFeatures: [
+        'Grant funding proposal markers detected (e.g. Specific Aims / Project Narrative)',
+        'Investigator role or funding agency terminology present'
+      ],
+      salutation: 'Hello Principal Investigator / Project Lead',
+      advisoryMessage: 'We detected that this document is structured as a grant funding application or research project proposal rather than a completed journal manuscript. Grant evaluations emphasize project feasibility and institutional resources rather than journal publication scope.',
+      customGuidance: 'Focus your review on whether Specific Aims are clearly independent, feasibility is supported by preliminary data, and potential pitfalls are accompanied by robust mitigation strategies.'
+    };
+  }
+
+  // =========================================================================
+  // 5. Business or Administrative Document
+  // =========================================================================
+  const businessAdminRegex = /(?:invoice\s*#|bill\s+to\s*:|total\s+due\s*:|statement\s+of\s+work|\bnda\b|non-disclosure\s+agreement|balance\s+sheet|purchase\s+order|meeting\s+minutes|terms\s+and\s+conditions)/i;
+  if (businessAdminRegex.test(clean)) {
+    return {
+      category: 'business_or_admin',
+      categoryLabel: 'Administrative / Business Document',
+      isAcademicManuscript: false,
+      confidence: 0.90,
+      detectedFeatures: [
+        'Administrative, commercial, or legal formatting detected',
+        'Absence of scholarly hypotheses and empirical data'
+      ],
+      salutation: 'Notice to Submitter (Administrative / Business Document)',
+      advisoryMessage: 'We detected that this document is an administrative, commercial, or operational document (such as an invoice, contract, or internal memo). ManuView is designed specifically to analyze scientific preprints and journal research papers.',
+      customGuidance: 'Please upload an academic research draft (empirical paper, review article, or clinical study) to use our peer-review diagnostic features.'
+    };
+  }
+
+  // =========================================================================
+  // 6. Very short or unstructured text
+  // =========================================================================
+  const isShortOrFragment = wordCount < 45;
+  const shoppingListKeywords = ['buy', 'milk', 'eggs', 'bread', 'apples', 'groceries', 'store', 'tomorrow', 'meeting', 'reminder'];
+  const matchedShopping = shoppingListKeywords.filter(k => lower.includes(k)).length;
+
+  if ((isShortOrFragment && !hasAcademicTerms) || matchedShopping >= 3) {
+    return {
+      category: 'random_unstructured',
+      categoryLabel: 'Unstructured / Random Text',
+      isAcademicManuscript: false,
+      confidence: 0.96,
+      detectedFeatures: [
+        `Word count is very low (${wordCount} words)`,
+        'No scholarly structure (Title, Abstract, Methods, Results, or References)',
+        'Informal or fragmented phrasing'
+      ],
+      salutation: 'Attention: Unstructured or Non-Academic Text Detected',
+      advisoryMessage: 'The submitted content consists of unstructured text, casual notes, or brief fragments rather than a scholarly manuscript. Academic peer review requires a coherent research narrative: a title, research context (abstract/introduction), formal methodology, empirical findings, and references.',
+      customGuidance: "To see how ManuView evaluates a genuine research paper, click 'Load Sample Preprint' above or upload a complete .docx or .pdf manuscript with Title, Abstract, Methods, and References."
+    };
+  }
+
+  // =========================================================================
+  // 7. Technical Documentation / Whitepaper
+  // =========================================================================
+  const techDocRegex = /(?:api\s+reference|endpoints?\s*:|installation\s+guide|getting\s+started|sdk\s+reference|architecture\s+overview|prerequisites\s*:|quickstart)/i;
+  if (techDocRegex.test(clean)) {
+    return {
+      category: 'technical_doc',
+      categoryLabel: 'Technical Documentation / Whitepaper',
+      isAcademicManuscript: false,
+      confidence: 0.85,
+      detectedFeatures: [
+        'Technical documentation or software specification headings found',
+        'Instructional or API reference structure'
+      ],
+      salutation: 'Hello Technical Author / Documentation Lead',
+      advisoryMessage: 'We detected technical documentation or product specifications. While technically rigorous, documentation differs from peer-reviewed scientific literature where hypotheses, statistical power, and academic literature citations are systematically audited.',
+      customGuidance: 'If this technical work introduces a novel algorithm or system architecture for academic submission, structure it with empirical baselines, related work citations, and ablation studies for venues like IEEE, ACM, or NeurIPS.'
+    };
+  }
+
+  // =========================================================================
+  // 8. General essay or creative writing fallback
+  // =========================================================================
   return {
-    category: 'academic_manuscript',
-    categoryLabel: 'Manuscript Draft / Document',
-    isAcademicManuscript: true,
-    confidence: 0.85,
-    detectedFeatures: ['Academic text and structure identified'],
-    salutation: 'Dear Author / Contributing Researcher',
-    advisoryMessage: 'ManuView has evaluated your draft against academic peer-review rubrics.',
-    customGuidance: 'Review the simulated reviewer critiques and verify your references.'
+    category: 'general_or_creative',
+    categoryLabel: 'General Essay / Non-Academic Prose',
+    isAcademicManuscript: false,
+    confidence: 0.75,
+    detectedFeatures: [
+      'Prose text in paragraph format',
+      'Absence of formal empirical methods or scientific data tables',
+      'Absence of peer-reviewed references or DOI citations'
+    ],
+    salutation: 'Hello Author / Writer',
+    advisoryMessage: 'We detected a general essay, opinion piece, or informational text without empirical scientific methodology or peer-reviewed literature citations. ManuView is calibrated for scientific preprints and journal submissions.',
+    customGuidance: 'If this is intended as an academic perspective or review article, ensure formal literature citations, scholarly framing, and structured theoretical or empirical analysis are incorporated.'
   };
 }
 
@@ -138,7 +294,7 @@ export function parseManuscriptText(rawText: string, filename?: string): ParsedM
   // 1. Classify document type
   const classification = classifyDocument(rawText, filename);
 
-  // 2. Detect Title
+  // 2. Detect Title (filters out journal banners, category tags, DOIs, and preprint watermarks)
   let title = "Untitled Document";
   const skipHeaderRegex = /^(?:biorxiv|medrxiv|arxiv|springer|nature|elsevier|ieee|cell|wiley|plos|frontiers|mdpi|iop|acm|sage|taylor|oxford|cambridge|opsearch|journal\b|international\s+journal|annals\b|proceedings\b|theoretical\s+article|original\s+(?:research|article)|research\s+article|review\s+article|regular\s+article|brief\s+report|case\s+report|short\s+communication|perspective|commentary|editorial|letter\s+to|check\s+for\s+updates|extended\s+author|published\s+online|received\s*:|accepted\s*:|revised\s*:|https?:|doi\s*:|page\s+\d+|vol\.\s*\d+|no\.\s*\d+|open\s+access|peer-reviewed|copyright|the\s+author\(s\)|all\s+rights\s+reserved|©)/i;
 
@@ -147,6 +303,7 @@ export function parseManuscriptText(rawText: string, filename?: string): ParsedM
     if (skipHeaderRegex.test(candidate)) continue;
     if (/^\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}$/.test(candidate) || /^\d+$/.test(candidate)) continue;
     if (candidate.length > 12) {
+      // Check if line wraps onto the next line (common in two-line article titles)
       if (
         i + 1 < lines.length &&
         !skipHeaderRegex.test(lines[i + 1]) &&
@@ -171,21 +328,26 @@ export function parseManuscriptText(rawText: string, filename?: string): ParsedM
   if (abstractMatch && abstractMatch[1]) {
     abstract = abstractMatch[1].trim();
   } else {
+    // Fallback: search for first 300 words
     abstract = lines.slice(1, 5).join(' ');
   }
 
-  // 4. Extract sections
+  // 4. Extract sections (supporting empirical, clinical, theoretical, and operations research)
   const sections: ParsedManuscript['sections'] = {};
 
+  // Introduction / Background / Literature Review
   const introMatch = rawText.match(/(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Introduction|Background|Literature Review)\s*[:\n\r]+([\s\S]*?)(?=(?:\n\s*(?:\d+[\.\s]+)?(?:Methods|Materials and Methods|Methodology|Model|Theoretical|Assumptions|Problem Formulation|2\b)))/i);
   if (introMatch) sections.introduction = introMatch[1].trim().slice(0, 5000);
 
+  // Methodology / Model Development / Theoretical Formulation
   const methodsMatch = rawText.match(/(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Methods|Materials and Methods|Methodology|Model Development|Mathematical Formulation|Theoretical Framework|System Model|Assumptions|Problem Formulation|Proposed Approach)\s*[:\n\r]+([\s\S]*?)(?=(?:\n\s*(?:\d+[\.\s]+)?(?:Results|Findings|Numerical Example|Numerical Analysis|Numerical Results|Simulation Results|Computational Experiments|Sensitivity Analysis|Discussion|Conclusion|7\b|8\b)))/i);
   if (methodsMatch) sections.methods = methodsMatch[1].trim().slice(0, 6000);
 
+  // Results / Numerical Examples / Experiments
   const resultsMatch = rawText.match(/(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Results|Findings|Numerical Example|Numerical Analysis|Numerical Results|Simulation Results|Computational Experiments|Sensitivity Analysis|Case Study)\s*[:\n\r]+([\s\S]*?)(?=(?:\n\s*(?:\d+[\.\s]+)?(?:Discussion|Managerial Insights|Practical Implications|Conclusion|Conclusions|10\b|11\b|References)))/i);
   if (resultsMatch) sections.results = resultsMatch[1].trim().slice(0, 6000);
 
+  // Discussion / Managerial Insights / Practical Implications
   const discussionMatch = rawText.match(/(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Discussion|Managerial Insights|Practical Implications)\s*[:\n\r]+([\s\S]*?)(?=(?:\n\s*(?:\d+[\.\s]+)?(?:Conclusion|Conclusions|References|11\b)))/i);
   if (discussionMatch) sections.discussion = discussionMatch[1].trim().slice(0, 5000);
 
@@ -206,3 +368,4 @@ export function parseManuscriptText(rawText: string, filename?: string): ParsedM
     classification,
   };
 }
+

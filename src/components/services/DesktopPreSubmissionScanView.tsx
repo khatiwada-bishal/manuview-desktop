@@ -53,12 +53,37 @@ import { callLLM, fetchAvailableModels, testLLMConnection } from "@/lib/llm";
 import { PaperItem } from "@/components/DesktopSidebar";
 import { DesktopDashboardData } from "@/components/DesktopDashboard";
 
+const SAMPLE_PREPRINT_TITLE = "Single-cell transcriptional profiling of DLL3 activation in neuroendocrine lung carcinoma";
+const SAMPLE_PREPRINT_JOURNAL = "Nature Communications";
+const SAMPLE_PREPRINT_ABSTRACT =
+  "Small cell lung cancer (SCLC) exhibits rapid recurrence and therapy resistance. Delta-like ligand 3 (DLL3) is an established cell-surface target for antibody-drug conjugates and T-cell engagers. However, the precise cis-regulatory mechanisms controlling DLL3 transcription remain uncharacterized. Here, we perform marker-based CRISPR-Cas9 screens and identify the transcription factor POU2F1 as a primary driver of DLL3 expression. We demonstrate that POU2F1 directly binds the DLL3 distal enhancer element to drive chemoresistance in clinical isolates. Knockdown of POU2F1 caused significant downregulation of DLL3 mRNA across 8 patient-derived organoid lines. Our findings prove that targeting POU2F1 will rescue therapeutic efficacy in neuroendocrine lung carcinoma and provide a universal predictive biomarker for clinical stratification.";
+const SAMPLE_PREPRINT_KEYWORDS =
+  "small cell lung cancer, DLL3, POU2F1, CRISPR screen, organoids, chemoresistance, antibody-drug conjugates";
+const SAMPLE_PREPRINT_TEXT = `Title: Single-cell transcriptional profiling of DLL3 activation in neuroendocrine lung carcinoma
+
+Abstract:
+Small cell lung cancer (SCLC) exhibits rapid recurrence and therapy resistance. Delta-like ligand 3 (DLL3) is an established cell-surface target for antibody-drug conjugates and T-cell engagers. However, the precise cis-regulatory mechanisms controlling DLL3 transcription remain uncharacterized. Here, we perform marker-based CRISPR-Cas9 screens and identify the transcription factor POU2F1 as a primary driver of DLL3 expression. We demonstrate that POU2F1 directly binds the DLL3 distal enhancer element to drive chemoresistance in clinical isolates. Knockdown of POU2F1 caused significant downregulation of DLL3 mRNA across 8 patient-derived organoid lines. Our findings prove that targeting POU2F1 will rescue therapeutic efficacy in neuroendocrine lung carcinoma and provide a universal predictive biomarker for clinical stratification.
+
+Methods:
+Patient-derived neuroendocrine organoids (n=8) were maintained in 3D Matrigel culture. For CRISPR knockout screens, a custom sgRNA library targeting 1,200 chromatin regulators was transduced at an MOI of 0.3. Differential expression was evaluated using single-cell RNA sequencing on Illumina NovaSeq 6000. Significance testing was conducted via two-tailed unpaired Student's t-tests (p < 0.05 considered significant).
+
+Results:
+POU2F1 was nominated as the top hit in the genome-wide enrichment assay (Fold Change = 4.2, p = 0.002). Correlative RNA-seq analysis indicated elevated POU2F1 expression in recurrent vs. treatment-naive cohorts. Western blot analysis confirmed reduction of DLL3 upon shRNA treatment.
+
+Discussion:
+Our study proves that POU2F1 is the essential master regulator of neuroendocrine identity in lung cancer. Targeting this regulatory axis will prevent relapse in all patients receiving DLL3-targeted therapeutics.
+
+References:
+1. Saunders D, et al. A DLL3-targeted antibody-drug conjugate for small cell lung cancer. Sci Transl Med. 2015. DOI: 10.1126/scitranslmed.aac9459
+2. Rudin CM, et al. Molecular subtypes of small cell lung cancer: a synthesis of biology and therapeutics. Nat Rev Cancer. 2019. DOI: 10.1038/s41568-019-0133-9
+3. Fake A, Hallucinated B. AI generated non-existent reference. J Cancer. 2024. DOI: 10.1038/s41586-999-fake01
+4. Wakefield AJ, et al. Ileal-lymphoid-nodular hyperplasia and pervasive developmental disorder in children. Lancet. 1998. DOI: 10.1016/S0140-6736(97)11096-0`;
+
 const SAMPLE_PREPRINT = {
-  title: "Single-cell transcriptional profiling of DLL3 activation in neuroendocrine lung carcinoma",
-  journal: "Nature Communications",
-  abstract:
-    "Small cell lung cancer (SCLC) exhibits rapid recurrence and therapy resistance. Delta-like ligand 3 (DLL3) is an established cell-surface target for antibody-drug conjugates and T-cell engagers. However, the precise cis-regulatory mechanisms controlling DLL3 transcription remain uncharacterized. Here, we perform marker-based CRISPR-Cas9 screens and identify the transcription factor POU2F1 as a primary driver of DLL3 expression. We demonstrate that POU2F1 directly binds the DLL3 distal enhancer element to drive chemoresistance in clinical isolates. Knockdown of POU2F1 caused significant downregulation of DLL3 mRNA across 8 patient-derived organoid lines. Our findings prove that targeting POU2F1 will rescue therapeutic efficacy in neuroendocrine lung carcinoma and provide a universal predictive biomarker for clinical stratification.",
-  keywords: "small cell lung cancer, DLL3, POU2F1, CRISPR screen, organoids, chemoresistance, antibody-drug conjugates",
+  title: SAMPLE_PREPRINT_TITLE,
+  journal: SAMPLE_PREPRINT_JOURNAL,
+  abstract: SAMPLE_PREPRINT_ABSTRACT,
+  keywords: SAMPLE_PREPRINT_KEYWORDS,
 };
 
 interface DesktopPreSubmissionScanViewProps {
@@ -194,15 +219,29 @@ export function DesktopPreSubmissionScanView({
     }
   };
 
-  const handleLoadSample = () => {
-    setManuscriptTitle(SAMPLE_PREPRINT.title);
-    setTargetJournal(SAMPLE_PREPRINT.journal);
-    setManuscriptAbstract(SAMPLE_PREPRINT.abstract);
-    setManuscriptKeywords(SAMPLE_PREPRINT.keywords);
+  const handleLoadSampleQuick = () => {
+    setManuscriptTitle(SAMPLE_PREPRINT_TITLE);
+    setTargetJournal(SAMPLE_PREPRINT_JOURNAL);
+    setManuscriptAbstract(SAMPLE_PREPRINT_ABSTRACT);
+    setManuscriptKeywords(SAMPLE_PREPRINT_KEYWORDS);
     setFile(null);
     setFileName(null);
     setError(null);
   };
+
+  const handleLoadSampleFull = () => {
+    setManuscriptTitle(SAMPLE_PREPRINT_TITLE);
+    setTargetJournal(SAMPLE_PREPRINT_JOURNAL);
+    setManuscriptAbstract(SAMPLE_PREPRINT_ABSTRACT);
+    setManuscriptKeywords(SAMPLE_PREPRINT_KEYWORDS);
+    const blob = new Blob([SAMPLE_PREPRINT_TEXT], { type: "text/plain;charset=utf-8" });
+    const sampleFile = new File([blob], "sample_sclc_manuscript.txt", { type: "text/plain" });
+    setFile(sampleFile);
+    setFileName("sample_sclc_manuscript.txt");
+    setError(null);
+  };
+
+  const handleLoadSample = handleLoadSampleQuick;
 
   const handleNativePick = async () => {
     if (isDesktopApp()) {
@@ -251,24 +290,34 @@ export function DesktopPreSubmissionScanView({
 
   const handleRunScan = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file && (!manuscriptTitle.trim() || !manuscriptAbstract.trim())) {
-      setError("Please provide either a manuscript document or Title and Abstract.");
+    if (apiStatus !== "connected") {
+      setError(
+        apiStatus === "unconfigured"
+          ? "Pre-submission scan is disabled: No LLM API connection configured. Please set your API key in AI Settings."
+          : "Pre-submission scan is disabled: The configured LLM connection is not working. Please fix your credentials in AI Settings."
+      );
       return;
     }
+
     if (!targetJournal.trim()) {
       setTargetJournalError(true);
       setError("Target Journal is required for calibrated rubric evaluation.");
       return;
     }
 
+    const isFileScan = !!file;
+    const hasMetadata = !!(manuscriptTitle.trim() && manuscriptAbstract.trim());
+
+    if (!isFileScan && !hasMetadata) {
+      setError("Please provide either a manuscript document or Title and Abstract.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
+    setReport(null);
 
     let t1: any, t2: any, t3: any, t4: any;
-    setLoadingStep("Parsing document & extracting sections...");
-    t1 = setTimeout(() => setLoadingStep("Verifying reference list against CrossRef & Retraction Watch..."), 1200);
-    t2 = setTimeout(() => setLoadingStep("Auditing methodology, statistical power & claims..."), 2400);
-    t3 = setTimeout(() => setLoadingStep("Running 4-Persona peer-review simulations..."), 3600);
 
     try {
       const savedConfig = localStorage.getItem("manuview_provider_config");
@@ -276,82 +325,99 @@ export function DesktopPreSubmissionScanView({
         ? JSON.parse(savedConfig)
         : undefined;
 
-      let extracted = "";
-      if (file) {
-        extracted = await extractTextFromFile(file);
+      if (isFileScan) {
+        // Full document audit (matching web exactly)
+        setLoadingStep("Extracting sections and parsing bibliography...");
+        t1 = setTimeout(() => setLoadingStep("Resolving references against Crossref & Retraction Watch..."), 1200);
+        t2 = setTimeout(() => setLoadingStep("Auditing causal claims against experimental controls..."), 2400);
+        t3 = setTimeout(() => setLoadingStep("Evaluating methodology, sample power, and statistics..."), 3600);
+        t4 = setTimeout(() => setLoadingStep("Simulating 4 peer-reviewer personas..."), 4800);
+
+        const extracted = await extractTextFromFile(file);
+        const parsed = parseManuscriptText(extracted, file.name || "manuscript.txt");
+        if (manuscriptTitle.trim()) parsed.title = manuscriptTitle.trim();
+        if (manuscriptAbstract.trim()) parsed.abstract = manuscriptAbstract.trim();
+
+        const fullReport = await runManuscriptDiagnostic(parsed, providerConfig, targetJournal);
+        setReport(fullReport);
+
+        // Register paper in articles store if onComplete provided
+        if (onComplete) {
+          const newPaper: PaperItem = {
+            id: `paper-${Date.now()}`,
+            title: fullReport.title || manuscriptTitle || "Untitled Manuscript",
+            shortName: (fullReport.title || manuscriptTitle || "Manuscript")
+              .split(" ")
+              .slice(0, 3)
+              .join(" "),
+            journal: targetJournal,
+            score: fullReport.overallScore || 80,
+          };
+
+          const dashboardData: DesktopDashboardData = {
+            paperTitle: newPaper.title,
+            headlineTitle: `${targetJournal} Pre-Submission Diagnostic`,
+            targetJournal: targetJournal,
+            aiEngine: activeProviderInfo.name || "AI ENGINE",
+            latencyMs: 120,
+            score: fullReport.overallScore || 80,
+            statusText:
+              (fullReport.overallScore || 80) >= 80
+                ? "High Acceptance Probability"
+                : "Revision Prioritized",
+            vulnerabilities:
+              fullReport.priorityIssues?.map((issue) => ({
+                type: (issue.category === "Causal Claims"
+                  ? "overclaim"
+                  : "sample_size") as "overclaim" | "sample_size",
+                title: issue.title,
+                description: issue.description,
+                severity: (issue.priority === "A" ? "critical" : "warning") as
+                  | "critical"
+                  | "warning",
+              })) || [],
+            reviewers:
+              fullReport.reviewerPersonas?.map((p) => ({
+                name: p.name,
+                role: p.title || p.persona,
+                tag: (p.decisionRecommendation?.includes("Reject")
+                  ? "Critical"
+                  : "Major") as "Major" | "Minor" | "Critical",
+                quote:
+                  p.keyChallenge ||
+                  p.assessment?.slice(0, 150) ||
+                  "Comprehensive evaluation required.",
+                detail: p.majorCritiques?.join(" ") || p.assessment || "",
+              })) || [],
+            citationAudit: {
+              verifiedCount: fullReport.citationIntegrity?.verifiedCount || 10,
+              totalCount: fullReport.citationIntegrity?.totalReferences || 10,
+              retractedCount: fullReport.citationIntegrity?.retractedCount || 0,
+              notes: fullReport.citationIntegrity?.references?.length
+                ? `Verified ${fullReport.citationIntegrity.verifiedCount} DOIs via CrossRef Open API.`
+                : undefined,
+            },
+          };
+
+          onComplete(newPaper, dashboardData);
+        }
       } else {
-        extracted = `Title: ${manuscriptTitle}\n\nAbstract: ${manuscriptAbstract}\n\nKeywords: ${manuscriptKeywords}`;
-      }
+        // Fast editorial scope validation (matching web exactly)
+        setLoadingStep("Evaluating manuscript title & abstract scope...");
+        t1 = setTimeout(() => setLoadingStep(`Calibrating against ${targetJournal}'s aims and editorial criteria...`), 1000);
+        t2 = setTimeout(() => setLoadingStep("Auditing keyword resonance and potential desk-reject hazards..."), 2000);
 
-      const parsed = parseManuscriptText(extracted, file?.name || "manuscript.txt");
-      if (manuscriptTitle) parsed.title = manuscriptTitle;
-      if (manuscriptAbstract) parsed.abstract = manuscriptAbstract;
-
-      // Run full diagnostic report
-      const generatedReport = await runManuscriptDiagnostic(parsed, providerConfig, targetJournal);
-      setReport(generatedReport);
-
-      // Register paper in articles store if onComplete provided
-      if (onComplete) {
-        const newPaper: PaperItem = {
-          id: `paper-${Date.now()}`,
-          title: generatedReport.title || manuscriptTitle || "Untitled Manuscript",
-          shortName: (generatedReport.title || manuscriptTitle || "Manuscript")
-            .split(" ")
-            .slice(0, 3)
-            .join(" "),
-          journal: targetJournal,
-          score: generatedReport.overallScore || 80,
-        };
-
-        const dashboardData: DesktopDashboardData = {
-          paperTitle: newPaper.title,
-          headlineTitle: `${targetJournal} Pre-Submission Diagnostic`,
-          targetJournal: targetJournal,
-          aiEngine: activeProviderInfo.name || "AI ENGINE",
-          latencyMs: 120,
-          score: generatedReport.overallScore || 80,
-          statusText:
-            (generatedReport.overallScore || 80) >= 80
-              ? "High Acceptance Probability"
-              : "Revision Prioritized",
-          vulnerabilities:
-            generatedReport.priorityIssues?.map((issue) => ({
-              type: (issue.category === "Causal Claims"
-                ? "overclaim"
-                : "sample_size") as "overclaim" | "sample_size",
-              title: issue.title,
-              description: issue.description,
-              severity: (issue.priority === "A" ? "critical" : "warning") as
-                | "critical"
-                | "warning",
-            })) || [],
-          reviewers:
-            generatedReport.reviewerPersonas?.map((p) => ({
-              name: p.name,
-              role: p.title || p.persona,
-              tag: (p.decisionRecommendation?.includes("Reject")
-                ? "Critical"
-                : "Major") as "Major" | "Minor" | "Critical",
-              quote:
-                p.keyChallenge ||
-                p.assessment?.slice(0, 150) ||
-                "Comprehensive evaluation required.",
-              detail: p.majorCritiques?.join(" ") || p.assessment || "",
-            })) || [],
-          citationAudit: {
-            verifiedCount: generatedReport.citationIntegrity?.verifiedCount || 10,
-            totalCount: generatedReport.citationIntegrity?.totalReferences || 10,
-            retractedCount: generatedReport.citationIntegrity?.retractedCount || 0,
-            notes: generatedReport.citationIntegrity?.references?.length
-              ? `Verified ${generatedReport.citationIntegrity.verifiedCount} DOIs via CrossRef Open API.`
-              : undefined,
-          },
-        };
-
-        onComplete(newPaper, dashboardData);
+        const briefReport = await runBriefJournalFitAnalysis({
+          title: manuscriptTitle,
+          abstract: manuscriptAbstract,
+          keywords: manuscriptKeywords,
+          targetJournal: targetJournal || "Target Journal",
+          providerConfig,
+        });
+        setReport(briefReport);
       }
     } catch (err: any) {
+      console.error("Diagnostic scan error:", err);
       setError(err?.message || "Failed to generate diagnostic report. Please verify your AI provider credentials.");
     } finally {
       clearTimeout(t1);
@@ -583,14 +649,26 @@ export function DesktopPreSubmissionScanView({
                   Upload your full paper for deep referee analysis, or provide title and abstract for quick fit check.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={handleLoadSample}
-                className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 transition cursor-pointer self-start sm:self-auto"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                <span>Load Sample Preprint</span>
-              </button>
+              <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleLoadSampleQuick}
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 transition cursor-pointer"
+                  title="Loads Title, Abstract & Keywords for fast journal fit validation"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Load Sample (Quick Fit)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLoadSampleFull}
+                  className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 hover:underline flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 transition cursor-pointer"
+                  title="Loads complete manuscript document with Methods, Results & References for full 6-dimension peer review"
+                >
+                  <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Load Sample (Full Document)</span>
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

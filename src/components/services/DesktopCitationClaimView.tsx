@@ -15,6 +15,7 @@ import {
 import { fetchWorkByDOI } from "@/lib/openalex";
 import { callLLM } from "@/lib/llm";
 import { cleanAndRepairJson } from "@/lib/json-repair";
+import { ProviderConfig } from "@/lib/types";
 
 export function DesktopCitationClaimView() {
   const [sentence, setSentence] = useState("");
@@ -81,7 +82,12 @@ Return a JSON object with:
   "suggestedRewrite": "an accurate rephrasing of the sentence that strictly aligns with the cited evidence"
 }`;
 
-      const raw = await callLLM([{ role: "user", content: prompt }]);
+      const savedConfig = localStorage.getItem("manuview_provider_config");
+      const providerConfig: ProviderConfig | undefined = savedConfig
+        ? JSON.parse(savedConfig)
+        : undefined;
+
+      const raw = await callLLM([{ role: "user", content: prompt }], providerConfig);
 
       let parsed: any = {
         verdict: "supported",
