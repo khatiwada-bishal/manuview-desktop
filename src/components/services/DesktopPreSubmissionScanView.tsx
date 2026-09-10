@@ -364,16 +364,21 @@ export function DesktopPreSubmissionScanView({
   };
 
   return (
-    <div className="flex-1 h-full bg-[#08090D] text-white overflow-y-auto py-6 sm:py-10 print:bg-white print:p-0 select-text">
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 print:max-w-none print:p-0">
-        {/* Top Breadcrumb & Page Controls */}
-        <div className="mb-4 flex items-center justify-between print:hidden">
-          <div className="flex items-center gap-2 text-xs text-neutral-400">
-            <span>Workspace</span>
-            <span>/</span>
-            <span>Diagnostics</span>
-            <span>/</span>
-            <span className="text-white font-medium">Pre-Submission AI Review</span>
+    <div className="flex-1 overflow-y-auto bg-white p-6 sm:p-10 text-[#111827]">
+      <div className="max-w-5xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+              <span>4-Persona AI Review &amp; Diagnostic Pipeline</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0F172A]">
+              Pre-Submission AI Review &amp; Diagnostic
+            </h1>
+            <p className="text-xs sm:text-sm text-neutral-500 max-w-2xl">
+              Calibrated peer-review rubric to surface desk-rejection hazards, causal overclaims, missing controls, and citation integrity bugs before submission.
+            </p>
           </div>
 
           <button
@@ -382,932 +387,897 @@ export function DesktopPreSubmissionScanView({
               if (onOpenSettings) onOpenSettings();
               else setSettingsOpen(true);
             }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-xs text-neutral-300 hover:text-white transition shadow-sm cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-neutral-50 border border-[#E5E7EB] text-xs font-medium text-neutral-700 transition shadow-2xs self-start cursor-pointer"
           >
-            <Settings className="w-3.5 h-3.5 text-neutral-400" />
-            <span>{activeProviderInfo.name}</span>
+            <Settings className="w-3.5 h-3.5 text-neutral-500" />
+            <span>AI Engine: {activeProviderInfo.name}</span>
           </button>
         </div>
 
-        {/* Workspace Card Container (Elevated White Paper Sheet on Dark Canvas) */}
-        <div className="rounded-2xl p-6 sm:p-10 bg-white text-[#2F3437] shadow-[0_35px_90px_-15px_rgba(0,0,0,0.85),0_0_0_1px_rgba(255,255,255,0.08)] print:border-none print:shadow-none print:p-0 print:rounded-none">
-          {/* Notion Page Header */}
-          <div className="mb-8 print:hidden">
-            <div className="text-4xl mb-3 select-none">📄</div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#2F3437] mb-2 font-serif">
-              Manuscript Pre-Submission Diagnostic
-            </h1>
-            <p className="text-sm text-[#787774] font-light">
-              Calibrated peer-review rubric to surface desk-rejection hazards, causal overclaims, missing controls, and citation integrity bugs.
-            </p>
-          </div>
-
-          {/* Notion Properties Block */}
-          <div className="mb-8 rounded-xl bg-[#F7F7F5] print:hidden border border-[#EBEBEA] p-4 text-xs divide-y divide-[#eaeaea]">
-            {/* Property 1: Target Journal */}
-            <div className="relative z-20 py-2.5 px-1 space-y-1.5">
-              <div className="flex items-center">
-                <div className="w-40 flex items-center gap-1.5 text-[#787774] flex-shrink-0">
-                  <Tag className="w-3.5 h-3.5" />
-                  <span className="font-medium">Target Journal</span>
-                  <span className="text-[#E03E3E] font-bold text-sm leading-none" title="Required">
-                    *
-                  </span>
-                </div>
-                <div className="flex-1">
-                  <JournalCombobox
-                    value={targetJournal}
-                    onChange={handleTargetJournalChange}
-                    hasError={targetJournalError}
-                    placeholder="Search 1,390+ academic journals or type custom title..."
-                  />
-                </div>
-              </div>
+        {/* Configuration & Calibration Card */}
+        <div className="rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] p-5 sm:p-6 space-y-4 shadow-2xs">
+          {/* Target Journal */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs sm:text-sm">
+            <span className="w-36 flex items-center gap-2 font-semibold text-[#6B7280]">
+              <Tag className="w-4 h-4 text-[#9CA3AF]" />
+              Target Journal <span className="text-red-500">*</span>
+            </span>
+            <div className="flex-1 max-w-lg">
+              <JournalCombobox
+                value={targetJournal}
+                onChange={handleTargetJournalChange}
+                hasError={targetJournalError}
+                placeholder="Search 1,390+ academic journals or type custom title..."
+              />
               {targetJournalError && (
-                <div className="ml-40 text-[11px] text-[#7C2D2B] font-medium flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3 text-[#7C2D2B]" />
+                <div className="text-[11px] text-[#991B1B] font-medium flex items-center gap-1 mt-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 text-[#991B1B]" />
                   <span>Target Journal is required for calibrated rubric evaluation.</span>
                 </div>
               )}
             </div>
-
-            {/* Property 2: AI Diagnostic Engine */}
-            <div className="flex items-center py-2 px-1">
-              <div className="w-40 flex items-center gap-2 text-[#787774] flex-shrink-0">
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-                <span>AI Engine</span>
-              </div>
-              <div className="flex-1 flex flex-wrap items-center gap-2">
-                {apiStatus === "connected" && (
-                  <div className="relative inline-block">
-                    <button
-                      type="button"
-                      onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#EDF6EE] text-[#1E5A2A] border border-[#CBE7CE] hover:bg-[#E2F0E3] transition shadow-2xs cursor-pointer"
-                    >
-                      <span className="w-2 h-2 rounded-full bg-[#1E5A2A]" />
-                      <span>
-                        {activeProviderInfo.name}: <span className="font-mono">{activeProviderInfo.model}</span>
-                      </span>
-                      <ChevronDown className="w-3.5 h-3.5 text-[#1E5A2A] ml-0.5" />
-                    </button>
-
-                    {modelDropdownOpen && (
-                      <div className="absolute left-0 mt-1.5 w-72 rounded-2xl bg-white border border-[#EBEBEA] shadow-xl p-2.5 z-40 animate-fade-in text-xs">
-                        <div className="px-2 py-1.5 text-[11px] font-semibold text-[#787774] border-b border-[#EBEBEA] uppercase tracking-wider flex items-center justify-between">
-                          <span>Select Available Model</span>
-                          <span className="text-[10px] text-[#18569C] font-semibold">
-                            {availableModels.length} models
-                          </span>
-                        </div>
-                        <div className="max-h-56 overflow-y-auto py-1 space-y-1">
-                          {availableModels.map((m) => {
-                            const isCur = activeProviderInfo.model === m.id;
-                            return (
-                              <button
-                                key={m.id}
-                                type="button"
-                                onClick={() => handleSelectModel(m.id)}
-                                className={`w-full text-left px-2.5 py-2 rounded-xl transition flex items-start justify-between gap-2 ${
-                                  isCur
-                                    ? "bg-[#F7F7F5] text-[#2F3437] font-semibold border border-[#2F3437]"
-                                    : "text-[#2F3437] hover:bg-[#F7F7F5]"
-                                }`}
-                              >
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="font-mono text-xs truncate">{m.id}</span>
-                                    {m.tag && (
-                                      <span className="text-[9px] px-1.5 py-0.2 rounded font-medium bg-[#EBF3FB] text-[#18569C] border border-[#CDE1F8]">
-                                        {m.tag}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="text-[10px] text-[#787774] truncate mt-0.5">{m.description}</div>
-                                </div>
-                                {isCur && <Check className="w-3.5 h-3.5 text-[#1E5A2A] flex-shrink-0 mt-0.5" />}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <div className="pt-2 border-t border-[#EBEBEA] flex items-center justify-between px-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setModelDropdownOpen(false);
-                              if (onOpenSettings) onOpenSettings();
-                              else setSettingsOpen(true);
-                            }}
-                            className="text-[11px] text-[#18569C] hover:underline font-semibold"
-                          >
-                            AI Settings &amp; Custom Keys &rarr;
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {apiStatus === "unconfigured" && (
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-[#FBF3DB] text-[#78510E] border border-[#F4E2B6]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#78510E]" />
-                    No API Key (Setup Required)
-                  </span>
-                )}
-
-                {apiStatus === "error" && (
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-[#FDF0EF] text-[#7C2D2B] border border-[#F7CECC]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#9B2C2C]" />
-                    {activeProviderInfo.name}: Connection Failed
-                  </span>
-                )}
-
-                {apiStatus === "checking" && (
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-[#EBF3FB] text-[#18569C] border border-[#CDE1F8]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#0A85EA] animate-pulse" />
-                    Testing {activeProviderInfo.name}...
-                  </span>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (onOpenSettings) onOpenSettings();
-                    else setSettingsOpen(true);
-                  }}
-                  className="text-[11px] text-[#18569C] hover:underline font-medium"
-                >
-                  Configure
-                </button>
-
-                <button
-                  type="button"
-                  onClick={checkProviderStatus}
-                  disabled={pinging}
-                  className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-white hover:bg-[#F7F7F5] border border-[#EBEBEA] text-[#2F3437] shadow-2xs transition disabled:opacity-50 cursor-pointer"
-                  title="Test API connection & ping latency"
-                >
-                  <Activity className={`w-3 h-3 ${pinging ? "animate-spin text-emerald-500" : "text-[#787774]"}`} />
-                  <span>{pinging ? "Testing Ping..." : "Check Connection"}</span>
-                </button>
-
-                {scanPingResult && (
-                  <span
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono border ${
-                      scanPingResult.success
-                        ? "bg-[#EDF6EE] text-[#1E5A2A] border-[#CBE7CE]"
-                        : "bg-[#FDF0EF] text-[#7C2D2B] border-[#F7CECC]"
-                    }`}
-                  >
-                    <Zap className="w-3 h-3 text-amber-500" />
-                    <span>
-                      {scanPingResult.success
-                        ? `${scanPingResult.latencyMs}ms (${scanPingResult.message})`
-                        : `Failed: ${scanPingResult.error || scanPingResult.message}`}
-                    </span>
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Property 3: Scope */}
-            <div className="flex items-center py-2 px-1">
-              <div className="w-40 flex items-center gap-2 text-[#787774] flex-shrink-0">
-                <Hash className="w-3.5 h-3.5" />
-                <span>Diagnostic Scope</span>
-              </div>
-              <div className="flex-1 text-[#787774]">
-                6 Dimensions &bull; 4 Reviewer Personas &bull; Crossref DOI Resolution &bull; Retraction Screening
-              </div>
-            </div>
-
-            {/* Property 4: Privacy */}
-            <div className="flex items-center py-2 px-1">
-              <div className="w-40 flex items-center gap-2 text-[#787774] flex-shrink-0">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Data Retention</span>
-              </div>
-              <div className="flex-1 text-[#1E5A2A] flex items-center gap-1.5 font-medium">
-                <span>Zero-storage &bull; In-memory only &bull; Never trained on</span>
-              </div>
-            </div>
           </div>
 
-          {/* Input Form Card */}
-          {!report && (
-            <div className="space-y-6">
-              {/* Sample Preprint Tip */}
-              <div className="flex items-start gap-3 p-4 rounded-xl bg-[#F7F7F5] border border-[#EBEBEA] text-xs text-[#787774]">
-                <span className="text-base select-none">💡</span>
-                <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <span>
-                    First time testing ManuView? Load our sample preprint to run an instant diagnostic report.
-                  </span>
+          {/* AI Engine */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs sm:text-sm">
+            <span className="w-36 flex items-center gap-2 font-semibold text-[#6B7280]">
+              <SlidersHorizontal className="w-4 h-4 text-[#9CA3AF]" />
+              AI Engine
+            </span>
+            <div className="flex-1 flex flex-wrap items-center gap-2">
+              {apiStatus === "connected" && (
+                <div className="relative inline-block">
                   <button
                     type="button"
-                    onClick={handleLoadSample}
-                    className="px-3 py-1.5 rounded-lg bg-white hover:bg-[#F7F7F5] text-[#2F3437] font-medium text-xs border border-[#EBEBEA] shadow-2xs transition flex items-center gap-1 self-start sm:self-auto whitespace-nowrap cursor-pointer"
+                    onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0] hover:bg-[#D1FAE5] transition shadow-2xs cursor-pointer"
                   >
-                    <RefreshCw className="w-3 h-3" />
-                    Load Sample Preprint
+                    <span className="w-2 h-2 rounded-full bg-[#10B981]" />
+                    <span>
+                      {activeProviderInfo.name}: <span className="font-mono">{activeProviderInfo.model}</span>
+                    </span>
+                    <ChevronDown className="w-3.5 h-3.5 text-[#065F46] ml-0.5" />
                   </button>
-                </div>
-              </div>
 
-              <form onSubmit={handleRunScan} className="space-y-5">
-                {/* Document Input */}
-                <div className="rounded-xl bg-[#F7F7F5] border border-[#EBEBEA] p-6 space-y-4">
-                  <div className="text-xs font-medium text-[#787774] uppercase tracking-wider">
-                    Manuscript Draft
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* File Upload Box */}
-                    <div className="flex flex-col">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-xs text-[#787774] font-medium">
-                          Upload Full Manuscript (.pdf, .docx, .txt)
-                        </label>
-                        <span className="text-[10px] text-[#0F6B43] bg-[#EBF8F2] px-2 py-0.2 rounded font-medium border border-[#BDEBD6]">
-                          Full Audit
+                  {modelDropdownOpen && (
+                    <div className="absolute left-0 mt-1.5 w-72 rounded-2xl bg-white border border-[#E5E7EB] shadow-xl p-2.5 z-40 animate-fade-in text-xs">
+                      <div className="px-2 py-1.5 text-[11px] font-semibold text-neutral-500 border-b border-[#E5E7EB] uppercase tracking-wider flex items-center justify-between">
+                        <span>Select Available Model</span>
+                        <span className="text-[10px] text-blue-600 font-semibold">
+                          {availableModels.length} models
                         </span>
                       </div>
-
-                      {isDesktopApp() ? (
-                        <button
-                          type="button"
-                          onClick={handleNativePick}
-                          className="flex-1 flex flex-col items-center justify-center border border-dashed border-[#d0d0d0] hover:border-[#0A85EA] rounded-xl p-6 bg-white hover:bg-[#EBF3FB]/20 cursor-pointer transition group min-h-[220px]"
-                        >
-                          <Upload className="w-7 h-7 text-[#9B9A97] group-hover:text-[#18569C] transition mb-2" />
-                          <span className="text-xs text-[#2F3437] font-semibold text-center truncate max-w-full px-2">
-                            {fileName || "Choose full manuscript file"}
-                          </span>
-                          <span className="text-[11px] text-[#787774] mt-1 text-center max-w-xs px-2">
-                            {file
-                              ? `${(file.size / 1024).toFixed(1)} KB • Click to change file`
-                              : "Enables 6-dimension rubric, simulated reviewer personas & citation audit"}
-                          </span>
-                        </button>
-                      ) : (
-                        <label className="flex-1 flex flex-col items-center justify-center border border-dashed border-[#d0d0d0] hover:border-[#0A85EA] rounded-xl p-6 bg-white hover:bg-[#EBF3FB]/20 cursor-pointer transition group min-h-[220px]">
-                          <Upload className="w-7 h-7 text-[#9B9A97] group-hover:text-[#18569C] transition mb-2" />
-                          <span className="text-xs text-[#2F3437] font-semibold text-center truncate max-w-full px-2">
-                            {file ? file.name : "Choose full manuscript file"}
-                          </span>
-                          <span className="text-[11px] text-[#787774] mt-1 text-center max-w-xs px-2">
-                            {file
-                              ? `${(file.size / 1024).toFixed(1)} KB • Click to change file`
-                              : "Enables 6-dimension rubric, simulated reviewer personas & citation audit"}
-                          </span>
-                          <input
-                            type="file"
-                            accept=".pdf,.docx,.txt,application/pdf"
-                            onChange={handleFileChange}
-                            className="hidden"
-                          />
-                        </label>
-                      )}
-
-                      {file && (
+                      <div className="max-h-56 overflow-y-auto py-1 space-y-1">
+                        {availableModels.map((m) => {
+                          const isCur = activeProviderInfo.model === m.id;
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => handleSelectModel(m.id)}
+                              className={`w-full text-left px-2.5 py-2 rounded-xl transition flex items-start justify-between gap-2 ${
+                                isCur
+                                  ? "bg-neutral-100 text-[#111827] font-semibold border border-neutral-300"
+                                  : "text-neutral-700 hover:bg-neutral-50"
+                              }`}
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-mono text-xs truncate">{m.id}</span>
+                                  {m.tag && (
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                      {m.tag}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[10px] text-neutral-400 truncate mt-0.5">{m.description}</div>
+                              </div>
+                              {isCur && <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="pt-2 border-t border-[#E5E7EB] flex items-center justify-between px-1">
                         <button
                           type="button"
                           onClick={() => {
-                            setFile(null);
-                            setFileName(null);
+                            setModelDropdownOpen(false);
+                            if (onOpenSettings) onOpenSettings();
+                            else setSettingsOpen(true);
                           }}
-                          className="text-[11px] text-[#7C2D2B] hover:underline self-end mt-1 cursor-pointer"
+                          className="text-[11px] text-blue-600 hover:underline font-semibold"
                         >
-                          Remove file &amp; use Title / Abstract
+                          AI Settings &amp; Custom Keys &rarr;
                         </button>
-                      )}
-                    </div>
-
-                    {/* Title, Abstract & Keywords Box */}
-                    <div className="space-y-2.5 bg-white p-4 rounded-xl border border-[#EBEBEA] shadow-2xs">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs text-[#2F3437] font-semibold">
-                          Or Provide Title, Abstract &amp; Keywords
-                        </label>
-                        <span className="text-[10px] font-medium bg-[#EBF3FB] text-[#18569C] px-2 py-0.2 rounded border border-[#CDE1F8]">
-                          Quick Fit
-                        </span>
                       </div>
-
-                      <div>
-                        <label className="text-[11px] text-[#787774] font-medium mb-1 block">
-                          Manuscript Title <span className="text-[#E03E3E] font-bold">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={manuscriptTitle}
-                          onChange={(e) => {
-                            setManuscriptTitle(e.target.value);
-                            if (error) setError(null);
-                          }}
-                          placeholder="e.g. Single-cell transcriptional profiling of DLL3..."
-                          className="w-full px-3 py-1.5 rounded-lg bg-[#F7F7F5] border border-[#EBEBEA] text-xs text-[#2F3437] placeholder-[#888888] focus:outline-none focus:bg-white focus:border-[#0A85EA] focus:ring-1 focus:ring-[#0A85EA] transition"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-[11px] text-[#787774] font-medium mb-1 block">
-                          Abstract <span className="text-[#E03E3E] font-bold">*</span>
-                        </label>
-                        <textarea
-                          rows={4}
-                          value={manuscriptAbstract}
-                          onChange={(e) => {
-                            setManuscriptAbstract(e.target.value);
-                            if (error) setError(null);
-                          }}
-                          placeholder="Paste background, main findings, methodology, and conclusions..."
-                          className="w-full p-2.5 rounded-lg bg-[#F7F7F5] border border-[#EBEBEA] text-xs text-[#2F3437] placeholder-[#888888] focus:outline-none focus:bg-white focus:border-[#0A85EA] focus:ring-1 focus:ring-[#0A85EA] leading-relaxed transition resize-y"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-[11px] text-[#787774] font-medium mb-1 block">
-                          Keywords <span className="text-[#9B9A97] font-normal">(comma-separated)</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={manuscriptKeywords}
-                          onChange={(e) => setManuscriptKeywords(e.target.value)}
-                          placeholder="e.g. small cell lung cancer, DLL3, CRISPR screen, organoids"
-                          className="w-full px-3 py-1.5 rounded-lg bg-[#F7F7F5] border border-[#EBEBEA] text-xs text-[#2F3437] placeholder-[#888888] focus:outline-none focus:bg-white focus:border-[#0A85EA] focus:ring-1 focus:ring-[#0A85EA] transition"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {error && (
-                    <div className="p-3 rounded-lg bg-[#FDF0EF] border border-[#F7CECC] text-[#7C2D2B] text-xs flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                      <span>{error}</span>
                     </div>
                   )}
                 </div>
+              )}
 
-                {/* Submit Action */}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={`w-full py-3 px-4 rounded-xl font-semibold text-xs sm:text-sm border transition flex items-center justify-center gap-2 shadow-sm ${
-                    !loading
-                      ? "bg-[#0F172A] hover:bg-black text-white border-[#0F172A] active:scale-[0.99] cursor-pointer shadow-md"
-                      : "bg-[#eaeaea] text-[#9B9A97] border-[#e0e0e0] opacity-80 cursor-not-allowed"
+              {apiStatus === "unconfigured" && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
+                  <span className="w-2 h-2 rounded-full bg-[#D97706]" />
+                  No API Key (Setup Required)
+                </span>
+              )}
+
+              {apiStatus === "error" && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA]">
+                  <span className="w-2 h-2 rounded-full bg-[#EF4444]" />
+                  {activeProviderInfo.name}: Connection Error
+                </span>
+              )}
+
+              {apiStatus === "checking" && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                  <RefreshCw className="w-3 h-3 animate-spin text-blue-500" />
+                  Testing Connection...
+                </span>
+              )}
+
+              <button
+                type="button"
+                onClick={checkProviderStatus}
+                disabled={pinging}
+                className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-white hover:bg-neutral-50 border border-[#E5E7EB] text-neutral-700 shadow-2xs transition disabled:opacity-50 cursor-pointer"
+                title="Test API connection & ping latency"
+              >
+                <Activity className={`w-3.5 h-3.5 ${pinging ? "animate-spin text-emerald-600" : "text-neutral-400"}`} />
+                <span>{pinging ? "Testing Ping..." : "Check Latency"}</span>
+              </button>
+
+              {scanPingResult && (
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono border ${
+                    scanPingResult.success
+                      ? "bg-[#ECFDF5] text-[#065F46] border-[#A7F3D0]"
+                      : "bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]"
                   }`}
                 >
-                  {loading ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin text-blue-400" />
-                      <span>{loadingStep || "Analyzing Manuscript..."}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 text-amber-400" />
-                      <span>{file ? "Run Pre-Submission Diagnostic Scan" : "Validate Target Journal Scope & Fit"}</span>
-                    </>
-                  )}
-                </button>
-              </form>
+                  <Zap className="w-3 h-3 text-amber-500 fill-amber-500" />
+                  <span>
+                    {scanPingResult.success
+                      ? `${scanPingResult.latencyMs}ms (${scanPingResult.message})`
+                      : `Failed: ${scanPingResult.error || scanPingResult.message}`}
+                  </span>
+                </span>
+              )}
             </div>
-          )}
+          </div>
 
-          {/* Diagnostic Report Results */}
-          {report &&
-            (report.mode === "brief_fit" ? (
-              <BriefJournalFitView
-                report={report as BriefJournalFitReport}
-                onBack={() => setReport(null)}
-                onDownloadPDF={handleDownloadPDF}
-                activeProviderInfo={activeProviderInfo}
-              />
-            ) : (
-              <div className="space-y-8 animate-fade-in print:hidden">
-                {/* Top Navigation Bar in Results */}
-                <div className="flex items-center justify-between pb-3 border-b border-[#EBEBEA]">
+          {/* Diagnostic Scope */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs sm:text-sm">
+            <span className="w-36 flex items-center gap-2 font-semibold text-[#6B7280]">
+              <Hash className="w-4 h-4 text-[#9CA3AF]" />
+              Diagnostic Scope
+            </span>
+            <div className="flex-1 text-neutral-600 text-xs">
+              6 Evaluation Dimensions &bull; 4 Reviewer Personas &bull; Live Crossref DOI Validation &bull; Retraction Screening
+            </div>
+          </div>
+
+          {/* Data Retention */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs sm:text-sm">
+            <span className="w-36 flex items-center gap-2 font-semibold text-[#6B7280]">
+              <ShieldCheck className="w-4 h-4 text-[#9CA3AF]" />
+              Data Retention
+            </span>
+            <div className="flex-1 text-emerald-700 flex items-center gap-1.5 font-medium text-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span>Zero-storage &bull; In-memory only &bull; Never used to train models</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Input Form Card */}
+        {!report && (
+          <form onSubmit={handleRunScan} className="rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] p-6 space-y-6 shadow-xs">
+            {/* Header with Load Sample Preprint */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[#E5E7EB]">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-neutral-500 block">
+                  Manuscript Draft Submission
+                </span>
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  Upload your full paper for deep referee analysis, or provide title and abstract for quick fit check.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleLoadSample}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 transition cursor-pointer self-start sm:self-auto"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                <span>Load Sample Preprint</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left Column: File Upload */}
+              <div className="flex flex-col">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-semibold text-neutral-700">
+                    Upload Full Manuscript (.pdf, .docx, .txt)
+                  </label>
+                  <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-medium border border-emerald-200">
+                    Full 6-Dim Audit
+                  </span>
+                </div>
+
+                {isDesktopApp() ? (
                   <button
-                    onClick={() => setReport(null)}
-                    className="flex items-center gap-1.5 text-xs text-[#787774] hover:text-[#2F3437] hover:bg-[#F7F7F5] px-2.5 py-1 rounded-lg transition cursor-pointer"
+                    type="button"
+                    onClick={handleNativePick}
+                    className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-[#D1D5DB] hover:border-blue-500 rounded-xl p-6 bg-white hover:bg-blue-50/20 cursor-pointer transition group min-h-[240px]"
                   >
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>Back to Input</span>
+                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3 group-hover:scale-105 transition">
+                      <Upload className="w-6 h-6" />
+                    </div>
+                    <span className="text-xs text-[#111827] font-semibold text-center truncate max-w-full px-2">
+                      {fileName || "Click to choose manuscript file"}
+                    </span>
+                    <span className="text-[11px] text-neutral-500 mt-1 text-center max-w-xs px-2 leading-relaxed">
+                      {file
+                        ? `${(file.size / 1024).toFixed(1)} KB • Click to change file`
+                        : "Audits causal overclaims, missing controls, 4-persona referee reviews & Crossref DOIs"}
+                    </span>
                   </button>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="hidden md:flex items-center gap-2 text-xs text-[#787774] mr-1">
-                      <span>Target:</span>
-                      <span className="text-[#2F3437] font-medium bg-[#F7F7F5] px-2 py-0.5 rounded border border-[#EBEBEA]">
-                        {report.targetJournal || "General High Impact"}
-                      </span>
+                ) : (
+                  <label className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-[#D1D5DB] hover:border-blue-500 rounded-xl p-6 bg-white hover:bg-blue-50/20 cursor-pointer transition group min-h-[240px]">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3 group-hover:scale-105 transition">
+                      <Upload className="w-6 h-6" />
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={handleExportHTML}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-[#2F3437] hover:bg-[#F7F7F5] border border-[#D0D5DD] transition shadow-2xs cursor-pointer"
-                    >
-                      <Globe className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Interactive HTML</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleExportWord}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-[#2F3437] hover:bg-[#F7F7F5] border border-[#D0D5DD] transition shadow-2xs cursor-pointer"
-                    >
-                      <FileText className="w-3.5 h-3.5 text-[#18569C]" />
-                      <span>Word (.docx)</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleDownloadPDF}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#2F3437] text-white hover:bg-black transition shadow-xs cursor-pointer"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>PDF Report</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Document Title Header */}
-                <div className="space-y-2">
-                  <div className="text-3xl select-none">📑</div>
-                  <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#2F3437] leading-snug">
-                    {report.title}
-                  </h2>
-                </div>
-
-                {/* Document Classification */}
-                {report.classification && (
-                  <div
-                    className={`p-5 rounded-xl border text-xs space-y-3 ${
-                      report.classification.isAcademicManuscript
-                        ? "bg-[#EDF6EE] border-[#CBE7CE] text-[#1E5A2A]"
-                        : "bg-[#FBF3DB] border-[#F4E2B6] text-[#78510E]"
-                    }`}
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#EBEBEA]">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base select-none">
-                          {report.classification.isAcademicManuscript ? "🔬" : "⚠️"}
-                        </span>
-                        <span className="font-semibold text-[#2F3437]">
-                          Document Classification: {report.classification.categoryLabel}
-                        </span>
-                        <span className="text-[10px] px-2 py-0.5 rounded font-medium bg-white/70 border border-[#EBEBEA]">
-                          {report.classification.isAcademicManuscript ? "Academic Paper" : "Non-Manuscript Content"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="font-medium text-[#2F3437]">{report.classification.salutation}</div>
-                      <p className="leading-relaxed opacity-90 font-light">{report.classification.advisoryMessage}</p>
-                    </div>
-                  </div>
+                    <span className="text-xs text-[#111827] font-semibold text-center truncate max-w-full px-2">
+                      {file ? file.name : "Click to choose manuscript file"}
+                    </span>
+                    <span className="text-[11px] text-neutral-500 mt-1 text-center max-w-xs px-2 leading-relaxed">
+                      {file
+                        ? `${(file.size / 1024).toFixed(1)} KB • Click to change file`
+                        : "Audits causal overclaims, missing controls, 4-persona referee reviews & Crossref DOIs"}
+                    </span>
+                    <input
+                      type="file"
+                      accept=".pdf,.docx,.txt,application/pdf"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                  </label>
                 )}
 
-                {/* Score & Editorial Triage Block */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  {/* Readiness Score Card */}
-                  <div className="p-5 rounded-xl bg-[#F7F7F5] border border-[#EBEBEA] flex flex-col justify-center items-center text-center">
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-[#787774] mb-1">
-                      Readiness Score
+                {file && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFile(null);
+                      setFileName(null);
+                    }}
+                    className="text-[11px] text-red-600 hover:underline self-end mt-1.5 cursor-pointer font-medium"
+                  >
+                    Remove file &amp; use Title / Abstract
+                  </button>
+                )}
+              </div>
+
+              {/* Right Column: Title / Abstract / Keywords */}
+              <div className="space-y-3.5 bg-white p-5 rounded-xl border border-[#E5E7EB] shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[#111827]">
+                    Or Provide Title &amp; Abstract
+                  </span>
+                  <span className="text-[10px] font-medium bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded border border-neutral-200">
+                    Quick Review
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-neutral-700">
+                    Manuscript Title <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={manuscriptTitle}
+                    onChange={(e) => {
+                      setManuscriptTitle(e.target.value);
+                      if (error) setError(null);
+                    }}
+                    placeholder="e.g. Single-cell transcriptional profiling of DLL3..."
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#E5E7EB] bg-white text-xs sm:text-sm text-[#111827] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-neutral-700">
+                    Abstract <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={manuscriptAbstract}
+                    onChange={(e) => {
+                      setManuscriptAbstract(e.target.value);
+                      if (error) setError(null);
+                    }}
+                    placeholder="Paste background, methodology, key findings, and conclusions..."
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#E5E7EB] bg-white text-xs sm:text-sm text-[#111827] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 leading-relaxed resize-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-neutral-700">
+                    Keywords <span className="text-neutral-400 font-normal">(comma-separated)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={manuscriptKeywords}
+                    onChange={(e) => setManuscriptKeywords(e.target.value)}
+                    placeholder="e.g. small cell lung cancer, DLL3, CRISPR screen, organoids"
+                    className="w-full px-3.5 py-2 rounded-xl border border-[#E5E7EB] bg-white text-xs sm:text-sm text-[#111827] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {error && (
+              <div className="p-3.5 rounded-xl bg-[#FEF2F2] border border-[#FECACA] text-[#991B1B] text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 px-4 rounded-xl font-semibold text-xs sm:text-sm bg-[#0F172A] hover:bg-[#1E293B] text-white transition flex items-center justify-center gap-2 shadow-xs disabled:opacity-60 cursor-pointer"
+            >
+              {loading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin text-blue-400" />
+                  <span>{loadingStep || "Analyzing Manuscript..."}</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span>{file ? "Run Pre-Submission Diagnostic Scan" : "Validate Target Journal Scope & Fit"}</span>
+                </>
+              )}
+            </button>
+          </form>
+        )}
+
+        {/* Diagnostic Report Results */}
+        {report &&
+          (report.mode === "brief_fit" ? (
+            <BriefJournalFitView
+              report={report as BriefJournalFitReport}
+              onBack={() => setReport(null)}
+              onDownloadPDF={handleDownloadPDF}
+              activeProviderInfo={activeProviderInfo}
+            />
+          ) : (
+            <div className="space-y-8 animate-fade-in">
+              {/* Top Navigation Bar in Results */}
+              <div className="flex items-center justify-between pb-3 border-b border-[#E5E7EB]">
+                <button
+                  onClick={() => setReport(null)}
+                  className="flex items-center gap-1.5 text-xs text-neutral-600 hover:text-neutral-900 bg-white hover:bg-neutral-50 px-3 py-1.5 rounded-lg border border-[#E5E7EB] transition shadow-2xs cursor-pointer font-medium"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Back to Input</span>
+                </button>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="hidden md:flex items-center gap-2 text-xs text-neutral-500 mr-1">
+                    <span>Target:</span>
+                    <span className="px-2.5 py-1 rounded-md bg-[#FEF3C7] border border-[#FDE68A] text-[#92400E] font-medium text-xs">
+                      {report.targetJournal || "General High Impact"}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleExportHTML}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-neutral-700 hover:bg-neutral-50 border border-[#E5E7EB] transition shadow-2xs cursor-pointer"
+                  >
+                    <Globe className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Interactive HTML</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleExportWord}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-neutral-700 hover:bg-neutral-50 border border-[#E5E7EB] transition shadow-2xs cursor-pointer"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Word (.docx)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDownloadPDF}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#0F172A] hover:bg-[#1E293B] text-white transition shadow-xs cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>PDF Report</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Document Title Header */}
+              <div className="space-y-2">
+                <div className="text-3xl select-none">📑</div>
+                <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#111827] leading-snug">
+                  {report.title}
+                </h2>
+              </div>
+
+              {/* Document Classification */}
+              {report.classification && (
+                <div
+                  className={`p-5 rounded-2xl border text-xs space-y-3 ${
+                    report.classification.isAcademicManuscript
+                      ? "bg-[#ECFDF5] border-[#A7F3D0] text-[#065F46]"
+                      : "bg-[#FFFBEB] border-[#FDE68A] text-[#92400E]"
+                  }`}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-black/5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base select-none">
+                        {report.classification.isAcademicManuscript ? "🔬" : "⚠️"}
+                      </span>
+                      <span className="font-bold text-sm">
+                        Document Classification: {report.classification.categoryLabel}
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded font-medium bg-white/70 border border-black/10">
+                        {report.classification.isAcademicManuscript ? "Academic Paper" : "Non-Manuscript Content"}
+                      </span>
                     </div>
-                    <div className="flex items-baseline gap-1 my-1">
-                      <span className="text-4xl font-bold font-serif text-[#2F3437]">{report.overallScore}</span>
-                      <span className="text-[#9B9A97] text-sm font-serif">/100</span>
-                    </div>
-                    <div
-                      className={`mt-1 px-2.5 py-0.5 rounded text-[11px] font-medium border ${
-                        report.overallScore >= 80
-                          ? "bg-[#EDF6EE] text-[#1E5A2A] border-[#CBE7CE]"
-                          : report.overallScore >= 65
-                          ? "bg-[#FBF3DB] text-[#78510E] border-[#F4E2B6]"
-                          : "bg-[#FDF0EF] text-[#7C2D2B] border-[#F7CECC]"
-                      }`}
-                    >
-                      {report.overallScore >= 80
-                        ? "Submission Ready"
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="font-semibold">{report.classification.salutation}</div>
+                    <p className="leading-relaxed opacity-90">{report.classification.advisoryMessage}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Score & Editorial Triage Block */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Readiness Score Card */}
+                <div className="p-6 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] flex flex-col justify-center items-center text-center shadow-2xs">
+                  <div className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-1">
+                    Readiness Score
+                  </div>
+                  <div className="flex items-baseline gap-1 my-1">
+                    <span className="text-4xl font-extrabold text-[#111827]">{report.overallScore}</span>
+                    <span className="text-neutral-400 text-sm font-semibold">/100</span>
+                  </div>
+                  <div
+                    className={`mt-1.5 px-3 py-1 rounded-md text-xs font-semibold border ${
+                      report.overallScore >= 80
+                        ? "bg-[#ECFDF5] text-[#065F46] border-[#A7F3D0]"
                         : report.overallScore >= 65
-                        ? "Revision Prioritized"
-                        : "Substantive Hazards"}
-                    </div>
-                  </div>
-
-                  {/* Editorial Summary Callout */}
-                  <div className="md:col-span-3 p-5 rounded-xl bg-[#F7F7F5] border border-[#EBEBEA] flex flex-col justify-center">
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-[#1E5A2A] mb-2">
-                      <span className="text-sm select-none">📌</span>
-                      <span className="uppercase tracking-wider">Editorial Triage Synthesis</span>
-                    </div>
-                    <p className="text-xs sm:text-sm text-[#787774] leading-relaxed font-light">{report.summary}</p>
+                        ? "bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]"
+                        : "bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]"
+                    }`}
+                  >
+                    {report.overallScore >= 80
+                      ? "Submission Ready"
+                      : report.overallScore >= 65
+                      ? "Revision Prioritized"
+                      : "Substantive Hazards"}
                   </div>
                 </div>
 
-                {/* The 6 Evaluation Dimensions */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-[#2F3437]">
-                    <BarChart3 className="w-4 h-4 text-[#787774]" />
-                    <span>The 6 Evaluation Dimensions (1–5 Scale)</span>
+                {/* Editorial Summary Callout */}
+                <div className="md:col-span-3 p-6 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] flex flex-col justify-center shadow-2xs">
+                  <div className="flex items-center gap-2 text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2">
+                    <span className="text-base select-none">📌</span>
+                    <span>Editorial Triage Synthesis</span>
                   </div>
+                  <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed font-normal">{report.summary}</p>
+                </div>
+              </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {Object.entries(report.dimensions).map(([key, dim]) => (
-                      <div
-                        key={key}
-                        className="p-4 rounded-xl bg-[#F7F7F5] border border-[#EBEBEA] flex flex-col justify-between hover:border-[#d0d0d0] hover:shadow-2xs transition"
-                      >
+              {/* The 6 Evaluation Dimensions */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-sm font-bold text-[#111827]">
+                  <BarChart3 className="w-4 h-4 text-neutral-500" />
+                  <span>The 6 Evaluation Dimensions (1–5 Scale)</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Object.entries(report.dimensions).map(([key, dim]) => (
+                    <div
+                      key={key}
+                      className="p-5 rounded-2xl bg-white border border-[#E5E7EB] flex flex-col justify-between hover:border-neutral-300 shadow-2xs transition"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-bold text-[#111827]">{dim.label}</span>
+                          <span
+                            className={`px-2.5 py-0.5 rounded font-mono text-xs font-bold border ${
+                              dim.score >= 4
+                                ? "bg-[#ECFDF5] text-[#065F46] border-[#A7F3D0]"
+                                : dim.score === 3
+                                ? "bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]"
+                                : "bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]"
+                            }`}
+                          >
+                            {dim.score} / 5
+                          </span>
+                        </div>
+                        <p className="text-xs text-neutral-600 leading-relaxed mb-3">{dim.verdict}</p>
+                      </div>
+
+                      {dim.vulnerabilities && dim.vulnerabilities.length > 0 && (
+                        <div className="pt-2.5 border-t border-[#E5E7EB] text-[11px] text-[#991B1B] flex items-start gap-1.5 font-medium">
+                          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-red-500" />
+                          <span className="truncate">{dim.vulnerabilities[0]}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Prioritized Action Plan */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-sm font-bold text-[#111827]">
+                  <AlertCircle className="w-4 h-4 text-red-600" />
+                  <span>Prioritized Action Plan before Submission</span>
+                </div>
+
+                <div className="space-y-3">
+                  {report.priorityIssues.map((issue: PriorityIssue) => (
+                    <div
+                      key={issue.id}
+                      className="p-5 rounded-2xl bg-white border border-[#E5E7EB] space-y-3 shadow-2xs"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                              issue.priority === "A"
+                                ? "bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]"
+                                : issue.priority === "B"
+                                ? "bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]"
+                                : "bg-neutral-50 text-neutral-700 border-neutral-200"
+                            }`}
+                          >
+                            Priority {issue.priority}
+                          </span>
+                          <span className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide">
+                            {issue.category}
+                          </span>
+                        </div>
+                        <span className="text-xs text-neutral-500 font-medium">
+                          {issue.priority === "A" ? "Desk-Reject Vulnerability" : "Major Reviewer Challenge"}
+                        </span>
+                      </div>
+
+                      <h4 className="text-sm font-bold text-[#111827]">{issue.title}</h4>
+                      <p className="text-xs text-neutral-600 leading-relaxed">{issue.description}</p>
+
+                      <div className="border-l-2 border-neutral-300 pl-3 py-1 text-xs italic text-neutral-700 bg-neutral-50/50 rounded-r-lg">
+                        &ldquo;{issue.reviewerQuote}&rdquo;
+                      </div>
+
+                      <div className="p-3.5 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0] text-xs text-[#166534] flex items-start gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
                         <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-semibold text-[#2F3437]">{dim.label}</span>
-                            <span
-                              className={`px-2 py-0.5 rounded font-mono text-xs font-semibold border ${
-                                dim.score >= 4
-                                  ? "bg-[#EDF6EE] text-[#1E5A2A] border-[#CBE7CE]"
-                                  : dim.score === 3
-                                  ? "bg-[#FBF3DB] text-[#78510E] border-[#F4E2B6]"
-                                  : "bg-[#FDF0EF] text-[#7C2D2B] border-[#F7CECC]"
-                              }`}
-                            >
-                              {dim.score} / 5
-                            </span>
-                          </div>
-                          <p className="text-xs text-[#787774] leading-relaxed mb-3 font-light">{dim.verdict}</p>
-                        </div>
-
-                        {dim.vulnerabilities && dim.vulnerabilities.length > 0 && (
-                          <div className="pt-2 border-t border-[#EBEBEA] text-[11px] text-[#7C2D2B] flex items-start gap-1.5">
-                            <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" />
-                            <span className="truncate">{dim.vulnerabilities[0]}</span>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Prioritized Action Plan */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-[#2F3437]">
-                    <AlertCircle className="w-4 h-4 text-[#7C2D2B]" />
-                    <span>Prioritized Action Plan before Submission</span>
-                  </div>
-
-                  <div className="space-y-3">
-                    {report.priorityIssues.map((issue: PriorityIssue) => (
-                      <div
-                        key={issue.id}
-                        className="p-5 rounded-xl bg-[#F7F7F5] border border-[#EBEBEA] space-y-3"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                                issue.priority === "A"
-                                  ? "bg-[#FDF0EF] text-[#7C2D2B] border-[#F7CECC]"
-                                  : issue.priority === "B"
-                                  ? "bg-[#FBF3DB] text-[#78510E] border-[#F4E2B6]"
-                                  : "bg-white text-[#787774] border-[#EBEBEA]"
-                              }`}
-                            >
-                              Priority {issue.priority}
-                            </span>
-                            <span className="text-[11px] font-medium text-[#787774] uppercase tracking-wide">
-                              {issue.category}
-                            </span>
-                          </div>
-                          <span className="text-[11px] text-[#787774]">
-                            {issue.priority === "A" ? "Desk-Reject Vulnerability" : "Major Reviewer Challenge"}
-                          </span>
-                        </div>
-
-                        <h4 className="text-sm font-semibold text-[#2F3437]">{issue.title}</h4>
-                        <p className="text-xs text-[#787774] leading-relaxed">{issue.description}</p>
-
-                        <div className="border-l-2 border-[#d0d0d0] pl-3 py-0.5 text-xs italic text-[#2F3437] font-serif">
-                          &ldquo;{issue.reviewerQuote}&rdquo;
-                        </div>
-
-                        <div className="p-3 rounded-xl bg-white border border-[#CBE7CE] text-xs text-[#1E5A2A] flex items-start gap-2">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                          <div>
-                            <span className="font-semibold text-[#2F3437] block mb-0.5">Required Pre-Submission Fix:</span>
-                            {issue.actionableFix}
-                          </div>
+                          <span className="font-bold text-[#111827] block mb-0.5">Required Pre-Submission Fix:</span>
+                          {issue.actionableFix}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 4-Persona Peer-Review Simulation */}
-                <div className="space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-[#2F3437]">
-                      <Users className="w-4 h-4 text-[#787774]" />
-                      <span>4-Persona Peer-Review Simulation</span>
                     </div>
-                    <span className="text-[11px] text-[#787774]">Independent domain evaluations</span>
-                  </div>
+                  ))}
+                </div>
+              </div>
 
-                  <div className="flex items-center gap-1 border-b border-[#EBEBEA] pb-1 overflow-x-auto">
-                    {report.reviewerPersonas.map((p: ReviewerPersonaFeedback, idx: number) => {
-                      const isActive = selectedPersona === idx;
-                      return (
-                        <button
-                          key={p.persona}
-                          onClick={() => setSelectedPersona(idx)}
-                          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition cursor-pointer ${
-                            isActive
-                              ? "bg-white text-[#2F3437] font-semibold border border-[#d0d0d0] shadow-2xs"
-                              : "text-[#787774] hover:text-[#2F3437] hover:bg-[#F7F7F5]"
-                          }`}
-                        >
-                          <span>
-                            {p.persona === "methods_reviewer"
-                              ? "🔬"
-                              : p.persona === "domain_expert"
-                              ? "🧬"
-                              : p.persona === "journal_editor"
-                              ? "📑"
-                              : "📊"}
-                          </span>
-                          <span>{p.name.split(" ")[0]} {p.name.split(" ")[1]}</span>
-                          {p.decisionRecommendation && (
-                            <span
-                              className={`text-[9px] px-1 py-0.2 rounded border ${
-                                p.decisionRecommendation.includes("Reject")
-                                  ? "text-[#7C2D2B] border-[#F7CECC] bg-[#FDF0EF]"
-                                  : "text-[#78510E] border-[#F4E2B6] bg-[#FBF3DB]"
-                              }`}
-                            >
-                              {p.decisionRecommendation}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
+              {/* 4-Persona Peer-Review Simulation */}
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <div className="flex items-center gap-2 text-sm font-bold text-[#111827]">
+                    <Users className="w-4 h-4 text-neutral-500" />
+                    <span>4-Persona Peer-Review Simulation</span>
                   </div>
+                  <span className="text-xs text-neutral-400">Independent domain evaluations</span>
+                </div>
 
-                  {report.reviewerPersonas[selectedPersona] && (() => {
-                    const active = report.reviewerPersonas[selectedPersona];
-                    const isReject = active.decisionRecommendation?.includes("Reject");
+                <div className="flex items-center gap-2 border-b border-[#E5E7EB] pb-2 overflow-x-auto">
+                  {report.reviewerPersonas.map((p: ReviewerPersonaFeedback, idx: number) => {
+                    const isActive = selectedPersona === idx;
                     return (
-                      <div className="p-6 rounded-xl bg-[#F7F7F5] border border-[#EBEBEA] space-y-5 animate-fade-in">
-                        <div className="flex flex-col md:flex-row md:items-start justify-between gap-3 pb-4 border-b border-[#EBEBEA]">
-                          <div className="space-y-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h4 className="text-base font-serif font-bold text-[#2F3437]">{active.name}</h4>
-                              {active.decisionRecommendation && (
-                                <span
-                                  className={`text-[11px] font-semibold px-2 py-0.5 rounded border ${
-                                    isReject
-                                      ? "bg-[#FDF0EF] text-[#7C2D2B] border-[#F7CECC]"
-                                      : "bg-[#FBF3DB] text-[#78510E] border-[#F4E2B6]"
-                                  }`}
-                                >
-                                  Decision: {active.decisionRecommendation}
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-xs text-[#787774]">{active.title}</div>
-                            {active.affiliation && (
-                              <div className="text-[11px] text-[#787774] flex items-center gap-1.5">
-                                <GraduationCap className="w-3.5 h-3.5" />
-                                <span>{active.affiliation}</span>
-                              </div>
+                      <button
+                        key={p.persona}
+                        onClick={() => setSelectedPersona(idx)}
+                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs whitespace-nowrap transition cursor-pointer font-medium ${
+                          isActive
+                            ? "bg-[#0F172A] text-white shadow-xs"
+                            : "bg-[#F9FAFB] text-neutral-600 hover:text-neutral-900 border border-[#E5E7EB] hover:bg-neutral-100"
+                        }`}
+                      >
+                        <span>
+                          {p.persona === "methods_reviewer"
+                            ? "🔬"
+                            : p.persona === "domain_expert"
+                            ? "🧬"
+                            : p.persona === "journal_editor"
+                            ? "📑"
+                            : "📊"}
+                        </span>
+                        <span>{p.name.split(" ")[0]} {p.name.split(" ")[1]}</span>
+                        {p.decisionRecommendation && (
+                          <span
+                            className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${
+                              isActive
+                                ? "bg-white/20 text-white"
+                                : p.decisionRecommendation.includes("Reject")
+                                ? "text-[#991B1B] bg-red-50 border border-red-200"
+                                : "text-[#92400E] bg-amber-50 border border-amber-200"
+                            }`}
+                          >
+                            {p.decisionRecommendation}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {report.reviewerPersonas[selectedPersona] && (() => {
+                  const active = report.reviewerPersonas[selectedPersona];
+                  const isReject = active.decisionRecommendation?.includes("Reject");
+                  return (
+                    <div className="p-6 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] space-y-5 animate-fade-in shadow-2xs">
+                      <div className="flex flex-col md:flex-row md:items-start justify-between gap-3 pb-4 border-b border-[#E5E7EB]">
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h4 className="text-base font-bold text-[#111827]">{active.name}</h4>
+                            {active.decisionRecommendation && (
+                              <span
+                                className={`text-xs font-semibold px-2.5 py-0.5 rounded-md border ${
+                                  isReject
+                                    ? "bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]"
+                                    : "bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]"
+                                }`}
+                              >
+                                Decision: {active.decisionRecommendation}
+                              </span>
                             )}
                           </div>
-
-                          {active.expertise && (
-                            <div className="p-2.5 rounded-lg bg-white border border-[#EBEBEA] text-[11px] text-[#787774] md:max-w-xs">
-                              <span className="font-semibold text-[#1E5A2A] block mb-0.5">Focus:</span>
-                              {active.expertise}
+                          <div className="text-xs text-neutral-500 font-medium">{active.title}</div>
+                          {active.affiliation && (
+                            <div className="text-xs text-neutral-500 flex items-center gap-1.5">
+                              <GraduationCap className="w-3.5 h-3.5 text-neutral-400" />
+                              <span>{active.affiliation}</span>
                             </div>
                           )}
                         </div>
 
-                        <div className="p-3.5 rounded-xl bg-[#FDF0EF] border border-[#F7CECC] text-xs text-[#7C2D2B] flex items-start gap-2.5">
-                          <span className="text-base select-none">⚠️</span>
-                          <div>
-                            <span className="font-semibold text-[#2F3437] block mb-0.5 uppercase tracking-wider text-[10px]">
-                              Fatal Reviewer Objection:
-                            </span>
-                            {active.keyChallenge}
+                        {active.expertise && (
+                          <div className="p-3 rounded-xl bg-white border border-[#E5E7EB] text-xs text-neutral-600 md:max-w-xs shadow-2xs">
+                            <span className="font-semibold text-neutral-800 block mb-0.5">Focus:</span>
+                            {active.expertise}
                           </div>
-                        </div>
+                        )}
+                      </div>
 
+                      <div className="p-4 rounded-xl bg-[#FEF2F2] border border-[#FECACA] text-xs text-[#991B1B] flex items-start gap-2.5">
+                        <span className="text-base select-none">⚠️</span>
+                        <div>
+                          <span className="font-bold text-[#7F1D1D] block mb-0.5 uppercase tracking-wider text-[10px]">
+                            Fatal Reviewer Objection:
+                          </span>
+                          {active.keyChallenge}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                          Detailed Peer-Review Assessment:
+                        </div>
+                        <div className="text-xs leading-relaxed p-4 rounded-xl bg-white border border-[#E5E7EB] text-neutral-700 whitespace-pre-line shadow-2xs">
+                          {active.assessment}
+                        </div>
+                      </div>
+
+                      {active.majorCritiques && active.majorCritiques.length > 0 && (
                         <div className="space-y-2">
-                          <div className="text-xs font-semibold text-[#787774] uppercase tracking-wider">
-                            Detailed Peer-Review Assessment:
+                          <div className="text-xs font-bold text-[#991B1B] uppercase tracking-wider flex items-center gap-1.5">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            <span>Major Methodological Vulnerabilities:</span>
                           </div>
-                          <div className="text-xs leading-relaxed font-light p-3.5 rounded-xl bg-white border border-[#EBEBEA] text-[#2F3437] whitespace-pre-line">
-                            {active.assessment}
-                          </div>
-                        </div>
-
-                        {active.majorCritiques && active.majorCritiques.length > 0 && (
                           <div className="space-y-2">
-                            <div className="text-xs font-semibold text-[#7C2D2B] uppercase tracking-wider flex items-center gap-1.5">
-                              <AlertTriangle className="w-3.5 h-3.5" />
-                              <span>Major Methodological Vulnerabilities:</span>
-                            </div>
-                            <div className="space-y-1.5">
-                              {active.majorCritiques.map((critique: string, i: number) => (
-                                <div
-                                  key={i}
-                                  className="p-2.5 rounded-lg bg-white border border-[#EBEBEA] text-xs text-[#2F3437] flex items-start gap-2"
-                                >
-                                  <span className="font-mono text-[#7C2D2B] font-bold text-[11px] mt-0.5">
-                                    [{i + 1}]
-                                  </span>
-                                  <span className="leading-relaxed">{critique}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {active.missingControlsOrAnalyses && active.missingControlsOrAnalyses.length > 0 && (
-                          <div className="space-y-2">
-                            <div className="text-xs font-semibold text-[#78510E] uppercase tracking-wider flex items-center gap-1.5">
-                              <FlaskConical className="w-3.5 h-3.5" />
-                              <span>Missing Experimental Controls &amp; Analyses:</span>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                              {active.missingControlsOrAnalyses.map((ctrl: string, i: number) => (
-                                <div
-                                  key={i}
-                                  className="p-2.5 rounded-lg bg-white border border-[#EBEBEA] text-xs text-[#2F3437] flex items-start gap-2"
-                                >
-                                  <span className="text-[#78510E] font-bold">•</span>
-                                  <span className="leading-relaxed">{ctrl}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="space-y-2 pt-2 border-t border-[#EBEBEA]">
-                          <div className="text-xs font-semibold text-[#1E5A2A] uppercase tracking-wider flex items-center gap-1.5">
-                            <CheckSquare className="w-3.5 h-3.5" />
-                            <span>Mandatory Revisions Demanded for Re-Review:</span>
-                          </div>
-                          <div className="space-y-1.5">
-                            {active.mustAddressItems.map((item: string, i: number) => (
+                            {active.majorCritiques.map((critique: string, i: number) => (
                               <div
                                 key={i}
-                                className="p-2.5 rounded-lg bg-white border border-[#EBEBEA] text-xs text-[#2F3437] flex items-start gap-2"
+                                className="p-3 rounded-xl bg-white border border-[#E5E7EB] text-xs text-neutral-800 flex items-start gap-2 shadow-2xs"
                               >
-                                <span className="text-[#1E5A2A] font-bold">✓</span>
-                                <span className="leading-relaxed">{item}</span>
+                                <span className="font-mono text-[#991B1B] font-bold text-xs mt-0.5">
+                                  [{i + 1}]
+                                </span>
+                                <span className="leading-relaxed">{critique}</span>
                               </div>
                             ))}
                           </div>
                         </div>
-                      </div>
-                    );
-                  })()}
-                </div>
+                      )}
 
-                {/* Citation & Reference Integrity Audit */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-[#2F3437]">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>Citation &amp; Reference Integrity Audit</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="p-3.5 rounded-xl bg-[#F7F7F5] border border-[#EBEBEA] text-center">
-                      <div className="text-xl font-bold font-serif text-[#2F3437]">
-                        {report.citationIntegrity.totalReferences}
-                      </div>
-                      <div className="text-[11px] text-[#787774]">Total References</div>
-                    </div>
-                    <div className="p-3.5 rounded-xl bg-[#F7F7F5] border border-[#EBEBEA] text-center">
-                      <div className="text-xl font-bold font-serif text-[#1E5A2A]">
-                        {report.citationIntegrity.verifiedCount}
-                      </div>
-                      <div className="text-[11px] text-[#787774]">Crossref Verified</div>
-                    </div>
-                    <div className="p-3.5 rounded-xl bg-[#F7F7F5] border border-[#EBEBEA] text-center">
-                      <div
-                        className={`text-xl font-bold font-serif ${
-                          report.citationIntegrity.unresolvableCount > 0 ? "text-[#7C2D2B]" : "text-[#2F3437]"
-                        }`}
-                      >
-                        {report.citationIntegrity.unresolvableCount}
-                      </div>
-                      <div className="text-[11px] text-[#787774]">Unresolvable DOIs</div>
-                    </div>
-                    <div className="p-3.5 rounded-xl bg-[#F7F7F5] border border-[#EBEBEA] text-center">
-                      <div
-                        className={`text-xl font-bold font-serif ${
-                          report.citationIntegrity.retractedCount > 0 ? "text-[#7C2D2B]" : "text-[#1E5A2A]"
-                        }`}
-                      >
-                        {report.citationIntegrity.retractedCount}
-                      </div>
-                      <div className="text-[11px] text-[#787774]">Retracted Flagged</div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl bg-[#F7F7F5] border border-[#EBEBEA] overflow-hidden">
-                    <div className="p-3 bg-white border-b border-[#EBEBEA] text-[11px] font-semibold text-[#787774] uppercase tracking-wider">
-                      Bibliography Samples
-                    </div>
-                    <div className="divide-y divide-[#eaeaea]">
-                      {report.citationIntegrity.references.slice(0, 5).map((ref, idx) => (
-                        <div
-                          key={idx}
-                          className="p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs"
-                        >
-                          <div className="space-y-0.5 max-w-xl">
-                            <div className="text-[#2F3437] font-medium truncate">{ref.title || ref.raw}</div>
-                            <div className="text-[11px] text-[#787774] flex items-center gap-2">
-                              {ref.doi && <span>DOI: {ref.doi}</span>}
-                              {ref.journal && <span>&bull; {ref.journal}</span>}
-                              {ref.year && <span>&bull; {ref.year}</span>}
-                            </div>
+                      {active.missingControlsOrAnalyses && active.missingControlsOrAnalyses.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="text-xs font-bold text-[#92400E] uppercase tracking-wider flex items-center gap-1.5">
+                            <FlaskConical className="w-3.5 h-3.5" />
+                            <span>Missing Experimental Controls &amp; Analyses:</span>
                           </div>
-
-                          <div className="flex-shrink-0">
-                            {ref.isRetracted ? (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#FDF0EF] text-[#7C2D2B] border border-[#F7CECC]">
-                                RETRACTED
-                              </span>
-                            ) : ref.status === "valid" ? (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#EDF6EE] text-[#1E5A2A] border border-[#CBE7CE]">
-                                Crossref Verified
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-[#2e281b] text-[#78510E] border border-[#4a3e26]">
-                                Unverified
-                              </span>
-                            )}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {active.missingControlsOrAnalyses.map((ctrl: string, i: number) => (
+                              <div
+                                key={i}
+                                className="p-3 rounded-xl bg-white border border-[#E5E7EB] text-xs text-neutral-800 flex items-start gap-2 shadow-2xs"
+                              >
+                                <span className="text-amber-600 font-bold">•</span>
+                                <span className="leading-relaxed">{ctrl}</span>
+                              </div>
+                            ))}
                           </div>
                         </div>
-                      ))}
+                      )}
+
+                      <div className="space-y-2 pt-2 border-t border-[#E5E7EB]">
+                        <div className="text-xs font-bold text-[#065F46] uppercase tracking-wider flex items-center gap-1.5">
+                          <CheckSquare className="w-3.5 h-3.5" />
+                          <span>Mandatory Revisions Demanded for Re-Review:</span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {active.mustAddressItems.map((item: string, i: number) => (
+                            <div
+                              key={i}
+                              className="p-3 rounded-xl bg-white border border-[#E5E7EB] text-xs text-neutral-800 flex items-start gap-2 shadow-2xs"
+                            >
+                              <span className="text-emerald-600 font-bold">✓</span>
+                              <span className="leading-relaxed">{item}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
+                  );
+                })()}
+              </div>
+
+              {/* Citation & Reference Integrity Audit */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-sm font-bold text-[#111827]">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>Citation &amp; Reference Integrity Audit</span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-4 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] text-center shadow-2xs">
+                    <div className="text-2xl font-bold text-[#111827]">
+                      {report.citationIntegrity.totalReferences}
+                    </div>
+                    <div className="text-xs text-neutral-500 mt-0.5">Total References</div>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] text-center shadow-2xs">
+                    <div className="text-2xl font-bold text-emerald-600">
+                      {report.citationIntegrity.verifiedCount}
+                    </div>
+                    <div className="text-xs text-neutral-500 mt-0.5">Crossref Verified</div>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] text-center shadow-2xs">
+                    <div
+                      className={`text-2xl font-bold ${
+                        report.citationIntegrity.unresolvableCount > 0 ? "text-red-600" : "text-[#111827]"
+                      }`}
+                    >
+                      {report.citationIntegrity.unresolvableCount}
+                    </div>
+                    <div className="text-xs text-neutral-500 mt-0.5">Unresolvable DOIs</div>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] text-center shadow-2xs">
+                    <div
+                      className={`text-2xl font-bold ${
+                        report.citationIntegrity.retractedCount > 0 ? "text-red-600" : "text-emerald-600"
+                      }`}
+                    >
+                      {report.citationIntegrity.retractedCount}
+                    </div>
+                    <div className="text-xs text-neutral-500 mt-0.5">Retracted Flagged</div>
                   </div>
                 </div>
 
-                {/* Target Journal Recommendation Tiers */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-[#2F3437]">
-                    <BookOpen className="w-4 h-4 text-[#787774]" />
-                    <span>Target Journal Recommendation Tiers</span>
+                <div className="rounded-2xl bg-white border border-[#E5E7EB] overflow-hidden shadow-2xs">
+                  <div className="p-3.5 bg-[#F9FAFB] border-b border-[#E5E7EB] text-xs font-bold text-neutral-600 uppercase tracking-wider">
+                    Bibliography Samples
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {report.journalRecommendations.map((rec, idx) => (
+                  <div className="divide-y divide-[#E5E7EB]">
+                    {report.citationIntegrity.references.slice(0, 5).map((ref, idx) => (
                       <div
                         key={idx}
-                        className="p-4 rounded-xl bg-[#F7F7F5] border border-[#EBEBEA] flex flex-col justify-between hover:border-[#d0d0d0] transition"
+                        className="p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs"
                       >
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                                rec.tier === "Reach"
-                                  ? "bg-[#F6F3F9] text-[#57338C] border-[#DFD5F5]"
-                                  : rec.tier === "Realistic"
-                                  ? "bg-[#EDF6EE] text-[#1E5A2A] border-[#CBE7CE]"
-                                  : "bg-[#EBF3FB] text-[#18569C] border-[#CDE1F8]"
-                              }`}
-                            >
-                              {rec.tier} Tier
-                            </span>
-                            <span className="text-xs font-mono font-semibold text-[#787774]">
-                              IF: {rec.impactFactor}
-                            </span>
-                          </div>
-
-                          <h4 className="text-sm font-serif font-bold text-[#2F3437] mb-0.5">{rec.journalName}</h4>
-                          <p className="text-[11px] text-[#787774] mb-3">{rec.publisher}</p>
-
-                          <div className="p-2.5 rounded-lg bg-white border border-[#EBEBEA] text-[11px] text-[#787774] mb-3">
-                            <span className="font-semibold text-[#2F3437] block mb-0.5">Scope Rationale:</span>
-                            {rec.scopeRationale}
+                        <div className="space-y-0.5 max-w-xl">
+                          <div className="text-[#111827] font-medium truncate">{ref.title || ref.raw}</div>
+                          <div className="text-[11px] text-neutral-500 flex items-center gap-2">
+                            {ref.doi && <span>DOI: {ref.doi}</span>}
+                            {ref.journal && <span>&bull; {ref.journal}</span>}
+                            {ref.year && <span>&bull; {ref.year}</span>}
                           </div>
                         </div>
 
-                        <div className="text-[11px] text-[#7C2D2B] pt-2 border-t border-[#EBEBEA]">
-                          <span className="font-semibold block mb-0.5">Desk-Reject Hazard:</span>
-                          {rec.rejectionRisks[0] || "Methodological rigor requirements"}
+                        <div className="flex-shrink-0">
+                          {ref.isRetracted ? (
+                            <span className="px-2.5 py-1 rounded text-[10px] font-semibold bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA]">
+                              RETRACTED
+                            </span>
+                          ) : ref.status === "valid" ? (
+                            <span className="px-2.5 py-1 rounded text-[10px] font-semibold bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]">
+                              Crossref Verified
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded text-[10px] font-semibold bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
+                              Unverified
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
-            ))}
-        </div>
+
+              {/* Target Journal Recommendation Tiers */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-sm font-bold text-[#111827]">
+                  <BookOpen className="w-4 h-4 text-neutral-500" />
+                  <span>Target Journal Recommendation Tiers</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {report.journalRecommendations.map((rec, idx) => (
+                    <div
+                      key={idx}
+                      className="p-5 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] flex flex-col justify-between shadow-2xs hover:border-neutral-300 transition"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                              rec.tier === "Reach"
+                                ? "bg-purple-50 text-purple-700 border-purple-200"
+                                : rec.tier === "Realistic"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : "bg-blue-50 text-blue-700 border-blue-200"
+                            }`}
+                          >
+                            {rec.tier} Tier
+                          </span>
+                          <span className="text-xs font-mono font-bold text-neutral-500">
+                            IF: {rec.impactFactor}
+                          </span>
+                        </div>
+
+                        <h4 className="text-sm font-bold text-[#111827] mb-0.5">{rec.journalName}</h4>
+                        <p className="text-xs text-neutral-500 mb-3">{rec.publisher}</p>
+
+                        <div className="p-3 rounded-xl bg-white border border-[#E5E7EB] text-xs text-neutral-600 mb-3 shadow-2xs">
+                          <span className="font-semibold text-neutral-900 block mb-0.5">Scope Rationale:</span>
+                          {rec.scopeRationale}
+                        </div>
+                      </div>
+
+                      <div className="text-xs text-[#991B1B] pt-3 border-t border-[#E5E7EB]">
+                        <span className="font-bold block mb-0.5">Desk-Reject Hazard:</span>
+                        {rec.rejectionRisks[0] || "Methodological rigor requirements"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
       </div>
 
       <ProviderSettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />

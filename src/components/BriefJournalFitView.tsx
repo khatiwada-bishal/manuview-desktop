@@ -411,16 +411,16 @@ export function BriefJournalFitView({
       )}
 
       {/* Full Audit Upgrade CTA Callout */}
-      <div className="p-5 rounded-2xl bg-[#0F1117] text-white border border-white/10 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-5 rounded-2xl bg-[#F0FDF4] text-[#111827] border border-[#BBF7D0] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
-          <div className="inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/10 text-emerald-300">
-            <Sparkles className="w-3 h-3" />
+          <div className="inline-flex items-center gap-1.5 text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+            <Sparkles className="w-3 h-3 text-emerald-600" />
             <span>Ready for Deep Diagnostic?</span>
           </div>
-          <h4 className="text-sm font-semibold text-white">
+          <h4 className="text-sm font-bold text-[#111827]">
             Run the Full 6-Dimension Pre-Submission Manuscript Audit
           </h4>
-          <p className="text-xs text-neutral-400 max-w-xl">
+          <p className="text-xs text-neutral-600 max-w-xl">
             Upload your complete manuscript (.pdf, .docx) to audit causal claims, experimental controls, methodology power, 4 simulated peer-reviewer personas, and Crossref citation integrity.
           </p>
         </div>
@@ -428,7 +428,7 @@ export function BriefJournalFitView({
         <button
           type="button"
           onClick={onBack}
-          className="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-black transition whitespace-nowrap self-start sm:self-auto cursor-pointer flex items-center gap-1.5 shadow-sm"
+          className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#0F172A] hover:bg-[#1E293B] text-white transition whitespace-nowrap self-start sm:self-auto cursor-pointer flex items-center gap-1.5 shadow-xs"
         >
           <span>Upload Full Document</span>
           <ArrowRight className="w-3.5 h-3.5" />
