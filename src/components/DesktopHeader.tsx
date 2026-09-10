@@ -4,7 +4,6 @@ import React from "react";
 import {
   Sidebar as SidebarIcon,
   X,
-  Plus,
   FileText,
   Compass,
   CheckCircle2,
@@ -12,7 +11,8 @@ import {
   Layers,
   MessageSquare,
   Sparkles,
-  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 export interface TabItem {
@@ -28,7 +28,7 @@ interface DesktopHeaderProps {
   activeTabId: string | null;
   onSelectTab: (id: string) => void;
   onCloseTab: (id: string, e: React.MouseEvent) => void;
-  onNewTab: () => void;
+  onNewTab?: () => void;
   isConnected?: boolean;
   isLoading?: boolean;
   activeModelName?: string | null;
@@ -43,71 +43,55 @@ export function DesktopHeader({
   activeTabId,
   onSelectTab,
   onCloseTab,
-  onNewTab,
   onToggleSidebar,
   sidebarOpen = true,
 }: DesktopHeaderProps) {
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = React.useState<number>(800);
-  const [overflowMenuOpen, setOverflowMenuOpen] = React.useState(false);
-  const menuRef = React.useRef<HTMLDivElement>(null);
+  const tabsScrollRef = React.useRef<HTMLDivElement>(null);
+  const activeTabRef = React.useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = React.useState(false);
+  const [canScrollRight, setCanScrollRight] = React.useState(false);
+  const [hasOverflow, setHasOverflow] = React.useState(false);
 
-  // Measure tab bar width dynamically
-  React.useEffect(() => {
-    if (!containerRef.current) return;
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.contentRect.width > 0) {
-          setContainerWidth(entry.contentRect.width);
-        }
-      }
-    });
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
+  const checkScroll = React.useCallback(() => {
+    const el = tabsScrollRef.current;
+    if (!el) return;
+    const overflow = el.scrollWidth > el.clientWidth + 2;
+    setHasOverflow(overflow);
+    setCanScrollLeft(el.scrollLeft > 2);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
   }, []);
 
-  // Close overflow dropdown when clicking outside
   React.useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOverflowMenuOpen(false);
-      }
-    };
-    if (overflowMenuOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
+    checkScroll();
+    const el = tabsScrollRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => checkScroll());
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [checkScroll, openTabs]);
+
+  // Smooth scroll active tab into view when activeTabId changes
+  React.useEffect(() => {
+    if (activeTabRef.current) {
+      activeTabRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "nearest",
+      });
     }
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [overflowMenuOpen]);
+  }, [activeTabId]);
 
-  // Tab allocation: dynamically calculate how many tabs adjust in the width
-  const reservedWithoutOverflow = 44; // + button (30px) + margins
-  const reservedWithOverflow = 104; // + button + overflow indicator button
-  const minTabWidth = 140; // minimum comfortable width for a tab
-
-  let visibleTabs: TabItem[] = openTabs;
-  let overflowTabs: TabItem[] = [];
-
-  const totalNeededAll = openTabs.length * minTabWidth + reservedWithoutOverflow;
-  if (totalNeededAll > containerWidth && openTabs.length > 1) {
-    const availableForTabs = Math.max(minTabWidth, containerWidth - reservedWithOverflow);
-    const maxVisibleCount = Math.max(1, Math.floor(availableForTabs / minTabWidth));
-
-    if (maxVisibleCount < openTabs.length) {
-      const activeIdx = openTabs.findIndex((t) => t.id === activeTabId);
-      if (activeIdx === -1 || activeIdx < maxVisibleCount) {
-        visibleTabs = openTabs.slice(0, maxVisibleCount);
-        overflowTabs = openTabs.slice(maxVisibleCount);
-      } else {
-        // Active tab is outside the initial visible slice; keep activeTab visible!
-        const head = openTabs.slice(0, maxVisibleCount - 1);
-        const activeTab = openTabs[activeIdx];
-        visibleTabs = [...head, activeTab];
-        overflowTabs = openTabs.filter(
-          (t) => !visibleTabs.some((vt) => vt.id === t.id)
-        );
-      }
+  const handleScrollLeft = () => {
+    if (tabsScrollRef.current) {
+      tabsScrollRef.current.scrollBy({ left: -220, behavior: "smooth" });
     }
-  }
+  };
+
+  const handleScrollRight = () => {
+    if (tabsScrollRef.current) {
+      tabsScrollRef.current.scrollBy({ left: 220, behavior: "smooth" });
+    }
+  };
 
   const getTabIcon = (tab: TabItem, isActive: boolean) => {
     const activeClass = isActive ? "text-blue-600" : "text-neutral-400 group-hover:text-neutral-600";
@@ -164,18 +148,38 @@ export function DesktopHeader({
         {!sidebarOpen && <div className="w-3 shrink-0" />}
       </div>
 
-      {/* CENTER: BROWSER-STYLE TAB BAR (with dynamic width adjustment & overflow handling) */}
-      <div
-        ref={containerRef}
-        data-tauri-drag-region
-        className="flex-1 h-full flex items-end pb-1 overflow-x-auto min-w-0 px-2 macos-scrollbar"
-      >
-        <div className="flex items-center gap-1 h-[42px]">
-          {visibleTabs.map((tab) => {
+      {/* CENTER: BROWSER-STYLE SCROLLABLE TAB BAR WITH OVERFLOW ARROWS */}
+      <div className="flex-1 h-full flex items-end pb-1 min-w-0 px-1 relative">
+        {/* Left Scroll Arrow (Shown when tabs overflow) */}
+        {hasOverflow && (
+          <button
+            type="button"
+            onClick={handleScrollLeft}
+            disabled={!canScrollLeft}
+            title="Scroll tabs left"
+            className={`w-6 h-[38px] flex items-center justify-center rounded-md transition shrink-0 z-10 mr-0.5 ${
+              canScrollLeft
+                ? "hover:bg-neutral-200/80 text-neutral-600 cursor-pointer"
+                : "text-neutral-300 cursor-default opacity-40"
+            }`}
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+        )}
+
+        {/* Scrollable Tabs Container (No scrollbar visible) */}
+        <div
+          ref={tabsScrollRef}
+          onScroll={checkScroll}
+          data-tauri-drag-region
+          className="flex-1 flex items-center gap-1 h-[42px] overflow-x-auto min-w-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth"
+        >
+          {openTabs.map((tab) => {
             const isActive = tab.id === activeTabId;
             return (
               <div
                 key={tab.id}
+                ref={isActive ? activeTabRef : undefined}
                 onClick={() => onSelectTab(tab.id)}
                 title={tab.title}
                 className={`group flex items-center gap-2 h-[38px] px-3 rounded-lg text-xs transition cursor-pointer max-w-[210px] min-w-[120px] border shrink-0 ${
@@ -199,82 +203,24 @@ export function DesktopHeader({
               </div>
             );
           })}
+        </div>
 
-          {/* Overflow Indicator (+N button with macOS-styled popover menu) */}
-          {overflowTabs.length > 0 && (
-            <div className="relative shrink-0" ref={menuRef}>
-              <button
-                type="button"
-                onClick={() => setOverflowMenuOpen((prev) => !prev)}
-                title={`${overflowTabs.length} more tabs`}
-                className={`h-[32px] px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer mb-0.5 border ${
-                  overflowMenuOpen
-                    ? "bg-white text-[#111827] border-[#E5E7EB] shadow-xs"
-                    : "bg-neutral-200/80 hover:bg-neutral-300/80 text-neutral-700 border-transparent"
-                }`}
-              >
-                <span>+{overflowTabs.length}</span>
-                <ChevronDown
-                  className={`w-3 h-3 text-neutral-500 transition-transform duration-150 ${
-                    overflowMenuOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-
-              {overflowMenuOpen && (
-                <div className="absolute left-0 mt-1 w-64 rounded-xl bg-white border border-[#E5E7EB] shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 text-xs">
-                  <div className="px-3 py-1.5 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider border-b border-[#E5E7EB] flex items-center justify-between">
-                    <span>Overflow Tabs</span>
-                    <span className="font-mono text-neutral-500">{overflowTabs.length}</span>
-                  </div>
-                  <div className="max-h-64 overflow-y-auto macos-scrollbar py-1">
-                    {overflowTabs.map((tab) => {
-                      const isAct = tab.id === activeTabId;
-                      return (
-                        <div
-                          key={tab.id}
-                          onClick={() => {
-                            onSelectTab(tab.id);
-                            setOverflowMenuOpen(false);
-                          }}
-                          className={`group flex items-center justify-between px-3 py-2 hover:bg-neutral-100 transition cursor-pointer ${
-                            isAct ? "bg-neutral-50 text-blue-600 font-medium" : "text-neutral-700"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-                            {getTabIcon(tab, isAct)}
-                            <span className="truncate text-xs">{tab.shortName || tab.title}</span>
-                          </div>
-                          <button
-                            type="button"
-                            title="Close tab"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onCloseTab(tab.id, e);
-                            }}
-                            className="p-1 rounded-md hover:bg-neutral-200 text-neutral-400 hover:text-neutral-700 transition"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* New Tab Button */}
+        {/* Right Scroll Arrow (Shown when tabs overflow) */}
+        {hasOverflow && (
           <button
             type="button"
-            onClick={onNewTab}
-            title="Open new manuscript review"
-            className="h-[30px] w-[30px] flex items-center justify-center rounded-lg hover:bg-neutral-200/80 text-neutral-500 hover:text-neutral-800 transition cursor-pointer shrink-0 ml-0.5"
+            onClick={handleScrollRight}
+            disabled={!canScrollRight}
+            title="Scroll tabs right"
+            className={`w-6 h-[38px] flex items-center justify-center rounded-md transition shrink-0 z-10 ml-0.5 ${
+              canScrollRight
+                ? "hover:bg-neutral-200/80 text-neutral-600 cursor-pointer"
+                : "text-neutral-300 cursor-default opacity-40"
+            }`}
           >
-            <Plus className="w-3.5 h-3.5" />
+            <ChevronRight className="w-4 h-4" />
           </button>
-        </div>
+        )}
       </div>
     </header>
   );
