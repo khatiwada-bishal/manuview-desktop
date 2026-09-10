@@ -5,7 +5,18 @@ export interface LLMMessage {
   content: string;
 }
 
-declare const process: any;
+export function getEnv(key: string): string {
+  try {
+    const g = (typeof window !== "undefined" ? window : globalThis) as any;
+    if (g?.process?.env?.[key]) return String(g.process.env[key]).trim();
+    if (typeof import.meta !== "undefined" && (import.meta as any)?.env) {
+      const meta = (import.meta as any).env;
+      if (meta[key]) return String(meta[key]).trim();
+      if (meta[`VITE_${key}`]) return String(meta[`VITE_${key}`]).trim();
+    }
+  } catch {}
+  return "";
+}
 
 function getSavedClientConfig(): ProviderConfig | undefined {
   if (typeof window === "undefined") return undefined;
@@ -37,19 +48,19 @@ export function getServerConfigStatus(): {
   const providers: string[] = [];
   let activeProvider: LLMProvider | 'none' = 'none';
 
-  if (process.env.OPENAI_API_KEY) {
+  if (getEnv('OPENAI_API_KEY')) {
     providers.push('openai');
     if (activeProvider === 'none') activeProvider = 'openai';
   }
-  if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) {
+  if (getEnv('GEMINI_API_KEY') || getEnv('GOOGLE_API_KEY')) {
     providers.push('gemini');
     if (activeProvider === 'none') activeProvider = 'gemini';
   }
-  if (process.env.GROQ_API_KEY) {
+  if (getEnv('GROQ_API_KEY')) {
     providers.push('groq');
     if (activeProvider === 'none') activeProvider = 'groq';
   }
-  if (process.env.ANTHROPIC_API_KEY) {
+  if (getEnv('ANTHROPIC_API_KEY')) {
     providers.push('anthropic');
     if (activeProvider === 'none') activeProvider = 'anthropic';
   }
@@ -58,8 +69,8 @@ export function getServerConfigStatus(): {
     hasServerKey: providers.length > 0,
     activeProvider,
     availableProviders: providers,
-    baseUrl: process.env.OPENAI_BASE_URL,
-    model: process.env.OPENAI_MODEL || process.env.GEMINI_MODEL || process.env.GROQ_MODEL,
+    baseUrl: getEnv('OPENAI_BASE_URL') || undefined,
+    model: getEnv('OPENAI_MODEL') || getEnv('GEMINI_MODEL') || getEnv('GROQ_MODEL') || undefined,
   };
 }
 
@@ -76,29 +87,29 @@ export async function callLLM(
 
   // If no apiKey provided by client, auto-detect from server environment variables
   if (!apiKey) {
-    if (provider === "gemini" || (!config && (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY))) {
-      apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
+    if (provider === "gemini" || (!config && (getEnv('GEMINI_API_KEY') || getEnv('GOOGLE_API_KEY')))) {
+      apiKey = getEnv('GEMINI_API_KEY') || getEnv('GOOGLE_API_KEY');
       if (apiKey) {
         provider = "gemini";
-        model = model || process.env.GEMINI_MODEL || "gemini-1.5-flash";
+        model = model || getEnv('GEMINI_MODEL') || "gemini-1.5-flash";
       }
-    } else if (provider === "groq" || (!config && process.env.GROQ_API_KEY)) {
-      apiKey = process.env.GROQ_API_KEY || "";
+    } else if (provider === "groq" || (!config && getEnv('GROQ_API_KEY'))) {
+      apiKey = getEnv('GROQ_API_KEY');
       if (apiKey) {
         provider = "groq";
-        model = model || process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+        model = model || getEnv('GROQ_MODEL') || "llama-3.3-70b-versatile";
       }
-    } else if (provider === "openai" || (!config && process.env.OPENAI_API_KEY)) {
-      apiKey = process.env.OPENAI_API_KEY || "";
+    } else if (provider === "openai" || (!config && getEnv('OPENAI_API_KEY'))) {
+      apiKey = getEnv('OPENAI_API_KEY');
       if (apiKey) {
         provider = "openai";
-        model = model || process.env.OPENAI_MODEL || "gpt-4o-mini";
+        model = model || getEnv('OPENAI_MODEL') || "gpt-4o-mini";
       }
-    } else if (provider === "anthropic" || (!config && process.env.ANTHROPIC_API_KEY)) {
-      apiKey = process.env.ANTHROPIC_API_KEY || "";
+    } else if (provider === "anthropic" || (!config && getEnv('ANTHROPIC_API_KEY'))) {
+      apiKey = getEnv('ANTHROPIC_API_KEY');
       if (apiKey) {
         provider = "anthropic";
-        model = model || process.env.ANTHROPIC_MODEL || "claude-3-5-sonnet-20241022";
+        model = model || getEnv('ANTHROPIC_MODEL') || "claude-3-5-sonnet-20241022";
       }
     }
   }
@@ -108,10 +119,10 @@ export async function callLLM(
     const serverStatus = getServerConfigStatus();
     if (serverStatus.hasServerKey && serverStatus.activeProvider !== 'none') {
       provider = serverStatus.activeProvider;
-      if (provider === "gemini") apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
-      else if (provider === "groq") apiKey = process.env.GROQ_API_KEY || "";
-      else if (provider === "openai") apiKey = process.env.OPENAI_API_KEY || "";
-      else if (provider === "anthropic") apiKey = process.env.ANTHROPIC_API_KEY || "";
+      if (provider === "gemini") apiKey = getEnv('GEMINI_API_KEY') || getEnv('GOOGLE_API_KEY');
+      else if (provider === "groq") apiKey = getEnv('GROQ_API_KEY');
+      else if (provider === "openai") apiKey = getEnv('OPENAI_API_KEY');
+      else if (provider === "anthropic") apiKey = getEnv('ANTHROPIC_API_KEY');
     }
   }
 
@@ -171,7 +182,7 @@ export async function callLLM(
     if (provider === "groq") {
       endpoint = "https://api.groq.com/openai/v1/chat/completions";
     } else {
-      const customBase = config?.baseUrl || process.env.OPENAI_BASE_URL;
+      const customBase = config?.baseUrl || getEnv('OPENAI_BASE_URL');
       if (customBase) {
         let cleanBase = customBase.trim();
         if (!cleanBase.startsWith("http://") && !cleanBase.startsWith("https://")) {
@@ -181,7 +192,7 @@ export async function callLLM(
         endpoint = cleanBase.endsWith("/chat/completions") ? cleanBase : `${cleanBase}/chat/completions`;
       }
     }
-    const chosenModel = model || process.env.OPENAI_MODEL || (provider === "groq" ? "llama-3.3-70b-versatile" : "gpt-4o-mini");
+    const chosenModel = model || getEnv('OPENAI_MODEL') || (provider === "groq" ? "llama-3.3-70b-versatile" : "gpt-4o-mini");
 
     try {
         const requestPayload: any = {
@@ -288,7 +299,7 @@ export async function callLLM(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: model || process.env.OLLAMA_MODEL || "llama3.3",
+          model: model || getEnv('OLLAMA_MODEL') || "llama3.3",
           messages,
           stream: false,
           options: { temperature: 0.2, num_predict: 8192 },
@@ -600,14 +611,14 @@ export async function fetchAvailableModels(config?: ProviderConfig): Promise<Ava
   let baseUrl = config?.baseUrl?.trim() || "";
 
   if (!apiKey) {
-    if (provider === "gemini") apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
-    else if (provider === "groq") apiKey = process.env.GROQ_API_KEY || "";
-    else if (provider === "openai") apiKey = process.env.OPENAI_API_KEY || "";
-    else if (provider === "anthropic") apiKey = process.env.ANTHROPIC_API_KEY || "";
+    if (provider === "gemini") apiKey = getEnv('GEMINI_API_KEY') || getEnv('GOOGLE_API_KEY');
+    else if (provider === "groq") apiKey = getEnv('GROQ_API_KEY');
+    else if (provider === "openai") apiKey = getEnv('OPENAI_API_KEY');
+    else if (provider === "anthropic") apiKey = getEnv('ANTHROPIC_API_KEY');
   }
   if (!baseUrl) {
-    if (provider === "openai") baseUrl = process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
-    else if (provider === "ollama") baseUrl = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
+    if (provider === "openai") baseUrl = getEnv('OPENAI_BASE_URL') || "https://api.openai.com/v1";
+    else if (provider === "ollama") baseUrl = getEnv('OLLAMA_BASE_URL') || "http://localhost:11434";
   }
 
   const defaultList = CURATED_MODELS[provider] || CURATED_MODELS.gemini;
@@ -766,25 +777,25 @@ export async function testLLMConnection(
   let provider: LLMProvider = config?.provider || (serverStatus.activeProvider !== 'none' ? serverStatus.activeProvider : "ollama");
   let apiKey: string = config?.apiKey?.trim() || "";
   let model: string = config?.model?.trim() || "";
-  let baseUrl: string = (config?.baseUrl || (provider === 'openai' ? process.env.OPENAI_BASE_URL : undefined) || process.env.OLLAMA_BASE_URL || "http://localhost:11434").trim();
+  let baseUrl: string = (config?.baseUrl || (provider === 'openai' ? getEnv('OPENAI_BASE_URL') : undefined) || getEnv('OLLAMA_BASE_URL') || "http://localhost:11434").trim();
 
-  // If no apiKey provided, resolve from server environment
+  // If no apiKey provided, resolve from environment
   if (!apiKey && provider !== "ollama") {
     if (provider === "gemini") {
-      apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
-      model = model || process.env.GEMINI_MODEL || "gemini-1.5-flash";
+      apiKey = getEnv('GEMINI_API_KEY') || getEnv('GOOGLE_API_KEY');
+      model = model || getEnv('GEMINI_MODEL') || "gemini-1.5-flash";
     } else if (provider === "groq") {
-      apiKey = process.env.GROQ_API_KEY || "";
-      model = model || process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+      apiKey = getEnv('GROQ_API_KEY');
+      model = model || getEnv('GROQ_MODEL') || "llama-3.3-70b-versatile";
     } else if (provider === "openai") {
-      apiKey = process.env.OPENAI_API_KEY || "";
-      model = model || process.env.OPENAI_MODEL || "gpt-4o-mini";
-      if (!config?.baseUrl && process.env.OPENAI_BASE_URL) {
-        baseUrl = process.env.OPENAI_BASE_URL;
+      apiKey = getEnv('OPENAI_API_KEY');
+      model = model || getEnv('OPENAI_MODEL') || "gpt-4o-mini";
+      if (!config?.baseUrl && getEnv('OPENAI_BASE_URL')) {
+        baseUrl = getEnv('OPENAI_BASE_URL');
       }
     } else if (provider === "anthropic") {
-      apiKey = process.env.ANTHROPIC_API_KEY || "";
-      model = model || process.env.ANTHROPIC_MODEL || "claude-3-5-sonnet-20241022";
+      apiKey = getEnv('ANTHROPIC_API_KEY');
+      model = model || getEnv('ANTHROPIC_MODEL') || "claude-3-5-sonnet-20241022";
     }
   }
 
@@ -870,7 +881,7 @@ export async function testLLMConnection(
       if (provider === "groq") {
         endpoint = "https://api.groq.com/openai/v1/chat/completions";
       } else {
-        const customBase = config?.baseUrl || process.env.OPENAI_BASE_URL;
+        const customBase = config?.baseUrl || getEnv('OPENAI_BASE_URL');
         if (customBase) {
           let cleanBase = customBase.trim();
           if (!cleanBase.startsWith("http://") && !cleanBase.startsWith("https://")) {
