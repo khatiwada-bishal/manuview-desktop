@@ -394,6 +394,7 @@ export default function App() {
           activePaperId={activeTabId}
           activeView={activeView}
           isConnected={isConnected}
+          isLoading={isApiLoading}
           provider={provider}
           activeModelName={modelName}
           isCollapsed={!sidebarOpen}

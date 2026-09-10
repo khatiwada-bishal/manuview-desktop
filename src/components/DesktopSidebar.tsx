@@ -38,6 +38,7 @@ interface DesktopSidebarProps {
   activePaperId: string | null;
   activeView: DesktopActiveView;
   isConnected?: boolean;
+  isLoading?: boolean;
   provider?: string | null;
   activeModelName?: string | null;
   isCollapsed?: boolean;
@@ -55,6 +56,7 @@ export function DesktopSidebar({
   activePaperId,
   activeView,
   isConnected = false,
+  isLoading = false,
   provider,
   activeModelName,
   isCollapsed = false,
@@ -67,6 +69,20 @@ export function DesktopSidebar({
   onSelectService,
 }: DesktopSidebarProps) {
   const [servicesExpanded, setServicesExpanded] = useState(true);
+
+  // Connection status: "connected" (green) | "connecting" (orange/yellow) | "disconnected" (red)
+  const connectionStatus = isLoading
+    ? "connecting"
+    : isConnected
+    ? "connected"
+    : "disconnected";
+
+  const connectionLabel =
+    connectionStatus === "connected"
+      ? activeModelName || "AI Connected"
+      : connectionStatus === "connecting"
+      ? "Connecting..."
+      : "Connect AI";
 
   const SERVICES = [
     {
@@ -308,23 +324,51 @@ export function DesktopSidebar({
             <button
               type="button"
               onClick={onOpenSettings}
-              title="AI Settings"
-              className="w-10 h-10 rounded-full border border-[#86efac] bg-[#f0fdf4] text-[#065f46] hover:bg-[#dcfce7] hover:border-[#4ade80] transition shadow-2xs flex items-center justify-center cursor-pointer relative"
+              title={
+                connectionStatus === "connected"
+                  ? "AI Connected - Provider Settings"
+                  : connectionStatus === "connecting"
+                  ? "Connecting to AI..."
+                  : "Connect AI - Provider Settings"
+              }
+              className={`w-10 h-10 rounded-full border transition shadow-2xs flex items-center justify-center cursor-pointer relative ${
+                connectionStatus === "connected"
+                  ? "border-[#86efac] bg-[#f0fdf4] text-[#065f46] hover:bg-[#dcfce7] hover:border-[#4ade80]"
+                  : connectionStatus === "connecting"
+                  ? "border-[#fde68a] bg-[#fffbeb] text-[#92400e] hover:bg-[#fef3c7] hover:border-[#fcd34d]"
+                  : "border-[#fecaca] bg-[#fef2f2] text-[#991b1b] hover:bg-[#fee2e2] hover:border-[#fca5a5]"
+              }`}
             >
               <span
-                className={`w-2 h-2 rounded-full ${
-                  isConnected ? "bg-[#10b981]" : "bg-amber-400"
-                } absolute top-1.5 right-1.5`}
+                className={`w-2 h-2 rounded-full absolute top-1.5 right-1.5 ${
+                  connectionStatus === "connected"
+                    ? "bg-[#10b981]"
+                    : connectionStatus === "connecting"
+                    ? "bg-[#f59e0b] animate-pulse"
+                    : "bg-[#ef4444]"
+                }`}
               />
-              <Settings className="w-4 h-4 text-[#047857]" />
+              <Settings
+                className={`w-4 h-4 ${
+                  connectionStatus === "connected"
+                    ? "text-[#047857]"
+                    : connectionStatus === "connecting"
+                    ? "text-[#b45309]"
+                    : "text-[#dc2626]"
+                }`}
+              />
             </button>
             <div className="absolute left-full bottom-1 ml-3 px-2.5 py-1 bg-[#111827] text-white text-xs font-medium rounded-md shadow-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 flex items-center gap-1.5">
               <span
                 className={`w-1.5 h-1.5 rounded-full ${
-                  isConnected ? "bg-emerald-400" : "bg-amber-400"
+                  connectionStatus === "connected"
+                    ? "bg-[#10b981]"
+                    : connectionStatus === "connecting"
+                    ? "bg-[#f59e0b]"
+                    : "bg-[#ef4444]"
                 }`}
               />
-              <span>{activeModelName || (isConnected ? "gemini-1.5-flash" : "Connect AI")}</span>
+              <span>{connectionLabel}</span>
               <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#111827]" />
             </div>
           </div>
@@ -537,18 +581,42 @@ export function DesktopSidebar({
         <button
           type="button"
           onClick={onOpenSettings}
-          title="AI Provider Settings"
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[#86efac] bg-[#f0fdf4] text-[#065f46] hover:bg-[#dcfce7] hover:border-[#4ade80] transition shadow-2xs cursor-pointer text-xs font-medium"
+          title={
+            connectionStatus === "connected"
+              ? "AI Connected - Provider Settings"
+              : connectionStatus === "connecting"
+              ? "Connecting to AI..."
+              : "Connect AI - Provider Settings"
+          }
+          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition shadow-2xs cursor-pointer text-xs font-medium ${
+            connectionStatus === "connected"
+              ? "border-[#86efac] bg-[#f0fdf4] text-[#065f46] hover:bg-[#dcfce7] hover:border-[#4ade80]"
+              : connectionStatus === "connecting"
+              ? "border-[#fde68a] bg-[#fffbeb] text-[#92400e] hover:bg-[#fef3c7] hover:border-[#fcd34d]"
+              : "border-[#fecaca] bg-[#fef2f2] text-[#991b1b] hover:bg-[#fee2e2] hover:border-[#fca5a5]"
+          }`}
         >
           <span
-            className={`w-2 h-2 rounded-full ${
-              isConnected ? "bg-[#10b981]" : "bg-amber-400"
-            } shrink-0`}
+            className={`w-2 h-2 rounded-full shrink-0 ${
+              connectionStatus === "connected"
+                ? "bg-[#10b981]"
+                : connectionStatus === "connecting"
+                ? "bg-[#f59e0b] animate-pulse"
+                : "bg-[#ef4444]"
+            }`}
           />
           <span className="truncate max-w-[110px]">
-            {activeModelName || (isConnected ? "gemini-1.5-flash" : "Connect AI")}
+            {connectionLabel}
           </span>
-          <Settings className="w-3.5 h-3.5 text-[#047857] shrink-0" />
+          <Settings
+            className={`w-3.5 h-3.5 shrink-0 ${
+              connectionStatus === "connected"
+                ? "text-[#047857]"
+                : connectionStatus === "connecting"
+                ? "text-[#b45309]"
+                : "text-[#dc2626]"
+            }`}
+          />
         </button>
       </div>
     </aside>
