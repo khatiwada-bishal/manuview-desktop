@@ -82,13 +82,13 @@ export function DesktopHeader({
         {/* macOS traffic light spacer (covers 0..88px: traffic lights from x=16..68px with a 20px gap) */}
         <div className="w-[88px] shrink-0" />
 
-        {/* Sidebar Toggle Button (vertically aligned with traffic lights at center y=34px) */}
+        {/* Sidebar Toggle Button (positioned 14px up) */}
         {onToggleSidebar && (
           <button
             type="button"
             onClick={onToggleSidebar}
             title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[#E5E7EB] text-neutral-500 hover:text-neutral-800 transition cursor-pointer"
+            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[#E5E7EB] text-neutral-500 hover:text-neutral-800 transition cursor-pointer mb-[14px]"
           >
             <SidebarIcon className="w-4 h-4" strokeWidth={1.75} />
           </button>
@@ -102,7 +102,7 @@ export function DesktopHeader({
         data-tauri-drag-region
         className="flex-1 h-full flex items-end pb-1 overflow-x-auto min-w-0 px-2 scrollbar-none"
       >
-        <div className="flex items-center gap-1 h-[32px]">
+        <div className="flex items-center gap-1 h-[42px]">
           {openTabs.map((tab) => {
             const isActive = tab.id === activeTabId;
             return (
@@ -110,7 +110,7 @@ export function DesktopHeader({
                 key={tab.id}
                 onClick={() => onSelectTab(tab.id)}
                 title={tab.title}
-                className={`group flex items-center gap-2 h-[28px] px-3 rounded-lg text-xs transition cursor-pointer max-w-[210px] border shrink-0 ${
+                className={`group flex items-center gap-2 h-[38px] px-3 rounded-lg text-xs transition cursor-pointer max-w-[210px] border shrink-0 ${
                   isActive
                     ? "bg-white text-[#111827] font-medium border-[#E5E7EB] shadow-xs"
                     : "bg-transparent text-neutral-500 hover:text-neutral-800 hover:bg-neutral-200/60 border-transparent"
@@ -137,7 +137,7 @@ export function DesktopHeader({
             type="button"
             onClick={onNewTab}
             title="Open new manuscript review"
-            className="h-[26px] w-[26px] flex items-center justify-center rounded-lg hover:bg-neutral-200/80 text-neutral-500 hover:text-neutral-800 transition cursor-pointer shrink-0 ml-0.5"
+            className="h-[30px] w-[30px] flex items-center justify-center rounded-lg hover:bg-neutral-200/80 text-neutral-500 hover:text-neutral-800 transition cursor-pointer shrink-0 ml-0.5"
           >
             <Plus className="w-3.5 h-3.5" />
           </button>
