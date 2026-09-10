@@ -6,15 +6,27 @@ import {
   X,
   Plus,
   FileText,
+  Compass,
+  CheckCircle2,
+  ShieldCheck,
+  Layers,
+  MessageSquare,
   Zap,
   RefreshCw,
   Settings,
 } from "lucide-react";
-import { PaperItem } from "./DesktopSidebar";
+
+export interface TabItem {
+  id: string;
+  type: "article" | "tool";
+  title: string;
+  shortName: string;
+  toolType?: string;
+}
 
 interface DesktopHeaderProps {
-  openTabs: PaperItem[];
-  activePaperId: string | null;
+  openTabs: TabItem[];
+  activeTabId: string | null;
   onSelectTab: (id: string) => void;
   onCloseTab: (id: string, e: React.MouseEvent) => void;
   onNewTab: () => void;
@@ -29,7 +41,7 @@ interface DesktopHeaderProps {
 
 export function DesktopHeader({
   openTabs,
-  activePaperId,
+  activeTabId,
   onSelectTab,
   onCloseTab,
   onNewTab,
@@ -41,6 +53,29 @@ export function DesktopHeader({
   onToggleSidebar,
   sidebarOpen = true,
 }: DesktopHeaderProps) {
+  const getTabIcon = (tab: TabItem, isActive: boolean) => {
+    const activeClass = isActive ? "text-blue-600" : "text-neutral-400 group-hover:text-neutral-600";
+    if (tab.type === "tool") {
+      switch (tab.toolType) {
+        case "journal-fit":
+          return <Compass className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-emerald-600" : "text-neutral-400"}`} />;
+        case "reference-checker":
+          return <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-teal-600" : "text-neutral-400"}`} />;
+        case "citation-claim":
+          return <ShieldCheck className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-amber-600" : "text-neutral-400"}`} />;
+        case "prisma":
+          return <Layers className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-purple-600" : "text-neutral-400"}`} />;
+        case "cover-letter":
+          return <FileText className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-indigo-600" : "text-neutral-400"}`} />;
+        case "response-builder":
+          return <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-rose-600" : "text-neutral-400"}`} />;
+        default:
+          return <FileText className={`w-3.5 h-3.5 shrink-0 ${activeClass}`} />;
+      }
+    }
+    return <FileText className={`w-3.5 h-3.5 shrink-0 ${activeClass}`} />;
+  };
+
   return (
     <header
       data-tauri-drag-region
@@ -71,29 +106,25 @@ export function DesktopHeader({
       {/* CENTER: BROWSER-STYLE TAB BAR */}
       <div className="flex-1 h-full flex items-center overflow-x-auto min-w-0 px-1 scrollbar-none">
         <div className="flex items-center gap-1 h-full py-1">
-          {openTabs.map((paper) => {
-            const isActive = paper.id === activePaperId;
+          {openTabs.map((tab) => {
+            const isActive = tab.id === activeTabId;
             return (
               <div
-                key={paper.id}
-                onClick={() => onSelectTab(paper.id)}
-                title={paper.title}
-                className={`group flex items-center gap-2 h-[30px] px-3 rounded-lg text-xs transition cursor-pointer max-w-[200px] border shrink-0 ${
+                key={tab.id}
+                onClick={() => onSelectTab(tab.id)}
+                title={tab.title}
+                className={`group flex items-center gap-2 h-[30px] px-3 rounded-lg text-xs transition cursor-pointer max-w-[210px] border shrink-0 ${
                   isActive
                     ? "bg-white text-[#111827] font-medium border-[#E5E7EB] shadow-xs"
                     : "bg-transparent text-neutral-500 hover:text-neutral-800 hover:bg-neutral-200/60 border-transparent"
                 }`}
               >
-                <FileText
-                  className={`w-3.5 h-3.5 shrink-0 ${
-                    isActive ? "text-blue-600" : "text-neutral-400 group-hover:text-neutral-600"
-                  }`}
-                />
-                <span className="truncate text-xs">{paper.shortName}</span>
+                {getTabIcon(tab, isActive)}
+                <span className="truncate text-xs">{tab.shortName}</span>
                 <button
                   type="button"
                   title="Close tab"
-                  onClick={(e) => onCloseTab(paper.id, e)}
+                  onClick={(e) => onCloseTab(tab.id, e)}
                   className={`p-0.5 rounded-md hover:bg-neutral-200 text-neutral-400 hover:text-neutral-700 transition opacity-0 group-hover:opacity-100 ${
                     isActive ? "opacity-70" : ""
                   }`}

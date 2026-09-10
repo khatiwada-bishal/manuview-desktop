@@ -1,0 +1,1048 @@
+import { ProviderConfig, LLMProvider, AvailableModel } from "./types";
+
+export interface LLMMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+declare const process: any;
+
+function getSavedClientConfig(): ProviderConfig | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const raw = localStorage.getItem("manuview_provider_config");
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return undefined;
+}
+
+export function getServerConfigStatus(): {
+  hasServerKey: boolean;
+  activeProvider: LLMProvider | 'none';
+  availableProviders: string[];
+  baseUrl?: string;
+  model?: string;
+} {
+  const saved = getSavedClientConfig();
+  if (saved && saved.apiKey) {
+    return {
+      hasServerKey: true,
+      activeProvider: saved.provider,
+      availableProviders: [saved.provider],
+      baseUrl: saved.baseUrl,
+      model: saved.model,
+    };
+  }
+
+  const providers: string[] = [];
+  let activeProvider: LLMProvider | 'none' = 'none';
+
+  if (process.env.OPENAI_API_KEY) {
+    providers.push('openai');
+    if (activeProvider === 'none') activeProvider = 'openai';
+  }
+  if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) {
+    providers.push('gemini');
+    if (activeProvider === 'none') activeProvider = 'gemini';
+  }
+  if (process.env.GROQ_API_KEY) {
+    providers.push('groq');
+    if (activeProvider === 'none') activeProvider = 'groq';
+  }
+  if (process.env.ANTHROPIC_API_KEY) {
+    providers.push('anthropic');
+    if (activeProvider === 'none') activeProvider = 'anthropic';
+  }
+
+  return {
+    hasServerKey: providers.length > 0,
+    activeProvider,
+    availableProviders: providers,
+    baseUrl: process.env.OPENAI_BASE_URL,
+    model: process.env.OPENAI_MODEL || process.env.GEMINI_MODEL || process.env.GROQ_MODEL,
+  };
+}
+
+export async function callLLM(
+  messages: LLMMessage[],
+  config?: ProviderConfig
+): Promise<string> {
+  // 1. Resolve Provider and Credentials
+  const resolvedConfig = config || getSavedClientConfig();
+  let provider: LLMProvider = resolvedConfig?.provider || "ollama";
+  let apiKey: string = resolvedConfig?.apiKey || "";
+  let model: string = resolvedConfig?.model || "";
+  let baseUrl: string = resolvedConfig?.baseUrl || "http://localhost:11434";
+
+  // If no apiKey provided by client, auto-detect from server environment variables
+  if (!apiKey) {
+    if (provider === "gemini" || (!config && (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY))) {
+      apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
+      if (apiKey) {
+        provider = "gemini";
+        model = model || process.env.GEMINI_MODEL || "gemini-1.5-flash";
+      }
+    } else if (provider === "groq" || (!config && process.env.GROQ_API_KEY)) {
+      apiKey = process.env.GROQ_API_KEY || "";
+      if (apiKey) {
+        provider = "groq";
+        model = model || process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+      }
+    } else if (provider === "openai" || (!config && process.env.OPENAI_API_KEY)) {
+      apiKey = process.env.OPENAI_API_KEY || "";
+      if (apiKey) {
+        provider = "openai";
+        model = model || process.env.OPENAI_MODEL || "gpt-4o-mini";
+      }
+    } else if (provider === "anthropic" || (!config && process.env.ANTHROPIC_API_KEY)) {
+      apiKey = process.env.ANTHROPIC_API_KEY || "";
+      if (apiKey) {
+        provider = "anthropic";
+        model = model || process.env.ANTHROPIC_MODEL || "claude-3-5-sonnet-20241022";
+      }
+    }
+  }
+
+  // If still no API key and provider was not explicitly set to Ollama, check any available env key
+  if (!apiKey && provider !== "ollama") {
+    const serverStatus = getServerConfigStatus();
+    if (serverStatus.hasServerKey && serverStatus.activeProvider !== 'none') {
+      provider = serverStatus.activeProvider;
+      if (provider === "gemini") apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
+      else if (provider === "groq") apiKey = process.env.GROQ_API_KEY || "";
+      else if (provider === "openai") apiKey = process.env.OPENAI_API_KEY || "";
+      else if (provider === "anthropic") apiKey = process.env.ANTHROPIC_API_KEY || "";
+    }
+  }
+
+  if (!apiKey && provider !== "ollama") {
+    throw new Error(`No API key configured for ${provider.toUpperCase()}. Please configure your API key in AI Settings.`);
+  }
+
+  // -----------------------------------------------------------
+  // 1. Google Gemini API
+  // -----------------------------------------------------------
+  if (provider === "gemini" && apiKey) {
+    const geminiModel = model || "gemini-1.5-flash";
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`;
+    try {
+      const contents = messages.map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      }));
+
+      const response = await fetch(geminiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents,
+          generationConfig: { temperature: 0.2, maxOutputTokens: 8192 },
+        }),
+      });
+
+      if (!response.ok) {
+        let errText = `HTTP ${response.status}`;
+        try {
+          const errJson = await response.json();
+          errText = errJson.error?.message || errText;
+        } catch {
+          errText = await response.text() || errText;
+        }
+        console.error("Gemini API error:", response.status, errText);
+        throw new Error(`Gemini API error (${response.status}): ${errText}`);
+      }
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) return text;
+      throw new Error("Gemini returned empty candidate response.");
+    } catch (err: any) {
+      console.error("Gemini call failed:", err.message);
+      throw new Error(`Google Gemini call failed: ${err.message}`);
+    }
+  }
+
+  // -----------------------------------------------------------
+  // 2. Groq / OpenAI Compatible API
+  // -----------------------------------------------------------
+  if ((provider === "groq" || provider === "openai") && apiKey) {
+    let endpoint = "https://api.openai.com/v1/chat/completions";
+    if (provider === "groq") {
+      endpoint = "https://api.groq.com/openai/v1/chat/completions";
+    } else {
+      const customBase = config?.baseUrl || process.env.OPENAI_BASE_URL;
+      if (customBase) {
+        const cleanBase = customBase.replace(/\/+$/, "");
+        endpoint = cleanBase.endsWith("/chat/completions") ? cleanBase : `${cleanBase}/chat/completions`;
+      }
+    }
+    const chosenModel = model || process.env.OPENAI_MODEL || (provider === "groq" ? "llama-3.3-70b-versatile" : "gpt-4o-mini");
+
+    try {
+        const requestPayload: any = {
+          model: chosenModel,
+          messages,
+          temperature: 0.2,
+          max_tokens: 8192,
+          stream: false,
+        };
+        if (provider === "groq") {
+          requestPayload.response_format = { type: "json_object" };
+        }
+
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify(requestPayload),
+        });
+
+      if (!response.ok) {
+        let errMessage = `HTTP ${response.status}`;
+        try {
+          const errJson = await response.json();
+          errMessage = errJson.error?.message || errJson.message || errMessage;
+        } catch {
+          errMessage = await response.text() || errMessage;
+        }
+        console.error(`${provider} API error:`, response.status, errMessage);
+        throw new Error(`${provider.toUpperCase()} API error (${response.status}): ${errMessage}`);
+      }
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (content) return content;
+      throw new Error(`${provider.toUpperCase()} returned empty completion response.`);
+    } catch (err: any) {
+      console.error(`${provider} call failed:`, err.message);
+      throw new Error(`${provider.toUpperCase()} call failed: ${err.message}`);
+    }
+  }
+
+  // -----------------------------------------------------------
+  // 3. Anthropic Claude API
+  // -----------------------------------------------------------
+  if (provider === "anthropic" && apiKey) {
+    try {
+      const systemMessage = messages.find(m => m.role === 'system')?.content || "";
+      const userAssistantMessages = messages
+        .filter(m => m.role !== 'system')
+        .map(m => ({ role: m.role, content: m.content }));
+
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: model || "claude-3-5-sonnet-20241022",
+          max_tokens: 8192,
+          system: systemMessage,
+          messages: userAssistantMessages,
+          temperature: 0.2,
+        }),
+      });
+
+      if (!response.ok) {
+        let errMessage = `HTTP ${response.status}`;
+        try {
+          const errJson = await response.json();
+          errMessage = errJson.error?.message || errMessage;
+        } catch {
+          errMessage = await response.text() || errMessage;
+        }
+        console.error("Anthropic API error:", response.status, errMessage);
+        throw new Error(`Anthropic API error (${response.status}): ${errMessage}`);
+      }
+      const data = await response.json();
+      const text = data.content?.[0]?.text;
+      if (text) return text;
+      throw new Error("Anthropic returned empty message response.");
+    } catch (err: any) {
+      console.error("Anthropic call failed:", err.message);
+      throw new Error(`Anthropic call failed: ${err.message}`);
+    }
+  }
+
+  // -----------------------------------------------------------
+  // 4. Local Ollama (100% Offline & Free)
+  // -----------------------------------------------------------
+  if (provider === "ollama") {
+    try {
+      const response = await fetch(`${baseUrl}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: model || process.env.OLLAMA_MODEL || "llama3.3",
+          messages,
+          stream: false,
+          options: { temperature: 0.2, num_predict: 8192 },
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.message?.content || "";
+      }
+      throw new Error(`Ollama service returned HTTP ${response.status}`);
+    } catch (err: any) {
+      throw new Error(`Local Ollama service unreachable at ${baseUrl}: ${err.message}`);
+    }
+  }
+
+  throw new Error(`Unable to complete AI evaluation. Provider ${provider} is not configured.`);
+}
+
+// Deterministic offline fallback diagnostic when no LLM is connected
+function generateOfflineReview(messages: LLMMessage[]): string {
+  const userPrompt = messages.find(m => m.role === 'user')?.content || "";
+  
+  return JSON.stringify({
+    overallScore: 68,
+    summary: "The manuscript addresses an impactful problem with sound preliminary results. However, several causal claims lack sufficient mechanistic control experiments, and statistical reporting omits multiplicity corrections.",
+    dimensions: {
+      originality: {
+        score: 4,
+        label: "Originality & Novelty",
+        verdict: "Strong conceptual advance; differentiates effectively from existing baselines.",
+        strengths: ["Novel perspective on core mechanism", "Addresses an acknowledged literature bottleneck"],
+        vulnerabilities: ["Incremental comparison with the most recent 2024 literature is brief"]
+      },
+      broad_interest: {
+        score: 3,
+        label: "Importance & Broad Interest",
+        verdict: "High relevance within the specialized subfield; broader general interest needs stronger framing.",
+        strengths: ["Clear practical application", "Good clinical/theoretical motivation"],
+        vulnerabilities: ["Implications for adjacent fields are understated in abstract"]
+      },
+      claims_vs_evidence: {
+        score: 2,
+        label: "Strength of Claims vs. Evidence",
+        verdict: "Overstatement hazard detected: Correlative observations are described using definitive causal verbs.",
+        strengths: ["Clear primary measurement assays"],
+        vulnerabilities: ["Headline claim uses 'demonstrates' where only correlation was observed", "Missing rescue/ablation control condition"]
+      },
+      methodology: {
+        score: 3,
+        label: "Methodological & Statistical Soundness",
+        verdict: "Sound design but sample size power calculation and multiple testing corrections are not documented.",
+        strengths: ["Standardized protocol referenced", "Replicates reported"],
+        vulnerabilities: ["No explicit power analysis justifying sample size", "Multiplicity correction omitted for post-hoc tests"]
+      },
+      clarity: {
+        score: 4,
+        label: "Clarity & Presentation",
+        verdict: "Well-structured narrative with clear section transitions.",
+        strengths: ["Abstract follows Problem-Gap-Approach-Result sequence", "Logical progression of figures"],
+        vulnerabilities: ["Some technical abbreviations undefined on first use"]
+      },
+      prior_work: {
+        score: 3,
+        label: "Prior Work & Reference Integrity",
+        verdict: "Good foundational coverage, but self-citation ratio is slightly elevated and recent preprints are unaddressed.",
+        strengths: ["Classic landmark literature properly cited"],
+        vulnerabilities: ["Self-citation ratio approaches 22%", "Missing 2 key peer publications from 2023-2024"]
+      }
+    },
+    priorityIssues: [
+      {
+        id: "p1",
+        priority: "A",
+        title: "Causal Language Without Orthogonal Mechanistic Control",
+        category: "Causal Claims",
+        description: "The discussion asserts that factor X drives phenotype Y, but the evidence presented relies solely on correlational association without genetic rescue or inhibitory perturbation.",
+        reviewerQuote: "'The authors claim in lines 145-148 that X causes Y. Without a targeted knockdown or rescue experiment, this conclusion is premature and unsupported.'",
+        actionableFix: "Soften wording in the Abstract and Discussion from 'X proves/causes Y' to 'X is strongly associated with Y under tested conditions', or include the negative control data."
+      },
+      {
+        id: "p2",
+        priority: "A",
+        title: "Missing Multiple Testing Correction (FDR / Bonferroni)",
+        category: "Statistics",
+        description: "Multiple parallel pairwise comparisons are reported with unadjusted p-values (< 0.05), creating an unaddressed false positive hazard.",
+        reviewerQuote: "'Given that 18 distinct metrics were tested across 3 cohorts, how did the authors control the family-wise error rate?'",
+        actionableFix: "Apply Benjamini-Hochberg False Discovery Rate (FDR) or Bonferroni adjustments and report adjusted q-values in Table 2."
+      },
+      {
+        id: "p3",
+        priority: "B",
+        title: "Underpowered Sample Size Rationale",
+        category: "Methodology",
+        description: "Cohort size (n=8 per arm) lacks explicit statistical power calculations.",
+        reviewerQuote: "'The sample size is small for a heterogeneous biological model. Please provide power calculations or acknowledge power limitations in the Discussion.'",
+        actionableFix: "Add a paragraph in the Methods detailing the effect size assumed for the power calculation, or explicitly bound the generalizability."
+      }
+    ],
+    reviewerPersonas: [
+      {
+        persona: "methods_reviewer",
+        name: "Dr. A. Vance (Methods Reviewer)",
+        roleDescription: "Experimental Rigor & Protocol Reproducibility",
+        keyChallenge: "Missing reagents batch numbers and code repo commit hash.",
+        assessment: "The core protocol is sound, but full independent replication would be blocked by missing version numbers for computational analysis scripts.",
+        mustAddressItems: ["Specify software version and seed values for stochastic models", "Include positive control bands in Figure 2B"]
+      },
+      {
+        persona: "domain_expert",
+        name: "Prof. K. Thorne (Domain Specialist)",
+        roleDescription: "Novelty & Subfield Significance",
+        keyChallenge: "How does this advance past the 2024 Chen et al. publication?",
+        assessment: "The findings are credible, but the introduction does not explicitly contrast this mechanism against Chen et al. (2024), which reached a similar conclusion in vitro.",
+        mustAddressItems: ["Add a dedicated paragraph contrasting findings with Chen et al.", "Clarify why the in vivo model yields different kinetics"]
+      },
+      {
+        persona: "journal_editor",
+        name: "Senior Editor (General Readership)",
+        roleDescription: "Broad Impact & Desk-Rejection Triage",
+        keyChallenge: "Abstract is too technical for general cross-disciplinary readers.",
+        assessment: "This manuscript will struggle at top multidisciplinary journals (Nature/Science) unless the opening and closing sentences explicitly frame the broad biological significance.",
+        mustAddressItems: ["Rewrite opening sentence to avoid subfield jargon", "Clarify translational relevance in final abstract sentence"]
+      },
+      {
+        persona: "statistician",
+        name: "Dr. M. Sorkin (Biostatistician)",
+        roleDescription: "Statistical Validity & Data Distributions",
+        keyChallenge: "Parametric t-test used on small sample size without normality test.",
+        assessment: "Using standard t-tests on n=6 without assessing normal distribution is a frequent desk-rejection flag.",
+        mustAddressItems: ["Perform Shapiro-Wilk normality test or use non-parametric Mann-Whitney U test", "Define error bars as SD vs SEM in all figure captions"]
+      }
+    ]
+  });
+}
+
+
+export const CURATED_MODELS: Record<LLMProvider, AvailableModel[]> = {
+  gemini: [
+    {
+      id: "gemini-2.5-flash",
+      name: "Gemini 2.5 Flash",
+      description: "Google's newest adaptive thinking model. Fast, multimodal, and highly accurate for triage.",
+      tag: "✨ Recommended",
+      recommended: true,
+    },
+    {
+      id: "gemini-2.5-pro",
+      name: "Gemini 2.5 Pro",
+      description: "Frontier scientific reasoning model for deep experimental and causal validation.",
+      tag: "🧠 Frontier Reasoning",
+      recommended: false,
+    },
+    {
+      id: "gemini-2.0-flash",
+      name: "Gemini 2.0 Flash",
+      description: "Next-gen sub-second inference speed for instant diagnostics.",
+      tag: "⚡ Ultra Fast",
+      recommended: false,
+    },
+    {
+      id: "gemini-1.5-flash",
+      name: "Gemini 1.5 Flash",
+      description: "Proven lightweight production model with balanced quality and speed.",
+      tag: "Stable",
+      recommended: false,
+    },
+    {
+      id: "gemini-1.5-pro",
+      name: "Gemini 1.5 Pro",
+      description: "Massive 2M token context window for comprehensive manuscript + supplement analysis.",
+      tag: "2M Context",
+      recommended: false,
+    },
+  ],
+  openai: [
+    {
+      id: "gpt-4o",
+      name: "GPT-4o (Omni)",
+      description: "OpenAI flagship high-intelligence model for nuanced peer-review simulation.",
+      tag: "✨ Recommended",
+      recommended: true,
+    },
+    {
+      id: "gpt-4o-mini",
+      name: "GPT-4o Mini",
+      description: "Fast, cost-efficient model for quick pre-submission screening.",
+      tag: "⚡ Fast & Affordable",
+      recommended: false,
+    },
+    {
+      id: "o3-mini",
+      name: "o3-mini (STEM)",
+      description: "Specialized STEM reasoning model for methodology, statistics, and sample power.",
+      tag: "🧠 STEM Reasoning",
+      recommended: false,
+    },
+    {
+      id: "o1",
+      name: "o1 (Full Reasoning)",
+      description: "Deep reflective thinking for intricate causal claims and mechanism proofs.",
+      tag: "🧠 Deep Thinking",
+      recommended: false,
+    },
+    {
+      id: "gpt-4-turbo",
+      name: "GPT-4 Turbo",
+      description: "Previous generation frontier model with 128k context.",
+      tag: "Legacy",
+      recommended: false,
+    },
+  ],
+  anthropic: [
+    {
+      id: "claude-3-7-sonnet-20250219",
+      name: "Claude 3.7 Sonnet",
+      description: "Anthropic's latest hybrid reasoning model. Exceptional academic critique and editorial voice.",
+      tag: "✨ Latest / Recommended",
+      recommended: true,
+    },
+    {
+      id: "claude-3-5-sonnet-20241022",
+      name: "Claude 3.5 Sonnet",
+      description: "Renowned standard for scholarly writing, tone, and deep methodological critique.",
+      tag: "Editorial Standard",
+      recommended: false,
+    },
+    {
+      id: "claude-3-5-haiku-20241022",
+      name: "Claude 3.5 Haiku",
+      description: "Rapid inference for initial sanity checks and fast scans.",
+      tag: "⚡ Ultra Fast",
+      recommended: false,
+    },
+    {
+      id: "claude-3-opus-20240229",
+      name: "Claude 3 Opus",
+      description: "Deep synthesis for complex, multidisciplinary manuscripts.",
+      tag: "Nuanced",
+      recommended: false,
+    },
+  ],
+  groq: [
+    {
+      id: "llama-3.3-70b-versatile",
+      name: "Llama 3.3 70B Versatile",
+      description: "Meta 70B flagship model on Groq LPUs (~300 tokens/sec). Full peer-review fidelity.",
+      tag: "✨ Recommended",
+      recommended: true,
+    },
+    {
+      id: "llama-3.1-8b-instant",
+      name: "Llama 3.1 8B Instant",
+      description: "Blazing fast speed (~800 tokens/sec) for real-time section checks.",
+      tag: "⚡ 800 tok/sec",
+      recommended: false,
+    },
+    {
+      id: "deepseek-r1-distill-llama-70b",
+      name: "DeepSeek R1 Distill 70B",
+      description: "Reasoning-distilled model for mathematical proof and control auditing.",
+      tag: "🧠 Reasoning",
+      recommended: false,
+    },
+    {
+      id: "mixtral-8x7b-32768",
+      name: "Mixtral 8x7B MoE",
+      description: "Mistral MoE architecture with 32k context window.",
+      tag: "MoE",
+      recommended: false,
+    },
+  ],
+  ollama: [
+    {
+      id: "llama3.3",
+      name: "Llama 3.3 (Local)",
+      description: "Meta Llama 3.3 on local machine. 100% private & offline.",
+      tag: "✨ Recommended Local",
+      recommended: true,
+    },
+    {
+      id: "deepseek-r1",
+      name: "DeepSeek R1 (Local)",
+      description: "Local reasoning model for methodology checks.",
+      tag: "🧠 Reasoning",
+      recommended: false,
+    },
+    {
+      id: "mistral",
+      name: "Mistral 7B (Local)",
+      description: "Compact and fast local inference.",
+      tag: "Fast Local",
+      recommended: false,
+    },
+    {
+      id: "phi3",
+      name: "Phi-3 (Local)",
+      description: "Microsoft Phi-3 lightweight local model.",
+      tag: "Compact",
+      recommended: false,
+    },
+  ],
+};
+
+export async function fetchAvailableModels(config?: ProviderConfig): Promise<AvailableModel[]> {
+  const serverStatus = getServerConfigStatus();
+  const provider: LLMProvider = config?.provider || (serverStatus.activeProvider !== "none" ? serverStatus.activeProvider : "gemini");
+  let apiKey = config?.apiKey?.trim() || "";
+  let baseUrl = config?.baseUrl?.trim() || "";
+
+  if (!apiKey) {
+    if (provider === "gemini") apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
+    else if (provider === "groq") apiKey = process.env.GROQ_API_KEY || "";
+    else if (provider === "openai") apiKey = process.env.OPENAI_API_KEY || "";
+    else if (provider === "anthropic") apiKey = process.env.ANTHROPIC_API_KEY || "";
+  }
+  if (!baseUrl) {
+    if (provider === "openai") baseUrl = process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
+    else if (provider === "ollama") baseUrl = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
+  }
+
+  const defaultList = CURATED_MODELS[provider] || CURATED_MODELS.gemini;
+
+  try {
+    if (provider === "gemini" && apiKey) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`, {
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.models)) {
+          const liveModels: AvailableModel[] = data.models
+            .filter((m: any) => m.supportedGenerationMethods?.includes("generateContent"))
+            .map((m: any) => {
+              const id = m.name.replace(/^models\//, "");
+              const existing = defaultList.find((d) => d.id === id);
+              return {
+                id,
+                name: m.displayName || existing?.name || id,
+                description: existing?.description || m.description || "Google Generative AI Model",
+                tag: existing?.tag || (id.includes("flash") ? "⚡ Fast" : id.includes("pro") ? "🧠 Frontier" : undefined),
+                recommended: existing?.recommended || false,
+              };
+            });
+          if (liveModels.length > 0) {
+            // Put recommended first
+            return liveModels.sort((a, b) => (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0));
+          }
+        }
+      }
+    } else if (provider === "openai" && apiKey) {
+      const cleanBase = (baseUrl || "https://api.openai.com/v1").replace(/\/+$/, "");
+      const endpoint = cleanBase.endsWith("/models") ? cleanBase : `${cleanBase}/models`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const res = await fetch(endpoint, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.data)) {
+          const chatIds = data.data
+            .map((m: any) => m.id)
+            .filter((id: string) => id.includes("gpt") || id.startsWith("o1") || id.startsWith("o3") || id.includes("chat"));
+          if (chatIds.length > 0) {
+            const mapped: AvailableModel[] = chatIds.map((id: string) => {
+              const existing = defaultList.find((d) => d.id === id);
+              return {
+                id,
+                name: existing?.name || id,
+                description: existing?.description || `OpenAI model ${id}`,
+                tag: existing?.tag || (id.startsWith("o") ? "🧠 Reasoning" : id.includes("mini") ? "⚡ Fast" : undefined),
+                recommended: existing?.recommended || id === "gpt-4o",
+              };
+            });
+            return mapped.sort((a, b) => (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0));
+          }
+        }
+      }
+    } else if (provider === "groq" && apiKey) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const res = await fetch("https://api.groq.com/openai/v1/models", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.data)) {
+          const mapped: AvailableModel[] = data.data
+            .filter((m: any) => m.active !== false)
+            .map((m: any) => {
+              const id = m.id;
+              const existing = defaultList.find((d) => d.id === id);
+              return {
+                id,
+                name: existing?.name || id,
+                description: existing?.description || `Groq LPU accelerated model (${m.owned_by || "Meta"})`,
+                tag: existing?.tag || (id.includes("70b") ? "✨ High Quality" : id.includes("8b") ? "⚡ Ultra Fast" : undefined),
+                recommended: existing?.recommended || id.includes("llama-3.3-70b"),
+              };
+            });
+          if (mapped.length > 0) {
+            return mapped.sort((a, b) => (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0));
+          }
+        }
+      }
+    } else if (provider === "ollama") {
+      const cleanBase = (baseUrl || "http://localhost:11434").replace(/\/+$/, "");
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const res = await fetch(`${cleanBase}/api/tags`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.models) && data.models.length > 0) {
+          const installed: AvailableModel[] = data.models.map((m: any, idx: number) => ({
+            id: m.name,
+            name: `${m.name} (Installed)`,
+            description: `Locally pulled model (${Math.round(((m.size || 0) / 1024 / 1024 / 1024) * 10) / 10} GB)`,
+            tag: idx === 0 ? "✨ Active Local" : "Local",
+            recommended: idx === 0,
+          }));
+          return installed;
+        }
+      }
+    }
+  } catch {}
+
+  return defaultList;
+}
+
+export interface ConnectionTestResult {
+  success: boolean;
+  provider: LLMProvider;
+  model: string;
+  latencyMs: number;
+  message: string;
+  error?: string;
+  availableModels: AvailableModel[];
+  details?: {
+    endpoint?: string;
+    statusCode?: number;
+  };
+}
+
+
+export async function testLLMConnection(
+  config?: ProviderConfig
+): Promise<ConnectionTestResult> {
+  // 1. Resolve Provider and Credentials
+  const serverStatus = getServerConfigStatus();
+  let provider: LLMProvider = config?.provider || (serverStatus.activeProvider !== 'none' ? serverStatus.activeProvider : "ollama");
+  let apiKey: string = config?.apiKey?.trim() || "";
+  let model: string = config?.model?.trim() || "";
+  let baseUrl: string = (config?.baseUrl || (provider === 'openai' ? process.env.OPENAI_BASE_URL : undefined) || process.env.OLLAMA_BASE_URL || "http://localhost:11434").trim();
+
+  // If no apiKey provided, resolve from server environment
+  if (!apiKey && provider !== "ollama") {
+    if (provider === "gemini") {
+      apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "";
+      model = model || process.env.GEMINI_MODEL || "gemini-1.5-flash";
+    } else if (provider === "groq") {
+      apiKey = process.env.GROQ_API_KEY || "";
+      model = model || process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+    } else if (provider === "openai") {
+      apiKey = process.env.OPENAI_API_KEY || "";
+      model = model || process.env.OPENAI_MODEL || "gpt-4o-mini";
+      if (!config?.baseUrl && process.env.OPENAI_BASE_URL) {
+        baseUrl = process.env.OPENAI_BASE_URL;
+      }
+    } else if (provider === "anthropic") {
+      apiKey = process.env.ANTHROPIC_API_KEY || "";
+      model = model || process.env.ANTHROPIC_MODEL || "claude-3-5-sonnet-20241022";
+    }
+  }
+
+  // If still no API key and provider requires one:
+  if (!apiKey && provider !== "ollama") {
+    return {
+      success: false,
+      provider,
+      model: model || "unknown",
+      latencyMs: 0,
+      message: `No API key provided for ${provider.toUpperCase()}`,
+      error: `Please provide a valid ${provider.toUpperCase()} API key or configure it in .env.local`,
+      availableModels: CURATED_MODELS[provider] || CURATED_MODELS.gemini,
+    };
+  }
+
+  const startTime = Date.now();
+  const timeoutMs = 15000;
+  const availableModels = await fetchAvailableModels({ provider, model, apiKey, baseUrl });
+
+  try {
+    // -----------------------------------------------------------
+    // 1. Google Gemini Ping Probe
+    // -----------------------------------------------------------
+    if (provider === "gemini") {
+      const geminiModel = model || "gemini-1.5-flash";
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: "ping" }] }],
+          generationConfig: { maxOutputTokens: 2 },
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      const latencyMs = Date.now() - startTime;
+
+      if (response.ok) {
+        return {
+          success: true,
+          provider: "gemini",
+          model: geminiModel,
+          latencyMs,
+          message: `Connected to Google Gemini (${geminiModel}) in ${latencyMs}ms`,
+          availableModels,
+          details: { statusCode: response.status },
+        };
+      } else {
+        let errMessage = `HTTP ${response.status}`;
+        try {
+          const errJson = await response.json();
+          errMessage = errJson.error?.message || errMessage;
+        } catch {
+          errMessage = await response.text() || errMessage;
+        }
+        return {
+          success: false,
+          provider: "gemini",
+          model: geminiModel,
+          latencyMs,
+          message: `Gemini API returned error ${response.status}`,
+          error: errMessage,
+          availableModels,
+          details: { statusCode: response.status },
+        };
+      }
+    }
+
+    // -----------------------------------------------------------
+    // 2. OpenAI / Compatible Proxy / Groq Ping Probe
+    // -----------------------------------------------------------
+    if (provider === "openai" || provider === "groq") {
+      let endpoint = "https://api.openai.com/v1/chat/completions";
+      if (provider === "groq") {
+        endpoint = "https://api.groq.com/openai/v1/chat/completions";
+      } else {
+        const customBase = config?.baseUrl || process.env.OPENAI_BASE_URL;
+        if (customBase) {
+          const cleanBase = customBase.replace(/\/+$/, "");
+          endpoint = cleanBase.endsWith("/chat/completions") ? cleanBase : `${cleanBase}/chat/completions`;
+        }
+      }
+
+      const chosenModel = model || (provider === "groq" ? "llama-3.3-70b-versatile" : "gpt-4o-mini");
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: chosenModel,
+          messages: [{ role: "user", content: "ping" }],
+          max_tokens: 2,
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      const latencyMs = Date.now() - startTime;
+
+      if (response.ok) {
+        return {
+          success: true,
+          provider,
+          model: chosenModel,
+          latencyMs,
+          message: `Connected to ${provider.toUpperCase()} (${chosenModel}) in ${latencyMs}ms`,
+          availableModels,
+          details: { endpoint, statusCode: response.status },
+        };
+      } else {
+        let errMessage = `HTTP ${response.status}`;
+        try {
+          const errJson = await response.json();
+          errMessage = errJson.error?.message || errJson.message || errMessage;
+        } catch {
+          errMessage = await response.text() || errMessage;
+        }
+        return {
+          success: false,
+          provider,
+          model: chosenModel,
+          latencyMs,
+          message: `${provider.toUpperCase()} connection failed (${response.status})`,
+          error: errMessage,
+          availableModels,
+          details: { endpoint, statusCode: response.status },
+        };
+      }
+    }
+
+    // -----------------------------------------------------------
+    // 3. Anthropic Claude Ping Probe
+    // -----------------------------------------------------------
+    if (provider === "anthropic") {
+      const chosenModel = model || "claude-3-5-sonnet-20241022";
+      const endpoint = "https://api.anthropic.com/v1/messages";
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: chosenModel,
+          max_tokens: 2,
+          messages: [{ role: "user", content: "ping" }],
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      const latencyMs = Date.now() - startTime;
+
+      if (response.ok) {
+        return {
+          success: true,
+          provider: "anthropic",
+          model: chosenModel,
+          latencyMs,
+          message: `Connected to Anthropic (${chosenModel}) in ${latencyMs}ms`,
+          availableModels,
+          details: { statusCode: response.status },
+        };
+      } else {
+        let errMessage = `HTTP ${response.status}`;
+        try {
+          const errJson = await response.json();
+          errMessage = errJson.error?.message || errMessage;
+        } catch {
+          errMessage = await response.text() || errMessage;
+        }
+        return {
+          success: false,
+          provider: "anthropic",
+          model: chosenModel,
+          latencyMs,
+          message: `Anthropic API returned error ${response.status}`,
+          error: errMessage,
+          availableModels,
+          details: { statusCode: response.status },
+        };
+      }
+    }
+
+    // -----------------------------------------------------------
+    // 4. Local Ollama Ping Probe
+    // -----------------------------------------------------------
+    if (provider === "ollama") {
+      const cleanBase = baseUrl.replace(/\/+$/, "");
+      const tagsUrl = `${cleanBase}/api/tags`;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+      const response = await fetch(tagsUrl, {
+        method: "GET",
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      const latencyMs = Date.now() - startTime;
+
+      if (response.ok) {
+        let installedModels: string[] = [];
+        try {
+          const data = await response.json();
+          if (Array.isArray(data.models)) {
+            installedModels = data.models.map((m: any) => m.name);
+          }
+        } catch {}
+
+        const chosenModel = model || "llama3.3";
+        const hasModel = installedModels.some(m => m.includes(chosenModel));
+
+        return {
+          success: true,
+          provider: "ollama",
+          model: chosenModel,
+          latencyMs,
+          message: hasModel
+            ? `Local Ollama is active with ${chosenModel} (${latencyMs}ms)`
+            : `Local Ollama is reachable (${latencyMs}ms). ${installedModels.length} models installed.`,
+          availableModels,
+          details: { endpoint: cleanBase, statusCode: response.status },
+        };
+      } else {
+        return {
+          success: false,
+          provider: "ollama",
+          model: model || "llama3.3",
+          latencyMs,
+          message: `Ollama service returned status ${response.status}`,
+          error: `Ollama at ${cleanBase} responded with status ${response.status}`,
+          availableModels,
+        };
+      }
+    }
+
+    return {
+      success: false,
+      provider,
+      model: model || "unknown",
+      latencyMs: 0,
+      message: `Unsupported provider: ${provider}`,
+      error: `Unknown provider ${provider}`,
+      availableModels: CURATED_MODELS[provider] || CURATED_MODELS.gemini,
+    };
+  } catch (err: any) {
+    const latencyMs = Date.now() - startTime;
+    const isTimeout = err.name === "AbortError" || err.message?.includes("abort");
+
+    return {
+      success: false,
+      provider,
+      model: model || "unknown",
+      latencyMs,
+      message: isTimeout ? `Connection timed out after ${timeoutMs / 1000}s` : `Connection failed`,
+      error: isTimeout
+        ? `Request timed out. Ensure the endpoint and network are reachable.`
+        : err.message || "Network error: Unable to reach the API server.",
+      availableModels: CURATED_MODELS[provider] || CURATED_MODELS.gemini,
+    };
+  }
+}
+
