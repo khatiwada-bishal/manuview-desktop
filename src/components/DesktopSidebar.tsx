@@ -16,6 +16,7 @@ import {
   Compass,
   ChevronDown,
   ChevronRight,
+  PanelLeft,
 } from "lucide-react";
 
 export type DesktopActiveView =
@@ -38,6 +39,9 @@ interface DesktopSidebarProps {
   activeView: DesktopActiveView;
   isConnected?: boolean;
   provider?: string | null;
+  activeModelName?: string | null;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
   onSelectPaper: (id: string) => void;
   onSelectView: (view: DesktopActiveView) => void;
   onOpenSearch: () => void;
@@ -52,6 +56,9 @@ export function DesktopSidebar({
   activeView,
   isConnected = false,
   provider,
+  activeModelName,
+  isCollapsed = false,
+  onToggleCollapse,
   onSelectPaper,
   onSelectView,
   onOpenSearch,
@@ -141,9 +148,195 @@ export function DesktopSidebar({
     },
   ];
 
+  // -------------------------------------------------------------
+  // COLLAPSED SIDEBAR VIEW
+  // -------------------------------------------------------------
+  if (isCollapsed) {
+    return (
+      <aside className="w-[68px] bg-[#F9FAFB] border-r border-[#E5E7EB] flex flex-col h-full select-none shrink-0 text-[#1F2937] transition-all duration-200 ease-in-out relative z-30">
+        {/* LOGO: Hover reveals expand icon */}
+        <div className="p-3 border-b border-[#E5E7EB]/70 flex justify-center">
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            title="Expand sidebar"
+            className="w-10 h-10 rounded-xl bg-white border border-[#E5E7EB] hover:border-neutral-300 shadow-xs flex items-center justify-center transition cursor-pointer relative group overflow-hidden"
+          >
+            {/* Logo \"M\" */}
+            <div className="w-8 h-8 rounded-lg bg-[#0F172A] text-white flex items-center justify-center font-serif font-black text-sm shadow-xs transition-all duration-150 group-hover:opacity-0 group-hover:scale-75">
+              M
+            </div>
+            {/* Expand sidebar icon on hover */}
+            <div className="absolute inset-0 flex items-center justify-center text-[#0F172A] opacity-0 group-hover:opacity-100 transition-all duration-150 group-hover:scale-100">
+              <PanelLeft className="w-4 h-4" />
+            </div>
+
+            {/* Tooltip */}
+            <div className="absolute left-full ml-3 px-2.5 py-1 bg-[#111827] text-white text-xs font-medium rounded-md shadow-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
+              Expand sidebar
+              <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#111827]" />
+            </div>
+          </button>
+        </div>
+
+        {/* ICONS BENEATH LOGO */}
+        <div className="flex-1 overflow-y-auto px-2 py-3 space-y-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {/* Services Icons */}
+          <div className="space-y-1.5 flex flex-col items-center">
+            {SERVICES.map((service) => {
+              const Icon = service.icon;
+              return (
+                <div key={service.id} className="relative group flex justify-center">
+                  <button
+                    type="button"
+                    onClick={service.action}
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition cursor-pointer hover:scale-105 shadow-2xs ${service.color}`}
+                  >
+                    <Icon className="w-4 h-4" />
+                  </button>
+                  {/* Tooltip on right */}
+                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1 bg-[#111827] text-white text-xs font-medium rounded-md shadow-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
+                    {service.name}
+                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#111827]" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Divider */}
+          <div className="w-8 h-px bg-[#E5E7EB] mx-auto" />
+
+          {/* Search Icon */}
+          <div className="relative group flex justify-center">
+            <button
+              type="button"
+              onClick={onOpenSearch}
+              className="w-9 h-9 rounded-xl flex items-center justify-center bg-white border border-[#E5E7EB] hover:border-neutral-300 text-neutral-500 hover:text-neutral-800 transition shadow-2xs cursor-pointer"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1 bg-[#111827] text-white text-xs font-medium rounded-md shadow-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
+              Search articles (⌘K)
+              <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#111827]" />
+            </div>
+          </div>
+
+          {/* Articles Icon with Right-side Submenu */}
+          <div className="relative group flex justify-center">
+            <button
+              type="button"
+              className={`w-9 h-9 rounded-xl flex items-center justify-center transition cursor-pointer shadow-2xs ${
+                activePaperId
+                  ? "bg-blue-50 text-blue-600 border border-blue-200"
+                  : "bg-white border border-[#E5E7EB] hover:border-neutral-300 text-neutral-600 hover:text-neutral-900"
+              }`}
+            >
+              <BookOpen className="w-4 h-4" />
+            </button>
+
+            {/* Submenu popover on hover */}
+            <div className="absolute left-full top-0 ml-2 w-64 bg-white border border-[#E5E7EB] rounded-xl shadow-xl p-2.5 z-50 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-150 before:absolute before:-left-3 before:top-0 before:bottom-0 before:w-3 before:content-['']">
+              <div className="flex items-center justify-between pb-2 mb-1.5 border-b border-[#E5E7EB]">
+                <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                  Articles ({papers.length})
+                </span>
+                <button
+                  type="button"
+                  onClick={onNewReview}
+                  className="flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline transition cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>New</span>
+                </button>
+              </div>
+
+              <div className="max-h-64 overflow-y-auto space-y-1 [scrollbar-width:thin]">
+                {papers.length === 0 ? (
+                  <div className="text-xs text-neutral-400 py-2 text-center">
+                    No articles yet
+                  </div>
+                ) : (
+                  papers.map((paper) => {
+                    const isSelected = paper.id === activePaperId;
+                    return (
+                      <button
+                        key={paper.id}
+                        type="button"
+                        onClick={() => {
+                          onSelectPaper(paper.id);
+                          onSelectView("overview");
+                        }}
+                        className={`w-full flex items-center justify-between p-2 rounded-lg text-xs text-left transition cursor-pointer ${
+                          isSelected
+                            ? "bg-[#F3F4F6] font-semibold text-[#111827]"
+                            : "hover:bg-neutral-50 text-neutral-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0 pr-2">
+                          <FileText
+                            className={`w-3.5 h-3.5 shrink-0 ${
+                              isSelected ? "text-blue-600" : "text-neutral-400"
+                            }`}
+                          />
+                          <div className="truncate">
+                            <div className="truncate font-medium text-xs text-[#111827]">
+                              {paper.shortName}
+                            </div>
+                            <div className="text-[10px] text-neutral-400 truncate">
+                              {paper.journal}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 border border-neutral-200 shrink-0">
+                          {paper.score}%
+                        </span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* FOOTER: Compact Settings Pill */}
+        <div className="p-3 border-t border-[#E5E7EB] bg-white flex justify-center">
+          <div className="relative group">
+            <button
+              type="button"
+              onClick={onOpenSettings}
+              title="AI Settings"
+              className="w-10 h-10 rounded-full border border-[#86efac] bg-[#f0fdf4] text-[#065f46] hover:bg-[#dcfce7] hover:border-[#4ade80] transition shadow-2xs flex items-center justify-center cursor-pointer relative"
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  isConnected ? "bg-[#10b981]" : "bg-amber-400"
+                } absolute top-1.5 right-1.5`}
+              />
+              <Settings className="w-4 h-4 text-[#047857]" />
+            </button>
+            <div className="absolute left-full bottom-1 ml-3 px-2.5 py-1 bg-[#111827] text-white text-xs font-medium rounded-md shadow-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 flex items-center gap-1.5">
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  isConnected ? "bg-emerald-400" : "bg-amber-400"
+                }`}
+              />
+              <span>{activeModelName || (isConnected ? "gemini-1.5-flash" : "Connect AI")}</span>
+              <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#111827]" />
+            </div>
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // EXPANDED SIDEBAR VIEW
+  // -------------------------------------------------------------
   return (
-    <aside className="w-64 bg-[#F9FAFB] border-r border-[#E5E7EB] flex flex-col h-full select-none shrink-0 text-[#1F2937]">
-      {/* 1. COMPANY HEADER: ManuView Desktop */}
+    <aside className="w-64 bg-[#F9FAFB] border-r border-[#E5E7EB] flex flex-col h-full select-none shrink-0 text-[#1F2937] transition-all duration-200 ease-in-out relative z-30">
+      {/* 1. COMPANY HEADER: Logo + Title + Collapse Button */}
       <div className="p-3 border-b border-[#E5E7EB]/70">
         <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-[#E5E7EB] shadow-xs">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -159,13 +352,14 @@ export function DesktopSidebar({
               </div>
             </div>
           </div>
+          {/* Collapse sidebar icon replacing the gear icon */}
           <button
             type="button"
-            onClick={onOpenSettings}
-            title="Desktop Settings"
-            className="p-1 rounded-md hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700 transition"
+            onClick={onToggleCollapse}
+            title="Collapse sidebar"
+            className="p-1 rounded-md hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700 transition cursor-pointer"
           >
-            <Settings className="w-3.5 h-3.5" />
+            <PanelLeft className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -237,7 +431,7 @@ export function DesktopSidebar({
           </button>
         </div>
 
-        {/* 4. ARTICLES LIST (Renamed from WORKSPACES) */}
+        {/* 4. ARTICLES LIST */}
         <div>
           <div className="flex items-center justify-between px-2 mb-1.5">
             <span className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-wider">
@@ -259,7 +453,6 @@ export function DesktopSidebar({
               const isSelected = paper.id === activePaperId;
               return (
                 <div key={paper.id} className="space-y-0.5">
-                  {/* Article button -> Clicking opens/activates tab */}
                   <button
                     type="button"
                     onClick={() => {
@@ -274,7 +467,11 @@ export function DesktopSidebar({
                         : "text-[#4B5563] hover:bg-[#E5E7EB]/40 hover:text-[#111827]"
                     }`}
                   >
-                    <FileText className={`w-4 h-4 shrink-0 ${isSelected ? "text-blue-600" : "text-neutral-500"}`} />
+                    <FileText
+                      className={`w-4 h-4 shrink-0 ${
+                        isSelected ? "text-blue-600" : "text-neutral-500"
+                      }`}
+                    />
                     <span className="truncate">{paper.shortName}</span>
                   </button>
 
@@ -330,24 +527,24 @@ export function DesktopSidebar({
         </div>
       </div>
 
-      {/* FOOTER: Status & Connection */}
-      <div className="p-3 border-t border-[#E5E7EB] bg-white text-[11px] text-neutral-500 flex items-center justify-between">
-        <span className="font-semibold text-neutral-700">v0.1.0</span>
-        {isConnected ? (
-          <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            {provider?.toUpperCase() || "AI READY"}
+      {/* FOOTER: Model Pill & Settings (matching user screenshot) */}
+      <div className="p-3 border-t border-[#E5E7EB] bg-white flex items-center justify-center">
+        <button
+          type="button"
+          onClick={onOpenSettings}
+          title="AI Provider Settings"
+          className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#86efac] bg-[#f0fdf4] text-[#065f46] hover:bg-[#dcfce7] hover:border-[#4ade80] transition shadow-2xs cursor-pointer text-xs font-medium"
+        >
+          <span
+            className={`w-2 h-2 rounded-full ${
+              isConnected ? "bg-[#10b981]" : "bg-amber-400"
+            } shrink-0`}
+          />
+          <span className="truncate max-w-[130px]">
+            {activeModelName || (isConnected ? "gemini-1.5-flash" : "Connect AI")}
           </span>
-        ) : (
-          <button
-            type="button"
-            onClick={onOpenSettings}
-            className="inline-flex items-center gap-1 text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200 hover:bg-rose-100 transition cursor-pointer"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-            Connect AI
-          </button>
-        )}
+          <Settings className="w-3.5 h-3.5 text-[#047857] shrink-0" />
+        </button>
       </div>
     </aside>
   );
