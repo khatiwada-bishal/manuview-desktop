@@ -286,51 +286,120 @@ export function DesktopSidebar({
                   papers.map((paper) => {
                     const isSelected = paper.id === activePaperId;
                     return (
-                      <div
-                        key={paper.id}
-                        onClick={() => {
-                          onSelectPaper(paper.id);
-                          onSelectView("overview");
-                        }}
-                        className={`group/item w-full flex items-center justify-between p-2 rounded-lg text-xs text-left transition cursor-pointer ${
-                          isSelected
-                            ? "bg-[#F3F4F6] font-semibold text-[#111827]"
-                            : "hover:bg-neutral-50 text-neutral-700"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 min-w-0 pr-2">
-                          <FileText
-                            className={`w-3.5 h-3.5 shrink-0 ${
-                              isSelected ? "text-blue-600" : "text-neutral-400"
-                            }`}
-                          />
-                          <div className="truncate">
-                            <div className="truncate font-medium text-xs text-[#111827]">
-                              {paper.shortName}
-                            </div>
-                            <div className="text-[10px] text-neutral-400 truncate">
-                              {paper.journal}
+                      <div key={paper.id} className="space-y-0.5">
+                        <div
+                          onClick={() => {
+                            onSelectPaper(paper.id);
+                            onSelectView("overview");
+                          }}
+                          className={`group/item w-full flex items-center justify-between p-2 rounded-lg text-xs text-left transition cursor-pointer ${
+                            isSelected && activeView === "overview"
+                              ? "bg-[#E5E7EB] font-semibold text-[#111827]"
+                              : isSelected
+                              ? "bg-[#F3F4F6] font-medium text-[#111827]"
+                              : "hover:bg-neutral-50 text-neutral-700"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0 pr-2">
+                            <FileText
+                              className={`w-3.5 h-3.5 shrink-0 ${
+                                isSelected ? "text-blue-600" : "text-neutral-400"
+                              }`}
+                            />
+                            <div className="truncate">
+                              <div className="truncate font-medium text-xs text-[#111827]">
+                                {paper.shortName}
+                              </div>
+                              <div className="text-[10px] text-neutral-400 truncate">
+                                {paper.journal}
+                              </div>
                             </div>
                           </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 border border-neutral-200">
+                              {paper.score}%
+                            </span>
+                            {onDeletePaper && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDeletePaper(paper, e);
+                                }}
+                                title="Delete manuscript project"
+                                className="p-1 rounded text-neutral-300 hover:text-rose-600 hover:bg-rose-50 transition opacity-0 group-hover/item:opacity-100 cursor-pointer"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 border border-neutral-200">
-                            {paper.score}%
-                          </span>
-                          {onDeletePaper && (
+
+                        {/* 4 Sub-menus in flyout when selected */}
+                        {isSelected && (
+                          <div className="pl-3 space-y-0.5 pt-0.5 pb-1">
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onDeletePaper(paper, e);
+                                onSelectView("personas");
                               }}
-                              title="Delete manuscript project"
-                              className="p-1 rounded text-neutral-300 hover:text-rose-600 hover:bg-rose-50 transition opacity-0 group-hover/item:opacity-100 cursor-pointer"
+                              className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-[11px] transition text-left cursor-pointer ${
+                                activeView === "personas"
+                                  ? "bg-[#E5E7EB] font-semibold text-[#111827]"
+                                  : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+                              }`}
                             >
-                              <Trash2 className="w-3 h-3" />
+                              <Users className="w-3 h-3 text-blue-600 shrink-0" />
+                              <span className="truncate">4-Persona Reviews</span>
                             </button>
-                          )}
-                        </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSelectView("dimensions");
+                              }}
+                              className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-[11px] transition text-left cursor-pointer ${
+                                activeView === "dimensions"
+                                  ? "bg-[#E5E7EB] font-semibold text-[#111827]"
+                                  : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+                              }`}
+                            >
+                              <BarChart3 className="w-3 h-3 text-emerald-600 shrink-0" />
+                              <span className="truncate">6 Scoring Dimensions</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSelectView("issues");
+                              }}
+                              className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-[11px] transition text-left cursor-pointer ${
+                                activeView === "issues"
+                                  ? "bg-[#E5E7EB] font-semibold text-[#111827]"
+                                  : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+                              }`}
+                            >
+                              <AlertCircle className="w-3 h-3 text-amber-600 shrink-0" />
+                              <span className="truncate">Priority Action Items</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSelectView("journals");
+                              }}
+                              className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-[11px] transition text-left cursor-pointer ${
+                                activeView === "journals" || activeView === "recommendations"
+                                  ? "bg-[#E5E7EB] font-semibold text-[#111827]"
+                                  : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+                              }`}
+                            >
+                              <BookOpen className="w-3 h-3 text-indigo-600 shrink-0" />
+                              <span className="truncate">Target Journals</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })
