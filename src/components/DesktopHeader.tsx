@@ -76,11 +76,11 @@ export function DesktopHeader({
       {/* LEFT CONTROLS (Window Traffic Light Spacer + Sidebar Toggle) */}
       <div
         className={`h-full flex items-center border-r border-[#E5E7EB] bg-[#F9FAFB] transition-all duration-150 shrink-0 ${
-          sidebarOpen ? "w-64 px-3" : "w-auto px-3"
+          sidebarOpen ? "w-64" : "w-auto"
         }`}
       >
-        {/* macOS traffic light spacer */}
-        <div className="w-[68px] shrink-0" />
+        {/* macOS traffic light spacer (covers 0..78px for traffic lights at x=16..68px with a 10px gap) */}
+        <div className="w-[78px] shrink-0" />
 
         {/* Sidebar Toggle Button */}
         {onToggleSidebar && (
@@ -88,11 +88,13 @@ export function DesktopHeader({
             type="button"
             onClick={onToggleSidebar}
             title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-            className="p-1.5 rounded-md hover:bg-[#E5E7EB] text-neutral-500 hover:text-neutral-800 transition cursor-pointer"
+            className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-[#E5E7EB] text-neutral-500 hover:text-neutral-800 transition cursor-pointer"
           >
             <SidebarIcon className="w-4 h-4" />
           </button>
         )}
+
+        {!sidebarOpen && <div className="w-3 shrink-0" />}
       </div>
 
       {/* CENTER: BROWSER-STYLE TAB BAR */}
