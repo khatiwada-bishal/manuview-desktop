@@ -71,35 +71,38 @@ export function DesktopHeader({
   return (
     <header
       data-tauri-drag-region
-      className="h-[38px] border-b border-[#E5E7EB] bg-[#F3F4F6] flex items-center select-none shrink-0 z-20"
+      className="h-[52px] border-b border-[#E5E7EB] bg-[#F3F4F6] flex select-none shrink-0 z-20"
     >
-      {/* WINDOW CONTROLS (TRAFFIC LIGHTS) SPACER + SIDEBAR TOGGLE */}
-      <div className="h-full flex items-center shrink-0">
+      {/* LEFT CONTROLS (Window Traffic Light Spacer + Sidebar Toggle + Sidebar Separation) */}
+      <div
+        className={`h-full flex items-end pb-1 border-r border-[#E5E7EB] bg-[#F9FAFB] transition-all duration-150 shrink-0 ${
+          sidebarOpen ? "w-64" : "w-auto"
+        }`}
+      >
         {/* macOS traffic light spacer (covers 0..88px: traffic lights from x=16..68px with a 20px gap) */}
         <div className="w-[88px] shrink-0" />
 
-        {/* Sidebar Toggle Button (matches attachment: clean rounded rectangle with sidebar divider, no resting box) */}
+        {/* Sidebar Toggle Button (vertically aligned with traffic lights at center y=34px) */}
         {onToggleSidebar && (
           <button
             type="button"
             onClick={onToggleSidebar}
             title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-            className="w-6 h-6 flex items-center justify-center rounded hover:bg-neutral-200/70 text-[#8E8E93] hover:text-neutral-900 transition cursor-pointer"
+            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[#E5E7EB] text-neutral-500 hover:text-neutral-800 transition cursor-pointer"
           >
             <SidebarIcon className="w-4 h-4" strokeWidth={1.75} />
           </button>
         )}
 
-        {/* Spacing before browser tabs */}
-        <div className="w-2.5 shrink-0" />
+        {!sidebarOpen && <div className="w-3 shrink-0" />}
       </div>
 
       {/* CENTER: BROWSER-STYLE TAB BAR */}
       <div
         data-tauri-drag-region
-        className="flex-1 h-full flex items-center overflow-x-auto min-w-0 px-1 scrollbar-none"
+        className="flex-1 h-full flex items-end pb-1 overflow-x-auto min-w-0 px-2 scrollbar-none"
       >
-        <div className="flex items-center gap-1 h-full py-0.5">
+        <div className="flex items-center gap-1 h-[32px]">
           {openTabs.map((tab) => {
             const isActive = tab.id === activeTabId;
             return (
