@@ -146,7 +146,7 @@ export function DesktopScanModal({
         ? `${provider.toUpperCase()} (${modelName || "ACTIVE"})`
         : savedConfig?.provider
         ? `${savedConfig.provider.toUpperCase()} (${savedConfig.model || "ACTIVE"})`
-        : "OFFLINE STRUCTURAL ENGINE";
+        : "ManuView Academic Diagnostic Engine";
 
       const dashboardData: DesktopDashboardData = {
         paperTitle: fullReport.title || title,
@@ -217,9 +217,9 @@ export function DesktopScanModal({
                     AI Connected: {provider?.toUpperCase()} ({modelName})
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    Offline Heuristic Engine (Configure API in Settings for LLM personas)
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                    <Sparkles className="w-3 h-3 text-blue-600" />
+                    ManuView Academic Diagnostic Suite
                   </span>
                 )}
               </div>
