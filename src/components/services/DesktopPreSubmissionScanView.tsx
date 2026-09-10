@@ -87,7 +87,7 @@ const SAMPLE_PREPRINT = {
 };
 
 interface DesktopPreSubmissionScanViewProps {
-  onComplete?: (newPaper: PaperItem, data: DesktopDashboardData) => void;
+  onComplete?: (newPaper: PaperItem, data: DesktopDashboardData, fullReport?: FullReviewReport) => void;
   onOpenSettings?: () => void;
 }
 
@@ -399,7 +399,7 @@ export function DesktopPreSubmissionScanView({
             },
           };
 
-          onComplete(newPaper, dashboardData);
+          onComplete(newPaper, dashboardData, fullReport);
         }
       } else {
         // Fast editorial scope validation (matching web exactly)

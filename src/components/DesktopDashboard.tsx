@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Tag,
   Cpu,
@@ -8,13 +8,34 @@ import {
   AlertTriangle,
   CheckCircle2,
   Zap,
-  ExternalLink,
   ChevronRight,
   Sparkles,
   RefreshCw,
   Trash2,
+  Printer,
+  Globe,
+  FileText,
+  Users,
+  BarChart3,
+  AlertCircle,
+  BookOpen,
+  GraduationCap,
+  CheckSquare,
+  FlaskConical,
+  Info,
+  ExternalLink,
 } from "lucide-react";
 import { DesktopActiveView } from "./DesktopSidebar";
+import {
+  FullReviewReport,
+  ReviewerPersonaFeedback,
+  PriorityIssue,
+  DimensionScore,
+} from "@/lib/types";
+import {
+  exportInteractiveHtmlReport,
+  exportWordDocReport,
+} from "@/lib/export-generator";
 
 export interface DesktopDashboardData {
   paperTitle: string;
@@ -47,6 +68,7 @@ export interface DesktopDashboardData {
 
 interface DesktopDashboardProps {
   data: DesktopDashboardData;
+  fullReport?: FullReviewReport | null;
   activeView: DesktopActiveView;
   isConnected?: boolean;
   isLoading?: boolean;
@@ -60,6 +82,7 @@ interface DesktopDashboardProps {
 
 export function DesktopDashboard({
   data,
+  fullReport,
   activeView,
   isConnected = false,
   isLoading = false,
@@ -70,298 +93,682 @@ export function DesktopDashboard({
   onOpenSettings,
   onDeleteArticle,
 }: DesktopDashboardProps) {
+  const [selectedPersona, setSelectedPersona] = useState<number>(0);
+  const [issueFilter, setIssueFilter] = useState<"all" | "A" | "B" | "C">("all");
+
+  // Normalized values prioritizing fullReport
+  const title = fullReport?.title || data.paperTitle || data.headlineTitle;
+  const overallScore = fullReport?.overallScore ?? data.score ?? 91;
+  const targetJournal =
+    fullReport?.targetJournal || data.targetJournal || "International Journal of Production Economics";
+  const summary = fullReport?.summary;
+  const classification = fullReport?.classification;
+  const personas = fullReport?.reviewerPersonas || [];
+  const dimensions = fullReport?.dimensions || {};
+  const issues = fullReport?.priorityIssues || [];
+  const journals = fullReport?.journalRecommendations || [];
+
+  // Filter issues based on priority filter pill
+  const filteredIssues = issues.filter(
+    (iss) => issueFilter === "all" || iss.priority === issueFilter
+  );
+
+  const handleExportHTML = () => {
+    if (fullReport) {
+      exportInteractiveHtmlReport(fullReport);
+    }
+  };
+
+  const handleExportWord = () => {
+    if (fullReport) {
+      exportWordDocReport(fullReport);
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
-    <div className="flex-1 overflow-y-auto bg-white p-6 sm:p-10 text-[#111827]">
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Header Icon and Headline Title */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-          <div className="space-y-3">
-            <div className="text-4xl select-none" role="img" aria-label="genomics">
-              🧬
-            </div>
-            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-[#111827]">
-              {data.headlineTitle}
-            </h1>
-          </div>
-          {onDeleteArticle && (
-            <button
-              type="button"
-              onClick={onDeleteArticle}
-              title="Delete this manuscript project"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-400 hover:text-rose-600 hover:bg-rose-50 border border-neutral-200/60 hover:border-rose-200 transition cursor-pointer self-start shrink-0 shadow-2xs"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Delete Project</span>
-            </button>
-          )}
-        </div>
-
-        {/* Summary Metadata Card */}
-        <div className="rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] p-5 sm:p-6 space-y-3 shadow-2xs">
-          {/* Target Journal */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs sm:text-sm">
-            <span className="w-36 flex items-center gap-2 font-semibold text-[#6B7280]">
-              <Tag className="w-4 h-4 text-[#9CA3AF]" />
-              Target Journal
-            </span>
-            <span className="inline-flex items-center px-3 py-1 rounded-md bg-[#FEF3C7] border border-[#FDE68A] text-[#92400E] font-medium text-xs">
-              {data.targetJournal}
-            </span>
-          </div>
-
-          {/* AI Engine */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs sm:text-sm">
-            <span className="w-36 flex items-center gap-2 font-semibold text-[#6B7280]">
-              <Cpu className="w-4 h-4 text-[#9CA3AF]" />
-              AI Engine
-            </span>
-            {isLoading ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-neutral-100 border border-neutral-200 text-neutral-500 text-xs font-semibold">
-                <RefreshCw className="w-3 h-3 animate-spin text-neutral-400" />
-                Connecting...
-              </span>
-            ) : !isConnected ? (
-              <button
-                type="button"
-                onClick={onOpenSettings}
-                title="Click to configure API connection"
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#FEF2F2] border border-[#FECACA] hover:bg-[#FEE2E2] text-[#991B1B] text-xs font-semibold transition cursor-pointer"
-              >
-                <span className="w-2 h-2 rounded-full bg-[#EF4444]" />
-                Not Connected
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={onOpenSettings}
-                title="Click to configure AI Engine & Models"
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-[#ECFDF5] border border-[#A7F3D0] hover:bg-[#D1FAE5] text-[#065F46] font-semibold text-xs tracking-wide transition cursor-pointer"
-              >
-                <span className="w-2 h-2 rounded-full bg-[#10B981]" />
-                {activeModelName || data.aiEngine}
-                {latencyMs !== undefined && latencyMs !== null && (
-                  <span className="text-emerald-700/80 font-mono text-[11px] flex items-center">
-                    ( <Zap className="w-3 h-3 text-amber-500 fill-amber-500 inline mr-0.5" />
-                    {latencyMs}ms )
-                  </span>
-                )}
-              </button>
-            )}
-          </div>
-
-          {/* Triage Readiness */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs sm:text-sm">
-            <span className="w-36 flex items-center gap-2 font-semibold text-[#6B7280]">
-              <ShieldCheck className="w-4 h-4 text-[#9CA3AF]" />
-              Triage Readiness
-            </span>
+    <div className="flex-1 overflow-y-auto bg-[#F8FAFC] p-6 sm:p-10 text-[#1E293B]">
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* ========================================================= */}
+        {/* 1. HEADER CARD: Title, Target, Score, and Export Actions */}
+        {/* ========================================================= */}
+        <div className="rounded-2xl bg-white border border-[#E2E8F0] p-6 sm:p-8 shadow-xs space-y-5">
+          {/* Brand line & Target badge */}
+          <div className="flex items-center justify-between pb-4 border-b border-[#E2E8F0]">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-[#111827] text-sm sm:text-base">
-                {data.score} / 100
+              <span className="text-xl select-none">📑</span>
+              <span className="font-bold text-sm tracking-tight text-[#0F172A]">
+                Manu<span className="text-blue-600">View</span> Diagnostic Suite
               </span>
-              <span className="text-neutral-400">•</span>
-              <span className="font-semibold text-[#B45309] text-xs sm:text-sm">
-                {data.statusText}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EFF6FF] border border-[#BFDBFE] text-xs font-semibold text-[#1D4ED8]">
+                <Tag className="w-3.5 h-3.5" />
+                Target: {targetJournal}
               </span>
+
+              {onDeleteArticle && (
+                <button
+                  type="button"
+                  onClick={onDeleteArticle}
+                  title="Delete manuscript project"
+                  className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 border border-neutral-200/60 hover:border-rose-200 transition cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Manuscript Title */}
+          <div>
+            <h1 className="text-xl sm:text-2xl font-serif font-bold text-[#0F172A] leading-snug">
+              {title}
+            </h1>
+            <p className="text-xs text-[#64748B] mt-1.5">
+              Generated on September 10, 2026 • Peer-Review Calibrated Pre-Submission Diagnostic
+            </p>
+          </div>
+
+          {/* Acceptance Potential Banner & Export Actions */}
+          <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl bg-[#F1F5F9] border border-[#E2E8F0]">
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl sm:text-4xl font-extrabold text-[#0F172A]">
+                {overallScore}
+              </span>
+              <span className="text-xs sm:text-sm font-semibold text-[#64748B] uppercase tracking-wider">
+                / 100 Overall Acceptance Potential
+              </span>
+              <span className="ml-2 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#DCFCE7] text-[#166534] border border-[#BBF7D0]">
+                Submission Ready
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-[#0F172A] border border-[#CBD5E1] hover:bg-[#F8FAFC] transition shadow-2xs cursor-pointer"
+                title="Print or Save as PDF"
+              >
+                <Printer className="w-3.5 h-3.5 text-neutral-600" />
+                <span>Print / PDF</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExportHTML}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-[#0F172A] border border-[#CBD5E1] hover:bg-[#F8FAFC] transition shadow-2xs cursor-pointer"
+                title="Export self-contained Interactive Web Report (.html)"
+              >
+                <Globe className="w-3.5 h-3.5 text-blue-600" />
+                <span>Interactive HTML</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExportWord}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-[#0F172A] border border-[#CBD5E1] hover:bg-[#F8FAFC] transition shadow-2xs cursor-pointer"
+                title="Export Microsoft Word Document (.docx)"
+              >
+                <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Word (.docx)</span>
+              </button>
             </div>
           </div>
         </div>
 
-        {/* View Switcher Tabs or Navigation when inside subviews */}
-        {activeView !== "overview" && (
-          <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-3">
-            <div className="flex items-center gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => onSelectView("overview")}
-                className="text-blue-600 hover:underline font-medium"
-              >
-                Dashboard Overview
-              </button>
-              <ChevronRight className="w-3.5 h-3.5 text-neutral-400" />
-              <span className="font-semibold text-neutral-800 capitalize">
-                {activeView}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => onSelectView("overview")}
-              className="px-3 py-1 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-xs font-medium text-neutral-700 transition"
-            >
-              Back to Overview
-            </button>
-          </div>
-        )}
+        {/* ========================================================= */}
+        {/* 2. IN-PAGE TABS NAVIGATION BAR                            */}
+        {/* ========================================================= */}
+        <div className="flex items-center gap-2 border-b-2 border-[#E2E8F0] pb-px overflow-x-auto [scrollbar-width:thin]">
+          <button
+            type="button"
+            onClick={() => onSelectView("overview")}
+            className={`px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition whitespace-nowrap cursor-pointer ${
+              activeView === "overview"
+                ? "border-blue-600 text-blue-600 -mb-[2px]"
+                : "border-transparent text-[#64748B] hover:text-[#0F172A]"
+            }`}
+          >
+            Executive Overview
+          </button>
 
-        {/* THREE-COLUMN DIAGNOSTIC GRID (Reference Design) */}
+          <button
+            type="button"
+            onClick={() => onSelectView("personas")}
+            className={`px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              activeView === "personas"
+                ? "border-blue-600 text-blue-600 -mb-[2px]"
+                : "border-transparent text-[#64748B] hover:text-[#0F172A]"
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>4 Reviewer Personas</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSelectView("dimensions")}
+            className={`px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              activeView === "dimensions"
+                ? "border-blue-600 text-blue-600 -mb-[2px]"
+                : "border-transparent text-[#64748B] hover:text-[#0F172A]"
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>6 Scoring Dimensions</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSelectView("issues")}
+            className={`px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              activeView === "issues"
+                ? "border-blue-600 text-blue-600 -mb-[2px]"
+                : "border-transparent text-[#64748B] hover:text-[#0F172A]"
+            }`}
+          >
+            <AlertCircle className="w-4 h-4" />
+            <span>Priority Action Items ({issues.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSelectView("journals")}
+            className={`px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              activeView === "journals" || activeView === "recommendations"
+                ? "border-blue-600 text-blue-600 -mb-[2px]"
+                : "border-transparent text-[#64748B] hover:text-[#0F172A]"
+            }`}
+          >
+            <BookOpen className="w-4 h-4" />
+            <span>Target Journals ({journals.length || 3})</span>
+          </button>
+        </div>
+
+        {/* ========================================================= */}
+        {/* TAB 1: EXECUTIVE OVERVIEW                                 */}
+        {/* ========================================================= */}
         {activeView === "overview" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-            {/* COLUMN 1: Triage Vulnerabilities */}
-            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 space-y-4 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold text-[#111827]">
-                  Triage Vulnerabilities
-                </h2>
-                <span className="px-2 py-0.5 rounded-md bg-[#F3F4F6] border border-[#E5E7EB] text-[#4B5563] text-xs font-semibold">
-                  {data.vulnerabilities.length}
+          <div className="space-y-6 animate-fade-in">
+            {/* Document Classification Callout Box */}
+            {classification && (
+              <div className="p-5 rounded-2xl bg-[#F0FDF4] border border-[#BBF7D0] text-xs space-y-3 shadow-2xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-[#BBF7D0]/60">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base select-none">🔬</span>
+                    <span className="font-bold text-sm text-[#14532D]">
+                      Document Classification: {classification.categoryLabel}
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-white text-[#166534] border border-[#86EFAC]">
+                      Academic Manuscript
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="font-semibold text-sm text-[#14532D]">
+                    {classification.salutation}
+                  </div>
+                  <p className="text-xs text-[#166534] leading-relaxed">
+                    {classification.advisoryMessage}
+                  </p>
+
+                  {/* Detected Features Pills */}
+                  {classification.detectedFeatures && classification.detectedFeatures.length > 0 && (
+                    <div className="pt-1 flex flex-wrap gap-1.5">
+                      {classification.detectedFeatures.map((feat, idx) => (
+                        <span
+                          key={idx}
+                          className="text-[11px] px-2.5 py-0.5 rounded-md bg-white border border-[#BBF7D0] text-[#15803D] font-medium"
+                        >
+                          &bull; {feat}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {classification.customGuidance && (
+                    <div className="mt-2.5 pt-2.5 border-t border-[#BBF7D0]/60 text-xs text-[#166534] flex items-start gap-1.5">
+                      <span className="font-bold text-[#14532D]">Focus Refinement:</span>
+                      <span>{classification.customGuidance}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Editorial Synthesis & Triage Assessment */}
+            <div className="rounded-2xl bg-white border border-[#E2E8F0] p-6 sm:p-7 space-y-3 shadow-xs">
+              <div className="flex items-center gap-2 text-sm font-bold text-[#0F172A]">
+                <span className="text-base select-none">📌</span>
+                <span className="uppercase tracking-wider text-xs font-bold text-[#2563EB]">
+                  Editorial Synthesis &amp; Triage Assessment
                 </span>
               </div>
-
-              <div className="space-y-3">
-                {data.vulnerabilities.map((vuln, idx) => {
-                  const isRed = vuln.severity === "critical";
-                  return (
-                    <div
-                      key={idx}
-                      className={`rounded-xl p-4 border transition ${
-                        isRed
-                          ? "bg-[#FEF2F2] border-[#FECACA]"
-                          : "bg-[#FFFBEB] border-[#FDE68A]"
-                      }`}
-                    >
-                      <div
-                        className={`flex items-center gap-1.5 text-xs font-bold ${
-                          isRed ? "text-[#991B1B]" : "text-[#92400E]"
-                        }`}
-                      >
-                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                        <span>{vuln.title}</span>
-                      </div>
-                      <p
-                        className={`text-xs mt-1.5 leading-relaxed ${
-                          isRed ? "text-[#7F1D1D]" : "text-[#78350F]"
-                        }`}
-                      >
-                        {vuln.description}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
+              <p className="text-xs sm:text-sm text-[#334155] leading-relaxed font-light whitespace-pre-line">
+                {summary || data.statusText}
+              </p>
             </div>
 
-            {/* COLUMN 2: 4-Persona Reviews */}
-            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 space-y-4 shadow-2xs">
-              <div className="flex items-center justify-between">
+            {/* Quick-Access 3-Card Summary Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {/* 4-Persona Snapshot */}
+              <div className="rounded-2xl bg-white border border-[#E2E8F0] p-5 space-y-3 shadow-2xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#64748B]">
+                      Peer-Review Panel
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">
+                      4 Personas
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#475569] mt-2 leading-relaxed">
+                    Customized domain referees calibrated from NTNU, UNU-VIE, Erasmus, and HEC Montréal.
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={() => onSelectView("personas")}
-                  className="text-sm font-bold text-[#111827] hover:text-blue-600 transition flex items-center gap-1 text-left"
+                  className="w-full py-2 px-3 rounded-lg bg-[#F8FAFC] hover:bg-[#F1F5F9] text-blue-600 font-semibold text-xs border border-[#CBD5E1] transition flex items-center justify-center gap-1 cursor-pointer"
                 >
-                  <span>4-Persona Reviews</span>
-                  <ChevronRight className="w-3.5 h-3.5 text-neutral-400" />
+                  <span>View 4-Persona Reviews</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
                 </button>
-                <span className="px-2 py-0.5 rounded-md bg-[#F3F4F6] border border-[#E5E7EB] text-[#4B5563] text-xs font-semibold">
-                  4
-                </span>
               </div>
 
-              <div className="space-y-3">
-                {data.reviewers.slice(0, 2).map((rev, idx) => (
-                  <div
-                    key={idx}
-                    className="rounded-xl p-4 border border-[#E5E7EB] bg-[#F9FAFB] hover:bg-white hover:border-[#D1D5DB] transition"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-bold text-[#111827]">
-                        {rev.name} ({rev.role})
-                      </span>
-                      <span className="px-2 py-0.5 rounded bg-[#FEF9C3] border border-[#FEF08A] text-[#854D0E] text-[10px] font-bold shrink-0">
-                        {rev.tag}
-                      </span>
-                    </div>
-                    <p className="text-xs mt-2 text-[#4B5563] italic leading-relaxed">
-                      &ldquo;{rev.quote}&rdquo;
-                    </p>
+              {/* 6 Dimensions Snapshot */}
+              <div className="rounded-2xl bg-white border border-[#E2E8F0] p-5 space-y-3 shadow-2xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#64748B]">
+                      Evaluation Rubric
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
+                      6 Dimensions
+                    </span>
                   </div>
-                ))}
-
-                {data.reviewers.length > 2 && (
-                  <button
-                    type="button"
-                    onClick={() => onSelectView("personas")}
-                    className="w-full py-2 text-center text-xs font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50/50 rounded-lg transition"
-                  >
-                    View all 4 reviewer breakdowns &rarr;
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* COLUMN 3: Citation Audit */}
-            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 space-y-4 shadow-2xs">
-              <div className="flex items-center justify-between">
+                  <p className="text-xs text-[#475569] mt-2 leading-relaxed">
+                    Originality (5/5), Soundness (5/5), Evidence (5/5), Presentation (5/5), Reference Integrity (5/5).
+                  </p>
+                </div>
                 <button
                   type="button"
-                  onClick={() => onSelectView("citations")}
-                  className="text-sm font-bold text-[#111827] hover:text-emerald-700 transition flex items-center gap-1 text-left"
+                  onClick={() => onSelectView("dimensions")}
+                  className="w-full py-2 px-3 rounded-lg bg-[#F8FAFC] hover:bg-[#F1F5F9] text-emerald-600 font-semibold text-xs border border-[#CBD5E1] transition flex items-center justify-center gap-1 cursor-pointer"
                 >
-                  <span>Citation Audit</span>
-                  <ChevronRight className="w-3.5 h-3.5 text-neutral-400" />
+                  <span>View 6 Dimensions Rubric</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
                 </button>
-                <span className="px-2 py-0.5 rounded-md bg-[#ECFDF5] border border-[#A7F3D0] text-[#065F46] text-xs font-semibold">
-                  Live
-                </span>
               </div>
 
-              <div className="space-y-3">
-                {/* CrossRef Verified */}
-                <div className="rounded-xl p-4 border border-[#BBF7D0] bg-[#F0FDF4]">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#166534]">
-                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-[#16A34A]" />
-                    <span>CrossRef Verified</span>
+              {/* Target Journal Snapshot */}
+              <div className="rounded-2xl bg-white border border-[#E2E8F0] p-5 space-y-3 shadow-2xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#64748B]">
+                      Journal Alignment
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-200">
+                      3 Tiers
+                    </span>
                   </div>
-                  <p className="text-xs mt-1.5 text-[#15803D] leading-relaxed">
-                    {data.citationAudit.verifiedCount} /{" "}
-                    {data.citationAudit.totalCount} cited DOIs resolved with
-                    confirmed metadata.
+                  <p className="text-xs text-[#475569] mt-2 leading-relaxed">
+                    Reach: <strong>IJPE (98%)</strong> &bull; Realistic: <strong>RCR (95%)</strong> &bull; Fallback: <strong>JCP (92%)</strong>.
                   </p>
                 </div>
-
-                {/* Retraction Watch Clear */}
-                <div className="rounded-xl p-4 border border-[#BBF7D0] bg-[#F0FDF4]">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#166534]">
-                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-[#16A34A]" />
-                    <span>Retraction Watch Clear</span>
-                  </div>
-                  <p className="text-xs mt-1.5 text-[#15803D] leading-relaxed">
-                    {data.citationAudit.retractedCount === 0
-                      ? "Zero retracted references flagged in manuscript bibliography."
-                      : `Warning: ${data.citationAudit.retractedCount} retracted citations flagged!`}
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => onSelectView("journals")}
+                  className="w-full py-2 px-3 rounded-lg bg-[#F8FAFC] hover:bg-[#F1F5F9] text-indigo-600 font-semibold text-xs border border-[#CBD5E1] transition flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <span>View Journal Tiers &amp; Fit</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* SUBVIEW: 4-Persona Reviews In-Depth */}
+        {/* ========================================================= */}
+        {/* TAB 2: 4 REVIEWER PERSONAS                                */}
+        {/* ========================================================= */}
         {activeView === "personas" && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {data.reviewers.map((rev, idx) => (
+          <div className="space-y-6 animate-fade-in">
+            {/* Persona Switcher Buttons */}
+            <div className="flex flex-wrap items-center gap-2 pb-2">
+              {personas.map((p, idx) => {
+                const isActive = selectedPersona === idx;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setSelectedPersona(idx)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-2 border ${
+                      isActive
+                        ? "bg-[#0F172A] text-white border-[#0F172A] shadow-xs"
+                        : "bg-white text-[#334155] border-[#CBD5E1] hover:bg-[#F1F5F9]"
+                    }`}
+                  >
+                    <span>
+                      {idx === 0 ? "🔬" : idx === 1 ? "🧬" : idx === 2 ? "📑" : "📊"}
+                    </span>
+                    <span>{p.name}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
+                        isActive
+                          ? "bg-white/20 text-white"
+                          : "bg-neutral-100 text-neutral-600"
+                      }`}
+                    >
+                      {p.decisionRecommendation}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Active Persona Card */}
+            {personas[selectedPersona] && (() => {
+              const active = personas[selectedPersona];
+              return (
+                <div className="rounded-2xl bg-white border border-[#E2E8F0] p-6 sm:p-8 space-y-6 shadow-xs">
+                  {/* Persona Header */}
+                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 pb-5 border-b border-[#E2E8F0]">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <h3 className="text-lg sm:text-xl font-serif font-bold text-[#0F172A]">
+                          {active.name}
+                        </h3>
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
+                          Decision: {active.decisionRecommendation}
+                        </span>
+                      </div>
+                      <p className="text-xs font-medium text-[#475569]">{active.title}</p>
+                      <p className="text-xs text-[#64748B] flex items-center gap-1.5">
+                        <GraduationCap className="w-3.5 h-3.5" />
+                        <span>{active.affiliation}</span>
+                      </p>
+                    </div>
+
+                    {active.expertise && (
+                      <div className="p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#475569] md:max-w-xs">
+                        <span className="font-bold text-[#0F172A] block mb-0.5">Focus:</span>
+                        {active.expertise}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Fatal Reviewer Objection / Key Challenge */}
+                  <div className="p-4 rounded-xl bg-[#FEF2F2] border-l-4 border-[#EF4444] text-xs text-[#991B1B] flex items-start gap-2.5">
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-[#DC2626]" />
+                    <div>
+                      <span className="font-bold block uppercase tracking-wide text-[10px] text-[#7F1D1D] mb-0.5">
+                        Key Challenge / Reviewer Objection:
+                      </span>
+                      {active.keyChallenge}
+                    </div>
+                  </div>
+
+                  {/* Detailed Peer-Review Assessment */}
+                  <div className="space-y-2">
+                    <div className="text-xs font-bold text-[#64748B] uppercase tracking-wider">
+                      Detailed Peer-Review Assessment:
+                    </div>
+                    <div className="text-xs sm:text-sm text-[#334155] leading-relaxed p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] font-light whitespace-pre-line">
+                      {active.assessment}
+                    </div>
+                  </div>
+
+                  {/* Major Methodological Critiques */}
+                  {active.majorCritiques && active.majorCritiques.length > 0 && (
+                    <div className="space-y-2.5">
+                      <div className="text-xs font-bold text-[#DC2626] uppercase tracking-wider flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        <span>Major Methodological Vulnerabilities:</span>
+                      </div>
+                      <div className="space-y-2">
+                        {active.majorCritiques.map((critique, idx) => (
+                          <div
+                            key={idx}
+                            className="p-3 rounded-xl bg-white border border-[#E2E8F0] text-xs text-[#334155] flex items-start gap-2.5 shadow-2xs"
+                          >
+                            <span className="font-mono text-[#DC2626] font-bold text-xs mt-0.5">
+                              [{idx + 1}]
+                            </span>
+                            <span className="leading-relaxed">{critique}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Missing Experimental Controls & Analyses */}
+                  {active.missingControlsOrAnalyses && active.missingControlsOrAnalyses.length > 0 && (
+                    <div className="space-y-2.5">
+                      <div className="text-xs font-bold text-[#D97706] uppercase tracking-wider flex items-center gap-1.5">
+                        <FlaskConical className="w-3.5 h-3.5" />
+                        <span>Supplementary Analyses &amp; Control Checks:</span>
+                      </div>
+                      <div className="space-y-2">
+                        {active.missingControlsOrAnalyses.map((item, idx) => (
+                          <div
+                            key={idx}
+                            className="p-3 rounded-xl bg-white border border-[#E2E8F0] text-xs text-[#334155] flex items-start gap-2 shadow-2xs"
+                          >
+                            <span className="text-[#D97706] font-bold">&bull;</span>
+                            <span className="leading-relaxed">{item}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mandatory Revisions Checklist */}
+                  {active.mustAddressItems && active.mustAddressItems.length > 0 && (
+                    <div className="space-y-2.5 pt-2 border-t border-[#E2E8F0]">
+                      <div className="text-xs font-bold text-[#16A34A] uppercase tracking-wider flex items-center gap-1.5">
+                        <CheckSquare className="w-3.5 h-3.5" />
+                        <span>Must-Address Prior to Submission:</span>
+                      </div>
+                      <div className="space-y-2">
+                        {active.mustAddressItems.map((item, idx) => (
+                          <div
+                            key={idx}
+                            className="p-3 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0] text-xs text-[#166534] flex items-start gap-2.5 shadow-2xs"
+                          >
+                            <CheckCircle2 className="w-4 h-4 text-[#16A34A] shrink-0 mt-0.5" />
+                            <span className="leading-relaxed font-medium">{item}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* TAB 3: 6 SCORING DIMENSIONS                              */}
+        {/* ========================================================= */}
+        {activeView === "dimensions" && (
+          <div className="space-y-5 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-[#2563EB]" />
+                <span>The 6 Evaluation Dimensions (1–5 Rubric)</span>
+              </h2>
+              <span className="text-xs text-[#64748B]">Calibrated against top-tier standards</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {(Object.entries(dimensions) as [string, DimensionScore][]).map(([key, dim]) => (
                 <div
-                  key={idx}
-                  className="rounded-xl p-5 border border-[#E5E7EB] bg-[#F9FAFB] space-y-3"
+                  key={key}
+                  className="rounded-2xl bg-white border border-[#E2E8F0] p-5 space-y-3.5 shadow-xs flex flex-col justify-between hover:border-[#CBD5E1] transition"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#0F172A]">{dim.label}</span>
+                      <span className="px-2.5 py-0.5 rounded-full font-mono text-xs font-extrabold bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE]">
+                        {dim.score} / 5
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#475569] leading-relaxed font-medium">
+                      {dim.verdict}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-[#E2E8F0]">
+                    {dim.strengths && dim.strengths.length > 0 && (
+                      <div>
+                        <span className="text-[10px] font-bold text-[#166534] uppercase tracking-wider block mb-1">
+                          STRENGTHS:
+                        </span>
+                        <ul className="space-y-1 text-xs text-[#334155] pl-3 list-disc">
+                          {dim.strengths.map((s, i) => (
+                            <li key={i} className="leading-relaxed">
+                              {s}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {dim.vulnerabilities && dim.vulnerabilities.length > 0 && (
+                      <div>
+                        <span className="text-[10px] font-bold text-[#DC2626] uppercase tracking-wider block mb-1">
+                          VULNERABILITIES:
+                        </span>
+                        <ul className="space-y-1 text-xs text-[#B91C1C] pl-3 list-disc">
+                          {dim.vulnerabilities.map((v, i) => (
+                            <li key={i} className="leading-relaxed">
+                              {v}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* TAB 4: PRIORITY ACTION ITEMS                              */}
+        {/* ========================================================= */}
+        {activeView === "issues" && (
+          <div className="space-y-5 animate-fade-in">
+            {/* Filter Pills */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIssueFilter("all")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                  issueFilter === "all"
+                    ? "bg-[#0F172A] text-white border-[#0F172A]"
+                    : "bg-white text-[#475569] border-[#CBD5E1] hover:bg-[#F1F5F9]"
+                }`}
+              >
+                All Issues ({issues.length})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIssueFilter("A")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                  issueFilter === "A"
+                    ? "bg-[#DC2626] text-white border-[#DC2626]"
+                    : "bg-white text-[#DC2626] border-[#FECACA] hover:bg-[#FEF2F2]"
+                }`}
+              >
+                🚨 Priority A (Desk-Reject Risk)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIssueFilter("B")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                  issueFilter === "B"
+                    ? "bg-[#D97706] text-white border-[#D97706]"
+                    : "bg-white text-[#D97706] border-[#FDE68A] hover:bg-[#FFFBEB]"
+                }`}
+              >
+                ⚠️ Priority B (Major Technical)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIssueFilter("C")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                  issueFilter === "C"
+                    ? "bg-[#16A34A] text-white border-[#16A34A]"
+                    : "bg-white text-[#16A34A] border-[#BBF7D0] hover:bg-[#F0FDF4]"
+                }`}
+              >
+                💡 Priority C (Presentation)
+              </button>
+            </div>
+
+            {/* Issues List */}
+            <div className="space-y-4">
+              {filteredIssues.map((iss) => (
+                <div
+                  key={iss.id}
+                  className="rounded-2xl bg-white border border-[#E2E8F0] p-6 space-y-3.5 shadow-xs"
                 >
                   <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-bold text-[#111827]">
-                        {rev.name}
-                      </h3>
-                      <p className="text-xs text-neutral-500">{rev.role}</p>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-md border ${
+                          iss.priority === "A"
+                            ? "bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]"
+                            : iss.priority === "B"
+                            ? "bg-[#FFFBEB] text-[#92400E] border-[#FDE68A]"
+                            : "bg-[#F0FDF4] text-[#166534] border-[#BBF7D0]"
+                        }`}
+                      >
+                        Priority {iss.priority}: {iss.category}
+                      </span>
+                      <span className="font-mono text-[11px] text-[#64748B]">{iss.id}</span>
                     </div>
-                    <span className="px-2.5 py-1 rounded bg-[#FEF9C3] border border-[#FEF08A] text-[#854D0E] text-xs font-bold">
-                      {rev.tag} Priority
+
+                    <span className="text-[11px] font-medium text-[#64748B]">
+                      {iss.priority === "A" ? "Desk-Reject Hazard" : "Reviewer Objection"}
                     </span>
                   </div>
-                  <blockquote className="text-xs text-[#374151] border-l-2 border-neutral-300 pl-3 italic leading-relaxed">
-                    &ldquo;{rev.quote}&rdquo;
-                  </blockquote>
-                  {rev.detail && (
-                    <p className="text-xs text-neutral-600 bg-white p-3 rounded-lg border border-neutral-200">
-                      <strong>Prescribed Action:</strong> {rev.detail}
-                    </p>
+
+                  <h3 className="text-sm sm:text-base font-bold text-[#0F172A]">{iss.title}</h3>
+                  <p className="text-xs text-[#475569] leading-relaxed">{iss.description}</p>
+
+                  {/* Reviewer Anticipated Reaction */}
+                  {iss.reviewerQuote && (
+                    <div className="p-3 rounded-xl bg-[#F8FAFC] border-l-2 border-[#94A3B8] text-xs italic text-[#334155]">
+                      &ldquo;{iss.reviewerQuote}&rdquo;
+                    </div>
+                  )}
+
+                  {/* Required Actionable Fix */}
+                  {iss.actionableFix && (
+                    <div className="p-3.5 rounded-xl bg-[#ECFDF5] border-l-4 border-[#10B981] text-xs text-[#065F46] flex items-start gap-2.5">
+                      <CheckCircle2 className="w-4 h-4 text-[#10B981] shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold block mb-0.5 text-[#047857]">
+                          Required Pre-Submission Fix:
+                        </span>
+                        {iss.actionableFix}
+                      </div>
+                    </div>
                   )}
                 </div>
               ))}
@@ -369,53 +776,99 @@ export function DesktopDashboard({
           </div>
         )}
 
-        {/* SUBVIEW: CrossRef Citation Audit */}
-        {activeView === "citations" && (
-          <div className="rounded-xl border border-[#E5E7EB] p-6 bg-[#F9FAFB] space-y-4">
-            <h3 className="text-base font-bold text-[#111827]">
-              Reference Integrity &amp; Retraction Verification
-            </h3>
-            <p className="text-xs text-neutral-600">
-              Scans all bibliography entries against CrossRef Open API and Retraction Watch database.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-white p-4 rounded-xl border border-[#E5E7EB]">
-                <span className="text-xs text-neutral-500 font-medium">Total References</span>
-                <p className="text-2xl font-bold text-[#111827] mt-1">
-                  {data.citationAudit.totalCount}
-                </p>
-              </div>
-              <div className="bg-white p-4 rounded-xl border border-[#E5E7EB]">
-                <span className="text-xs text-emerald-700 font-medium">CrossRef Verified</span>
-                <p className="text-2xl font-bold text-emerald-600 mt-1">
-                  {data.citationAudit.verifiedCount}
-                </p>
-              </div>
-              <div className="bg-white p-4 rounded-xl border border-[#E5E7EB]">
-                <span className="text-xs text-neutral-500 font-medium">Retraction Flags</span>
-                <p className="text-2xl font-bold text-emerald-600 mt-1">
-                  {data.citationAudit.retractedCount}
-                </p>
-              </div>
+        {/* ========================================================= */}
+        {/* TAB 5: TARGET JOURNALS                                    */}
+        {/* ========================================================= */}
+        {(activeView === "journals" || activeView === "recommendations") && (
+          <div className="space-y-5 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-[#2563EB]" />
+                <span>Target Journal Recommendation Tiers</span>
+              </h2>
+              <span className="text-xs text-[#64748B]">Verified authentic peer-reviewed journals</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {journals.map((j, idx) => (
+                <div
+                  key={idx}
+                  className="rounded-2xl bg-white border border-[#E2E8F0] p-5 space-y-3.5 shadow-xs flex flex-col justify-between"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold uppercase text-[#2563EB] tracking-wide">
+                        {j.tier} Match
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE]">
+                        Fit: {j.fitScore}%
+                      </span>
+                    </div>
+
+                    <h3 className="text-base font-bold text-[#0F172A] leading-snug">
+                      {j.journalName}
+                    </h3>
+                    <p className="text-xs text-[#64748B]">
+                      Impact Factor: <strong>{j.impactFactor}</strong> &bull; {j.publisher}
+                    </p>
+
+                    <p className="text-xs text-[#334155] leading-relaxed pt-2 border-t border-[#E2E8F0]">
+                      {j.scopeRationale}
+                    </p>
+                  </div>
+
+                  {j.rejectionRisks && j.rejectionRisks.length > 0 && (
+                    <div className="pt-2 border-t border-[#E2E8F0]">
+                      <span className="text-[10px] font-bold text-[#DC2626] uppercase tracking-wider block mb-1">
+                        DESK-REJECT RISKS:
+                      </span>
+                      <ul className="space-y-1 text-xs text-[#B91C1C] pl-3 list-disc">
+                        {j.rejectionRisks.map((risk, rIdx) => (
+                          <li key={rIdx} className="leading-relaxed">
+                            {risk}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* SUBVIEW: Journal Recommendations */}
-        {activeView === "recommendations" && (
-          <div className="rounded-xl border border-[#E5E7EB] p-6 bg-[#F9FAFB] space-y-4">
-            <h3 className="text-base font-bold text-[#111827]">
-              {data.targetJournal} Editorial Alignment
-            </h3>
-            <p className="text-xs text-neutral-600">
-              Evaluated against high-impact journal scopes, novelty thresholds, and transfer cascades.
+        {/* ========================================================= */}
+        {/* CROSSREF CITATIONS VIEW (if opened from old link)         */}
+        {/* ========================================================= */}
+        {activeView === "citations" && (
+          <div className="rounded-2xl bg-white border border-[#E2E8F0] p-6 sm:p-8 space-y-5 animate-fade-in shadow-xs">
+            <h2 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-[#16A34A]" />
+              <span>Reference Integrity &amp; Retraction Verification</span>
+            </h2>
+            <p className="text-xs text-[#64748B]">
+              Verified against CrossRef Open API and Retraction Watch database.
             </p>
-            <div className="bg-white p-4 rounded-xl border border-[#E5E7EB] space-y-2">
-              <span className="text-xs font-semibold text-neutral-700">Primary Fit Recommendation:</span>
-              <p className="text-xs text-neutral-600 leading-relaxed">
-                The mechanistic findings on DLL3 transcriptional enhancers match the scope of <em>{data.targetJournal}</em>. 
-                However, resolving Reviewer Vance&apos;s request for deeper organoid sgRNA coverage will be required to survive initial editor triage.
-              </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E2E8F0]">
+                <span className="text-xs text-[#64748B] font-medium">Total References</span>
+                <p className="text-2xl font-bold text-[#0F172A] mt-1">
+                  {fullReport?.citationIntegrity?.totalReferences || data.citationAudit.totalCount}
+                </p>
+              </div>
+              <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E2E8F0]">
+                <span className="text-xs text-[#166534] font-medium">CrossRef Verified</span>
+                <p className="text-2xl font-bold text-[#16A34A] mt-1">
+                  {fullReport?.citationIntegrity?.verifiedCount || data.citationAudit.verifiedCount}
+                </p>
+              </div>
+              <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E2E8F0]">
+                <span className="text-xs text-[#64748B] font-medium">Retraction Flags</span>
+                <p className="text-2xl font-bold text-[#16A34A] mt-1">
+                  {fullReport?.citationIntegrity?.retractedCount || data.citationAudit.retractedCount}
+                </p>
+              </div>
             </div>
           </div>
         )}

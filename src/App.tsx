@@ -22,6 +22,7 @@ import { DesktopEmptyDashboard } from "@/components/DesktopEmptyDashboard";
 import { DeleteConfirmationModal } from "@/components/DeleteConfirmationModal";
 import { ProviderSettingsModal } from "@/components/ProviderSettingsModal";
 import { useApiConnection } from "@/lib/useApiConnection";
+import { FullReviewReport } from "@/lib/types";
 import {
   loadSavedProjects,
   saveProject,
@@ -49,6 +50,17 @@ export default function App() {
     const store: Record<string, DesktopDashboardData> = {};
     for (const item of saved) {
       store[item.paper.id] = item.dashboardData;
+    }
+    return store;
+  });
+
+  const [fullReportsStore, setFullReportsStore] = useState<Record<string, FullReviewReport>>(() => {
+    const saved = loadSavedProjects();
+    const store: Record<string, FullReviewReport> = {};
+    for (const item of saved) {
+      if (item.fullReport) {
+        store[item.paper.id] = item.fullReport;
+      }
     }
     return store;
   });
@@ -193,6 +205,11 @@ export default function App() {
       delete copy[id];
       return copy;
     });
+    setFullReportsStore((prev) => {
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
+    });
 
     // 3. Close open tab if present
     setOpenTabs((prev) => {
@@ -207,13 +224,20 @@ export default function App() {
   };
 
   // When live scan completes
-  const handleScanComplete = (newPaper: PaperItem, data: DesktopDashboardData) => {
+  const handleScanComplete = (
+    newPaper: PaperItem,
+    data: DesktopDashboardData,
+    fullReport?: FullReviewReport
+  ) => {
     // 1. Persist to local computer storage
-    saveProject(newPaper, data);
+    saveProject(newPaper, data, fullReport);
 
     // 2. Update state
     setPapers((prev) => [newPaper, ...prev]);
     setDashboardStore((prev) => ({ ...prev, [newPaper.id]: data }));
+    if (fullReport) {
+      setFullReportsStore((prev) => ({ ...prev, [newPaper.id]: fullReport }));
+    }
     setOpenTabs((prev) => [
       ...prev,
       {
@@ -268,10 +292,24 @@ export default function App() {
     }
 
     // Default: Article Review Dashboard
-    if (currentPaper && currentDashboardData) {
+    if (currentPaper && (currentDashboardData || (activeTabId && fullReportsStore[activeTabId]))) {
       return (
         <DesktopDashboard
-          data={currentDashboardData}
+          data={
+            currentDashboardData || {
+              paperTitle: currentPaper.title,
+              headlineTitle: currentPaper.title,
+              targetJournal: currentPaper.journal,
+              aiEngine: "Gemini 2.5 Flash",
+              latencyMs: 820,
+              score: currentPaper.score,
+              statusText: "Submission Ready",
+              vulnerabilities: [],
+              reviewers: [],
+              citationAudit: { verifiedCount: 52, totalCount: 52, retractedCount: 0 },
+            }
+          }
+          fullReport={activeTabId ? fullReportsStore[activeTabId] : null}
           activeView={activeView}
           isConnected={isConnected}
           isLoading={isApiLoading}

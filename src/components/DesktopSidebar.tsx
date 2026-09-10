@@ -16,6 +16,8 @@ import {
   Compass,
   ChevronDown,
   ChevronRight,
+  BarChart3,
+  AlertCircle,
   PanelLeft,
   Trash2,
 } from "lucide-react";
@@ -23,6 +25,9 @@ import {
 export type DesktopActiveView =
   | "overview"
   | "personas"
+  | "dimensions"
+  | "issues"
+  | "journals"
   | "citations"
   | "recommendations";
 
@@ -567,9 +572,9 @@ export function DesktopSidebar({
                       )}
                     </div>
 
-                  {/* Sub-views for active article */}
+                  {/* 4 Sub-tabs for active article */}
                   {isSelected && (
-                    <div className="pl-4 space-y-0.5">
+                    <div className="pl-4 space-y-0.5 pt-0.5">
                       <button
                         type="button"
                         onClick={() => onSelectView("personas")}
@@ -585,30 +590,41 @@ export function DesktopSidebar({
 
                       <button
                         type="button"
-                        onClick={() => onSelectView("citations")}
+                        onClick={() => onSelectView("dimensions")}
                         className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition text-left cursor-pointer ${
-                          activeView === "citations"
+                          activeView === "dimensions"
                             ? "bg-[#E5E7EB] font-semibold text-[#111827]"
                             : "text-[#4B5563] hover:bg-[#E5E7EB]/40 hover:text-[#111827]"
                         }`}
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span className="truncate">CrossRef Audit</span>
+                        <BarChart3 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span className="truncate">6 Scoring Dimensions</span>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => onSelectView("recommendations")}
+                        onClick={() => onSelectView("issues")}
                         className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition text-left cursor-pointer ${
-                          activeView === "recommendations"
+                          activeView === "issues"
                             ? "bg-[#E5E7EB] font-semibold text-[#111827]"
                             : "text-[#4B5563] hover:bg-[#E5E7EB]/40 hover:text-[#111827]"
                         }`}
                       >
-                        <BookOpen className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
-                        <span className="truncate">
-                          {paper.journal.split(" ")[0]} Recommendations
-                        </span>
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span className="truncate">Priority Action Items</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => onSelectView("journals")}
+                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition text-left cursor-pointer ${
+                          activeView === "journals" || activeView === "recommendations"
+                            ? "bg-[#E5E7EB] font-semibold text-[#111827]"
+                            : "text-[#4B5563] hover:bg-[#E5E7EB]/40 hover:text-[#111827]"
+                        }`}
+                      >
+                        <BookOpen className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                        <span className="truncate">Target Journals</span>
                       </button>
                     </div>
                   )}
