@@ -18,157 +18,57 @@ import { DesktopCitationClaimView } from "@/components/services/DesktopCitationC
 import { DesktopPrismaView } from "@/components/services/DesktopPrismaView";
 import { DesktopCoverLetterView } from "@/components/services/DesktopCoverLetterView";
 import { DesktopResponseBuilderView } from "@/components/services/DesktopResponseBuilderView";
+import { DesktopEmptyDashboard } from "@/components/DesktopEmptyDashboard";
+import { DeleteConfirmationModal } from "@/components/DeleteConfirmationModal";
 import { ProviderSettingsModal } from "@/components/ProviderSettingsModal";
 import { useApiConnection } from "@/lib/useApiConnection";
-import { FileText, Plus } from "lucide-react";
-
-// Initial reference papers
-const INITIAL_PAPERS: PaperItem[] = [
-  {
-    id: "dll3-sclc",
-    title: "DLL3 SCLC Nature Pre-Submission",
-    shortName: "DLL3 Activation Paper",
-    journal: "Nature Communications",
-    score: 78,
-  },
-  {
-    id: "crispr-screen",
-    title: "CRISPR-Cas9 Screens in Organoid Models",
-    shortName: "CRISPR Screen Paper",
-    journal: "Cancer Discovery",
-    score: 84,
-  },
-];
-
-const INITIAL_DASHBOARD_DATA: Record<string, DesktopDashboardData> = {
-  "dll3-sclc": {
-    paperTitle: "DLL3 SCLC Nature Pre-Submission",
-    headlineTitle: "Nature Communications Pre-Submission",
-    targetJournal: "Nature Communications",
-    aiEngine: "GEMINI 2.5 FLASH",
-    latencyMs: 142,
-    score: 78,
-    statusText: "Revision Prioritized",
-    vulnerabilities: [
-      {
-        type: "overclaim",
-        title: "Causal Overclaim",
-        description:
-          "Abstract claims POU2F1 proves DLL3 expression without rescue control.",
-        severity: "critical",
-      },
-      {
-        type: "sample_size",
-        title: "Sample Size Power",
-        description:
-          "Cohort n=8 lacks a priori statistical power calculation.",
-        severity: "warning",
-      },
-    ],
-    reviewers: [
-      {
-        name: "Dr. Vance",
-        role: "Methods",
-        tag: "Major",
-        quote: "sgRNA library coverage depth must be confirmed in organoids.",
-        detail:
-          "Perform deep NGS re-sequencing of the sgRNA plasmid library representation across all 8 replicates.",
-      },
-      {
-        name: "Dr. Sorkin",
-        role: "Stats",
-        tag: "Major",
-        quote:
-          "Parametric t-test used on small sample size without normality test.",
-        detail:
-          "Switch to non-parametric Wilcoxon rank-sum or Mann-Whitney U test given n=8.",
-      },
-      {
-        name: "Dr. Alistair",
-        role: "Big-Picture Skeptic",
-        tag: "Minor",
-        quote:
-          "Translational relevance to clinical small-cell lung cancer requires more emphasis.",
-        detail:
-          "Add correlation plots showing POU2F1 expression in TCGA or primary SCLC cohorts.",
-      },
-      {
-        name: "Dr. Thorne",
-        role: "Desk Rejector",
-        tag: "Critical",
-        quote:
-          "Novelty over recent Cell Reports 2024 paper needs clear demarcation in Introduction.",
-        detail:
-          "Explicitly distinguish your enhancer binding assay from the published promoter study.",
-      },
-    ],
-    citationAudit: {
-      verifiedCount: 15,
-      totalCount: 15,
-      retractedCount: 0,
-      notes: "All 15 DOIs resolved via CrossRef Open API.",
-    },
-  },
-  "crispr-screen": {
-    paperTitle: "CRISPR-Cas9 Screens in Organoid Models",
-    headlineTitle: "Cancer Discovery Pre-Submission",
-    targetJournal: "Cancer Discovery",
-    aiEngine: "GEMINI 2.5 FLASH",
-    latencyMs: 135,
-    score: 84,
-    statusText: "High Acceptance Probability",
-    vulnerabilities: [
-      {
-        type: "control",
-        title: "Off-Target Validation",
-        description:
-          "Guide RNA specificity requires whole-genome sequencing confirmation in primary organoids.",
-        severity: "warning",
-      },
-    ],
-    reviewers: [
-      {
-        name: "Dr. Vance",
-        role: "Methods",
-        tag: "Minor",
-        quote:
-          "Solid screen depth. Recommend reporting biological replicates variance in Supplementary Table 2.",
-      },
-    ],
-    citationAudit: {
-      verifiedCount: 22,
-      totalCount: 22,
-      retractedCount: 0,
-      notes: "All DOIs verified via CrossRef.",
-    },
-  },
-};
+import {
+  loadSavedProjects,
+  saveProject,
+  deleteProject,
+  loadSession,
+  saveSession,
+  purgeLegacyDummyData,
+} from "@/lib/projectStorage";
 
 export default function App() {
-  const [papers, setPapers] = useState<PaperItem[]>(INITIAL_PAPERS);
-  const [dashboardStore, setDashboardStore] = useState<Record<string, DesktopDashboardData>>(
-    INITIAL_DASHBOARD_DATA
-  );
+  // Purge legacy mock data on startup
+  useEffect(() => {
+    purgeLegacyDummyData();
+  }, []);
 
-  // Open tabs list
-  const [openTabs, setOpenTabs] = useState<TabItem[]>([
-    {
-      id: "dll3-sclc",
-      type: "article",
-      title: "DLL3 SCLC Nature Pre-Submission",
-      shortName: "DLL3 Activation Paper",
-    },
-    {
-      id: "tool-journal-fit",
-      type: "tool",
-      title: "Journal Fit Predictor",
-      shortName: "Journal Fit",
-      toolType: "journal-fit",
-    },
-  ]);
+  // Saved papers loaded from local storage
+  const [papers, setPapers] = useState<PaperItem[]>(() => {
+    purgeLegacyDummyData();
+    const saved = loadSavedProjects();
+    return saved.map((s) => s.paper);
+  });
 
-  const [activeTabId, setActiveTabId] = useState<string | null>("dll3-sclc");
-  const [activeView, setActiveView] = useState<DesktopActiveView>("overview");
+  const [dashboardStore, setDashboardStore] = useState<Record<string, DesktopDashboardData>>(() => {
+    const saved = loadSavedProjects();
+    const store: Record<string, DesktopDashboardData> = {};
+    for (const item of saved) {
+      store[item.paper.id] = item.dashboardData;
+    }
+    return store;
+  });
+
+  // Open tabs list restored from user's last session
+  const [openTabs, setOpenTabs] = useState<TabItem[]>(() => {
+    const session = loadSession();
+    return session?.openTabs || [];
+  });
+
+  const [activeTabId, setActiveTabId] = useState<string | null>(() => {
+    const session = loadSession();
+    return session?.activeTabId || null;
+  });
+
+  const [activeView, setActiveView] = useState<DesktopActiveView>(() => {
+    const session = loadSession();
+    return session?.activeView || "overview";
+  });
+
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Live API Connection state
@@ -184,12 +84,22 @@ export default function App() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isScanOpen, setIsScanOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [paperToDelete, setPaperToDelete] = useState<PaperItem | null>(null);
+
+  // Automatically persist user session state (open tabs, active tab, active view)
+  useEffect(() => {
+    saveSession({
+      openTabs,
+      activeTabId,
+      activeView,
+      lastActiveAt: new Date().toISOString(),
+    });
+  }, [openTabs, activeTabId, activeView]);
 
   // Current active paper if activeTab is an article
   const currentPaper = papers.find((p) => p.id === activeTabId) || null;
   const currentDashboardData =
-    (activeTabId && dashboardStore[activeTabId]) ||
-    dashboardStore["dll3-sclc"];
+    (activeTabId && dashboardStore[activeTabId]) || null;
 
   // Open an article in a tab
   const handleOpenArticle = (id: string) => {
@@ -268,8 +178,40 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Handle project deletion confirmed by user
+  const handleDeleteProjectConfirm = () => {
+    if (!paperToDelete) return;
+    const id = paperToDelete.id;
+
+    // 1. Delete from local persistent storage on user's computer
+    deleteProject(id);
+
+    // 2. Remove from React state
+    setPapers((prev) => prev.filter((p) => p.id !== id));
+    setDashboardStore((prev) => {
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
+    });
+
+    // 3. Close open tab if present
+    setOpenTabs((prev) => {
+      const remaining = prev.filter((t) => t.id !== id);
+      if (activeTabId === id) {
+        setActiveTabId(remaining.length > 0 ? remaining[remaining.length - 1].id : null);
+      }
+      return remaining;
+    });
+
+    setPaperToDelete(null);
+  };
+
   // When live scan completes
   const handleScanComplete = (newPaper: PaperItem, data: DesktopDashboardData) => {
+    // 1. Persist to local computer storage
+    saveProject(newPaper, data);
+
+    // 2. Update state
     setPapers((prev) => [newPaper, ...prev]);
     setDashboardStore((prev) => ({ ...prev, [newPaper.id]: data }));
     setOpenTabs((prev) => [
@@ -289,36 +231,12 @@ export default function App() {
   const renderActiveTabContent = () => {
     if (!activeTabId) {
       return (
-        <div className="flex-1 flex flex-col items-center justify-center p-8 bg-[#FAFAFA] text-center">
-          <div className="w-16 h-16 rounded-2xl bg-white border border-[#E5E7EB] shadow-xs flex items-center justify-center mb-4 text-neutral-400">
-            <FileText className="w-8 h-8" />
-          </div>
-          <h3 className="text-base font-semibold text-[#111827] mb-1">
-            No Workspace Tab Open
-          </h3>
-          <p className="text-xs text-neutral-500 max-w-sm mb-6">
-            Select an article or research service from the left sidebar, or run a new pre-submission review scan.
-          </p>
-          <div className="flex items-center gap-3">
-            {papers.length > 0 && (
-              <button
-                type="button"
-                onClick={() => handleOpenArticle(papers[0].id)}
-                className="px-3.5 py-2 rounded-lg text-xs font-medium bg-white border border-[#E5E7EB] hover:bg-neutral-50 text-neutral-700 transition cursor-pointer shadow-xs"
-              >
-                Open {papers[0].shortName}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => handleOpenService("ai-review")}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium bg-[#111827] hover:bg-neutral-800 text-white transition cursor-pointer shadow-xs"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>New Pre-Submission Review</span>
-            </button>
-          </div>
-        </div>
+        <DesktopEmptyDashboard
+          papers={papers}
+          onOpenArticle={handleOpenArticle}
+          onOpenService={handleOpenService}
+          onDeletePaper={(paper) => setPaperToDelete(paper)}
+        />
       );
     }
 
@@ -350,7 +268,7 @@ export default function App() {
     }
 
     // Default: Article Review Dashboard
-    if (currentPaper) {
+    if (currentPaper && currentDashboardData) {
       return (
         <DesktopDashboard
           data={currentDashboardData}
@@ -362,11 +280,19 @@ export default function App() {
           onSelectView={(view) => setActiveView(view)}
           onNewScan={() => handleOpenService("ai-review")}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          onDeleteArticle={() => setPaperToDelete(currentPaper)}
         />
       );
     }
 
-    return null;
+    return (
+      <DesktopEmptyDashboard
+        papers={papers}
+        onOpenArticle={handleOpenArticle}
+        onOpenService={handleOpenService}
+        onDeletePaper={(paper) => setPaperToDelete(paper)}
+      />
+    );
   };
 
   return (
@@ -405,6 +331,7 @@ export default function App() {
           onNewReview={() => handleOpenService("ai-review")}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onSelectService={handleOpenService}
+          onDeletePaper={(paper) => setPaperToDelete(paper)}
         />
 
         {/* View Content */}
@@ -415,6 +342,7 @@ export default function App() {
       <DesktopSearchModal
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
+        papers={papers}
         onSelectItem={(id) => {
           if (papers.some((p) => p.id === id)) {
             handleOpenArticle(id);
@@ -429,6 +357,14 @@ export default function App() {
         isOpen={isScanOpen}
         onClose={() => setIsScanOpen(false)}
         onComplete={handleScanComplete}
+      />
+
+      {/* Project Deletion Confirmation Modal */}
+      <DeleteConfirmationModal
+        paper={paperToDelete}
+        isOpen={Boolean(paperToDelete)}
+        onClose={() => setPaperToDelete(null)}
+        onConfirm={handleDeleteProjectConfirm}
       />
 
       <ProviderSettingsModal

@@ -12,17 +12,20 @@ import {
 } from "lucide-react";
 import JournalCombobox from "@/components/JournalCombobox";
 import { pickManuscriptFileDesktop, isDesktopApp } from "@/lib/desktop";
+import { PaperItem } from "./DesktopSidebar";
 
 interface DesktopSearchModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectItem: (id: string) => void;
+  papers?: PaperItem[];
 }
 
 export function DesktopSearchModal({
   isOpen,
   onClose,
   onSelectItem,
+  papers = [],
 }: DesktopSearchModalProps) {
   const [query, setQuery] = useState("");
 
@@ -41,15 +44,24 @@ export function DesktopSearchModal({
 
   if (!isOpen) return null;
 
-  const items = [
-    { id: "paper-1", title: "DLL3 SCLC Nature Pre-Submission", cat: "Manuscript" },
-    { id: "vuln-1", title: "Causal Overclaim (POU2F1 expression)", cat: "Vulnerability" },
-    { id: "vuln-2", title: "Sample Size Power (Cohort n=8)", cat: "Vulnerability" },
-    { id: "rev-1", title: "Dr. Vance (Methods critique)", cat: "Reviewer Persona" },
-    { id: "rev-2", title: "Dr. Sorkin (Statistical critique)", cat: "Reviewer Persona" },
-    { id: "tool-fit", title: "Journal Fit Predictor", cat: "Tool" },
-    { id: "tool-cover", title: "Cover Letter Generator", cat: "Tool" },
-  ].filter((item) =>
+  const staticServices = [
+    { id: "tool-ai-review", title: "Pre-Submission AI Review (4-Persona Diagnostic)", cat: "Service" },
+    { id: "tool-journal-fit", title: "Journal Fit Predictor (1,300+ Catalogs)", cat: "Service" },
+    { id: "tool-reference-checker", title: "Reference Integrity Audit (CrossRef & Retractions)", cat: "Service" },
+    { id: "tool-citation-claim", title: "Citation Claim Validator", cat: "Service" },
+    { id: "tool-prisma", title: "PRISMA 2020 Flow Diagram Generator", cat: "Service" },
+    { id: "tool-cover-letter", title: "Journal Cover Letter Generator", cat: "Service" },
+    { id: "tool-response-builder", title: "Review Response Rebuttal Matrix", cat: "Service" },
+  ];
+
+  const paperItems = papers.map((p) => ({
+    id: p.id,
+    title: p.title || p.shortName,
+    subtitle: `${p.journal} • Score: ${p.score}%`,
+    cat: "Manuscript",
+  }));
+
+  const items = [...paperItems, ...staticServices].filter((item) =>
     item.title.toLowerCase().includes(query.toLowerCase())
   );
 
