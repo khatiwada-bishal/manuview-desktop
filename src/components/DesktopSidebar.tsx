@@ -68,7 +68,10 @@ export function DesktopSidebar({
       description: "4-Persona reviewer simulation",
       icon: Sparkles,
       color: "text-blue-600 bg-blue-50",
-      action: onNewReview,
+      action: () => {
+        if (onSelectService) onSelectService("ai-review");
+        else onNewReview();
+      },
     },
     {
       id: "journal-fit",

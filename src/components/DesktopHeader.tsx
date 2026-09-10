@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   Layers,
   MessageSquare,
+  Sparkles,
 } from "lucide-react";
 
 export interface TabItem {
@@ -61,6 +62,9 @@ export function DesktopHeader({
           return <FileText className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-indigo-600" : "text-neutral-400"}`} />;
         case "response-builder":
           return <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-rose-600" : "text-neutral-400"}`} />;
+        case "ai-review":
+        case "pre-submission":
+          return <Sparkles className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-blue-600" : "text-neutral-400"}`} />;
         default:
           return <FileText className={`w-3.5 h-3.5 shrink-0 ${activeClass}`} />;
       }
