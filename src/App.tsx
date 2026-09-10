@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { DesktopHeader } from "@/components/DesktopHeader";
+import { DesktopHeader, TabItem } from "@/components/DesktopHeader";
 import {
   DesktopSidebar,
   DesktopActiveView,
@@ -9,13 +9,17 @@ import {
   DesktopDashboard,
   DesktopDashboardData,
 } from "@/components/DesktopDashboard";
-import {
-  DesktopSearchModal,
-  DesktopNewReviewModal,
-} from "@/components/DesktopModals";
+import { DesktopSearchModal } from "@/components/DesktopModals";
+import { DesktopScanModal } from "@/components/services/DesktopScanModal";
+import { DesktopJournalFitView } from "@/components/services/DesktopJournalFitView";
+import { DesktopReferenceView } from "@/components/services/DesktopReferenceView";
+import { DesktopCitationClaimView } from "@/components/services/DesktopCitationClaimView";
+import { DesktopPrismaView } from "@/components/services/DesktopPrismaView";
+import { DesktopCoverLetterView } from "@/components/services/DesktopCoverLetterView";
+import { DesktopResponseBuilderView } from "@/components/services/DesktopResponseBuilderView";
 import { ProviderSettingsModal } from "@/components/ProviderSettingsModal";
 import { useApiConnection } from "@/lib/useApiConnection";
-import { FileText, Plus, Sparkles } from "lucide-react";
+import { FileText, Plus } from "lucide-react";
 
 // Initial reference papers
 const INITIAL_PAPERS: PaperItem[] = [
@@ -35,7 +39,7 @@ const INITIAL_PAPERS: PaperItem[] = [
   },
 ];
 
-const SAMPLE_DASHBOARD_DATA: Record<string, DesktopDashboardData> = {
+const INITIAL_DASHBOARD_DATA: Record<string, DesktopDashboardData> = {
   "dll3-sclc": {
     paperTitle: "DLL3 SCLC Nature Pre-Submission",
     headlineTitle: "Nature Communications Pre-Submission",
@@ -141,11 +145,28 @@ const SAMPLE_DASHBOARD_DATA: Record<string, DesktopDashboardData> = {
 
 export default function App() {
   const [papers, setPapers] = useState<PaperItem[]>(INITIAL_PAPERS);
-  const [openTabIds, setOpenTabIds] = useState<string[]>([
-    "dll3-sclc",
-    "crispr-screen",
+  const [dashboardStore, setDashboardStore] = useState<Record<string, DesktopDashboardData>>(
+    INITIAL_DASHBOARD_DATA
+  );
+
+  // Open tabs list
+  const [openTabs, setOpenTabs] = useState<TabItem[]>([
+    {
+      id: "dll3-sclc",
+      type: "article",
+      title: "DLL3 SCLC Nature Pre-Submission",
+      shortName: "DLL3 Activation Paper",
+    },
+    {
+      id: "tool-journal-fit",
+      type: "tool",
+      title: "Journal Fit Predictor",
+      shortName: "Journal Fit",
+      toolType: "journal-fit",
+    },
   ]);
-  const [activePaperId, setActivePaperId] = useState<string | null>("dll3-sclc");
+
+  const [activeTabId, setActiveTabId] = useState<string | null>("dll3-sclc");
   const [activeView, setActiveView] = useState<DesktopActiveView>("overview");
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -160,39 +181,80 @@ export default function App() {
 
   // Modals state
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isNewReviewOpen, setIsNewReviewOpen] = useState(false);
+  const [isScanOpen, setIsScanOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // Derive open tabs
-  const openTabs = openTabIds
-    .map((id) => papers.find((p) => p.id === id))
-    .filter((p): p is PaperItem => Boolean(p));
-
-  // Current active paper
-  const currentPaper = papers.find((p) => p.id === activePaperId) || null;
-  const dashboardData =
-    (activePaperId && SAMPLE_DASHBOARD_DATA[activePaperId]) ||
-    SAMPLE_DASHBOARD_DATA["dll3-sclc"];
+  // Current active paper if activeTab is an article
+  const currentPaper = papers.find((p) => p.id === activeTabId) || null;
+  const currentDashboardData =
+    (activeTabId && dashboardStore[activeTabId]) ||
+    dashboardStore["dll3-sclc"];
 
   // Open an article in a tab
   const handleOpenArticle = (id: string) => {
-    if (!openTabIds.includes(id)) {
-      setOpenTabIds((prev) => [...prev, id]);
+    const paper = papers.find((p) => p.id === id);
+    if (!paper) return;
+
+    if (!openTabs.some((t) => t.id === id)) {
+      setOpenTabs((prev) => [
+        ...prev,
+        {
+          id: paper.id,
+          type: "article",
+          title: paper.title,
+          shortName: paper.shortName,
+        },
+      ]);
     }
-    setActivePaperId(id);
+    setActiveTabId(id);
     setActiveView("overview");
+  };
+
+  // Open a service tool in a tab
+  const handleOpenService = (serviceId: string) => {
+    if (serviceId === "ai-review") {
+      setIsScanOpen(true);
+      return;
+    }
+
+    const toolMap: Record<string, { title: string; shortName: string }> = {
+      "journal-fit": { title: "Journal Fit Predictor", shortName: "Journal Fit" },
+      "reference-checker": { title: "Reference Integrity Audit", shortName: "Reference Audit" },
+      "citation-claim": { title: "Citation Claim Validator", shortName: "Citation Claim" },
+      prisma: { title: "PRISMA Flow Diagram", shortName: "PRISMA 2020" },
+      "cover-letter": { title: "Journal Cover Letter", shortName: "Cover Letter" },
+      "response-builder": { title: "Review Response Builder", shortName: "Response Matrix" },
+    };
+
+    const toolInfo = toolMap[serviceId];
+    if (!toolInfo) return;
+
+    const tabId = `tool-${serviceId}`;
+    if (!openTabs.some((t) => t.id === tabId)) {
+      setOpenTabs((prev) => [
+        ...prev,
+        {
+          id: tabId,
+          type: "tool",
+          title: toolInfo.title,
+          shortName: toolInfo.shortName,
+          toolType: serviceId,
+        },
+      ]);
+    }
+    setActiveTabId(tabId);
   };
 
   // Close a tab
   const handleCloseTab = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const remaining = openTabIds.filter((tabId) => tabId !== id);
-    setOpenTabIds(remaining);
-    if (activePaperId === id) {
+    const remaining = openTabs.filter((t) => t.id !== id);
+    setOpenTabs(remaining);
+    if (activeTabId === id) {
       if (remaining.length > 0) {
-        setActivePaperId(remaining[remaining.length - 1]);
+        setActiveTabId(remaining[remaining.length - 1].id);
       } else {
-        setActivePaperId(null);
+        setActiveTabId(null);
       }
     }
   };
@@ -209,56 +271,97 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const handleCreateReview = (
-    title: string,
-    journal: string,
-    _file: File | null
-  ) => {
-    const newId = `paper-${Date.now()}`;
-    const newPaper: PaperItem = {
-      id: newId,
-      title: `${title} Pre-Submission`,
-      shortName: title.length > 24 ? title.substring(0, 24) + "..." : title,
-      journal,
-      score: 82,
-    };
-
-    SAMPLE_DASHBOARD_DATA[newId] = {
-      paperTitle: newPaper.title,
-      headlineTitle: `${journal} Pre-Submission`,
-      targetJournal: journal,
-      aiEngine: modelName || "AI ENGINE",
-      latencyMs: latencyMs || 140,
-      score: 82,
-      statusText: "Ready for Polish",
-      vulnerabilities: [
-        {
-          type: "generic",
-          title: "Preliminary Findings Limitation",
-          description:
-            "Discussion should explicitly acknowledge prospective validation limitations.",
-          severity: "warning",
-        },
-      ],
-      reviewers: [
-        {
-          name: "Dr. Vance",
-          role: "Methods",
-          tag: "Minor",
-          quote: "Methodology is rigorous; provide protocol details in supplement.",
-        },
-      ],
-      citationAudit: {
-        verifiedCount: 12,
-        totalCount: 12,
-        retractedCount: 0,
-      },
-    };
-
+  // When live scan completes
+  const handleScanComplete = (newPaper: PaperItem, data: DesktopDashboardData) => {
     setPapers((prev) => [newPaper, ...prev]);
-    setOpenTabIds((prev) => [...prev, newId]);
-    setActivePaperId(newId);
+    setDashboardStore((prev) => ({ ...prev, [newPaper.id]: data }));
+    setOpenTabs((prev) => [
+      ...prev,
+      {
+        id: newPaper.id,
+        type: "article",
+        title: newPaper.title,
+        shortName: newPaper.shortName,
+      },
+    ]);
+    setActiveTabId(newPaper.id);
     setActiveView("overview");
+  };
+
+  // Render view corresponding to active tab
+  const renderActiveTabContent = () => {
+    if (!activeTabId) {
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center p-8 bg-[#FAFAFA] text-center">
+          <div className="w-16 h-16 rounded-2xl bg-white border border-[#E5E7EB] shadow-xs flex items-center justify-center mb-4 text-neutral-400">
+            <FileText className="w-8 h-8" />
+          </div>
+          <h3 className="text-base font-semibold text-[#111827] mb-1">
+            No Workspace Tab Open
+          </h3>
+          <p className="text-xs text-neutral-500 max-w-sm mb-6">
+            Select an article or research service from the left sidebar, or run a new pre-submission review scan.
+          </p>
+          <div className="flex items-center gap-3">
+            {papers.length > 0 && (
+              <button
+                type="button"
+                onClick={() => handleOpenArticle(papers[0].id)}
+                className="px-3.5 py-2 rounded-lg text-xs font-medium bg-white border border-[#E5E7EB] hover:bg-neutral-50 text-neutral-700 transition cursor-pointer shadow-xs"
+              >
+                Open {papers[0].shortName}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsScanOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium bg-[#111827] hover:bg-neutral-800 text-white transition cursor-pointer shadow-xs"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>New Pre-Submission Review</span>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeTabId === "tool-journal-fit") {
+      return <DesktopJournalFitView />;
+    }
+    if (activeTabId === "tool-reference-checker") {
+      return <DesktopReferenceView />;
+    }
+    if (activeTabId === "tool-citation-claim") {
+      return <DesktopCitationClaimView />;
+    }
+    if (activeTabId === "tool-prisma") {
+      return <DesktopPrismaView />;
+    }
+    if (activeTabId === "tool-cover-letter") {
+      return <DesktopCoverLetterView />;
+    }
+    if (activeTabId === "tool-response-builder") {
+      return <DesktopResponseBuilderView />;
+    }
+
+    // Default: Article Review Dashboard
+    if (currentPaper) {
+      return (
+        <DesktopDashboard
+          data={currentDashboardData}
+          activeView={activeView}
+          isConnected={isConnected}
+          isLoading={isApiLoading}
+          activeModelName={modelName}
+          latencyMs={latencyMs}
+          onSelectView={(view) => setActiveView(view)}
+          onNewScan={() => setIsScanOpen(true)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+        />
+      );
+    }
+
+    return null;
   };
 
   return (
@@ -266,13 +369,10 @@ export default function App() {
       {/* Top Window Header with Browser-style Tabs */}
       <DesktopHeader
         openTabs={openTabs}
-        activePaperId={activePaperId}
-        onSelectTab={(id) => {
-          setActivePaperId(id);
-          setActiveView("overview");
-        }}
+        activeTabId={activeTabId}
+        onSelectTab={(id) => setActiveTabId(id)}
         onCloseTab={handleCloseTab}
-        onNewTab={() => setIsNewReviewOpen(true)}
+        onNewTab={() => setIsScanOpen(true)}
         isConnected={isConnected}
         isLoading={isApiLoading}
         activeModelName={modelName}
@@ -282,68 +382,26 @@ export default function App() {
         sidebarOpen={sidebarOpen}
       />
 
-      {/* Main App Layout: Sidebar + Dashboard */}
+      {/* Main Layout: Sidebar + Active View */}
       <div className="flex-1 flex overflow-hidden">
         {sidebarOpen && (
           <DesktopSidebar
             papers={papers}
-            activePaperId={activePaperId}
+            activePaperId={activeTabId}
             activeView={activeView}
             isConnected={isConnected}
             provider={provider}
             onSelectPaper={handleOpenArticle}
             onSelectView={(view) => setActiveView(view)}
             onOpenSearch={() => setIsSearchOpen(true)}
-            onNewReview={() => setIsNewReviewOpen(true)}
+            onNewReview={() => setIsScanOpen(true)}
             onOpenSettings={() => setIsSettingsOpen(true)}
+            onSelectService={handleOpenService}
           />
         )}
 
-        {/* Active Article Tab Content or Empty State */}
-        {activePaperId && currentPaper ? (
-          <DesktopDashboard
-            data={dashboardData}
-            activeView={activeView}
-            isConnected={isConnected}
-            isLoading={isApiLoading}
-            activeModelName={modelName}
-            latencyMs={latencyMs}
-            onSelectView={(view) => setActiveView(view)}
-            onNewScan={() => setIsNewReviewOpen(true)}
-            onOpenSettings={() => setIsSettingsOpen(true)}
-          />
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 bg-[#FAFAFA] text-center">
-            <div className="w-16 h-16 rounded-2xl bg-white border border-[#E5E7EB] shadow-sm flex items-center justify-center mb-4 text-neutral-400">
-              <FileText className="w-8 h-8" />
-            </div>
-            <h3 className="text-base font-semibold text-[#111827] mb-1">
-              No Article Open
-            </h3>
-            <p className="text-xs text-neutral-500 max-w-sm mb-6">
-              Select an article from the left sidebar to open it in a tab, or start a new manuscript peer-review scan.
-            </p>
-            <div className="flex items-center gap-3">
-              {papers.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => handleOpenArticle(papers[0].id)}
-                  className="px-3.5 py-2 rounded-lg text-xs font-medium bg-white border border-[#E5E7EB] hover:bg-neutral-50 text-neutral-700 transition cursor-pointer shadow-xs"
-                >
-                  Open {papers[0].shortName}
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setIsNewReviewOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium bg-[#111827] hover:bg-neutral-800 text-white transition cursor-pointer shadow-xs"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>New AI Review</span>
-              </button>
-            </div>
-          </div>
-        )}
+        {/* View Content */}
+        {renderActiveTabContent()}
       </div>
 
       {/* Modals */}
@@ -353,14 +411,17 @@ export default function App() {
         onSelectItem={(id) => {
           if (papers.some((p) => p.id === id)) {
             handleOpenArticle(id);
+          } else if (id.startsWith("tool-")) {
+            handleOpenService(id.replace("tool-", ""));
           }
         }}
       />
 
-      <DesktopNewReviewModal
-        isOpen={isNewReviewOpen}
-        onClose={() => setIsNewReviewOpen(false)}
-        onSubmit={handleCreateReview}
+      {/* Live Pre-Submission AI Review Scan Modal */}
+      <DesktopScanModal
+        isOpen={isScanOpen}
+        onClose={() => setIsScanOpen(false)}
+        onComplete={handleScanComplete}
       />
 
       <ProviderSettingsModal
