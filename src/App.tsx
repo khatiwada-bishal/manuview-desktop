@@ -11,6 +11,7 @@ import {
 } from "@/components/DesktopDashboard";
 import { DesktopSearchModal } from "@/components/DesktopModals";
 import { DesktopScanModal } from "@/components/services/DesktopScanModal";
+import { DesktopPreSubmissionScanView } from "@/components/services/DesktopPreSubmissionScanView";
 import { DesktopJournalFitView } from "@/components/services/DesktopJournalFitView";
 import { DesktopReferenceView } from "@/components/services/DesktopReferenceView";
 import { DesktopCitationClaimView } from "@/components/services/DesktopCitationClaimView";
@@ -212,12 +213,8 @@ export default function App() {
 
   // Open a service tool in a tab
   const handleOpenService = (serviceId: string) => {
-    if (serviceId === "ai-review") {
-      setIsScanOpen(true);
-      return;
-    }
-
     const toolMap: Record<string, { title: string; shortName: string }> = {
+      "ai-review": { title: "Pre-Submission AI Review", shortName: "AI Review" },
       "journal-fit": { title: "Journal Fit Predictor", shortName: "Journal Fit" },
       "reference-checker": { title: "Reference Integrity Audit", shortName: "Reference Audit" },
       "citation-claim": { title: "Citation Claim Validator", shortName: "Citation Claim" },
@@ -314,7 +311,7 @@ export default function App() {
             )}
             <button
               type="button"
-              onClick={() => setIsScanOpen(true)}
+              onClick={() => handleOpenService("ai-review")}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium bg-[#111827] hover:bg-neutral-800 text-white transition cursor-pointer shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -325,6 +322,14 @@ export default function App() {
       );
     }
 
+    if (activeTabId === "tool-ai-review" || activeTabId === "tool-pre-submission") {
+      return (
+        <DesktopPreSubmissionScanView
+          onComplete={handleScanComplete}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+        />
+      );
+    }
     if (activeTabId === "tool-journal-fit") {
       return <DesktopJournalFitView />;
     }
@@ -355,7 +360,7 @@ export default function App() {
           activeModelName={modelName}
           latencyMs={latencyMs}
           onSelectView={(view) => setActiveView(view)}
-          onNewScan={() => setIsScanOpen(true)}
+          onNewScan={() => handleOpenService("ai-review")}
           onOpenSettings={() => setIsSettingsOpen(true)}
         />
       );
@@ -372,7 +377,7 @@ export default function App() {
         activeTabId={activeTabId}
         onSelectTab={(id) => setActiveTabId(id)}
         onCloseTab={handleCloseTab}
-        onNewTab={() => setIsScanOpen(true)}
+        onNewTab={() => handleOpenService("ai-review")}
         isConnected={isConnected}
         isLoading={isApiLoading}
         activeModelName={modelName}
@@ -394,7 +399,7 @@ export default function App() {
             onSelectPaper={handleOpenArticle}
             onSelectView={(view) => setActiveView(view)}
             onOpenSearch={() => setIsSearchOpen(true)}
-            onNewReview={() => setIsScanOpen(true)}
+            onNewReview={() => handleOpenService("ai-review")}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onSelectService={handleOpenService}
           />
