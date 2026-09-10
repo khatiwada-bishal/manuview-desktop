@@ -153,34 +153,36 @@ export function DesktopSidebar({
   // -------------------------------------------------------------
   if (isCollapsed) {
     return (
-      <aside className="w-[68px] bg-[#F9FAFB] border-r border-[#E5E7EB] flex flex-col h-full select-none shrink-0 text-[#1F2937] transition-all duration-200 ease-in-out relative z-30">
+      <aside className="w-[68px] bg-[#F9FAFB] border-r border-[#E5E7EB] flex flex-col h-full select-none shrink-0 text-[#1F2937] transition-all duration-200 ease-in-out relative z-40 overflow-visible">
         {/* LOGO: Hover reveals expand icon */}
         <div className="p-3 border-b border-[#E5E7EB]/70 flex justify-center">
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            title="Expand sidebar"
-            className="w-10 h-10 rounded-xl bg-white border border-[#E5E7EB] hover:border-neutral-300 shadow-xs flex items-center justify-center transition cursor-pointer relative group overflow-hidden"
-          >
-            {/* Logo \"M\" */}
-            <div className="w-8 h-8 rounded-lg bg-[#0F172A] text-white flex items-center justify-center font-serif font-black text-sm shadow-xs transition-all duration-150 group-hover:opacity-0 group-hover:scale-75">
-              M
-            </div>
-            {/* Expand sidebar icon on hover */}
-            <div className="absolute inset-0 flex items-center justify-center text-[#0F172A] opacity-0 group-hover:opacity-100 transition-all duration-150 group-hover:scale-100">
-              <PanelLeft className="w-4 h-4" />
-            </div>
+          <div className="relative group flex justify-center">
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              title="Expand sidebar"
+              className="w-10 h-10 rounded-xl bg-white border border-[#E5E7EB] hover:border-neutral-300 shadow-xs flex items-center justify-center transition cursor-pointer relative overflow-hidden"
+            >
+              {/* Logo "M" */}
+              <div className="w-8 h-8 rounded-lg bg-[#0F172A] text-white flex items-center justify-center font-serif font-black text-sm shadow-xs transition-all duration-150 group-hover:opacity-0 group-hover:scale-75">
+                M
+              </div>
+              {/* Expand sidebar icon on hover */}
+              <div className="absolute inset-0 flex items-center justify-center text-[#0F172A] opacity-0 group-hover:opacity-100 transition-all duration-150 group-hover:scale-100">
+                <PanelLeft className="w-4 h-4" />
+              </div>
+            </button>
 
-            {/* Tooltip */}
-            <div className="absolute left-full ml-3 px-2.5 py-1 bg-[#111827] text-white text-xs font-medium rounded-md shadow-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
+            {/* Tooltip outside overflow-hidden button */}
+            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1 bg-[#111827] text-white text-xs font-medium rounded-md shadow-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
               Expand sidebar
               <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#111827]" />
             </div>
-          </button>
+          </div>
         </div>
 
-        {/* ICONS BENEATH LOGO */}
-        <div className="flex-1 overflow-y-auto px-2 py-3 space-y-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {/* ICONS BENEATH LOGO (overflow-visible so tooltips and submenus fly out cleanly) */}
+        <div className="flex-1 overflow-visible px-2 py-3 space-y-3">
           {/* Services Icons */}
           <div className="space-y-1.5 flex flex-col items-center">
             {SERVICES.map((service) => {
@@ -527,20 +529,23 @@ export function DesktopSidebar({
         </div>
       </div>
 
-      {/* FOOTER: Model Pill & Settings (matching user screenshot) */}
-      <div className="p-3 border-t border-[#E5E7EB] bg-white flex items-center justify-center">
+      {/* FOOTER: App Version (left) + Model Pill & Settings (right) */}
+      <div className="p-3 border-t border-[#E5E7EB] bg-white flex items-center justify-between">
+        <span className="font-semibold text-neutral-400 text-[11px] pl-1 select-none">
+          v0.1.0
+        </span>
         <button
           type="button"
           onClick={onOpenSettings}
           title="AI Provider Settings"
-          className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#86efac] bg-[#f0fdf4] text-[#065f46] hover:bg-[#dcfce7] hover:border-[#4ade80] transition shadow-2xs cursor-pointer text-xs font-medium"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[#86efac] bg-[#f0fdf4] text-[#065f46] hover:bg-[#dcfce7] hover:border-[#4ade80] transition shadow-2xs cursor-pointer text-xs font-medium"
         >
           <span
             className={`w-2 h-2 rounded-full ${
               isConnected ? "bg-[#10b981]" : "bg-amber-400"
             } shrink-0`}
           />
-          <span className="truncate max-w-[130px]">
+          <span className="truncate max-w-[110px]">
             {activeModelName || (isConnected ? "gemini-1.5-flash" : "Connect AI")}
           </span>
           <Settings className="w-3.5 h-3.5 text-[#047857] shrink-0" />
