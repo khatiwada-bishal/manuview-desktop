@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Sparkles,
   RefreshCw,
+  Trash2,
 } from "lucide-react";
 import { DesktopActiveView } from "./DesktopSidebar";
 
@@ -54,6 +55,7 @@ interface DesktopDashboardProps {
   onSelectView: (view: DesktopActiveView) => void;
   onNewScan: () => void;
   onOpenSettings?: () => void;
+  onDeleteArticle?: () => void;
 }
 
 export function DesktopDashboard({
@@ -66,18 +68,32 @@ export function DesktopDashboard({
   onSelectView,
   onNewScan,
   onOpenSettings,
+  onDeleteArticle,
 }: DesktopDashboardProps) {
   return (
     <div className="flex-1 overflow-y-auto bg-white p-6 sm:p-10 text-[#111827]">
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header Icon and Headline Title */}
-        <div className="space-y-3">
-          <div className="text-4xl select-none" role="img" aria-label="genomics">
-            🧬
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+          <div className="space-y-3">
+            <div className="text-4xl select-none" role="img" aria-label="genomics">
+              🧬
+            </div>
+            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-[#111827]">
+              {data.headlineTitle}
+            </h1>
           </div>
-          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-[#111827]">
-            {data.headlineTitle}
-          </h1>
+          {onDeleteArticle && (
+            <button
+              type="button"
+              onClick={onDeleteArticle}
+              title="Delete this manuscript project"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-400 hover:text-rose-600 hover:bg-rose-50 border border-neutral-200/60 hover:border-rose-200 transition cursor-pointer self-start shrink-0 shadow-2xs"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete Project</span>
+            </button>
+          )}
         </div>
 
         {/* Summary Metadata Card */}
