@@ -17,7 +17,8 @@ import { extractTextFromFile, parseManuscriptText } from "@/lib/parser";
 import { runManuscriptDiagnostic } from "@/lib/diagnostic-engine";
 import { DesktopDashboardData } from "@/components/DesktopDashboard";
 import { PaperItem } from "@/components/DesktopSidebar";
-import { FullReviewReport } from "@/lib/types";
+import { FullReviewReport, ProviderConfig } from "@/lib/types";
+import { useApiConnection } from "@/lib/useApiConnection";
 
 interface DesktopScanModalProps {
   isOpen: boolean;
@@ -38,6 +39,7 @@ export function DesktopScanModal({
   onClose,
   onComplete,
 }: DesktopScanModalProps) {
+  const { isConnected, modelName, provider } = useApiConnection();
   const [journal, setJournal] = useState("Nature Communications");
   const [title, setTitle] = useState("");
   const [abstract, setAbstract] = useState("");
@@ -114,9 +116,17 @@ export function DesktopScanModal({
       if (title.trim()) parsed.title = title.trim();
       if (abstract.trim()) parsed.abstract = abstract.trim();
 
+      let savedConfig: ProviderConfig | undefined;
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem("manuview_provider_config");
+          if (raw) savedConfig = JSON.parse(raw);
+        } catch {}
+      }
+
       const fullReport: FullReviewReport = await runManuscriptDiagnostic(
         parsed,
-        undefined,
+        savedConfig,
         journal
       );
 
@@ -132,11 +142,17 @@ export function DesktopScanModal({
         score: fullReport.overallScore || 80,
       };
 
+      const engineName = isConnected && provider
+        ? `${provider.toUpperCase()} (${modelName || "ACTIVE"})`
+        : savedConfig?.provider
+        ? `${savedConfig.provider.toUpperCase()} (${savedConfig.model || "ACTIVE"})`
+        : "OFFLINE STRUCTURAL ENGINE";
+
       const dashboardData: DesktopDashboardData = {
         paperTitle: fullReport.title || title,
         headlineTitle: `${journal} Pre-Submission Diagnostic`,
         targetJournal: journal,
-        aiEngine: "AI ENGINE",
+        aiEngine: engineName,
         latencyMs: 120,
         score: fullReport.overallScore || 80,
         statusText: (fullReport.overallScore || 80) >= 80 ? "High Acceptance Probability" : "Revision Prioritized",
@@ -194,6 +210,19 @@ export function DesktopScanModal({
               <p className="text-xs text-neutral-500">
                 Run live 4-persona simulation, CrossRef audits, and causal overclaim screening.
               </p>
+              <div className="flex items-center gap-2 mt-1.5">
+                {isConnected ? (
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    AI Connected: {provider?.toUpperCase()} ({modelName})
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    Offline Heuristic Engine (Configure API in Settings for LLM personas)
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           {!loading && (

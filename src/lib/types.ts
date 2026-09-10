@@ -120,6 +120,12 @@ export interface ParsedManuscript {
   rawText: string;
   references: string[];
   classification?: DocumentClassification;
+  empiricalCues?: {
+    sampleSizes?: string[];
+    statisticalMetrics?: string[];
+    equations?: string[];
+    dataRepositories?: string[];
+  };
 }
 
 export interface FullReviewReport {

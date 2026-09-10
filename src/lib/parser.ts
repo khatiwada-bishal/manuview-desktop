@@ -422,48 +422,159 @@ export function parseManuscriptText(rawText: string, filename?: string): ParsedM
 
   // 3. Detect Abstract
   let abstract = "";
-  const abstractMatch = rawText.match(/(?:Abstract|Summary)\s*[:\n\r]+([\s\S]*?)(?=(?:\n\s*(?:Keywords|Key\s*words|1\b|Introduction|Background)))/i);
-  if (abstractMatch && abstractMatch[1]) {
+  const abstractMatch = rawText.match(
+    /(?:^|\n)\s*(?:#{1,3}\s*)?(?:Abstract|Summary|Structured Abstract)\s*[:\n\r]+([\s\S]*?)(?=(?:\n\s*(?:#{1,3}\s*)?(?:Keywords|Key\s*words|1[\.\s]|I[\.\s]|Introduction|Background)))/i
+  );
+  if (abstractMatch && abstractMatch[1] && abstractMatch[1].trim().length > 30) {
     abstract = abstractMatch[1].trim();
   } else {
-    // Fallback: search for first 300 words
-    abstract = lines.slice(1, 5).join(' ');
+    // Fallback: search for first 2-4 paragraphs after title
+    const potentialAbstractLines = lines.slice(1, 8).filter(
+      (l) => l.length > 40 && !skipHeaderRegex.test(l)
+    );
+    abstract = potentialAbstractLines.slice(0, 3).join("\n\n");
   }
 
-  // 4. Extract sections (supporting empirical, clinical, theoretical, and operations research)
-  const sections: ParsedManuscript['sections'] = {};
+  // 4. Robust Academic Section Extraction
+  const sections: ParsedManuscript["sections"] = {};
 
-  // Introduction / Background / Literature Review
-  const introMatch = rawText.match(/(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Introduction|Background|Literature Review)\s*[:\n\r]+([\s\S]*?)(?=(?:\n\s*(?:\d+[\.\s]+)?(?:Methods|Materials and Methods|Methodology|Model|Theoretical|Assumptions|Problem Formulation|2\b)))/i);
-  if (introMatch) sections.introduction = introMatch[1].trim().slice(0, 5000);
+  // Normalize text for segmenting
+  const introRegex =
+    /(?:^|\n)\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Introduction|Background|Motivation|Literature Review)\s*[:\n\r]+([\s\S]*?)(?=(?:\n\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Methods|Materials and Methods|Methodology|Model|Theoretical Framework|System Model|Problem Formulation|Experimental Setup|2[\.\s]|II[\.\s])))/i;
+  const methodsRegex =
+    /(?:^|\n)\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Methods|Materials and Methods|Methodology|Model Development|Mathematical Formulation|Theoretical Framework|System Model|System Architecture|Assumptions|Problem Formulation|Proposed Approach|Algorithm|Study Design|Empirical Strategy)\s*[:\n\r]+([\s\S]*?)(?=(?:\n\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Results|Findings|Numerical Example|Numerical Analysis|Numerical Results|Simulation Results|Computational Experiments|Sensitivity Analysis|Experimental Evaluation|Evaluation|Case Study|Discussion|Conclusion|3[\.\s]|III[\.\s]|7[\.\s]|8[\.\s])))/i;
+  const resultsRegex =
+    /(?:^|\n)\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Results|Findings|Numerical Example|Numerical Analysis|Numerical Results|Simulation Results|Computational Experiments|Experimental Results|Performance Evaluation|Sensitivity Analysis|Case Study|Empirical Analysis)\s*[:\n\r]+([\s\S]*?)(?=(?:\n\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Discussion|Managerial Insights|Practical Implications|Limitations|Conclusion|Conclusions|4[\.\s]|IV[\.\s]|10[\.\s]|11[\.\s]|References)))/i;
+  const discussionRegex =
+    /(?:^|\n)\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Discussion|Managerial Insights|Practical Implications|Limitations|Discussion and Conclusion)\s*[:\n\r]+([\s\S]*?)(?=(?:\n\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Conclusion|Conclusions|References|Bibliography|5[\.\s]|V[\.\s]|11[\.\s])))/i;
+  const conclusionRegex =
+    /(?:^|\n)\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Conclusion|Conclusions|Concluding Remarks|Summary and Conclusions|Future Work)\s*[:\n\r]+([\s\S]*?)(?=(?:\n\s*(?:#{1,3}\s*)?(?:References|Bibliography|Acknowledgments|Appendix)))/i;
 
-  // Methodology / Model Development / Theoretical Formulation
-  const methodsMatch = rawText.match(/(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Methods|Materials and Methods|Methodology|Model Development|Mathematical Formulation|Theoretical Framework|System Model|Assumptions|Problem Formulation|Proposed Approach)\s*[:\n\r]+([\s\S]*?)(?=(?:\n\s*(?:\d+[\.\s]+)?(?:Results|Findings|Numerical Example|Numerical Analysis|Numerical Results|Simulation Results|Computational Experiments|Sensitivity Analysis|Discussion|Conclusion|7\b|8\b)))/i);
-  if (methodsMatch) sections.methods = methodsMatch[1].trim().slice(0, 6000);
+  const introMatch = rawText.match(introRegex);
+  if (introMatch && introMatch[1]) {
+    sections.introduction = introMatch[1].trim().slice(0, 15000);
+  }
 
-  // Results / Numerical Examples / Experiments
-  const resultsMatch = rawText.match(/(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Results|Findings|Numerical Example|Numerical Analysis|Numerical Results|Simulation Results|Computational Experiments|Sensitivity Analysis|Case Study)\s*[:\n\r]+([\s\S]*?)(?=(?:\n\s*(?:\d+[\.\s]+)?(?:Discussion|Managerial Insights|Practical Implications|Conclusion|Conclusions|10\b|11\b|References)))/i);
-  if (resultsMatch) sections.results = resultsMatch[1].trim().slice(0, 6000);
+  const methodsMatch = rawText.match(methodsRegex);
+  if (methodsMatch && methodsMatch[1]) {
+    sections.methods = methodsMatch[1].trim().slice(0, 25000);
+  }
 
-  // Discussion / Managerial Insights / Practical Implications
-  const discussionMatch = rawText.match(/(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Discussion|Managerial Insights|Practical Implications)\s*[:\n\r]+([\s\S]*?)(?=(?:\n\s*(?:\d+[\.\s]+)?(?:Conclusion|Conclusions|References|11\b)))/i);
-  if (discussionMatch) sections.discussion = discussionMatch[1].trim().slice(0, 5000);
+  const resultsMatch = rawText.match(resultsRegex);
+  if (resultsMatch && resultsMatch[1]) {
+    sections.results = resultsMatch[1].trim().slice(0, 25000);
+  }
 
-  // 5. Extract References
+  const discussionMatch = rawText.match(discussionRegex);
+  if (discussionMatch && discussionMatch[1]) {
+    sections.discussion = discussionMatch[1].trim().slice(0, 15000);
+  }
+
+  const conclusionMatch = rawText.match(conclusionRegex);
+  if (conclusionMatch && conclusionMatch[1]) {
+    sections.conclusion = conclusionMatch[1].trim().slice(0, 8000);
+  }
+
+  // Fallback intelligent structural segmenter if explicit headings are absent or missing
+  // This guarantees that the LLM is NEVER starved of core methodology or results!
+  const totalLen = rawText.length;
+  if (!sections.methods || !sections.results) {
+    // Remove references block to isolate actual manuscript body
+    const bodyText = rawText.replace(/(?:References|Bibliography)[\s\S]*$/i, "").trim();
+    const bodyLen = bodyText.length;
+
+    if (bodyLen > 1000) {
+      if (!sections.introduction) {
+        sections.introduction = bodyText.slice(0, Math.floor(bodyLen * 0.22)).slice(0, 15000);
+      }
+      if (!sections.methods) {
+        sections.methods = bodyText
+          .slice(Math.floor(bodyLen * 0.20), Math.floor(bodyLen * 0.55))
+          .slice(0, 25000);
+      }
+      if (!sections.results) {
+        sections.results = bodyText
+          .slice(Math.floor(bodyLen * 0.50), Math.floor(bodyLen * 0.82))
+          .slice(0, 25000);
+      }
+      if (!sections.discussion) {
+        sections.discussion = bodyText
+          .slice(Math.floor(bodyLen * 0.80))
+          .slice(0, 15000);
+      }
+    }
+  }
+
+  // 5. Extract Empirical Cues from Document
+  const sampleSizeMatches = Array.from(
+    rawText.matchAll(
+      /(?:\b[nN]\s*=\s*\d+(?:,\d+)?|\bsample\s+size\s+(?:of\s+)?\d+|\bcohort\s+of\s+\d+|\b\d+\s+(?:patients|participants|subjects|respondents|samples|observations|firms|items))\b/gi
+    )
+  )
+    .map((m) => m[0].trim())
+    .slice(0, 8);
+
+  const statMatches = Array.from(
+    rawText.matchAll(
+      /(?:p\s*[<>=]\s*0?\.\d+|\bt\s*=\s*-?\d+\.?\d*|\bF(?:\(\d+,\s*\d+\))?\s*=\s*\d+\.?\d*|95%\s*CI\s*[\[\(][^\]\)]+[\]\)]|\bR[²2]\s*=\s*0?\.\d+|AUC\s*=\s*0?\.\d+)/gi
+    )
+  )
+    .map((m) => m[0].trim())
+    .slice(0, 10);
+
+  const eqMatches = Array.from(
+    rawText.matchAll(
+      /(?:\b(?:equation|eq\.)\s*\(?\d+\)?|[∑∫∂√αβγδεθλμστωΩ]|\bargmax\b|\bargmin\b|E\[[A-Z]\])/gi
+    )
+  )
+    .map((m) => m[0].trim())
+    .slice(0, 10);
+
+  const repoMatches = Array.from(
+    rawText.matchAll(
+      /(?:github\.com\/[a-zA-Z0-9_\-\.\/]+|zenodo\.[0-9]+|huggingface\.co\/[a-zA-Z0-9_\-\.\/]+|kaggle\.com\/[a-zA-Z0-9_\-\.\/]+)/gi
+    )
+  )
+    .map((m) => m[0].trim())
+    .slice(0, 5);
+
+  const empiricalCues = {
+    sampleSizes: Array.from(new Set(sampleSizeMatches)),
+    statisticalMetrics: Array.from(new Set(statMatches)),
+    equations: Array.from(new Set(eqMatches)),
+    dataRepositories: Array.from(new Set(repoMatches)),
+  };
+
+  // 6. Extract Authors if detectable
+  const authors: string[] = [];
+  if (lines.length > 1) {
+    const authorLineCandidate = lines[1];
+    if (
+      authorLineCandidate.length > 5 &&
+      authorLineCandidate.length < 120 &&
+      !skipHeaderRegex.test(authorLineCandidate) &&
+      !/(?:abstract|introduction|doi|keywords)/i.test(authorLineCandidate)
+    ) {
+      authors.push(authorLineCandidate);
+    }
+  }
+
+  // 7. Extract References
   const references = extractReferencesFromText(rawText);
 
-  // 6. Word count
+  // 8. Word count
   const wordCount = rawText.split(/\s+/).filter(Boolean).length;
 
   return {
     title,
     abstract,
-    authors: [],
+    authors,
     wordCount,
     sections,
     rawText,
     references,
     classification,
+    empiricalCues,
   };
 }
 

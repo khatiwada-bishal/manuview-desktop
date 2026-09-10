@@ -256,7 +256,7 @@ export function DesktopDashboard({
             {/* CARD 3: Document Classification Card (with solid blue left border) */}
             <div className="rounded-2xl bg-white border border-[#E2E8F0] border-l-4 border-l-[#2563EB] p-6 sm:p-7 space-y-3 shadow-xs">
               <h2 className="text-base font-bold text-[#0F172A]">
-                Document Classification: {classification?.categoryLabel || "Empirical & Methodological Study in Supply Chain / Environmental Economics"}
+                Document Classification: {classification?.categoryLabel || "Academic Research Manuscript"}
               </h2>
 
               <p className="text-xs sm:text-sm text-[#334155] leading-relaxed">
@@ -264,12 +264,12 @@ export function DesktopDashboard({
                   {classification?.salutation ? (classification.salutation.endsWith(":") ? classification.salutation : `${classification.salutation}:`) : "Dear Author / Contributing Researcher:"}
                 </strong>{" "}
                 {classification?.advisoryMessage ||
-                  "This manuscript is an exceptionally rigorous and methodologically sophisticated empirical investigation into e-waste import proxies, compositional divergence, and forecasting uncertainty using national customs microdata. It demonstrates profound statistical maturity and rare intellectual honesty regarding the limitations of data-scarce time series."}
+                  "This manuscript has undergone rigorous pre-submission peer-review calibration across core methodological, empirical, and bibliographic dimensions against the target journal's editorial standards."}
               </p>
 
               <p className="text-xs sm:text-sm text-[#64748B] leading-relaxed">
                 {classification?.customGuidance ||
-                  "Focus refinement on framing the causal-descriptive distinction of income-linked growth intensities and clarifying the out-of-sample forecasting benchmark limitations."}
+                  "Review prioritized action items and simulated referee assessments before submitting to your target journal."}
               </p>
             </div>
           </div>
