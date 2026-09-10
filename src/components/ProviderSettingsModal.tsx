@@ -2,6 +2,11 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { ProviderConfig, LLMProvider, AvailableModel } from "@/lib/types";
+import {
+  getServerConfigStatus,
+  fetchAvailableModels,
+  testLLMConnection,
+} from "@/lib/llm";
 import { Settings, ShieldCheck, X, CheckCircle2, FileCode, Activity, RefreshCw, AlertCircle, Zap, Check, ChevronDown, Sparkles, Search } from "lucide-react";
 import { GeminiLogo, OpenAILogo, GroqLogo, AnthropicLogo, OllamaLogo } from "./BrandLogos";
 
@@ -55,11 +60,9 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
 
     setTestResult(null);
 
-    // Check server-side .env status
-    fetch("/api/config/status")
-      .then((res) => res.json())
-      .then((data) => setServerStatus(data))
-      .catch(() => {});
+    // Check server / env status
+    const status = getServerConfigStatus();
+    setServerStatus(status);
 
     // Fetch models for current provider
     loadModelsForProvider(currentConfig);
@@ -78,29 +81,17 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
   const loadModelsForProvider = async (targetConfig: ProviderConfig) => {
     setLoadingModels(true);
     try {
-      const res = await fetch("/api/config/models", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ config: targetConfig }),
-      });
-      const data = await res.json();
-      if (data.success && Array.isArray(data.models)) {
-        setAvailableModels(data.models);
+      const models = await fetchAvailableModels(targetConfig);
+      if (Array.isArray(models) && models.length > 0) {
+        setAvailableModels(models);
         // If current model is not set or empty, pick the recommended or first
-        if (!targetConfig.model && data.models.length > 0) {
-          const rec = data.models.find((m: AvailableModel) => m.recommended) || data.models[0];
+        if (!targetConfig.model) {
+          const rec = models.find((m: AvailableModel) => m.recommended) || models[0];
           setConfig((prev) => ({ ...prev, model: rec.id }));
         }
       }
-    } catch {
-      // Fallback: try GET with provider param
-      try {
-        const res = await fetch(`/api/config/models?provider=${targetConfig.provider}`);
-        const data = await res.json();
-        if (data.success && Array.isArray(data.models)) {
-          setAvailableModels(data.models);
-        }
-      } catch {}
+    } catch (err) {
+      console.error("Failed to load models for provider:", err);
     } finally {
       setLoadingModels(false);
     }
@@ -132,15 +123,10 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
     setTesting(true);
     setTestResult(null);
     try {
-      const res = await fetch("/api/config/test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ config }),
-      });
-      const data = await res.json();
-      setTestResult(data);
-      if (Array.isArray(data.availableModels) && data.availableModels.length > 0) {
-        setAvailableModels(data.availableModels);
+      const result = await testLLMConnection(config);
+      setTestResult(result);
+      if (Array.isArray(result.availableModels) && result.availableModels.length > 0) {
+        setAvailableModels(result.availableModels);
       }
     } catch (err: any) {
       setTestResult({

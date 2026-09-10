@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { ProviderConfig } from "./types";
+import { testLLMConnection } from "./llm";
 
 export interface ApiConnectionState {
   isConnected: boolean;
@@ -34,13 +35,7 @@ export function useApiConnection() {
         }
       }
 
-      const res = await fetch("/api/config/test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ config }),
-      });
-
-      const data = await res.json();
+      const data = await testLLMConnection(config);
       if (data && data.success) {
         const rawModel = data.model || "AI Model";
         const cleanModel = rawModel.toUpperCase().replace(/-/g, " ");
