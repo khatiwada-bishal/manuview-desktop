@@ -124,7 +124,9 @@ export async function callLLM(
   // -----------------------------------------------------------
   if (provider === "gemini" && apiKey) {
     const geminiModel = model || "gemini-1.5-flash";
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`;
+    const cleanModel = encodeURIComponent(geminiModel.trim());
+    const cleanKey = encodeURIComponent(apiKey.trim());
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${cleanKey}`;
     try {
       const contents = messages.map(m => ({
         role: m.role === 'assistant' ? 'model' : 'user',
@@ -171,7 +173,11 @@ export async function callLLM(
     } else {
       const customBase = config?.baseUrl || process.env.OPENAI_BASE_URL;
       if (customBase) {
-        const cleanBase = customBase.replace(/\/+$/, "");
+        let cleanBase = customBase.trim();
+        if (!cleanBase.startsWith("http://") && !cleanBase.startsWith("https://")) {
+          cleanBase = `https://${cleanBase}`;
+        }
+        cleanBase = cleanBase.replace(/\/+$/, "");
         endpoint = cleanBase.endsWith("/chat/completions") ? cleanBase : `${cleanBase}/chat/completions`;
       }
     }
@@ -193,7 +199,7 @@ export async function callLLM(
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${apiKey}`,
+            "Authorization": `Bearer ${apiKey.trim()}`,
           },
           body: JSON.stringify(requestPayload),
         });
@@ -233,8 +239,9 @@ export async function callLLM(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": apiKey,
+          "x-api-key": apiKey.trim(),
           "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
         },
         body: JSON.stringify({
           model: model || "claude-3-5-sonnet-20241022",
@@ -271,7 +278,13 @@ export async function callLLM(
   // -----------------------------------------------------------
   if (provider === "ollama") {
     try {
-      const response = await fetch(`${baseUrl}/api/chat`, {
+      let cleanBase = (baseUrl || "http://localhost:11434").trim();
+      if (!cleanBase.startsWith("http://") && !cleanBase.startsWith("https://")) {
+        cleanBase = `http://${cleanBase}`;
+      }
+      cleanBase = cleanBase.replace(/\/+$/, "");
+
+      const response = await fetch(`${cleanBase}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -601,9 +614,10 @@ export async function fetchAvailableModels(config?: ProviderConfig): Promise<Ava
 
   try {
     if (provider === "gemini" && apiKey) {
+      const cleanKey = encodeURIComponent(apiKey.trim());
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 4000);
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`, {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`, {
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
       });
@@ -632,12 +646,16 @@ export async function fetchAvailableModels(config?: ProviderConfig): Promise<Ava
         }
       }
     } else if (provider === "openai" && apiKey) {
-      const cleanBase = (baseUrl || "https://api.openai.com/v1").replace(/\/+$/, "");
+      let cleanBase = (baseUrl || "https://api.openai.com/v1").trim();
+      if (!cleanBase.startsWith("http://") && !cleanBase.startsWith("https://")) {
+        cleanBase = `https://${cleanBase}`;
+      }
+      cleanBase = cleanBase.replace(/\/+$/, "");
       const endpoint = cleanBase.endsWith("/models") ? cleanBase : `${cleanBase}/models`;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 4000);
       const res = await fetch(endpoint, {
-        headers: { Authorization: `Bearer ${apiKey}` },
+        headers: { Authorization: `Bearer ${apiKey.trim()}` },
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
@@ -667,7 +685,7 @@ export async function fetchAvailableModels(config?: ProviderConfig): Promise<Ava
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 4000);
       const res = await fetch("https://api.groq.com/openai/v1/models", {
-        headers: { Authorization: `Bearer ${apiKey}` },
+        headers: { Authorization: `Bearer ${apiKey.trim()}` },
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
@@ -694,7 +712,11 @@ export async function fetchAvailableModels(config?: ProviderConfig): Promise<Ava
         }
       }
     } else if (provider === "ollama") {
-      const cleanBase = (baseUrl || "http://localhost:11434").replace(/\/+$/, "");
+      let cleanBase = (baseUrl || "http://localhost:11434").trim();
+      if (!cleanBase.startsWith("http://") && !cleanBase.startsWith("https://")) {
+        cleanBase = `http://${cleanBase}`;
+      }
+      cleanBase = cleanBase.replace(/\/+$/, "");
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000);
       const res = await fetch(`${cleanBase}/api/tags`, {
@@ -789,7 +811,9 @@ export async function testLLMConnection(
     // -----------------------------------------------------------
     if (provider === "gemini") {
       const geminiModel = model || "gemini-1.5-flash";
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`;
+      const cleanModel = encodeURIComponent(geminiModel.trim());
+      const cleanKey = encodeURIComponent(apiKey.trim());
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${cleanKey}`;
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -848,7 +872,11 @@ export async function testLLMConnection(
       } else {
         const customBase = config?.baseUrl || process.env.OPENAI_BASE_URL;
         if (customBase) {
-          const cleanBase = customBase.replace(/\/+$/, "");
+          let cleanBase = customBase.trim();
+          if (!cleanBase.startsWith("http://") && !cleanBase.startsWith("https://")) {
+            cleanBase = `https://${cleanBase}`;
+          }
+          cleanBase = cleanBase.replace(/\/+$/, "");
           endpoint = cleanBase.endsWith("/chat/completions") ? cleanBase : `${cleanBase}/chat/completions`;
         }
       }
@@ -862,7 +890,7 @@ export async function testLLMConnection(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`,
+          "Authorization": `Bearer ${apiKey.trim()}`,
         },
         body: JSON.stringify({
           model: chosenModel,
@@ -920,8 +948,9 @@ export async function testLLMConnection(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": apiKey,
+          "x-api-key": apiKey.trim(),
           "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
         },
         body: JSON.stringify({
           model: chosenModel,
@@ -969,7 +998,11 @@ export async function testLLMConnection(
     // 4. Local Ollama Ping Probe
     // -----------------------------------------------------------
     if (provider === "ollama") {
-      const cleanBase = baseUrl.replace(/\/+$/, "");
+      let cleanBase = (baseUrl || "http://localhost:11434").trim();
+      if (!cleanBase.startsWith("http://") && !cleanBase.startsWith("https://")) {
+        cleanBase = `http://${cleanBase}`;
+      }
+      cleanBase = cleanBase.replace(/\/+$/, "");
       const tagsUrl = `${cleanBase}/api/tags`;
 
       const controller = new AbortController();
