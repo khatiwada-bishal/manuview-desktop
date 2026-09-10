@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 export interface TabItem {
   id: string;
@@ -51,7 +52,7 @@ export function DesktopHeader({
   const [hasOverflow, setHasOverflow] = React.useState(false);
 
   // Window drag handler for Tauri native window
-  const handleHeaderMouseDown = async (e: React.MouseEvent) => {
+  const handleHeaderMouseDown = (e: React.MouseEvent) => {
     // Only primary (left) button
     if (e.button !== 0) return;
     const target = e.target as HTMLElement;
@@ -66,10 +67,9 @@ export function DesktopHeader({
       return;
     }
     try {
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
       const appWin = getCurrentWindow();
       if (appWin) {
-        await appWin.startDragging();
+        appWin.startDragging();
       }
     } catch {
       // Browser preview fallback
@@ -179,7 +179,9 @@ export function DesktopHeader({
           ref={tabsScrollRef}
           onScroll={checkScroll}
           data-tauri-drag-region
-          className="flex-1 flex items-center gap-1 h-[42px] overflow-x-auto min-w-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth"
+          className={`flex items-center gap-1 h-[42px] min-w-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth shrink-0 ${
+            hasOverflow ? "flex-1 overflow-x-auto" : "max-w-full overflow-visible"
+          }`}
         >
           {openTabs.map((tab) => {
             const isActive = tab.id === activeTabId;
@@ -229,6 +231,13 @@ export function DesktopHeader({
             <ChevronRight className="w-4 h-4" />
           </button>
         )}
+
+        {/* Dedicated Window Drag Region filling remaining header width */}
+        <div
+          data-tauri-drag-region
+          onMouseDown={handleHeaderMouseDown}
+          className="flex-1 h-full min-w-[24px]"
+        />
       </div>
     </header>
   );
