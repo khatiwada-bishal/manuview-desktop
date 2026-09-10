@@ -71,38 +71,35 @@ export function DesktopHeader({
   return (
     <header
       data-tauri-drag-region
-      className="h-11 border-b border-[#E5E7EB] bg-[#F3F4F6] flex items-center select-none shrink-0 z-20"
+      className="h-[38px] border-b border-[#E5E7EB] bg-[#F3F4F6] flex items-center select-none shrink-0 z-20"
     >
-      {/* LEFT CONTROLS (Window Traffic Light Spacer + Sidebar Toggle) */}
-      <div
-        className={`h-full flex items-center border-r border-[#E5E7EB] bg-[#F9FAFB] transition-all duration-150 shrink-0 ${
-          sidebarOpen ? "w-64" : "w-auto"
-        }`}
-      >
-        {/* macOS traffic light spacer (covers 0..78px for traffic lights at x=16..68px with a 10px gap) */}
-        <div className="w-[78px] shrink-0" />
+      {/* WINDOW CONTROLS (TRAFFIC LIGHTS) SPACER + SIDEBAR TOGGLE */}
+      <div className="h-full flex items-center shrink-0">
+        {/* macOS traffic light spacer (covers 0..88px: traffic lights from x=16..68px with a 20px gap) */}
+        <div className="w-[88px] shrink-0" />
 
-        {/* Sidebar Toggle Button */}
+        {/* Sidebar Toggle Button (matches attachment: clean rounded rectangle with sidebar divider, no resting box) */}
         {onToggleSidebar && (
           <button
             type="button"
             onClick={onToggleSidebar}
             title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-            className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-[#E5E7EB] text-neutral-500 hover:text-neutral-800 transition cursor-pointer"
+            className="w-6 h-6 flex items-center justify-center rounded hover:bg-neutral-200/70 text-[#8E8E93] hover:text-neutral-900 transition cursor-pointer"
           >
-            <SidebarIcon className="w-4 h-4" />
+            <SidebarIcon className="w-4 h-4" strokeWidth={1.75} />
           </button>
         )}
 
-        {!sidebarOpen && <div className="w-3 shrink-0" />}
+        {/* Spacing before browser tabs */}
+        <div className="w-2.5 shrink-0" />
       </div>
 
       {/* CENTER: BROWSER-STYLE TAB BAR */}
       <div
         data-tauri-drag-region
-        className="flex-1 h-full flex items-center overflow-x-auto min-w-0 px-2 scrollbar-none"
+        className="flex-1 h-full flex items-center overflow-x-auto min-w-0 px-1 scrollbar-none"
       >
-        <div className="flex items-center gap-1 h-full py-1">
+        <div className="flex items-center gap-1 h-full py-0.5">
           {openTabs.map((tab) => {
             const isActive = tab.id === activeTabId;
             return (
@@ -110,7 +107,7 @@ export function DesktopHeader({
                 key={tab.id}
                 onClick={() => onSelectTab(tab.id)}
                 title={tab.title}
-                className={`group flex items-center gap-2 h-[30px] px-3 rounded-lg text-xs transition cursor-pointer max-w-[210px] border shrink-0 ${
+                className={`group flex items-center gap-2 h-[28px] px-3 rounded-lg text-xs transition cursor-pointer max-w-[210px] border shrink-0 ${
                   isActive
                     ? "bg-white text-[#111827] font-medium border-[#E5E7EB] shadow-xs"
                     : "bg-transparent text-neutral-500 hover:text-neutral-800 hover:bg-neutral-200/60 border-transparent"
@@ -137,7 +134,7 @@ export function DesktopHeader({
             type="button"
             onClick={onNewTab}
             title="Open new manuscript review"
-            className="h-[28px] w-[28px] flex items-center justify-center rounded-lg hover:bg-neutral-200/80 text-neutral-500 hover:text-neutral-800 transition cursor-pointer shrink-0 ml-0.5"
+            className="h-[26px] w-[26px] flex items-center justify-center rounded-lg hover:bg-neutral-200/80 text-neutral-500 hover:text-neutral-800 transition cursor-pointer shrink-0 ml-0.5"
           >
             <Plus className="w-3.5 h-3.5" />
           </button>
