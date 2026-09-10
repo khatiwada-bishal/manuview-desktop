@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import JournalCombobox from "@/components/JournalCombobox";
 import { callLLM } from "@/lib/llm";
+import { ProviderConfig } from "@/lib/types";
 
 export function DesktopCoverLetterView() {
   const [title, setTitle] = useState("");
@@ -72,7 +73,12 @@ LETTER COMPOSITION REQUIREMENTS:
 6. Clear sign-off with placeholders: [Corresponding Author Name, Ph.D.], [Academic Title & Department], [Affiliated University / Research Institution], [Official Institutional Email], [ORCID ID].
 7. Tone: Rigorous, articulate, respectful, and free of superficial marketing superlatives.`;
 
-      const generated = await callLLM([{ role: "user", content: prompt }]);
+      const savedConfig = localStorage.getItem("manuview_provider_config");
+      const providerConfig: ProviderConfig | undefined = savedConfig
+        ? JSON.parse(savedConfig)
+        : undefined;
+
+      const generated = await callLLM([{ role: "user", content: prompt }], providerConfig);
       setLetter(generated);
     } catch (err: any) {
       setError(err.message || "Failed to generate cover letter.");

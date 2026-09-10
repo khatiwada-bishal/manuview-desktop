@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { callLLM } from "@/lib/llm";
 import { cleanAndRepairJson } from "@/lib/json-repair";
+import { ProviderConfig } from "@/lib/types";
 
 const SAMPLE_DECISION_LETTER = `Dear Author,
 
@@ -77,7 +78,12 @@ Return a JSON array of parsed reviewer comments with the following format:
   }
 ]`;
 
-      const raw = await callLLM([{ role: "user", content: prompt }]);
+      const savedConfig = localStorage.getItem("manuview_provider_config");
+      const providerConfig: ProviderConfig | undefined = savedConfig
+        ? JSON.parse(savedConfig)
+        : undefined;
+
+      const raw = await callLLM([{ role: "user", content: prompt }], providerConfig);
       let parsed: RebuttalItem[] = [];
       try {
         parsed = cleanAndRepairJson(raw, []);
