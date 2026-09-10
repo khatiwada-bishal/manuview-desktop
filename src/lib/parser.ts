@@ -1,53 +1,151 @@
+import JSZip from "jszip";
+import * as mammoth from "mammoth";
+import { extractText as extractPdfText } from "unpdf";
 import { ParsedManuscript, DocumentClassification, DocumentCategory } from "./types";
 import { extractReferencesFromText } from "./utils";
+
+/**
+ * Robust DOCX text extraction: uses mammoth first, then JSZip DOMParser / XML fallback.
+ */
+async function extractDocxText(buffer: ArrayBuffer): Promise<string> {
+  // 1. Try mammoth (specialized DOCX parser)
+  try {
+    const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+    if (result && result.value && result.value.trim().length > 20) {
+      return result.value.trim();
+    }
+  } catch (e) {
+    console.warn("mammoth extraction failed, falling back to JSZip:", e);
+  }
+
+  // 2. Try JSZip to read word/document.xml directly
+  try {
+    const zip = await JSZip.loadAsync(buffer);
+    const docFile = zip.file("word/document.xml");
+    if (docFile) {
+      const xml = await docFile.async("text");
+
+      // Parse XML using DOMParser if available in browser/Tauri
+      if (typeof DOMParser !== "undefined") {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xml, "text/xml");
+        const paragraphs = xmlDoc.getElementsByTagName("w:p");
+        const lines: string[] = [];
+        for (let i = 0; i < paragraphs.length; i++) {
+          const p = paragraphs[i];
+          const tTags = p.getElementsByTagName("w:t");
+          let line = "";
+          for (let j = 0; j < tTags.length; j++) {
+            line += tTags[j].textContent || "";
+          }
+          if (line.trim()) {
+            lines.push(line.trim());
+          }
+        }
+        if (lines.length > 0) {
+          return lines.join("\n\n");
+        }
+      }
+
+      // Regex fallback for XML tags
+      const pMatches = xml.match(/<w:p(?:\s+[^>]*?)?>([\s\S]*?)<\/w:p>/g);
+      if (pMatches && pMatches.length > 0) {
+        const lines = pMatches
+          .map((p) => {
+            const tMatches = p.match(/<w:t(?:\s+[^>]*?)?>([\s\S]*?)<\/w:t>/g);
+            if (!tMatches) return "";
+            return tMatches.map((t) => t.replace(/<[^>]+>/g, "")).join("");
+          })
+          .filter((l) => l.trim().length > 0);
+        if (lines.length > 0) {
+          return lines.join("\n\n");
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("JSZip docx extraction failed:", e);
+  }
+
+  throw new Error(
+    "Unable to extract text from DOCX file. Please ensure the document is a valid Microsoft Word .docx file."
+  );
+}
+
+/**
+ * Robust PDF text extraction using unpdf and stream fallbacks.
+ */
+async function extractPdfTextFromBuffer(buffer: ArrayBuffer): Promise<string> {
+  // 1. Try unpdf
+  try {
+    const { text } = await extractPdfText(new Uint8Array(buffer));
+    const fullText = Array.isArray(text) ? text.join("\n\n") : text;
+    if (fullText && fullText.trim().length > 20) {
+      return fullText.trim();
+    }
+  } catch (e) {
+    console.warn("unpdf text extraction failed, trying stream fallback:", e);
+  }
+
+  // 2. Stream tokens fallback
+  try {
+    const decoder = new TextDecoder("latin1");
+    const raw = decoder.decode(buffer);
+    const tjMatches = raw.match(/\(([^)]{2,})\)\s*(?:Tj|'|")/g);
+    if (tjMatches && tjMatches.length > 5) {
+      const chunks = tjMatches.map((m) =>
+        m.replace(/^\(/, "").replace(/\)\s*(?:Tj|'|")$/, "")
+      );
+      return chunks.join(" ").replace(/\s{2,}/g, " ").trim();
+    }
+  } catch (e) {
+    console.warn("PDF stream fallback failed:", e);
+  }
+
+  throw new Error(
+    "Unable to extract text from PDF. The PDF may be image-only (scanned) or password-protected."
+  );
+}
 
 /**
  * Extracts printable text from a File (.txt, .md, .docx, .pdf) in browser/Tauri.
  */
 export async function extractTextFromFile(file: File): Promise<string> {
-  const ext = file.name.split('.').pop()?.toLowerCase() || '';
+  const ext = file.name.split(".").pop()?.toLowerCase() || "";
 
-  if (ext === 'txt' || ext === 'md' || ext === 'markdown' || ext === 'csv' || ext === 'json') {
+  // 1. Plain text / Markdown
+  if (
+    ext === "txt" ||
+    ext === "md" ||
+    ext === "markdown" ||
+    ext === "csv" ||
+    ext === "json"
+  ) {
     return await file.text();
   }
 
-  // DOCX extraction: extract <w:t> tags from raw XML stream if uncompressed or read as text
-  if (ext === 'docx') {
-    try {
-      const buffer = await file.arrayBuffer();
-      const bytes = new Uint8Array(buffer);
-      // Look for XML text patterns inside docx
-      const decoder = new TextDecoder('utf-8', { fatal: false, ignoreBOM: true });
-      const raw = decoder.decode(bytes);
-      const xmlTextMatches = raw.match(/<w:t(?:\s+[^>]*?)?>([\s\S]*?)<\/w:t>/g);
-      if (xmlTextMatches && xmlTextMatches.length > 0) {
-        const text = xmlTextMatches
-          .map(m => m.replace(/<w:t(?:\s+[^>]*?)?>/g, '').replace(/<\/w:t>/g, ''))
-          .join(' ');
-        if (text.trim().length > 50) return text;
-      }
-    } catch (e) {
-      console.warn("Direct docx text parse failed, attempting fallback:", e);
-    }
+  const buffer = await file.arrayBuffer();
+
+  // 2. DOCX Extraction
+  if (ext === "docx") {
+    return await extractDocxText(buffer);
   }
 
-  // PDF extraction fallback: extract (text) Tj / TJ stream tokens
-  if (ext === 'pdf') {
-    try {
-      const buffer = await file.arrayBuffer();
-      const decoder = new TextDecoder('latin1');
-      const raw = decoder.decode(buffer);
-      const tjMatches = raw.match(/\(([^)]{2,})\)\s*(?:Tj|'|")/g);
-      if (tjMatches && tjMatches.length > 5) {
-        const chunks = tjMatches.map(m => m.replace(/^\(/, '').replace(/\)\s*(?:Tj|'|")$/, ''));
-        return chunks.join(' ').replace(/\s{2,}/g, ' ').trim();
-      }
-    } catch (e) {
-      console.warn("PDF stream parse failed:", e);
-    }
+  // 3. PDF Extraction
+  if (ext === "pdf") {
+    return await extractPdfTextFromBuffer(buffer);
   }
 
-  // Default fallback: read as text
+  // 4. Fallback: inspect raw bytes for magic signatures
+  const rawBytes = new Uint8Array(buffer.slice(0, 8));
+  // ZIP / DOCX magic signature: PK\x03\x04
+  if (rawBytes[0] === 0x50 && rawBytes[1] === 0x4b && rawBytes[2] === 0x03 && rawBytes[3] === 0x04) {
+    return await extractDocxText(buffer);
+  }
+  // PDF magic signature: %PDF
+  if (rawBytes[0] === 0x25 && rawBytes[1] === 0x50 && rawBytes[2] === 0x44 && rawBytes[3] === 0x46) {
+    return await extractPdfTextFromBuffer(buffer);
+  }
+
   return await file.text();
 }
 
