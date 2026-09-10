@@ -147,23 +147,15 @@ export function DesktopHeader({
     <header
       data-tauri-drag-region
       onMouseDown={handleHeaderMouseDown}
-      className="h-[52px] border-b border-[#E5E7EB] bg-[#F3F4F6] flex select-none shrink-0 z-20 cursor-default"
+      className="h-[52px] border-b border-[#E5E7EB] bg-[#F3F4F6] flex select-none shrink-0 z-20 cursor-default relative"
     >
-      {/* LEFT CONTROLS (Window Traffic Light Spacer + Sidebar Separation) */}
-      <div
-        data-tauri-drag-region
-        className={`h-full flex items-end pb-1 border-r border-[#E5E7EB] bg-[#F9FAFB] transition-all duration-200 shrink-0 ${
-          sidebarOpen ? "w-64" : "w-[68px]"
-        }`}
-      >
-        {/* macOS traffic light spacer (covers window traffic controls) */}
-        <div data-tauri-drag-region className="w-[68px] h-full shrink-0" />
-      </div>
+      {/* macOS traffic light spacer (covers window traffic controls, leaves comfortable gap) */}
+      <div data-tauri-drag-region className="w-[84px] h-full shrink-0" />
 
       {/* CENTER: BROWSER-STYLE SCROLLABLE TAB BAR WITH OVERFLOW ARROWS */}
       <div
         data-tauri-drag-region
-        className="flex-1 h-full flex items-end pb-1 min-w-0 px-1 relative"
+        className="flex-1 h-full flex items-end pb-1 min-w-0 px-2 relative"
       >
         {/* Left Scroll Arrow (Shown when tabs overflow) */}
         {hasOverflow && (
