@@ -66,9 +66,9 @@ export function DesktopSearchModal({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/40 backdrop-blur-xs p-4">
-      <div className="w-full max-w-lg bg-white dark:bg-[#111827] rounded-2xl shadow-2xl border border-[#E5E7EB] dark:border-[#1F2937] overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-[#E5E7EB] dark:border-[#1F2937]">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/50 backdrop-blur-xl p-4">
+      <div className="w-full max-w-xl rounded-3xl liquid-glass-modal overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-black/10 dark:border-white/10">
           <Search className="w-4 h-4 text-neutral-400 dark:text-neutral-500 shrink-0" />
           <input
             type="text"
@@ -81,7 +81,7 @@ export function DesktopSearchModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-[#1E293B] cursor-pointer"
+            className="p-1.5 rounded-xl text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -102,7 +102,7 @@ export function DesktopSearchModal({
                     onSelectItem(item.id);
                     onClose();
                   }}
-                  className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-[#F3F4F6] dark:hover:bg-[#1E293B] text-left transition cursor-pointer group"
+                  className="w-full flex items-center justify-between p-2.5 rounded-2xl hover:bg-black/5 dark:hover:bg-white/10 text-left transition cursor-pointer group"
                 >
                   <div className="flex items-center gap-2.5">
                     <FileText className="w-4 h-4 text-neutral-400 dark:text-neutral-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition" />
@@ -110,7 +110,7 @@ export function DesktopSearchModal({
                       {item.title}
                     </span>
                   </div>
-                  <span className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-400 bg-neutral-100 dark:bg-[#161F30] px-2 py-0.5 rounded">
+                  <span className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-400 bg-black/5 dark:bg-white/10 border border-black/5 dark:border-white/10 px-2 py-0.5 rounded-md">
                     {item.cat}
                   </span>
                 </button>
@@ -155,10 +155,10 @@ export function DesktopNewReviewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-      <div className="w-full max-w-lg bg-white dark:bg-[#111827] rounded-2xl shadow-2xl border border-[#E5E7EB] dark:border-[#1F2937] p-6 space-y-5 animate-in fade-in zoom-in-95 duration-100">
-        <div className="flex items-center justify-between border-b border-[#E5E7EB] dark:border-[#1F2937] pb-3">
-          <div className="flex items-center gap-2">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xl p-4">
+      <div className="w-full max-w-lg rounded-3xl liquid-glass-modal p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+        <div className="flex items-center justify-between border-b border-black/10 dark:border-white/10 pb-3">
+          <div className="flex items-center gap-2.5">
             <span className="text-xl">🪄</span>
             <div>
               <h2 className="text-sm font-bold text-[#111827] dark:text-white">
@@ -172,7 +172,7 @@ export function DesktopNewReviewModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-[#1E293B] cursor-pointer"
+            className="p-1.5 rounded-xl text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -199,7 +199,7 @@ export function DesktopNewReviewModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Single-cell transcriptional profiling of DLL3 activation..."
-              className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#1E293B] border border-[#D1D5DB] dark:border-[#334155] text-xs text-[#111827] dark:text-white dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              className="w-full px-3.5 py-2 rounded-xl liquid-glass-input text-xs text-[#111827] dark:text-white dark:placeholder-neutral-500 focus:outline-none"
             />
           </div>
 
@@ -214,7 +214,7 @@ export function DesktopNewReviewModal({
                   handleNativePick();
                 }
               }}
-              className="border-2 border-dashed border-[#D1D5DB] dark:border-[#334155] hover:border-blue-400 rounded-xl p-6 text-center cursor-pointer transition bg-[#F9FAFB] dark:bg-[#161F30] hover:bg-blue-50/20 dark:hover:bg-blue-950/20"
+              className="border border-dashed border-neutral-300 dark:border-white/15 hover:border-blue-500/50 dark:hover:border-blue-400/50 rounded-2xl p-6 text-center cursor-pointer transition bg-white/40 dark:bg-white/5 hover:bg-blue-500/5 backdrop-blur-xs"
             >
               <UploadCloud className="w-8 h-8 text-neutral-400 dark:text-neutral-500 mx-auto mb-2" />
               {fileName ? (
@@ -233,11 +233,11 @@ export function DesktopNewReviewModal({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5E7EB] dark:border-[#1F2937]">
+        <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-black/10 dark:border-white/10">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#1E293B] transition cursor-pointer"
+            className="px-4 py-2 rounded-xl liquid-glass-btn-secondary text-xs font-semibold cursor-pointer"
           >
             Cancel
           </button>
@@ -247,7 +247,7 @@ export function DesktopNewReviewModal({
               onSubmit(title || "Untitled Manuscript", journal, selectedFile);
               onClose();
             }}
-            className="px-5 py-2 rounded-xl bg-black hover:bg-neutral-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white text-xs font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+            className="px-5 py-2 rounded-xl liquid-glass-btn-primary text-white text-xs font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>Start Review</span>

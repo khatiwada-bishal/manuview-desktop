@@ -106,7 +106,7 @@ LETTER COMPOSITION REQUIREMENTS:
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-white dark:bg-[#080B11] p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC]">
+    <div className="flex-1 overflow-y-auto p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC]">
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Header */}
         <div className="space-y-2">
@@ -123,7 +123,7 @@ LETTER COMPOSITION REQUIREMENTS:
         </div>
 
         {/* Input Form */}
-        <form onSubmit={handleGenerate} className="p-6 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937] space-y-4 shadow-xs">
+        <form onSubmit={handleGenerate} className="p-6 rounded-3xl liquid-glass-card space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
               Manuscript Details
@@ -150,7 +150,7 @@ LETTER COMPOSITION REQUIREMENTS:
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Single-cell transcriptional profiling of..."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white dark:placeholder-neutral-500 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                className="w-full px-3.5 py-2.5 rounded-xl liquid-glass-input text-xs sm:text-sm focus:outline-none"
               />
             </div>
           </div>
@@ -162,7 +162,7 @@ LETTER COMPOSITION REQUIREMENTS:
               value={abstract}
               onChange={(e) => setAbstract(e.target.value)}
               placeholder="Paste abstract..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white dark:placeholder-neutral-500 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none"
+              className="w-full px-3.5 py-2.5 rounded-xl liquid-glass-input text-xs sm:text-sm focus:outline-none resize-none"
             />
           </div>
 
@@ -173,12 +173,12 @@ LETTER COMPOSITION REQUIREMENTS:
               value={broadSignificance}
               onChange={(e) => setBroadSignificance(e.target.value)}
               placeholder="Why this matters to the journal's readership..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white dark:placeholder-neutral-500 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              className="w-full px-3.5 py-2.5 rounded-xl liquid-glass-input text-xs sm:text-sm focus:outline-none"
             />
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-rose-950/30 text-red-700 dark:text-rose-300 border border-red-200 dark:border-rose-800 text-xs">
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 text-red-700 dark:text-rose-300 border border-red-500/20 text-xs backdrop-blur-xs">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -188,7 +188,7 @@ LETTER COMPOSITION REQUIREMENTS:
             <button
               type="submit"
               disabled={loading || !title.trim() || !targetJournal.trim() || !abstract.trim()}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold tracking-wide transition cursor-pointer shadow-xs"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl liquid-glass-btn-primary disabled:opacity-50 text-white text-xs font-semibold tracking-wide transition cursor-pointer shadow-xs"
             >
               {loading ? (
                 <>
@@ -216,7 +216,7 @@ LETTER COMPOSITION REQUIREMENTS:
                 <button
                   type="button"
                   onClick={handleCopy}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#161F30] hover:bg-neutral-50 dark:hover:bg-[#1E293B] text-neutral-700 dark:text-neutral-300 text-xs font-medium transition cursor-pointer shadow-2xs"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl liquid-glass-btn-secondary text-xs font-semibold transition cursor-pointer"
                 >
                   {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copied ? "Copied!" : "Copy Text"}</span>
@@ -224,7 +224,7 @@ LETTER COMPOSITION REQUIREMENTS:
                 <button
                   type="button"
                   onClick={handleDownload}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#111827] dark:bg-blue-600 hover:bg-neutral-800 dark:hover:bg-blue-500 text-white text-xs font-medium transition cursor-pointer shadow-2xs"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl liquid-glass-btn-primary text-white text-xs font-semibold transition cursor-pointer shadow-xs"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Download .txt</span>
@@ -232,7 +232,7 @@ LETTER COMPOSITION REQUIREMENTS:
               </div>
             </div>
 
-            <div className="p-8 rounded-2xl border border-[#E5E7EB] dark:border-[#1F2937] bg-[#FAFAFA] dark:bg-[#111827] font-serif text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 whitespace-pre-wrap shadow-xs">
+            <div className="p-8 rounded-3xl liquid-glass-card font-serif text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 whitespace-pre-wrap">
               {letter}
             </div>
           </div>

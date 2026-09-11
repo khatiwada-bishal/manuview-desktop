@@ -441,7 +441,7 @@ export function DesktopPreSubmissionScanView({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-white dark:bg-[#080B11] p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC]">
+    <div className="flex-1 overflow-y-auto p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC]">
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
@@ -460,7 +460,7 @@ export function DesktopPreSubmissionScanView({
         </div>
 
         {/* Configuration & Calibration Card */}
-        <div className="rounded-2xl bg-[#F9FAFB] dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1F2937] p-5 sm:p-6 space-y-4 shadow-2xs">
+        <div className="rounded-3xl liquid-glass-card p-5 sm:p-6 space-y-4">
           {/* Target Journal */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs sm:text-sm">
             <span className="w-36 flex items-center gap-2 font-semibold text-[#6B7280] dark:text-neutral-400">
@@ -637,7 +637,7 @@ export function DesktopPreSubmissionScanView({
 
         {/* Input Form Card */}
         {!report && (
-          <form onSubmit={handleRunScan} className="rounded-2xl bg-[#F9FAFB] dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1F2937] p-6 space-y-6 shadow-xs">
+          <form onSubmit={handleRunScan} className="rounded-3xl liquid-glass-card p-6 space-y-6">
             {/* Header with Load Sample Preprint */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[#E5E7EB] dark:border-[#1F2937]">
               <div>

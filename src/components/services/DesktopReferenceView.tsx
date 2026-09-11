@@ -73,7 +73,7 @@ export function DesktopReferenceView() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-white dark:bg-[#080B11] p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC]">
+    <div className="flex-1 overflow-y-auto p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC]">
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Header */}
         <div className="space-y-2">
@@ -90,7 +90,7 @@ export function DesktopReferenceView() {
         </div>
 
         {/* Input Form */}
-        <form onSubmit={handleAudit} className="p-6 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937] space-y-4 shadow-xs">
+        <form onSubmit={handleAudit} className="p-6 rounded-3xl liquid-glass-card space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
               Manuscript Bibliography / Citations
@@ -110,11 +110,11 @@ export function DesktopReferenceView() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Paste your manuscript reference list, bibliography, or DOIs..."
-            className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white dark:placeholder-neutral-500 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 font-mono resize-none"
+            className="w-full px-3.5 py-2.5 rounded-xl liquid-glass-input text-xs sm:text-sm focus:outline-none font-mono resize-none"
           />
 
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-rose-950/30 text-red-700 dark:text-rose-300 border border-red-200 dark:border-rose-800 text-xs">
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 text-red-700 dark:text-rose-300 border border-red-500/20 text-xs backdrop-blur-xs">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -124,7 +124,7 @@ export function DesktopReferenceView() {
             <button
               type="submit"
               disabled={loading || !input.trim()}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-xs font-semibold tracking-wide transition cursor-pointer shadow-xs"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl liquid-glass-btn-primary disabled:opacity-50 text-white text-xs font-semibold tracking-wide transition cursor-pointer shadow-xs"
             >
               {loading ? (
                 <>
@@ -161,23 +161,23 @@ export function DesktopReferenceView() {
 
             {/* Metrics */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="p-4 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937]">
+              <div className="p-4 rounded-2xl liquid-glass-card">
                 <div className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Total Audited</div>
                 <div className="text-2xl font-bold text-neutral-900 dark:text-white mt-1">{results.total}</div>
               </div>
-              <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800">
+              <div className="p-4 rounded-2xl liquid-glass-card border border-emerald-500/20 bg-emerald-500/5">
                 <div className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase">Verified Valid</div>
                 <div className="text-2xl font-bold text-emerald-800 dark:text-emerald-300 mt-1">
                   {results.total - results.unresolvableCount - results.retractedCount}
                 </div>
               </div>
-              <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800">
+              <div className="p-4 rounded-2xl liquid-glass-card border border-amber-500/20 bg-amber-500/5">
                 <div className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 uppercase">Unresolvable</div>
                 <div className="text-2xl font-bold text-amber-800 dark:text-amber-300 mt-1">{results.unresolvableCount}</div>
               </div>
-              <div className="p-4 rounded-2xl bg-red-50/60 border border-red-200 dark:bg-rose-950/30 dark:border-rose-800">
-                <div className="text-[11px] font-semibold text-red-700 dark:text-rose-400 uppercase">Retracted</div>
-                <div className="text-2xl font-bold text-red-800 dark:text-rose-300 mt-1">{results.retractedCount}</div>
+              <div className="p-4 rounded-2xl liquid-glass-card border border-rose-500/20 bg-rose-500/5">
+                <div className="text-[11px] font-semibold text-rose-700 dark:text-rose-400 uppercase">Retracted</div>
+                <div className="text-2xl font-bold text-rose-800 dark:text-rose-300 mt-1">{results.retractedCount}</div>
               </div>
             </div>
 
@@ -195,15 +195,15 @@ export function DesktopReferenceView() {
                       citationIntegrity: { references: results.verified }
                     } as any);
                   }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-[#161F30] text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition shadow-2xs cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold liquid-glass-btn-secondary transition cursor-pointer"
                 >
                   <Bookmark className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                   <span>Export BibTeX (.bib)</span>
                 </button>
               </div>
-              <div className="border border-[#E5E7EB] dark:border-[#1F2937] rounded-2xl overflow-hidden shadow-xs">
+              <div className="liquid-glass-card rounded-2xl overflow-hidden">
                 <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-[#F9FAFB] dark:bg-[#161F30] border-b border-[#E5E7EB] dark:border-[#1F2937] text-neutral-500 dark:text-neutral-400 font-semibold uppercase tracking-wider text-[10px]">
+                  <thead className="bg-black/5 dark:bg-white/5 border-b border-black/10 dark:border-white/10 text-neutral-500 dark:text-neutral-400 font-semibold uppercase tracking-wider text-[10px]">
                     <tr>
                       <th className="px-4 py-3">Status</th>
                       <th className="px-4 py-3">Reference / Article Title</th>

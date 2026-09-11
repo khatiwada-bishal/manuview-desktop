@@ -212,8 +212,8 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="relative w-full max-w-xl rounded-2xl bg-white dark:bg-[#111827] border border-[#EBEBEA] dark:border-[#1F2937] shadow-xl p-6 sm:p-7 text-[#2F3437] dark:text-neutral-200 my-6 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xl p-4 overflow-y-auto">
+      <div className="relative w-full max-w-xl rounded-3xl liquid-glass-modal p-6 sm:p-7 text-[#2F3437] dark:text-neutral-200 my-6 max-h-[90vh] overflow-y-auto">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -773,19 +773,19 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
           )}
 
           {/* Privacy Footnote */}
-          <div className="p-2.5 rounded-xl bg-[#F7F7F5] dark:bg-[#161F30] border border-[#EBEBEA] dark:border-[#1F2937] flex items-center gap-2 text-[11px] text-[#787774] dark:text-neutral-400">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#1E5A2A] dark:text-emerald-400 flex-shrink-0" />
+          <div className="p-3 rounded-xl liquid-glass-card flex items-center gap-2 text-[11px] text-[#787774] dark:text-neutral-400">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
             <span>Zero data retention &bull; Processed strictly in memory &bull; Never trained on.</span>
           </div>
 
           {/* Bottom Action Footer */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-[#EBEBEA] dark:border-[#1F2937]">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-black/[0.06] dark:border-white/[0.08]">
             {/* Check Connection Button */}
             <button
               type="button"
               onClick={handleCheckConnection}
               disabled={testing}
-              className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg bg-white dark:bg-[#161F30] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] disabled:opacity-50 text-[#2F3437] dark:text-neutral-300 font-medium text-xs border border-[#EBEBEA] dark:border-[#334155] shadow-2xs transition"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl liquid-glass-btn-secondary disabled:opacity-50 text-[#2F3437] dark:text-neutral-300 font-medium text-xs transition"
             >
               {testing ? (
                 <>
@@ -805,14 +805,14 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
               <button
                 type="button"
                 onClick={onClose}
-                className="px-3.5 py-2 text-xs text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white rounded-lg hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] transition font-medium cursor-pointer"
+                className="px-3.5 py-2 text-xs text-neutral-500 dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white rounded-xl hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition font-medium cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleSave}
-                className="px-4 py-2 rounded-lg bg-[#000000] hover:bg-[#2F3437] dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-medium text-xs transition shadow-xs cursor-pointer"
+                className="px-5 py-2 rounded-xl liquid-glass-btn-primary font-medium text-xs transition cursor-pointer"
               >
                 {savedSuccess ? "Saved!" : "Save & Activate"}
               </button>

@@ -45,7 +45,7 @@ export function DesktopJournalFitView() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-white dark:bg-[#080B11] p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC]">
+    <div className="flex-1 overflow-y-auto p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC]">
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Header */}
         <div className="space-y-2">
@@ -62,7 +62,7 @@ export function DesktopJournalFitView() {
         </div>
 
         {/* Input Form */}
-        <form onSubmit={handlePredict} className="p-6 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937] space-y-4 shadow-xs">
+        <form onSubmit={handlePredict} className="p-6 rounded-3xl liquid-glass-card space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
               Manuscript Details
@@ -84,7 +84,7 @@ export function DesktopJournalFitView() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Single-cell transcriptional profiling of DLL3 activation..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white dark:placeholder-neutral-500 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              className="w-full px-3.5 py-2.5 rounded-xl liquid-glass-input text-xs sm:text-sm focus:outline-none"
             />
           </div>
 
@@ -95,7 +95,7 @@ export function DesktopJournalFitView() {
               value={abstract}
               onChange={(e) => setAbstract(e.target.value)}
               placeholder="Paste the manuscript abstract or key summary..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white dark:placeholder-neutral-500 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 resize-none"
+              className="w-full px-3.5 py-2.5 rounded-xl liquid-glass-input text-xs sm:text-sm focus:outline-none resize-none"
             />
           </div>
 
@@ -103,7 +103,7 @@ export function DesktopJournalFitView() {
             <button
               type="submit"
               disabled={loading || (!title.trim() && !abstract.trim())}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-semibold tracking-wide transition cursor-pointer shadow-xs"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl liquid-glass-btn-primary disabled:opacity-50 text-white text-xs font-semibold tracking-wide transition cursor-pointer shadow-xs"
             >
               <Compass className="w-4 h-4" />
               <span>{loading ? "Matching against 1,300+ journals..." : "Predict Journal Fit"}</span>
@@ -125,9 +125,9 @@ export function DesktopJournalFitView() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Reach Target */}
-              <div className="p-5 rounded-2xl border-2 border-amber-200 bg-amber-50/40 dark:bg-amber-950/20 dark:border-amber-800/60 space-y-3">
+              <div className="p-5 rounded-3xl liquid-glass-card border border-amber-500/20 bg-amber-500/5 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 backdrop-blur-xs">
                     <TrendingUp className="w-3 h-3" />
                     REACH TARGET
                   </span>
@@ -139,7 +139,7 @@ export function DesktopJournalFitView() {
                   <h3 className="font-bold text-sm text-[#0F172A] dark:text-white">{results.reach.name}</h3>
                   <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{results.reach.publisher}</div>
                 </div>
-                <div className="space-y-1.5 pt-2 border-t border-amber-200/60 dark:border-amber-800/40 text-xs text-neutral-600 dark:text-neutral-400">
+                <div className="space-y-1.5 pt-2 border-t border-black/5 dark:border-white/5 text-xs text-neutral-600 dark:text-neutral-400">
                   <div className="flex justify-between">
                     <span>Acceptance Rate:</span>
                     <span className="font-medium text-neutral-800 dark:text-neutral-200">{results.reach.acceptanceRate}</span>
@@ -156,9 +156,9 @@ export function DesktopJournalFitView() {
               </div>
 
               {/* Realistic Target */}
-              <div className="p-5 rounded-2xl border-2 border-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/20 dark:border-emerald-800/60 space-y-3 shadow-xs">
+              <div className="p-5 rounded-3xl liquid-glass-card border border-emerald-500/25 bg-emerald-500/5 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 backdrop-blur-xs">
                     <CheckCircle2 className="w-3 h-3" />
                     OPTIMAL FIT (RECOMMENDED)
                   </span>
@@ -170,7 +170,7 @@ export function DesktopJournalFitView() {
                   <h3 className="font-bold text-sm text-[#0F172A] dark:text-white">{results.realistic.name}</h3>
                   <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{results.realistic.publisher}</div>
                 </div>
-                <div className="space-y-1.5 pt-2 border-t border-emerald-200/60 dark:border-emerald-800/40 text-xs text-neutral-600 dark:text-neutral-400">
+                <div className="space-y-1.5 pt-2 border-t border-black/5 dark:border-white/5 text-xs text-neutral-600 dark:text-neutral-400">
                   <div className="flex justify-between">
                     <span>Acceptance Rate:</span>
                     <span className="font-medium text-neutral-800 dark:text-neutral-200">{results.realistic.acceptanceRate}</span>
@@ -187,9 +187,9 @@ export function DesktopJournalFitView() {
               </div>
 
               {/* Fallback Target */}
-              <div className="p-5 rounded-2xl border-2 border-blue-200 bg-blue-50/40 dark:bg-blue-950/20 dark:border-blue-800/60 space-y-3">
+              <div className="p-5 rounded-3xl liquid-glass-card border border-blue-500/20 bg-blue-500/5 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-300 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 backdrop-blur-xs">
                     <Shield className="w-3 h-3" />
                     FALLBACK / SAFETY
                   </span>
@@ -201,7 +201,7 @@ export function DesktopJournalFitView() {
                   <h3 className="font-bold text-sm text-[#0F172A] dark:text-white">{results.fallback.name}</h3>
                   <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{results.fallback.publisher}</div>
                 </div>
-                <div className="space-y-1.5 pt-2 border-t border-blue-200/60 dark:border-blue-800/40 text-xs text-neutral-600 dark:text-neutral-400">
+                <div className="space-y-1.5 pt-2 border-t border-black/5 dark:border-white/5 text-xs text-neutral-600 dark:text-neutral-400">
                   <div className="flex justify-between">
                     <span>Acceptance Rate:</span>
                     <span className="font-medium text-neutral-800 dark:text-neutral-200">{results.fallback.acceptanceRate}</span>
@@ -223,9 +223,9 @@ export function DesktopJournalFitView() {
               <h3 className="text-sm font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider">
                 All Qualified Catalog Matches ({results.allMatches.length})
               </h3>
-              <div className="border border-[#E5E7EB] dark:border-[#1F2937] rounded-2xl overflow-hidden shadow-xs">
+              <div className="liquid-glass-card rounded-2xl overflow-hidden">
                 <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-[#F9FAFB] dark:bg-[#161F30] border-b border-[#E5E7EB] dark:border-[#1F2937] text-neutral-500 dark:text-neutral-400 font-semibold uppercase tracking-wider text-[10px]">
+                  <thead className="bg-black/5 dark:bg-white/5 border-b border-black/10 dark:border-white/10 text-neutral-500 dark:text-neutral-400 font-semibold uppercase tracking-wider text-[10px]">
                     <tr>
                       <th className="px-4 py-3">Journal &amp; Publisher</th>
                       <th className="px-4 py-3">Fit Score</th>
