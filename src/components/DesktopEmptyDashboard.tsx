@@ -30,7 +30,7 @@ export function DesktopEmptyDashboard({
 }: DesktopEmptyDashboardProps) {
   return (
     <div className="flex-1 overflow-y-auto bg-[#FAFAFA] p-6 sm:p-10 text-[#111827]">
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div className="max-w-5xl mx-auto space-y-8">
         {/* HERO SECTION */}
         <div className="rounded-3xl bg-white border border-[#E5E7EB] p-8 shadow-xs space-y-4 text-center sm:text-left">
           <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-4">

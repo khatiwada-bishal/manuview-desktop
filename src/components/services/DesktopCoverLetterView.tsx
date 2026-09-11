@@ -107,7 +107,7 @@ LETTER COMPOSITION REQUIREMENTS:
 
   return (
     <div className="flex-1 overflow-y-auto bg-white p-6 sm:p-10 text-[#111827]">
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div className="max-w-5xl mx-auto space-y-8">
         {/* Header */}
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">

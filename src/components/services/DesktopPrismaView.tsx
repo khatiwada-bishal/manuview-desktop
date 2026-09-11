@@ -47,7 +47,7 @@ export function DesktopPrismaView() {
 
   return (
     <div className="flex-1 overflow-y-auto bg-white p-6 sm:p-10 text-[#111827]">
-      <div className="max-w-6xl mx-auto space-y-8">
+      <div className="max-w-5xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-2">

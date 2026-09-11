@@ -593,17 +593,18 @@ export function DesktopPreSubmissionScanView({
 
               {scanPingResult && (
                 <span
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono border ${
+                  title={scanPingResult.error || scanPingResult.message}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-mono font-medium border ${
                     scanPingResult.success
                       ? "bg-[#ECFDF5] text-[#065F46] border-[#A7F3D0]"
                       : "bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]"
                   }`}
                 >
-                  <Zap className="w-3 h-3 text-amber-500 fill-amber-500" />
+                  <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0" />
                   <span>
                     {scanPingResult.success
-                      ? `${scanPingResult.latencyMs}ms (${scanPingResult.message})`
-                      : `Failed: ${scanPingResult.error || scanPingResult.message}`}
+                      ? `${scanPingResult.latencyMs}ms`
+                      : `Failed`}
                   </span>
                 </span>
               )}
