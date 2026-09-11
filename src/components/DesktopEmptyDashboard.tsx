@@ -113,7 +113,11 @@ export function DesktopEmptyDashboard({
                   </div>
                   <div className="flex items-center justify-between pt-3 mt-3 border-t border-neutral-100 text-[11px]">
                     <span className="font-semibold text-neutral-600">
-                      Triage Readiness: {paper.score}%
+                      {paper.isEligibleForReview === false
+                        ? paper.ineligibilityReason === "already_published"
+                          ? "Status: Already Published"
+                          : "Status: Review Ineligible"
+                        : `Triage Readiness: ${paper.score ?? 0}%`}
                     </span>
                     <span className="inline-flex items-center gap-1 text-blue-600 font-medium group-hover:translate-x-0.5 transition-transform">
                       Open <ArrowRight className="w-3 h-3" />

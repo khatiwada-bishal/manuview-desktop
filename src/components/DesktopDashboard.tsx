@@ -29,6 +29,7 @@ import {
   FileCode,
   ShieldAlert,
   Scale,
+  Upload,
 } from "lucide-react";
 import { DesktopActiveView } from "./DesktopSidebar";
 import {
@@ -48,7 +49,7 @@ export interface DesktopDashboardData {
   targetJournal: string;
   aiEngine: string;
   latencyMs: number;
-  score: number;
+  score?: number;
   statusText: string;
   vulnerabilities: Array<{
     type: "overclaim" | "sample_size" | "control" | "generic";
@@ -103,7 +104,15 @@ export function DesktopDashboard({
 
   // Normalized values prioritizing fullReport
   const title = fullReport?.title || data.paperTitle || data.headlineTitle;
-  const overallScore = fullReport?.overallScore ?? data.score ?? 78;
+  const isReviewEligible = fullReport?.isEligibleForReview !== false;
+  const ineligibilityReason = fullReport?.ineligibilityReason;
+  const isAlreadyPublished =
+    ineligibilityReason === "already_published" ||
+    Boolean(fullReport?.publishedDetails?.isPublished);
+  const isNonAcademic =
+    ineligibilityReason === "non_academic_document" ||
+    (fullReport?.classification && !fullReport.classification.isAcademicManuscript);
+  const overallScore = fullReport?.overallScore ?? (isReviewEligible ? data.score ?? 78 : undefined);
   const targetJournal =
     fullReport?.targetJournal || data.targetJournal || "Target Journal";
   const summary = fullReport?.summary;
@@ -222,29 +231,147 @@ export function DesktopDashboard({
                 </p>
               </div>
 
-              {/* Acceptance Potential Banner & Print Action */}
-              <div className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5 rounded-xl bg-[#F1F5F9]/80 border border-[#E2E8F0]">
-                <div className="flex items-baseline">
-                  <span className="text-3xl sm:text-4xl font-black text-[#0F172A]">
-                    {overallScore}
-                  </span>
-                  <span className="text-xs sm:text-sm font-bold text-[#64748B] uppercase tracking-wider ml-2">
-                    / 100 OVERALL ACCEPTANCE POTENTIAL
-                  </span>
-                </div>
+              {/* Acceptance Potential Banner OR Ineligibility Banner */}
+              {isAlreadyPublished ? (
+                <div className="p-5 rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200 shadow-2xs space-y-3.5">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                        <CheckCircle2 className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-bold text-emerald-950 block">
+                          Already Published Article Detected
+                        </span>
+                        <span className="text-[11px] text-emerald-800">
+                          Established Record in Scholarly Literature • Pre-Submission Peer-Review Simulation Bypassed
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        Published Article
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handlePrint}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-emerald-900 border border-emerald-300 hover:bg-emerald-100/50 transition cursor-pointer shadow-2xs"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>Print / PDF</span>
+                      </button>
+                    </div>
+                  </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handlePrint}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold bg-[#1E293B] hover:bg-[#0F172A] text-white transition shadow-xs cursor-pointer"
-                    title="Print or Save as PDF"
-                  >
-                    <Printer className="w-3.5 h-3.5 text-white" />
-                    <span>Print / Save as PDF</span>
-                  </button>
+                  {/* Published Metadata Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-2 border-t border-emerald-200/70 text-xs">
+                    {fullReport?.publishedDetails?.journalName && (
+                      <div className="p-2.5 rounded-lg bg-white/80 border border-emerald-200/60">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">Published Journal</span>
+                        <span className="font-semibold text-emerald-950 truncate block mt-0.5" title={fullReport.publishedDetails.journalName}>
+                          {fullReport.publishedDetails.journalName}
+                        </span>
+                      </div>
+                    )}
+                    {fullReport?.publishedDetails?.publicationDate && (
+                      <div className="p-2.5 rounded-lg bg-white/80 border border-emerald-200/60">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">Publication Date</span>
+                        <span className="font-semibold text-emerald-950 block mt-0.5">
+                          {fullReport.publishedDetails.publicationDate}
+                        </span>
+                      </div>
+                    )}
+                    {fullReport?.publishedDetails?.publisher && (
+                      <div className="p-2.5 rounded-lg bg-white/80 border border-emerald-200/60">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">Publisher</span>
+                        <span className="font-semibold text-emerald-950 truncate block mt-0.5" title={fullReport.publishedDetails.publisher}>
+                          {fullReport.publishedDetails.publisher}
+                        </span>
+                      </div>
+                    )}
+                    {fullReport?.publishedDetails?.doi && (
+                      <div className="p-2.5 rounded-lg bg-white/80 border border-emerald-200/60">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">Official Article DOI</span>
+                        <a
+                          href={`https://doi.org/${fullReport.publishedDetails.doi}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-mono text-emerald-700 hover:text-emerald-900 hover:underline inline-flex items-center gap-1 truncate block mt-0.5"
+                        >
+                          <span className="truncate">{fullReport.publishedDetails.doi}</span>
+                          <ExternalLink className="w-3 h-3 shrink-0" />
+                        </a>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="text-[11px] text-emerald-800/90 pt-1 flex items-center justify-between flex-wrap gap-2">
+                    <span>Verified via: {fullReport?.publishedDetails?.detectedVia || "Official Crossref Registry"}</span>
+                    {fullReport?.publishedDetails?.citationCount !== undefined && (
+                      <span>Scholarly Citation Count: <strong>{fullReport.publishedDetails.citationCount}</strong></span>
+                    )}
+                  </div>
                 </div>
-              </div>
+              ) : isNonAcademic ? (
+                <div className="p-5 rounded-xl bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border border-amber-200 shadow-2xs space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-amber-600 text-white flex items-center justify-center shadow-xs">
+                        <AlertTriangle className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-bold text-amber-950 block">
+                          Document Ineligible for Peer-Review Evaluation
+                        </span>
+                        <span className="text-[11px] text-amber-800">
+                          Classified as {classification?.categoryLabel || "Non-Academic Document"} • Pre-Submission Simulation Bypassed
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-900 border border-amber-300">
+                        Review Bypassed (N/A)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={onNewScan}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white transition cursor-pointer shadow-2xs"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Upload Manuscript</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-amber-900/90 leading-relaxed pt-2 border-t border-amber-200/70">
+                    {classification?.advisoryMessage ||
+                      "This document does not contain empirical scientific research, IMRaD sections, or scholarly bibliography citations. Acceptance scoring and persona simulations have been safely skipped."}
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5 rounded-xl bg-[#F1F5F9]/80 border border-[#E2E8F0]">
+                  <div className="flex items-baseline">
+                    <span className="text-3xl sm:text-4xl font-black text-[#0F172A]">
+                      {overallScore}
+                    </span>
+                    <span className="text-xs sm:text-sm font-bold text-[#64748B] uppercase tracking-wider ml-2">
+                      / 100 OVERALL ACCEPTANCE POTENTIAL
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handlePrint}
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold bg-[#1E293B] hover:bg-[#0F172A] text-white transition shadow-xs cursor-pointer"
+                      title="Print or Save as PDF"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-white" />
+                      <span>Print / Save as PDF</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* CARD 2: Editorial Synthesis & Triage Assessment Card */}
@@ -277,8 +404,8 @@ export function DesktopDashboard({
               </p>
             </div>
 
-            {/* CARD 4: Reporting Guideline Compliance Audit */}
-            {fullReport?.reportingGuideline && (
+            {/* CARD 4: Reporting Guideline Compliance Audit (Only for eligible manuscripts) */}
+            {isReviewEligible && fullReport?.reportingGuideline && (
               <div className="rounded-2xl bg-white border border-[#E2E8F0] p-6 sm:p-7 space-y-4 shadow-xs">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#E2E8F0]">
                   <div>
@@ -335,9 +462,40 @@ export function DesktopDashboard({
         )}
 
         {/* ========================================================= */}
+        {/* INELIGIBILITY NOTICE FOR PEER-REVIEW SUBVIEWS            */}
+        {/* ========================================================= */}
+        {activeView !== "overview" && activeView !== "citations" && !isReviewEligible && (
+          <div className="rounded-2xl bg-white border border-[#E2E8F0] p-8 sm:p-12 text-center space-y-4 shadow-xs animate-fade-in">
+            <div className="w-12 h-12 rounded-full bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-[#0F172A]">
+                {isAlreadyPublished ? "Already Published Article" : "Ineligible for Pre-Submission Simulation"}
+              </h2>
+              <p className="text-xs sm:text-sm text-neutral-500 max-w-md mx-auto mt-1 leading-relaxed">
+                {isAlreadyPublished
+                  ? "This article has already been published in the peer-reviewed scientific literature. Simulated referee personas, scoring dimensions, and pre-submission action items are not applicable."
+                  : "Simulated peer-reviewer personas, scoring dimensions, and target journal calibrations are only generated for empirical research manuscripts."}
+              </p>
+            </div>
+            <div>
+              <button
+                type="button"
+                onClick={() => onSelectView("overview")}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-[#2563EB] text-white hover:bg-blue-700 transition shadow-xs cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Return to Overview</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
         {/* TAB 2: 5 REVIEWER PERSONAS (ADVERSARIAL PANEL)            */}
         {/* ========================================================= */}
-        {activeView === "personas" && (
+        {activeView === "personas" && isReviewEligible && (
           <div className="space-y-6 animate-fade-in">
             {/* Persona Switcher Buttons */}
             <div className="flex flex-wrap items-center gap-2 pb-2">
@@ -569,7 +727,7 @@ export function DesktopDashboard({
         {/* ========================================================= */}
         {/* TAB 3: 6 SCORING DIMENSIONS                              */}
         {/* ========================================================= */}
-        {activeView === "dimensions" && (
+        {activeView === "dimensions" && isReviewEligible && (
           <div className="space-y-5 animate-fade-in">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
@@ -637,7 +795,7 @@ export function DesktopDashboard({
         {/* ========================================================= */}
         {/* TAB 4: PRIORITY ACTION ITEMS                              */}
         {/* ========================================================= */}
-        {activeView === "issues" && (
+        {activeView === "issues" && isReviewEligible && (
           <div className="space-y-5 animate-fade-in">
             {/* Filter Pills */}
             <div className="flex flex-wrap items-center gap-2">
@@ -773,9 +931,9 @@ export function DesktopDashboard({
         )}
 
         {/* ========================================================= */}
-        {/* TAB 5: TARGET JOURNALS                                    */}
+        {/* TAB 5: TARGET JOURNAL RECOMMENDATIONS                     */}
         {/* ========================================================= */}
-        {(activeView === "journals" || activeView === "recommendations") && (
+        {(activeView === "journals" || activeView === "recommendations") && isReviewEligible && (
           <div className="space-y-5 animate-fade-in">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-[#0F172A] flex items-center gap-2">

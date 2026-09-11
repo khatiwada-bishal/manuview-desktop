@@ -340,6 +340,11 @@ export function DesktopPreSubmissionScanView({
 
         // Register paper in articles store if onComplete provided
         if (onComplete) {
+          const isEligible = fullReport.isEligibleForReview !== false;
+          const isPublished =
+            fullReport.ineligibilityReason === "already_published" ||
+            Boolean(fullReport.publishedDetails?.isPublished);
+
           const newPaper: PaperItem = {
             id: `paper-${Date.now()}`,
             title: fullReport.title || manuscriptTitle || "Untitled Manuscript",
@@ -347,21 +352,30 @@ export function DesktopPreSubmissionScanView({
               .split(" ")
               .slice(0, 3)
               .join(" "),
-            journal: targetJournal,
-            score: fullReport.overallScore || 80,
+            journal: fullReport.publishedDetails?.journalName || targetJournal,
+            score: isEligible ? (fullReport.overallScore || 80) : undefined,
+            isEligibleForReview: isEligible,
+            ineligibilityReason: fullReport.ineligibilityReason,
+            isPublished: isPublished,
+            publishedJournal: fullReport.publishedDetails?.journalName,
           };
 
           const dashboardData: DesktopDashboardData = {
             paperTitle: newPaper.title,
-            headlineTitle: `${targetJournal} Pre-Submission Diagnostic`,
-            targetJournal: targetJournal,
+            headlineTitle: isPublished
+              ? `${newPaper.journal} (Published Article)`
+              : `${targetJournal} Pre-Submission Diagnostic`,
+            targetJournal: newPaper.journal,
             aiEngine: activeProviderInfo.name || "AI ENGINE",
             latencyMs: 120,
-            score: fullReport.overallScore || 80,
-            statusText:
-              (fullReport.overallScore || 80) >= 80
-                ? "High Acceptance Probability"
-                : "Revision Prioritized",
+            score: isEligible ? (fullReport.overallScore || 80) : undefined,
+            statusText: !isEligible
+              ? isPublished
+                ? "Already Published Article"
+                : "Ineligible Document Type"
+              : (fullReport.overallScore || 80) >= 80
+              ? "High Acceptance Probability"
+              : "Revision Prioritized",
             vulnerabilities:
               fullReport.priorityIssues?.map((issue) => ({
                 type: (issue.category === "Causal Claims"
@@ -902,50 +916,142 @@ export function DesktopPreSubmissionScanView({
                 </div>
               )}
 
-              {/* Score & Editorial Triage Block */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {/* Readiness Score Card */}
-                <div className="p-6 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] flex flex-col justify-center items-center text-center shadow-2xs">
-                  <div className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-1">
-                    Readiness Score
-                  </div>
-                  <div className="flex items-baseline gap-1 my-1">
-                    <span className="text-4xl font-extrabold text-[#111827]">{report.overallScore}</span>
-                    <span className="text-neutral-400 text-sm font-semibold">/100</span>
-                  </div>
-                  <div
-                    className={`mt-1.5 px-3 py-1 rounded-md text-xs font-semibold border ${
-                      report.overallScore >= 80
-                        ? "bg-[#ECFDF5] text-[#065F46] border-[#A7F3D0]"
-                        : report.overallScore >= 65
-                        ? "bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]"
-                        : "bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]"
-                    }`}
-                  >
-                    {report.overallScore >= 80
-                      ? "Submission Ready"
-                      : report.overallScore >= 65
-                      ? "Revision Prioritized"
-                      : "Substantive Hazards"}
-                  </div>
-                </div>
+              {/* Ineligibility Banner OR Score & Editorial Triage Block */}
+              {report.isEligibleForReview === false ? (
+                report.ineligibilityReason === "already_published" ? (
+                  <div className="p-6 rounded-2xl bg-emerald-50/80 border border-emerald-200 shadow-2xs space-y-4">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                          <CheckCircle2 className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold text-emerald-950">Already Published Article Detected</h3>
+                          <p className="text-xs text-emerald-800">
+                            Established record in scholarly literature. Pre-submission peer-review simulation safely bypassed.
+                          </p>
+                        </div>
+                      </div>
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        Published Article
+                      </span>
+                    </div>
 
-                {/* Editorial Summary Callout */}
-                <div className="md:col-span-3 p-6 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] flex flex-col justify-center shadow-2xs">
-                  <div className="flex items-center gap-2 text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2">
-                    <span className="text-base select-none">📌</span>
-                    <span>Editorial Triage Synthesis</span>
-                  </div>
-                  <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed font-normal">{report.summary}</p>
-                </div>
-              </div>
+                    {report.publishedDetails && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-emerald-200/70 text-xs">
+                        {report.publishedDetails.journalName && (
+                          <div className="p-3 rounded-xl bg-white/90 border border-emerald-200/60">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">Published Journal</span>
+                            <span className="font-semibold text-emerald-950 truncate block mt-0.5" title={report.publishedDetails.journalName}>
+                              {report.publishedDetails.journalName}
+                            </span>
+                          </div>
+                        )}
+                        {report.publishedDetails.publicationDate && (
+                          <div className="p-3 rounded-xl bg-white/90 border border-emerald-200/60">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">Publication Date</span>
+                            <span className="font-semibold text-emerald-950 block mt-0.5">
+                              {report.publishedDetails.publicationDate}
+                            </span>
+                          </div>
+                        )}
+                        {report.publishedDetails.publisher && (
+                          <div className="p-3 rounded-xl bg-white/90 border border-emerald-200/60">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">Publisher</span>
+                            <span className="font-semibold text-emerald-950 truncate block mt-0.5" title={report.publishedDetails.publisher}>
+                              {report.publishedDetails.publisher}
+                            </span>
+                          </div>
+                        )}
+                        {report.publishedDetails.doi && (
+                          <div className="p-3 rounded-xl bg-white/90 border border-emerald-200/60">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">Official Article DOI</span>
+                            <a
+                              href={`https://doi.org/${report.publishedDetails.doi}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="font-mono text-emerald-700 hover:text-emerald-900 hover:underline inline-flex items-center gap-1 truncate block mt-0.5"
+                            >
+                              <span className="truncate">{report.publishedDetails.doi}</span>
+                              <ExternalLink className="w-3 h-3 shrink-0" />
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
-              {/* The 6 Evaluation Dimensions */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm font-bold text-[#111827]">
-                  <BarChart3 className="w-4 h-4 text-neutral-500" />
-                  <span>The 6 Evaluation Dimensions (1–5 Scale)</span>
+                    <div className="p-4 rounded-xl bg-white/80 border border-emerald-200/60 text-xs text-neutral-700">
+                      <span className="font-bold text-emerald-950 block mb-1">Status Note:</span>
+                      <p className="leading-relaxed">{report.summary}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-6 rounded-2xl bg-amber-50/80 border border-amber-200 shadow-2xs space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-amber-600 text-white flex items-center justify-center shadow-xs">
+                        <AlertTriangle className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-amber-950">Document Ineligible for Peer-Review Evaluation</h3>
+                        <p className="text-xs text-amber-800">
+                          Classified as {report.classification?.categoryLabel || "Non-Academic File"} • Review Bypassed
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-amber-900/90 leading-relaxed pt-2 border-t border-amber-200/70">
+                      {report.classification?.advisoryMessage || report.summary}
+                    </p>
+                  </div>
+                )
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  {/* Readiness Score Card */}
+                  <div className="p-6 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] flex flex-col justify-center items-center text-center shadow-2xs">
+                    <div className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-1">
+                      Readiness Score
+                    </div>
+                    <div className="flex items-baseline gap-1 my-1">
+                      <span className="text-4xl font-extrabold text-[#111827]">{report.overallScore ?? 75}</span>
+                      <span className="text-neutral-400 text-sm font-semibold">/100</span>
+                    </div>
+                    <div
+                      className={`mt-1.5 px-3 py-1 rounded-md text-xs font-semibold border ${
+                        (report.overallScore ?? 75) >= 80
+                          ? "bg-[#ECFDF5] text-[#065F46] border-[#A7F3D0]"
+                          : (report.overallScore ?? 75) >= 65
+                          ? "bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]"
+                          : "bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]"
+                      }`}
+                    >
+                      {(report.overallScore ?? 75) >= 80
+                        ? "Submission Ready"
+                        : (report.overallScore ?? 75) >= 65
+                        ? "Revision Prioritized"
+                        : "Substantive Hazards"}
+                    </div>
+                  </div>
+
+                  {/* Editorial Summary Callout */}
+                  <div className="md:col-span-3 p-6 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] flex flex-col justify-center shadow-2xs">
+                    <div className="flex items-center gap-2 text-xs font-bold text-neutral-700 uppercase tracking-wider mb-2">
+                      <span className="text-base select-none">📌</span>
+                      <span>Editorial Triage Synthesis</span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed font-normal">{report.summary}</p>
+                  </div>
                 </div>
+              )}
+
+              {/* Only show 6 dimensions, prioritized action plan, and 5 personas if review eligible */}
+              {report.isEligibleForReview !== false && (
+                <>
+                  {/* The 6 Evaluation Dimensions */}
+                  {report.dimensions && (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 text-sm font-bold text-[#111827]">
+                        <BarChart3 className="w-4 h-4 text-neutral-500" />
+                        <span>The 6 Evaluation Dimensions (1–5 Scale)</span>
+                      </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {Object.entries(report.dimensions).map(([key, dim]) => (
@@ -981,8 +1087,10 @@ export function DesktopPreSubmissionScanView({
                   ))}
                 </div>
               </div>
+            )}
 
-              {/* Prioritized Action Plan */}
+            {/* Prioritized Action Plan */}
+            {report.priorityIssues && report.priorityIssues.length > 0 && (
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-sm font-bold text-[#111827]">
                   <AlertCircle className="w-4 h-4 text-red-600" />
@@ -1035,8 +1143,10 @@ export function DesktopPreSubmissionScanView({
                   ))}
                 </div>
               </div>
+            )}
 
-              {/* 5-Persona Peer-Review Simulation */}
+            {/* 5-Persona Peer-Review Simulation */}
+            {report.reviewerPersonas && report.reviewerPersonas.length > 0 && (
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <div className="flex items-center gap-2 text-sm font-bold text-[#111827]">
@@ -1207,97 +1317,103 @@ export function DesktopPreSubmissionScanView({
                   );
                 })()}
               </div>
+            )}
+          </>
+        )}
 
-              {/* Citation & Reference Integrity Audit */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm font-bold text-[#111827]">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Citation &amp; Reference Integrity Audit</span>
+        {/* Citation & Reference Integrity Audit */}
+        {report.citationIntegrity && report.citationIntegrity.totalReferences > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-sm font-bold text-[#111827]">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>Citation &amp; Reference Integrity Audit</span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-4 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] text-center shadow-2xs">
+                <div className="text-2xl font-bold text-[#111827]">
+                  {report.citationIntegrity.totalReferences}
                 </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="p-4 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] text-center shadow-2xs">
-                    <div className="text-2xl font-bold text-[#111827]">
-                      {report.citationIntegrity.totalReferences}
-                    </div>
-                    <div className="text-xs text-neutral-500 mt-0.5">Total References</div>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] text-center shadow-2xs">
-                    <div className="text-2xl font-bold text-emerald-600">
-                      {report.citationIntegrity.verifiedCount}
-                    </div>
-                    <div className="text-xs text-neutral-500 mt-0.5">Crossref Verified</div>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] text-center shadow-2xs">
-                    <div
-                      className={`text-2xl font-bold ${
-                        report.citationIntegrity.unresolvableCount > 0 ? "text-red-600" : "text-[#111827]"
-                      }`}
-                    >
-                      {report.citationIntegrity.unresolvableCount}
-                    </div>
-                    <div className="text-xs text-neutral-500 mt-0.5">Unresolvable DOIs</div>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] text-center shadow-2xs">
-                    <div
-                      className={`text-2xl font-bold ${
-                        report.citationIntegrity.retractedCount > 0 ? "text-red-600" : "text-emerald-600"
-                      }`}
-                    >
-                      {report.citationIntegrity.retractedCount}
-                    </div>
-                    <div className="text-xs text-neutral-500 mt-0.5">Retracted Flagged</div>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl bg-white border border-[#E5E7EB] overflow-hidden shadow-2xs">
-                  <div className="p-3.5 bg-[#F9FAFB] border-b border-[#E5E7EB] text-xs font-bold text-neutral-600 uppercase tracking-wider">
-                    Bibliography Samples
-                  </div>
-                  <div className="divide-y divide-[#E5E7EB]">
-                    {report.citationIntegrity.references.slice(0, 5).map((ref, idx) => (
-                      <div
-                        key={idx}
-                        className="p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs"
-                      >
-                        <div className="space-y-0.5 max-w-xl">
-                          <div className="text-[#111827] font-medium truncate">{ref.title || ref.raw}</div>
-                          <div className="text-[11px] text-neutral-500 flex items-center gap-2">
-                            {ref.doi && <span>DOI: {ref.doi}</span>}
-                            {ref.journal && <span>&bull; {ref.journal}</span>}
-                            {ref.year && <span>&bull; {ref.year}</span>}
-                          </div>
-                        </div>
-
-                        <div className="flex-shrink-0">
-                          {ref.isRetracted ? (
-                            <span className="px-2.5 py-1 rounded text-[10px] font-semibold bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA]">
-                              RETRACTED
-                            </span>
-                          ) : ref.status === "valid" ? (
-                            <span className="px-2.5 py-1 rounded text-[10px] font-semibold bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]">
-                              Crossref Verified
-                            </span>
-                          ) : (
-                            <span className="px-2.5 py-1 rounded text-[10px] font-semibold bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
-                              Unverified
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <div className="text-xs text-neutral-500 mt-0.5">Total References</div>
               </div>
-
-              {/* Target Journal Recommendation Tiers */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm font-bold text-[#111827]">
-                  <BookOpen className="w-4 h-4 text-neutral-500" />
-                  <span>Target Journal Recommendation Tiers</span>
+              <div className="p-4 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] text-center shadow-2xs">
+                <div className="text-2xl font-bold text-emerald-600">
+                  {report.citationIntegrity.verifiedCount}
                 </div>
+                <div className="text-xs text-neutral-500 mt-0.5">Crossref Verified</div>
+              </div>
+              <div className="p-4 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] text-center shadow-2xs">
+                <div
+                  className={`text-2xl font-bold ${
+                    report.citationIntegrity.unresolvableCount > 0 ? "text-red-600" : "text-[#111827]"
+                  }`}
+                >
+                  {report.citationIntegrity.unresolvableCount}
+                </div>
+                <div className="text-xs text-neutral-500 mt-0.5">Unresolvable DOIs</div>
+              </div>
+              <div className="p-4 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] text-center shadow-2xs">
+                <div
+                  className={`text-2xl font-bold ${
+                    report.citationIntegrity.retractedCount > 0 ? "text-red-600" : "text-emerald-600"
+                  }`}
+                >
+                  {report.citationIntegrity.retractedCount}
+                </div>
+                <div className="text-xs text-neutral-500 mt-0.5">Retracted Flagged</div>
+              </div>
+            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="rounded-2xl bg-white border border-[#E5E7EB] overflow-hidden shadow-2xs">
+              <div className="p-3.5 bg-[#F9FAFB] border-b border-[#E5E7EB] text-xs font-bold text-neutral-600 uppercase tracking-wider">
+                Bibliography Samples
+              </div>
+              <div className="divide-y divide-[#E5E7EB]">
+                {report.citationIntegrity.references.slice(0, 5).map((ref, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs"
+                  >
+                    <div className="space-y-0.5 max-w-xl">
+                      <div className="text-[#111827] font-medium truncate">{ref.title || ref.raw}</div>
+                      <div className="text-[11px] text-neutral-500 flex items-center gap-2">
+                        {ref.doi && <span>DOI: {ref.doi}</span>}
+                        {ref.journal && <span>&bull; {ref.journal}</span>}
+                        {ref.year && <span>&bull; {ref.year}</span>}
+                      </div>
+                    </div>
+
+                    <div className="flex-shrink-0">
+                      {ref.isRetracted ? (
+                        <span className="px-2.5 py-1 rounded text-[10px] font-semibold bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA]">
+                          RETRACTED
+                        </span>
+                      ) : ref.status === "valid" ? (
+                        <span className="px-2.5 py-1 rounded text-[10px] font-semibold bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]">
+                          Crossref Verified
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-1 rounded text-[10px] font-semibold bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
+                          Unverified
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Target Journal Recommendation Tiers */}
+        {report.isEligibleForReview !== false && report.journalRecommendations && report.journalRecommendations.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-sm font-bold text-[#111827]">
+              <BookOpen className="w-4 h-4 text-neutral-500" />
+              <span>Target Journal Recommendation Tiers</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {report.journalRecommendations.map((rec, idx) => (
                     <div
                       key={idx}
@@ -1338,8 +1454,9 @@ export function DesktopPreSubmissionScanView({
                   ))}
                 </div>
               </div>
-            </div>
-          ))}
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

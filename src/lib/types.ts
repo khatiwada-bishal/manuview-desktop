@@ -143,16 +143,33 @@ export interface ReportingGuidelineCheck {
   missingOrPartialItems: string[];
 }
 
+export interface PublishedArticleDetails {
+  isPublished: boolean;
+  doi?: string;
+  journalName?: string;
+  publisher?: string;
+  publicationDate?: string;
+  volume?: string;
+  issue?: string;
+  pages?: string;
+  articleUrl?: string;
+  citationCount?: number;
+  detectedVia: string;
+}
+
 export interface FullReviewReport {
   mode?: 'full';
   id: string;
   createdAt: string;
   title: string;
   targetJournal?: string;
-  overallScore: number; // 0 to 100
+  overallScore?: number; // 0 to 100 (omitted if non-academic or already published)
+  isEligibleForReview?: boolean; // false if already published OR non-academic manuscript
+  ineligibilityReason?: 'already_published' | 'non_academic_document';
+  publishedDetails?: PublishedArticleDetails;
   summary: string;
   classification: DocumentClassification;
-  dimensions: Record<ScoreDimension, DimensionScore>;
+  dimensions?: Record<ScoreDimension, DimensionScore>;
   priorityIssues: PriorityIssue[];
   reviewerPersonas: ReviewerPersonaFeedback[];
   journalRecommendations: JournalRecommendation[];
