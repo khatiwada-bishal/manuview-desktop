@@ -80,7 +80,7 @@ export function DesktopSidebar({
   onSelectService,
   onDeletePaper,
 }: DesktopSidebarProps) {
-  const [servicesExpanded, setServicesExpanded] = useState(true);
+  const [servicesExpanded, setServicesExpanded] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const isFirstRender = useRef(true);
   const prevCollapsedRef = useRef(isCollapsed);

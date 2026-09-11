@@ -12,6 +12,7 @@ import {
   Layers,
   ArrowRight,
   Trash2,
+  MessageSquare,
 } from "lucide-react";
 import { PaperItem } from "./DesktopSidebar";
 
@@ -135,31 +136,8 @@ export function DesktopEmptyDashboard({
           <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 px-1">
             Research &amp; Diagnostic Services
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            {/* 1. Pre-Submission AI Review */}
-            <div
-              onClick={() => onOpenService("ai-review")}
-              className="rounded-2xl liquid-glass-card liquid-glass-card-interactive p-5 transition cursor-pointer group space-y-2.5"
-            >
-              <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-500/20">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
-                  Full Pipeline
-                </span>
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-[#111827] dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
-                  Pre-Submission AI Review
-                </h3>
-                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2">
-                  5-persona reviewer simulation (Methods, Domain, Editor, Stats, Devil's Advocate) with causal overclaim screening.
-                </p>
-              </div>
-            </div>
-
-            {/* 2. Journal Fit */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {/* 1. Journal Fit Predictor */}
             <div
               onClick={() => onOpenService("journal-fit")}
               className="rounded-2xl liquid-glass-card liquid-glass-card-interactive p-5 transition cursor-pointer group space-y-2.5"
@@ -182,7 +160,7 @@ export function DesktopEmptyDashboard({
               </div>
             </div>
 
-            {/* 3. Reference Checker */}
+            {/* 2. Reference Integrity Audit */}
             <div
               onClick={() => onOpenService("reference-checker")}
               className="rounded-2xl liquid-glass-card liquid-glass-card-interactive p-5 transition cursor-pointer group space-y-2.5"
@@ -205,7 +183,7 @@ export function DesktopEmptyDashboard({
               </div>
             </div>
 
-            {/* 4. Citation Claim Validator */}
+            {/* 3. Citation Claim Validator */}
             <div
               onClick={() => onOpenService("citation-claim")}
               className="rounded-2xl liquid-glass-card liquid-glass-card-interactive p-5 transition cursor-pointer group space-y-2.5"
@@ -224,6 +202,75 @@ export function DesktopEmptyDashboard({
                 </h3>
                 <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2">
                   Verify empirical assertions against cited literature to protect against misleading overgeneralization.
+                </p>
+              </div>
+            </div>
+
+            {/* 4. PRISMA Flow Diagram */}
+            <div
+              onClick={() => onOpenService("prisma")}
+              className="rounded-2xl liquid-glass-card liquid-glass-card-interactive p-5 transition cursor-pointer group space-y-2.5"
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center border border-purple-500/20">
+                  <Layers className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20">
+                  Systematic Review
+                </span>
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-[#111827] dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition">
+                  PRISMA Flow Diagram
+                </h3>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2">
+                  Interactive PRISMA 2020 flow generator for systematic reviews and meta-analyses with SVG export.
+                </p>
+              </div>
+            </div>
+
+            {/* 5. Journal Cover Letter */}
+            <div
+              onClick={() => onOpenService("cover-letter")}
+              className="rounded-2xl liquid-glass-card liquid-glass-card-interactive p-5 transition cursor-pointer group space-y-2.5"
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-500/20">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20">
+                  Editor Submission
+                </span>
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-[#111827] dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
+                  Journal Cover Letter
+                </h3>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2">
+                  Draft calibrated, formal submission letters to journal editors highlighting novelty and ethical compliance.
+                </p>
+              </div>
+            </div>
+
+            {/* 6. Review Response Builder */}
+            <div
+              onClick={() => onOpenService("response-builder")}
+              className="rounded-2xl liquid-glass-card liquid-glass-card-interactive p-5 transition cursor-pointer group space-y-2.5"
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center border border-rose-500/20">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20">
+                  Rebuttal Matrix
+                </span>
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-[#111827] dark:text-white group-hover:text-rose-600 dark:group-hover:text-rose-400 transition">
+                  Review Response Builder
+                </h3>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2">
+                  Structure point-by-point rebuttal matrices and author response letters addressing referee critiques.
                 </p>
               </div>
             </div>
