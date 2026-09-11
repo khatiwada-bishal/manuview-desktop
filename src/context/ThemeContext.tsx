@@ -19,16 +19,16 @@ interface ThemeContextValue {
 const THEME_STORAGE_KEY = "manuview_theme_mode";
 
 const ThemeContext = createContext<ThemeContextValue>({
-  theme: "dark",
+  theme: "light",
   toggleTheme: () => {},
   setTheme: () => {},
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<ThemeMode>(() => {
-    if (typeof window === "undefined") return "dark";
+    if (typeof window === "undefined") return "light";
     try {
-      // Clear legacy localStorage so fresh launches always default to dark mode
+      // Clear legacy localStorage so fresh launches always default to light mode
       localStorage.removeItem(THEME_STORAGE_KEY);
 
       // Check current session storage if user toggled during this run
@@ -37,8 +37,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         return sessionSaved;
       }
     } catch {}
-    // Default loading is ALWAYS dark mode every time the application opens
-    return "dark";
+    // Default loading is ALWAYS light mode every time the application opens
+    return "light";
   });
 
   const isTransitioningRef = useRef(false);

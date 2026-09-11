@@ -1,64 +1,61 @@
 <!DOCTYPE html>
-<html lang="en" class="dark" style="color-scheme: dark;">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/icons/32x32.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ManuView Desktop</title>
     <script>
-      // Every time the application is opened, default loading is in dark mode
+      // Every time the application is opened, default loading is in light mode
       try {
         const sessionTheme = sessionStorage.getItem('manuview_theme_mode');
-        if (sessionTheme === 'light') {
-          document.documentElement.classList.remove('dark');
-          document.documentElement.style.colorScheme = 'light';
-        } else {
+        if (sessionTheme === 'dark') {
           document.documentElement.classList.add('dark');
           document.documentElement.style.colorScheme = 'dark';
+        } else {
+          document.documentElement.classList.remove('dark');
+          document.documentElement.style.colorScheme = 'light';
         }
       } catch (e) {
-        document.documentElement.classList.add('dark');
-        document.documentElement.style.colorScheme = 'dark';
+        document.documentElement.classList.remove('dark');
+        document.documentElement.style.colorScheme = 'light';
       }
     </script>
   </head>
-  <body class="bg-[#080B11] text-[#F8FAFC] antialiased overflow-hidden select-none">
-    <!-- App Startup Liquid Glass Splash Screen (Supports Full Screen Video Intro with SVG Fallback) -->
+  <body class="bg-[#F8FAFC] text-[#111827] dark:bg-[#080B11] dark:text-[#F8FAFC] antialiased overflow-hidden select-none">
+    <!-- App Startup Video Intro Screen (Full-Screen Video with Audio) -->
     <div id="app-splash" style="position: fixed; inset: 0; z-index: 99999; width: 100vw; height: 100vh; background-color: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);">
-      <video id="intro-video" autoplay muted playsinline style="width: 100vw; height: 100vh; object-fit: cover; display: none;">
-        <source src="/intro.mp4" type="video/mp4" />
+      <video id="intro-video" autoplay playsinline style="width: 100vw; height: 100vh; object-fit: cover; display: block;">
         <source src="/intro-app.mov" type="video/quicktime" />
+        <source src="/intro.mp4" type="video/mp4" />
       </video>
-      <img id="intro-fallback" src="/loading.svg" alt="Loading ManuView..." style="width: 100vw; height: 100vh; object-fit: cover; display: block;" />
-      <button id="intro-skip" type="button" style="display: none; position: absolute; bottom: 28px; right: 28px; z-index: 100000; padding: 7px 16px; font-size: 11px; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; font-weight: 600; letter-spacing: 0.02em; color: rgba(255,255,255,0.85); background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); border-radius: 9999px; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); cursor: pointer; transition: all 0.2s ease;">Skip Intro &rarr;</button>
+      <button id="intro-skip" type="button" style="position: absolute; bottom: 28px; right: 28px; z-index: 100000; padding: 7px 16px; font-size: 11px; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; font-weight: 600; letter-spacing: 0.02em; color: rgba(255,255,255,0.85); background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); border-radius: 9999px; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); cursor: pointer; transition: all 0.2s ease;">Skip Intro &rarr;</button>
     </div>
     <script>
       (function() {
         const vid = document.getElementById('intro-video');
-        const fallback = document.getElementById('intro-fallback');
         const skip = document.getElementById('intro-skip');
-        function activateVideo() {
-          if (!vid) return;
-          vid.style.display = 'block';
-          if (fallback) fallback.style.display = 'none';
-          if (skip) skip.style.display = 'block';
-          vid.play().catch(function() {});
-        }
         if (vid) {
-          vid.addEventListener('loadeddata', activateVideo);
-          vid.addEventListener('canplay', activateVideo);
-          vid.addEventListener('playing', activateVideo);
+          vid.muted = false;
+          vid.volume = 1.0;
+          const playPromise = vid.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(function() {
+              // If system restricts initial unmuted autoplay, start muted & unmute on user gesture
+              vid.muted = true;
+              vid.play().catch(function() {});
+              const unmute = function() {
+                vid.muted = false;
+                document.removeEventListener('pointerdown', unmute);
+                document.removeEventListener('keydown', unmute);
+              };
+              document.addEventListener('pointerdown', unmute);
+              document.addEventListener('keydown', unmute);
+            });
+          }
           vid.addEventListener('ended', function() {
             if (window.__dismissSplash) window.__dismissSplash(true);
           });
-          vid.addEventListener('error', function() {
-            if (vid) vid.style.display = 'none';
-            if (fallback) fallback.style.display = 'block';
-            if (skip) skip.style.display = 'none';
-          });
-          if (vid.readyState >= 2) {
-            activateVideo();
-          }
         }
         if (skip) {
           skip.addEventListener('click', function(e) {

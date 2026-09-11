@@ -50,7 +50,6 @@ import { runManuscriptDiagnostic, runBriefJournalFitAnalysis } from "@/lib/diagn
 import { callLLM, fetchAvailableModels, testLLMConnection } from "@/lib/llm";
 import { PaperItem } from "@/components/DesktopSidebar";
 import { DesktopDashboardData } from "@/components/DesktopDashboard";
-import { LoadingScreen } from "@/components/LoadingScreen";
 
 const SAMPLE_PREPRINT_TITLE = "Single-cell transcriptional profiling of DLL3 activation in neuroendocrine lung carcinoma";
 const SAMPLE_PREPRINT_JOURNAL = "Nature Communications";
@@ -443,16 +442,6 @@ export function DesktopPreSubmissionScanView({
 
   return (
     <div className="flex-1 overflow-y-auto p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC] relative">
-      {/* Full-Screen Liquid Glass Diagnostic Engine Loader */}
-      {loading && (
-        <LoadingScreen
-          fullScreen={true}
-          title="Academic Diagnostic Engine Active"
-          step={loadingStep || "Initializing peer review models..."}
-          subtext="Performing CrossRef DOI citation audits, causal claims screening, and editorial calibration."
-        />
-      )}
-
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
