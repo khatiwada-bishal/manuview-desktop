@@ -443,19 +443,14 @@ export function DesktopPreSubmissionScanView({
 
   return (
     <div className="flex-1 overflow-y-auto p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC] relative">
-      {/* Liquid Glass Diagnostic Engine Loader Overlay */}
+      {/* Full-Screen Liquid Glass Diagnostic Engine Loader */}
       {loading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xl animate-in fade-in duration-200">
-          <div className="w-full max-w-md p-8 rounded-3xl liquid-glass-modal border border-white/20 shadow-2xl flex flex-col items-center text-center space-y-4">
-            <LoadingScreen
-              fullScreen={false}
-              size="lg"
-              title="Academic Diagnostic Engine Active"
-              step={loadingStep || "Initializing peer review models..."}
-              subtext="Performing CrossRef DOI citation audits, causal claims screening, and editorial calibration."
-            />
-          </div>
-        </div>
+        <LoadingScreen
+          fullScreen={true}
+          title="Academic Diagnostic Engine Active"
+          step={loadingStep || "Initializing peer review models..."}
+          subtext="Performing CrossRef DOI citation audits, causal claims screening, and editorial calibration."
+        />
       )}
 
       <div className="max-w-5xl mx-auto space-y-8">

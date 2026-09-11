@@ -11,7 +11,7 @@ interface LoadingScreenProps {
   subtext?: string;
   /** Whether this is a full-screen overlay or embedded within a container */
   fullScreen?: boolean;
-  /** Size variant for the animated loader SVG */
+  /** Size variant for the animated loader SVG (embedded mode) */
   size?: "sm" | "md" | "lg";
   /** Optional additional classes for wrapper */
   className?: string;
@@ -25,13 +25,52 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
   size = "md",
   className = "",
 }) => {
+  if (fullScreen) {
+    return (
+      <div
+        className={`fixed inset-0 z-50 w-screen h-screen bg-black overflow-hidden flex items-center justify-center animate-in fade-in duration-300 select-none ${className}`}
+      >
+        {/* Full-screen covering animated SVG loader */}
+        <img
+          src={loadingSvg}
+          alt="Loading"
+          className="w-screen h-screen object-cover block pointer-events-none"
+        />
+
+        {/* Dynamic Title / Status Information floating above bottom */}
+        {(title || step || subtext) && (
+          <div className="absolute bottom-10 left-0 right-0 z-20 flex flex-col items-center text-center px-4 pointer-events-none">
+            <div className="max-w-md px-5 py-3 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/15 shadow-2xl space-y-1">
+              {title && (
+                <h3 className="text-sm font-semibold text-neutral-100 tracking-tight">
+                  {title}
+                </h3>
+              )}
+              {step && (
+                <p className="text-xs font-medium text-blue-400 animate-pulse tracking-wide">
+                  {step}
+                </p>
+              )}
+              {subtext && (
+                <p className="text-[11px] text-neutral-400 leading-relaxed">
+                  {subtext}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Embedded / Modal variant
   const sizeClasses = {
     sm: "w-40 sm:w-48 max-w-[200px]",
     md: "w-56 sm:w-64 max-w-[280px]",
     lg: "w-72 sm:w-80 max-w-[340px]",
   }[size];
 
-  const content = (
+  return (
     <div className={`flex flex-col items-center justify-center text-center select-none ${className}`}>
       {/* Animated Glass Blob Loader */}
       <div className={`relative ${sizeClasses} aspect-[4/3] flex items-center justify-center animate-in fade-in zoom-in-95 duration-500`}>
@@ -68,14 +107,4 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
       )}
     </div>
   );
-
-  if (fullScreen) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#07090E]/90 backdrop-blur-2xl animate-in fade-in duration-300">
-        {content}
-      </div>
-    );
-  }
-
-  return content;
 };
