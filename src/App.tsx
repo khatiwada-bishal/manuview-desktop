@@ -66,18 +66,38 @@ export default function App() {
       })
       .catch(() => {})
       .finally(() => {
-        // Allow at least 650ms for the animated glass splash screen to play smoothly
-        const elapsed = Date.now() - startTime;
-        const delay = Math.max(0, 650 - elapsed);
-        setTimeout(() => {
-          const splash = document.getElementById("app-splash");
-          if (splash) {
-            splash.style.opacity = "0";
-            splash.style.pointerEvents = "none";
-            setTimeout(() => splash.remove(), 450);
-          }
-        }, delay);
+        const vid = document.getElementById("intro-video") as HTMLVideoElement | null;
+        // If an intro video is actively loaded and playing, let it play until ended or skipped
+        const isVideoActive = vid && vid.style.display !== "none" && !vid.ended;
+        if (!isVideoActive) {
+          const elapsed = Date.now() - startTime;
+          const delay = Math.max(0, 650 - elapsed);
+          setTimeout(() => {
+            dismissSplash();
+          }, delay);
+        }
       });
+
+    const dismissSplash = (immediate?: boolean) => {
+      const splash = document.getElementById("app-splash");
+      if (splash) {
+        splash.style.opacity = "0";
+        splash.style.pointerEvents = "none";
+        setTimeout(() => splash.remove(), 500);
+      }
+    };
+    (window as any).__dismissSplash = dismissSplash;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" || e.code === "Space") {
+        dismissSplash(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, []);
 
   // Saved papers loaded from local storage

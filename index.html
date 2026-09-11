@@ -23,10 +23,51 @@
     </script>
   </head>
   <body class="bg-[#080B11] text-[#F8FAFC] antialiased overflow-hidden select-none">
-    <!-- App Startup Liquid Glass Splash Screen (Full Screen SVG Cover) -->
-    <div id="app-splash" style="position: fixed; inset: 0; z-index: 99999; width: 100vw; height: 100vh; background-color: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1);">
-      <img src="/loading.svg" alt="Loading ManuView..." style="width: 100vw; height: 100vh; object-fit: cover; display: block;" />
+    <!-- App Startup Liquid Glass Splash Screen (Supports Full Screen Video Intro with SVG Fallback) -->
+    <div id="app-splash" style="position: fixed; inset: 0; z-index: 99999; width: 100vw; height: 100vh; background-color: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);">
+      <video id="intro-video" autoplay muted playsinline style="width: 100vw; height: 100vh; object-fit: cover; display: none;">
+        <source src="/intro.mp4" type="video/mp4" />
+        <source src="/intro-app.mov" type="video/quicktime" />
+      </video>
+      <img id="intro-fallback" src="/loading.svg" alt="Loading ManuView..." style="width: 100vw; height: 100vh; object-fit: cover; display: block;" />
+      <button id="intro-skip" type="button" style="display: none; position: absolute; bottom: 28px; right: 28px; z-index: 100000; padding: 7px 16px; font-size: 11px; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; font-weight: 600; letter-spacing: 0.02em; color: rgba(255,255,255,0.85); background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); border-radius: 9999px; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); cursor: pointer; transition: all 0.2s ease;">Skip Intro &rarr;</button>
     </div>
+    <script>
+      (function() {
+        const vid = document.getElementById('intro-video');
+        const fallback = document.getElementById('intro-fallback');
+        const skip = document.getElementById('intro-skip');
+        function activateVideo() {
+          if (!vid) return;
+          vid.style.display = 'block';
+          if (fallback) fallback.style.display = 'none';
+          if (skip) skip.style.display = 'block';
+          vid.play().catch(function() {});
+        }
+        if (vid) {
+          vid.addEventListener('loadeddata', activateVideo);
+          vid.addEventListener('canplay', activateVideo);
+          vid.addEventListener('playing', activateVideo);
+          vid.addEventListener('ended', function() {
+            if (window.__dismissSplash) window.__dismissSplash(true);
+          });
+          vid.addEventListener('error', function() {
+            if (vid) vid.style.display = 'none';
+            if (fallback) fallback.style.display = 'block';
+            if (skip) skip.style.display = 'none';
+          });
+          if (vid.readyState >= 2) {
+            activateVideo();
+          }
+        }
+        if (skip) {
+          skip.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (window.__dismissSplash) window.__dismissSplash(true);
+          });
+        }
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
