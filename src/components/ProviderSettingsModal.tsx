@@ -3,11 +3,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ProviderConfig, LLMProvider, AvailableModel } from "@/lib/types";
 import {
-  getServerConfigStatus,
   fetchAvailableModels,
   testLLMConnection,
 } from "@/lib/llm";
-import { Settings, ShieldCheck, X, CheckCircle2, FileCode, Activity, RefreshCw, AlertCircle, Zap, Check, ChevronDown, Sparkles, Search } from "lucide-react";
+import { Settings, ShieldCheck, X, CheckCircle2, Activity, RefreshCw, AlertCircle, Zap, Check, ChevronDown, Sparkles, Search } from "lucide-react";
 import { GeminiLogo, OpenAILogo, GroqLogo, AnthropicLogo, OllamaLogo } from "./BrandLogos";
 
 interface Props {
@@ -48,11 +47,6 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
     message: string;
     error?: string;
   } | null>(null);
-  const [serverStatus, setServerStatus] = useState<{
-    hasServerKey: boolean;
-    activeProvider: string;
-    availableProviders: string[];
-  } | null>(null);
 
   useEffect(() => {
     // Check browser local storage
@@ -68,10 +62,6 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
     setTestResult(null);
     setFetchFeedback(null);
     setHasFetchedLive(false);
-
-    // Check server / env status
-    const status = getServerConfigStatus();
-    setServerStatus(status);
 
     // Fetch models for current provider
     loadModelsForProvider(currentConfig);
@@ -246,128 +236,93 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
           </div>
         </div>
 
-        {/* Server Status Banner (High Contrast Pastel) */}
-        {serverStatus?.hasServerKey ? (
-          <div className="p-3 mb-5 rounded-xl bg-[#EDF6EE] border border-[#CBE7CE] flex items-start gap-2.5 text-xs text-[#1E5A2A]">
-            <CheckCircle2 className="w-4 h-4 text-[#1E5A2A] flex-shrink-0 mt-0.5" />
-            <div>
-              <span className="font-semibold text-[#1E5A2A]">Server Key Active:</span> Using{" "}
-              <code className="text-[#1E5A2A] uppercase font-bold tracking-wide">{serverStatus.activeProvider}</code> from{" "}
-              <code className="font-mono font-medium text-[#1E5A2A]">.env.local</code>. Client keys below will take precedence if provided.
-            </div>
-          </div>
-        ) : (
-          <div className="p-3 mb-5 rounded-xl bg-[#FBF3DB] border border-[#F4E2B6] flex items-start gap-2.5 text-xs text-[#78510E]">
-            <FileCode className="w-4 h-4 text-[#78510E] flex-shrink-0 mt-0.5" />
-            <div>
-              <span className="font-semibold text-[#78510E]">Client Storage Mode:</span> Store your API key in browser local memory, or place it in{" "}
-              <code className="font-mono font-medium text-[#78510E]">.env.local</code> for automatic server detection.
-            </div>
-          </div>
-        )}
-
         <div className="space-y-5">
-          {/* 1. Provider Selection Grid */}
+          {/* 1. Provider Selection Grid (Compact buttons with Logo & Main Name) */}
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#787774] mb-2">
-              1. Select AI Engine
+              1. Select AI Provider
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {/* Google Gemini */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {/* Google */}
               <button
                 type="button"
                 onClick={() => handleProviderChange("gemini")}
-                className={`flex items-center gap-2.5 p-3 rounded-xl border text-xs transition text-left ${
+                className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition cursor-pointer ${
                   config.provider === "gemini"
-                    ? "bg-[#F7F7F5] border-[#2F3437] ring-1 ring-[#2F3437] shadow-2xs"
+                    ? "bg-[#F7F7F5] border-[#2F3437] ring-1 ring-[#2F3437] text-[#2F3437] shadow-2xs"
                     : "bg-white border-[#EBEBEA] hover:bg-[#F7F7F5] text-[#787774] hover:text-[#2F3437]"
                 }`}
               >
-                <GeminiLogo className="w-4 h-4 flex-shrink-0" />
-                <div>
-                  <div className="font-semibold text-[#2F3437] leading-tight">Gemini</div>
-                  <div className="text-[10px] text-[#0A85EA] font-medium">Google AI</div>
-                </div>
+                <GeminiLogo className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>Google</span>
               </button>
 
               {/* OpenAI */}
               <button
                 type="button"
                 onClick={() => handleProviderChange("openai")}
-                className={`flex items-center gap-2.5 p-3 rounded-xl border text-xs transition text-left ${
+                className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition cursor-pointer ${
                   config.provider === "openai"
-                    ? "bg-[#F7F7F5] border-[#2F3437] ring-1 ring-[#2F3437] shadow-2xs"
+                    ? "bg-[#F7F7F5] border-[#2F3437] ring-1 ring-[#2F3437] text-[#2F3437] shadow-2xs"
                     : "bg-white border-[#EBEBEA] hover:bg-[#F7F7F5] text-[#787774] hover:text-[#2F3437]"
                 }`}
               >
                 <div className="p-0.5 rounded bg-[#000000] text-white flex items-center justify-center flex-shrink-0">
-                  <OpenAILogo className="w-3 h-3 text-white" />
+                  <OpenAILogo className="w-2.5 h-2.5 text-white" />
                 </div>
-                <div>
-                  <div className="font-semibold text-[#2F3437] leading-tight">OpenAI</div>
-                  <div className="text-[10px] text-[#57338C] font-medium">GPT-4o &amp; o3</div>
-                </div>
+                <span>OpenAI</span>
               </button>
 
-              {/* Claude */}
+              {/* Anthropic */}
               <button
                 type="button"
                 onClick={() => handleProviderChange("anthropic")}
-                className={`flex items-center gap-2.5 p-3 rounded-xl border text-xs transition text-left ${
+                className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition cursor-pointer ${
                   config.provider === "anthropic"
-                    ? "bg-[#F7F7F5] border-[#2F3437] ring-1 ring-[#2F3437] shadow-2xs"
+                    ? "bg-[#F7F7F5] border-[#2F3437] ring-1 ring-[#2F3437] text-[#2F3437] shadow-2xs"
                     : "bg-white border-[#EBEBEA] hover:bg-[#F7F7F5] text-[#787774] hover:text-[#2F3437]"
                 }`}
               >
-                <AnthropicLogo className="w-4 h-4 flex-shrink-0" />
-                <div>
-                  <div className="font-semibold text-[#2F3437] leading-tight">Claude</div>
-                  <div className="text-[10px] text-[#78510E] font-medium">Anthropic</div>
-                </div>
+                <AnthropicLogo className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>Anthropic</span>
               </button>
 
               {/* Groq */}
               <button
                 type="button"
                 onClick={() => handleProviderChange("groq")}
-                className={`flex items-center gap-2.5 p-3 rounded-xl border text-xs transition text-left ${
+                className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition cursor-pointer ${
                   config.provider === "groq"
-                    ? "bg-[#F7F7F5] border-[#2F3437] ring-1 ring-[#2F3437] shadow-2xs"
+                    ? "bg-[#F7F7F5] border-[#2F3437] ring-1 ring-[#2F3437] text-[#2F3437] shadow-2xs"
                     : "bg-white border-[#EBEBEA] hover:bg-[#F7F7F5] text-[#787774] hover:text-[#2F3437]"
                 }`}
               >
-                <GroqLogo className="w-4 h-4 flex-shrink-0" />
-                <div>
-                  <div className="font-semibold text-[#2F3437] leading-tight">Groq</div>
-                  <div className="text-[10px] text-[#C43834] font-medium">LPU Fast</div>
-                </div>
+                <GroqLogo className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>Groq</span>
               </button>
 
               {/* Ollama */}
               <button
                 type="button"
                 onClick={() => handleProviderChange("ollama")}
-                className={`flex items-center gap-2.5 p-3 rounded-xl border text-xs transition text-left ${
+                className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition cursor-pointer ${
                   config.provider === "ollama"
-                    ? "bg-[#F7F7F5] border-[#2F3437] ring-1 ring-[#2F3437] shadow-2xs"
+                    ? "bg-[#F7F7F5] border-[#2F3437] ring-1 ring-[#2F3437] text-[#2F3437] shadow-2xs"
                     : "bg-white border-[#EBEBEA] hover:bg-[#F7F7F5] text-[#787774] hover:text-[#2F3437]"
                 }`}
               >
-                <OllamaLogo className="w-4 h-4 text-[#1E5A2A] flex-shrink-0" />
-                <div>
-                  <div className="font-semibold text-[#2F3437] leading-tight">Ollama</div>
-                  <div className="text-[10px] text-[#1E5A2A] font-medium">100% Offline</div>
-                </div>
+                <OllamaLogo className="w-3.5 h-3.5 text-[#1E5A2A] flex-shrink-0" />
+                <span>Ollama</span>
               </button>
             </div>
           </div>
 
-          {/* 2. API Key / Endpoint Configuration */}
+          {/* 2. API Key / Endpoint Configuration with in-line Fetch Models Button */}
           {config.provider !== "ollama" ? (
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-semibold text-[#2F3437]">
-                  2. {config.provider === "openai" ? "API Key" : `${config.provider.toUpperCase()} API Key`}
+                  2. {config.provider === "openai" ? "API Key" : `${config.provider === "gemini" ? "Google" : config.provider.toUpperCase()} API Key`}
                 </label>
                 {config.provider === "gemini" && (
                   <a
@@ -376,7 +331,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                     rel="noreferrer"
                     className="text-[11px] text-[#0A85EA] hover:underline font-medium"
                   >
-                    Get free Gemini key &rarr;
+                    Get free Google key &rarr;
                   </a>
                 )}
                 {config.provider === "groq" && (
@@ -400,31 +355,62 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                   </a>
                 )}
               </div>
-              <input
-                type="password"
-                value={config.apiKey || ""}
-                onChange={(e) => {
-                  setConfig({ ...config, apiKey: e.target.value });
-                  setFetchFeedback(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleFetchModels();
+
+              {/* API Key Input and Fetch Models Button in the SAME LINE */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="password"
+                  value={config.apiKey || ""}
+                  onChange={(e) => {
+                    setConfig({ ...config, apiKey: e.target.value });
+                    setFetchFeedback(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleFetchModels();
+                    }
+                  }}
+                  placeholder={
+                    config.provider === "gemini"
+                      ? "AIzaSy..."
+                      : config.provider === "anthropic"
+                      ? "sk-ant-..."
+                      : "sk-..."
                   }
-                }}
-                placeholder={
-                  config.provider === "gemini"
-                    ? "AIzaSy..."
-                    : config.provider === "anthropic"
-                    ? "sk-ant-..."
-                    : "sk-..."
-                }
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#EBEBEA] focus:border-[#2F3437] focus:outline-none text-xs text-[#2F3437] font-mono transition shadow-2xs placeholder:text-[#9B9A97]"
-              />
-              <p className="text-[11px] text-[#787774] mt-1">
-                Client keys are stored strictly in your local sandbox and never shared.
-              </p>
+                  className="flex-1 min-w-0 px-3.5 py-2 rounded-xl bg-white border border-[#EBEBEA] focus:border-[#2F3437] focus:outline-none text-xs text-[#2F3437] font-mono transition shadow-2xs placeholder:text-[#9B9A97]"
+                />
+
+                <button
+                  type="button"
+                  onClick={handleFetchModels}
+                  disabled={fetchingModels || !config.apiKey?.trim()}
+                  className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#2F3437] text-white hover:bg-black disabled:bg-[#F7F7F5] disabled:text-[#9B9A97] disabled:border-[#EBEBEA] border border-[#2F3437] transition shadow-xs cursor-pointer disabled:cursor-not-allowed shrink-0 whitespace-nowrap"
+                  title="Fetch verified models authorized for this API key"
+                >
+                  {fetchingModels ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                      <span>Fetching...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Fetch Models</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between mt-1 text-[11px]">
+                <span className="text-[#787774]">Client keys are stored locally on your machine.</span>
+                {hasFetchedLive && (
+                  <span className="text-[#1E5A2A] font-medium flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-[#1E5A2A]" />
+                    {availableModels.length} models loaded
+                  </span>
+                )}
+              </div>
 
               {config.provider === "openai" && (
                 <div className="mt-3">
@@ -455,92 +441,82 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
               <label className="block text-xs font-semibold text-[#2F3437] mb-1.5">
                 2. Local Ollama Server URL
               </label>
-              <input
-                type="text"
-                value={config.baseUrl || "http://localhost:11434"}
-                onChange={(e) => {
-                  setConfig({ ...config, baseUrl: e.target.value });
-                  setFetchFeedback(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleFetchModels();
-                  }
-                }}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#EBEBEA] focus:border-[#2F3437] focus:outline-none text-xs text-[#2F3437] font-mono transition shadow-2xs"
-              />
-              <p className="text-[11px] text-[#787774] mt-1">
-                Ensure <code className="text-[#1E5A2A] font-semibold">ollama serve</code> is running on your machine.
-              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={config.baseUrl || "http://localhost:11434"}
+                  onChange={(e) => {
+                    setConfig({ ...config, baseUrl: e.target.value });
+                    setFetchFeedback(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleFetchModels();
+                    }
+                  }}
+                  className="flex-1 min-w-0 px-3.5 py-2 rounded-xl bg-white border border-[#EBEBEA] focus:border-[#2F3437] focus:outline-none text-xs text-[#2F3437] font-mono transition shadow-2xs"
+                />
+                <button
+                  type="button"
+                  onClick={handleFetchModels}
+                  disabled={fetchingModels}
+                  className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#2F3437] text-white hover:bg-black disabled:bg-[#F7F7F5] disabled:text-[#9B9A97] disabled:border-[#EBEBEA] border border-[#2F3437] transition shadow-xs cursor-pointer disabled:cursor-not-allowed shrink-0 whitespace-nowrap"
+                  title="Fetch local models installed in Ollama"
+                >
+                  {fetchingModels ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                      <span>Fetching...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Fetch Models</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="flex items-center justify-between mt-1 text-[11px]">
+                <span className="text-[#787774]">
+                  Ensure <code className="text-[#1E5A2A] font-semibold">ollama serve</code> is running.
+                </span>
+                {hasFetchedLive && (
+                  <span className="text-[#1E5A2A] font-medium flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-[#1E5A2A]" />
+                    {availableModels.length} local models
+                  </span>
+                )}
+              </div>
             </div>
           )}
 
-          {/* Dedicated Fetch Models Action & Live Status */}
-          <div className="pt-0.5">
-            <div className="flex flex-wrap items-center gap-2.5">
+          {/* Fetch Status / Error Feedback Banner */}
+          {fetchFeedback && (
+            <div
+              className={`p-3 rounded-xl border text-xs flex items-start gap-2.5 animate-fadeIn ${
+                fetchFeedback.type === "success"
+                  ? "bg-[#EDF6EE] border-[#CBE7CE] text-[#1E5A2A]"
+                  : "bg-[#FDF0EF] border-[#F7CECC] text-[#7C2D2B]"
+              }`}
+            >
+              {fetchFeedback.type === "success" ? (
+                <CheckCircle2 className="w-4 h-4 text-[#1E5A2A] flex-shrink-0 mt-0.5" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-[#7C2D2B] flex-shrink-0 mt-0.5" />
+              )}
+              <div className="flex-1 font-medium leading-relaxed">
+                {fetchFeedback.message}
+              </div>
               <button
                 type="button"
-                onClick={handleFetchModels}
-                disabled={fetchingModels || (!config.apiKey?.trim() && config.provider !== "ollama")}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-[#2F3437] text-white hover:bg-black disabled:bg-[#F7F7F5] disabled:text-[#9B9A97] disabled:border-[#EBEBEA] border border-[#2F3437] transition shadow-xs cursor-pointer disabled:cursor-not-allowed"
+                onClick={() => setFetchFeedback(null)}
+                className="text-[#787774] hover:text-[#2F3437] p-0.5 cursor-pointer"
               >
-                {fetchingModels ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
-                    <span>Fetching models from {config.provider.toUpperCase()}...</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                    <span>Fetch Models</span>
-                  </>
-                )}
+                <X className="w-3.5 h-3.5" />
               </button>
-
-              {!config.apiKey?.trim() && config.provider !== "ollama" ? (
-                <span className="text-[11px] text-[#787774]">
-                  Enter your API key, then click <strong>Fetch Models</strong>
-                </span>
-              ) : hasFetchedLive ? (
-                <span className="text-[11px] text-[#1E5A2A] font-medium flex items-center gap-1.5 bg-[#EDF6EE] px-2.5 py-1 rounded-lg border border-[#CBE7CE]">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#1E5A2A]" />
-                  <span>{availableModels.length} live models retrieved for this key</span>
-                </span>
-              ) : (
-                <span className="text-[11px] text-[#787774]">
-                  Click to fetch authorized models directly from {config.provider.toUpperCase()}
-                </span>
-              )}
             </div>
-
-            {/* Fetch Status / Error Feedback Banner */}
-            {fetchFeedback && (
-              <div
-                className={`mt-2.5 p-3 rounded-xl border text-xs flex items-start gap-2.5 animate-fadeIn ${
-                  fetchFeedback.type === "success"
-                    ? "bg-[#EDF6EE] border-[#CBE7CE] text-[#1E5A2A]"
-                    : "bg-[#FDF0EF] border-[#F7CECC] text-[#7C2D2B]"
-                }`}
-              >
-                {fetchFeedback.type === "success" ? (
-                  <CheckCircle2 className="w-4 h-4 text-[#1E5A2A] flex-shrink-0 mt-0.5" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-[#7C2D2B] flex-shrink-0 mt-0.5" />
-                )}
-                <div className="flex-1 font-medium leading-relaxed">
-                  {fetchFeedback.message}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setFetchFeedback(null)}
-                  className="text-[#787774] hover:text-[#2F3437] p-0.5 cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
-          </div>
+          )}
 
           {/* 3. Available Models Picker (Dropdown Selector) */}
           <div ref={dropdownRef} className="relative z-20">

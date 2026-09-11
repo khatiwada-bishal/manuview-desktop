@@ -15,7 +15,6 @@ import {
   RefreshCw,
   ExternalLink,
   ChevronRight,
-  Settings,
   SlidersHorizontal,
   Hash,
   Tag,
@@ -42,7 +41,6 @@ import {
   ProviderConfig,
   AvailableModel,
 } from "@/lib/types";
-import { ProviderSettingsModal } from "@/components/ProviderSettingsModal";
 import JournalCombobox from "@/components/JournalCombobox";
 import { BriefJournalFitView, BriefJournalFitPrintView } from "@/components/BriefJournalFitView";
 import { exportInteractiveHtmlReport, exportWordDocReport } from "@/lib/export-generator";
@@ -107,7 +105,6 @@ export function DesktopPreSubmissionScanView({
   const [report, setReport] = useState<ReviewReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedPersona, setSelectedPersona] = useState<number>(0);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [availableModels, setAvailableModels] = useState<AvailableModel[]>([]);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [pinging, setPinging] = useState(false);
@@ -437,7 +434,7 @@ export function DesktopPreSubmissionScanView({
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
               <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-              <span>4-Persona AI Review &amp; Diagnostic Pipeline</span>
+              <span>5-Persona AI Review &amp; Diagnostic Pipeline</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0F172A]">
               Pre-Submission AI Review &amp; Diagnostic
@@ -446,18 +443,6 @@ export function DesktopPreSubmissionScanView({
               Calibrated peer-review rubric to surface desk-rejection hazards, causal overclaims, missing controls, and citation integrity bugs before submission.
             </p>
           </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              if (onOpenSettings) onOpenSettings();
-              else setSettingsOpen(true);
-            }}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-neutral-50 border border-[#E5E7EB] text-xs font-medium text-neutral-700 transition shadow-2xs self-start cursor-pointer"
-          >
-            <Settings className="w-3.5 h-3.5 text-neutral-500" />
-            <span>AI Engine: {activeProviderInfo.name}</span>
-          </button>
         </div>
 
         {/* Configuration & Calibration Card */}
@@ -549,7 +534,6 @@ export function DesktopPreSubmissionScanView({
                           onClick={() => {
                             setModelDropdownOpen(false);
                             if (onOpenSettings) onOpenSettings();
-                            else setSettingsOpen(true);
                           }}
                           className="text-[11px] text-blue-600 hover:underline font-semibold"
                         >
@@ -1357,8 +1341,6 @@ export function DesktopPreSubmissionScanView({
             </div>
           ))}
       </div>
-
-      <ProviderSettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }
