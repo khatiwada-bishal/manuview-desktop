@@ -106,26 +106,26 @@ LETTER COMPOSITION REQUIREMENTS:
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-white p-6 sm:p-10 text-[#111827]">
+    <div className="flex-1 overflow-y-auto bg-white dark:bg-[#080B11] p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC]">
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Header */}
         <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-800">
             <FileText className="w-3.5 h-3.5" />
             <span>Editor-Calibrated Formal Letter</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0F172A]">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0F172A] dark:text-white">
             Journal Cover Letter Generator
           </h1>
-          <p className="text-xs sm:text-sm text-neutral-500 max-w-2xl">
+          <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 max-w-2xl">
             Generate formal, high-impact submission cover letters tailored to your target journal's editorial criteria, highlighting novel discoveries and mandatory compliance affirmations.
           </p>
         </div>
 
         {/* Input Form */}
-        <form onSubmit={handleGenerate} className="p-6 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] space-y-4 shadow-xs">
+        <form onSubmit={handleGenerate} className="p-6 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937] space-y-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+            <span className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
               Manuscript Details
             </span>
             <button
@@ -140,45 +140,45 @@ LETTER COMPOSITION REQUIREMENTS:
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-neutral-700">Target Journal</label>
+              <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Target Journal</label>
               <JournalCombobox value={targetJournal} onChange={setTargetJournal} placeholder="Select or type target journal..." />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-neutral-700">Manuscript Title</label>
+              <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Manuscript Title</label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Single-cell transcriptional profiling of..."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white dark:placeholder-neutral-500 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
               />
             </div>
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-neutral-700">Abstract</label>
+            <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Abstract</label>
             <textarea
               rows={4}
               value={abstract}
               onChange={(e) => setAbstract(e.target.value)}
               placeholder="Paste abstract..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white dark:placeholder-neutral-500 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none"
             />
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-neutral-700">Key Conceptual Advance (Optional)</label>
+            <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Key Conceptual Advance (Optional)</label>
             <input
               type="text"
               value={broadSignificance}
               onChange={(e) => setBroadSignificance(e.target.value)}
               placeholder="Why this matters to the journal's readership..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white dark:placeholder-neutral-500 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
             />
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs">
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-rose-950/30 text-red-700 dark:text-rose-300 border border-red-200 dark:border-rose-800 text-xs">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -209,14 +209,14 @@ LETTER COMPOSITION REQUIREMENTS:
         {letter && (
           <div className="space-y-3 animate-in fade-in duration-300">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+              <span className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                 Generated Submission Letter
               </span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={handleCopy}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E5E7EB] bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-medium transition cursor-pointer shadow-2xs"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#161F30] hover:bg-neutral-50 dark:hover:bg-[#1E293B] text-neutral-700 dark:text-neutral-300 text-xs font-medium transition cursor-pointer shadow-2xs"
                 >
                   {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copied ? "Copied!" : "Copy Text"}</span>
@@ -224,7 +224,7 @@ LETTER COMPOSITION REQUIREMENTS:
                 <button
                   type="button"
                   onClick={handleDownload}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#111827] hover:bg-neutral-800 text-white text-xs font-medium transition cursor-pointer shadow-2xs"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#111827] dark:bg-blue-600 hover:bg-neutral-800 dark:hover:bg-blue-500 text-white text-xs font-medium transition cursor-pointer shadow-2xs"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Download .txt</span>
@@ -232,7 +232,7 @@ LETTER COMPOSITION REQUIREMENTS:
               </div>
             </div>
 
-            <div className="p-8 rounded-2xl border border-[#E5E7EB] bg-[#FAFAFA] font-serif text-sm leading-relaxed text-neutral-800 whitespace-pre-wrap shadow-xs">
+            <div className="p-8 rounded-2xl border border-[#E5E7EB] dark:border-[#1F2937] bg-[#FAFAFA] dark:bg-[#111827] font-serif text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 whitespace-pre-wrap shadow-xs">
               {letter}
             </div>
           </div>

@@ -10,6 +10,7 @@ import {
   RefreshCw,
   CheckCircle2,
   BookOpen,
+  ShieldCheck,
 } from "lucide-react";
 import JournalCombobox from "@/components/JournalCombobox";
 import { pickManuscriptFileDesktop, isDesktopApp } from "@/lib/desktop";
@@ -215,27 +216,27 @@ export function DesktopScanModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-      <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-[#E5E7EB] p-6 space-y-5 animate-in fade-in zoom-in-95 duration-100">
-        <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+      <div className="w-full max-w-lg bg-white dark:bg-[#111827] rounded-2xl shadow-2xl border border-[#E5E7EB] dark:border-[#1F2937] p-6 space-y-5 animate-in fade-in zoom-in-95 duration-100">
+        <div className="flex items-center justify-between border-b border-[#E5E7EB] dark:border-[#1F2937] pb-3">
           <div className="flex items-center gap-2">
             <span className="text-xl">🪄</span>
             <div>
-              <h2 className="text-sm font-bold text-[#111827]">
+              <h2 className="text-sm font-bold text-[#111827] dark:text-white">
                 New Pre-Submission AI Review
               </h2>
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
                 Run live 5-persona simulation, CrossRef audits, and causal overclaim screening.
               </p>
               <div className="flex items-center gap-2 mt-1.5">
                 {isConnected ? (
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     AI Connected: {provider?.toUpperCase()} ({modelName})
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                    <Sparkles className="w-3 h-3 text-blue-600" />
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800">
+                    <Sparkles className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                     ManuView Academic Diagnostic Suite
                   </span>
                 )}
@@ -246,7 +247,7 @@ export function DesktopScanModal({
             <button
               type="button"
               onClick={onClose}
-              className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 cursor-pointer"
+              className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-[#1E293B] cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -255,31 +256,31 @@ export function DesktopScanModal({
 
         {loading ? (
           <div className="py-12 flex flex-col items-center justify-center space-y-4 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400">
               <RefreshCw className="w-6 h-6 animate-spin" />
             </div>
             <div className="space-y-1">
-              <h3 className="font-bold text-sm text-neutral-900">
+              <h3 className="font-bold text-sm text-neutral-900 dark:text-white">
                 Running Full Diagnostic Engine...
               </h3>
-              <p className="text-xs text-blue-600 font-medium animate-pulse">
+              <p className="text-xs text-blue-600 dark:text-blue-400 font-medium animate-pulse">
                 {loadingStep}
               </p>
             </div>
-            <p className="text-[11px] text-neutral-400 max-w-xs">
+            <p className="text-[11px] text-neutral-400 dark:text-neutral-500 max-w-xs">
               Calibrating against {journal} editorial standards and cross-checking references.
             </p>
           </div>
         ) : (
           <form onSubmit={handleStartScan} className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
                 Manuscript Target &amp; Content
               </span>
               <button
                 type="button"
                 onClick={handleSample}
-                className="text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 cursor-pointer"
+                className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>Load Sample Preprint</span>
@@ -287,7 +288,7 @@ export function DesktopScanModal({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1">
+              <label className="block text-xs font-semibold text-[#374151] dark:text-neutral-300 mb-1">
                 Target Journal
               </label>
               <JournalCombobox
@@ -298,7 +299,7 @@ export function DesktopScanModal({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1">
+              <label className="block text-xs font-semibold text-[#374151] dark:text-neutral-300 mb-1">
                 Manuscript Working Title
               </label>
               <input
@@ -306,12 +307,12 @@ export function DesktopScanModal({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Single-cell transcriptional profiling of DLL3 activation..."
-                className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#D1D5DB] text-xs text-[#111827] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#1E293B] border border-[#D1D5DB] dark:border-[#334155] text-xs text-[#111827] dark:text-white dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1">
+              <label className="block text-xs font-semibold text-[#374151] dark:text-neutral-300 mb-1">
                 Abstract (or paste full text)
               </label>
               <textarea
@@ -319,20 +320,20 @@ export function DesktopScanModal({
                 value={abstract}
                 onChange={(e) => setAbstract(e.target.value)}
                 placeholder="Paste manuscript abstract or key summary..."
-                className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#D1D5DB] text-xs text-[#111827] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
+                className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#1E293B] border border-[#D1D5DB] dark:border-[#334155] text-xs text-[#111827] dark:text-white dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
               />
             </div>
 
             {/* Document Upload Zone */}
             <div>
-              <label className="block text-xs font-semibold text-[#374151] mb-1">
+              <label className="block text-xs font-semibold text-[#374151] dark:text-neutral-300 mb-1">
                 Attach Manuscript Document (.pdf, .docx, .txt, .md)
               </label>
               <div
                 onClick={() => {
                   if (isDesktopApp()) handleNativePick();
                 }}
-                className="border-2 border-dashed border-[#D1D5DB] hover:border-blue-500 rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 bg-[#F9FAFB] hover:bg-blue-50/20 transition cursor-pointer text-center relative"
+                className="border-2 border-dashed border-[#D1D5DB] dark:border-[#334155] hover:border-blue-500 dark:hover:border-blue-400 rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 bg-[#F9FAFB] dark:bg-[#161F30] hover:bg-blue-50/20 dark:hover:bg-blue-950/20 transition cursor-pointer text-center relative"
               >
                 {!isDesktopApp() && (
                   <input
@@ -342,38 +343,46 @@ export function DesktopScanModal({
                     className="absolute inset-0 opacity-0 cursor-pointer"
                   />
                 )}
-                <UploadCloud className="w-5 h-5 text-neutral-400" />
-                <div className="text-xs font-medium text-neutral-700">
+                <UploadCloud className="w-5 h-5 text-neutral-400 dark:text-neutral-500" />
+                <div className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
                   {fileName ? (
-                    <span className="text-blue-600 font-semibold">{fileName}</span>
+                    <span className="text-blue-600 dark:text-blue-400 font-semibold">{fileName}</span>
                   ) : (
                     "Click to select manuscript file"
                   )}
                 </div>
-                <div className="text-[10px] text-neutral-400">
+                <div className="text-[10px] text-neutral-400 dark:text-neutral-500">
                   PDF, Word (.docx), Markdown or Plain Text
                 </div>
               </div>
             </div>
 
-            {error && (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{error}</span>
+            {/* Academic Privacy & Confidentiality Guarantee */}
+            <div className="p-3 rounded-xl bg-neutral-50 dark:bg-[#161F30] border border-neutral-200/80 dark:border-[#334155] flex items-start gap-2.5 text-neutral-600 dark:text-neutral-400 text-[11px] leading-relaxed">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold text-neutral-800 dark:text-neutral-200 block">
+                  Manuscript Confidentiality &amp; Zero-Retention Guarantee
+                </span>
+                <span>
+                  {provider === "ollama"
+                    ? "100% On-Device: Your manuscript is analyzed locally via Ollama. No text, data, or metadata ever leaves your machine."
+                    : "Direct Encrypted BYOK Connection: Official API calls with zero-retention flags. ManuView does not log, store, or relay your unpublished work through third-party servers."}
+                </span>
               </div>
-            )}
+            </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5E7EB]">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#E5E7EB] dark:border-[#1F2937]">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl border border-[#D1D5DB] text-xs font-semibold text-neutral-600 hover:bg-neutral-50 transition cursor-pointer"
+                className="px-4 py-2 rounded-xl border border-[#D1D5DB] dark:border-[#334155] text-xs font-semibold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-[#1E293B] transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-semibold transition cursor-pointer shadow-xs"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#2563EB] hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white text-xs font-semibold transition cursor-pointer shadow-xs"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>Start Pre-Submission Review</span>

@@ -21,6 +21,7 @@ import { DesktopResponseBuilderView } from "@/components/services/DesktopRespons
 import { DesktopEmptyDashboard } from "@/components/DesktopEmptyDashboard";
 import { DeleteConfirmationModal } from "@/components/DeleteConfirmationModal";
 import { ProviderSettingsModal } from "@/components/ProviderSettingsModal";
+import { ThemeProvider } from "@/context/ThemeContext";
 import { useApiConnection } from "@/lib/useApiConnection";
 import { FullReviewReport } from "@/lib/types";
 import {
@@ -30,12 +31,36 @@ import {
   loadSession,
   saveSession,
   purgeLegacyDummyData,
+  initIndexedDBStorage,
 } from "@/lib/projectStorage";
 
 export default function App() {
-  // Purge legacy mock data on startup
+  // Purge legacy mock data & synchronize IndexedDB on startup
   useEffect(() => {
     purgeLegacyDummyData();
+    initIndexedDBStorage().then((syncedProjects) => {
+      if (syncedProjects && syncedProjects.length > papers.length) {
+        setPapers(syncedProjects.map((s) => s.paper));
+        setDashboardStore((prev) => {
+          const next = { ...prev };
+          for (const item of syncedProjects) {
+            if (!next[item.paper.id]) {
+              next[item.paper.id] = item.dashboardData;
+            }
+          }
+          return next;
+        });
+        setFullReportsStore((prev) => {
+          const next = { ...prev };
+          for (const item of syncedProjects) {
+            if (item.fullReport && !next[item.paper.id]) {
+              next[item.paper.id] = item.fullReport;
+            }
+          }
+          return next;
+        });
+      }
+    }).catch(() => {});
   }, []);
 
   // Saved papers loaded from local storage
@@ -165,8 +190,8 @@ export default function App() {
   };
 
   // Close a tab
-  const handleCloseTab = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleCloseTab = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     const remaining = openTabs.filter((t) => t.id !== id);
     setOpenTabs(remaining);
     if (activeTabId === id) {
@@ -178,17 +203,31 @@ export default function App() {
     }
   };
 
-  // Global keyboard shortcut for Search (Cmd+K / Ctrl+K)
+  // Global desktop keyboard shortcuts (Cmd/Ctrl + K, N, W, comma)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA";
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setIsSearchOpen((prev) => !prev);
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "n" && !isInput) {
+        e.preventDefault();
+        setIsScanOpen(true);
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "w" && !isInput) {
+        e.preventDefault();
+        if (activeTabId) {
+          handleCloseTab(activeTabId);
+        }
+      } else if ((e.metaKey || e.ctrlKey) && e.key === ",") {
+        e.preventDefault();
+        setIsSettingsOpen((prev) => !prev);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [activeTabId, openTabs]);
 
   // Handle project deletion confirmed by user
   const handleDeleteProjectConfirm = () => {
@@ -334,81 +373,83 @@ export default function App() {
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-white overflow-hidden select-none font-sans">
-      {/* Top Window Header with Browser-style Tabs */}
-      <DesktopHeader
-        openTabs={openTabs}
-        activeTabId={activeTabId}
-        onSelectTab={(id) => setActiveTabId(id)}
-        onCloseTab={handleCloseTab}
-        onNewTab={() => handleOpenService("ai-review")}
-        isConnected={isConnected}
-        isLoading={isApiLoading}
-        activeModelName={modelName}
-        latencyMs={latencyMs}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
-        sidebarOpen={sidebarOpen}
-      />
-
-      {/* Main Layout: Sidebar + Active View */}
-      <div className="flex-1 flex overflow-hidden">
-        <DesktopSidebar
-          papers={papers}
-          activePaperId={activeTabId}
-          activeView={activeView}
+    <ThemeProvider>
+      <div className="h-screen w-screen flex flex-col bg-white dark:bg-[#080B11] text-[#111827] dark:text-[#F8FAFC] overflow-hidden select-none font-sans">
+        {/* Top Window Header with Browser-style Tabs */}
+        <DesktopHeader
+          openTabs={openTabs}
+          activeTabId={activeTabId}
+          onSelectTab={(id) => setActiveTabId(id)}
+          onCloseTab={handleCloseTab}
+          onNewTab={() => handleOpenService("ai-review")}
           isConnected={isConnected}
           isLoading={isApiLoading}
-          provider={provider}
           activeModelName={modelName}
-          isCollapsed={!sidebarOpen}
-          onToggleCollapse={() => setSidebarOpen((prev) => !prev)}
-          onSelectPaper={handleOpenArticle}
-          onSelectView={(view) => setActiveView(view)}
-          onOpenSearch={() => setIsSearchOpen(true)}
-          onNewReview={() => handleOpenService("ai-review")}
+          latencyMs={latencyMs}
           onOpenSettings={() => setIsSettingsOpen(true)}
-          onSelectService={handleOpenService}
-          onDeletePaper={(paper) => setPaperToDelete(paper)}
+          onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+          sidebarOpen={sidebarOpen}
         />
 
-        {/* View Content */}
-        {renderActiveTabContent()}
+        {/* Main Layout: Sidebar + Active View */}
+        <div className="flex-1 flex overflow-hidden">
+          <DesktopSidebar
+            papers={papers}
+            activePaperId={activeTabId}
+            activeView={activeView}
+            isConnected={isConnected}
+            isLoading={isApiLoading}
+            provider={provider}
+            activeModelName={modelName}
+            isCollapsed={!sidebarOpen}
+            onToggleCollapse={() => setSidebarOpen((prev) => !prev)}
+            onSelectPaper={handleOpenArticle}
+            onSelectView={(view) => setActiveView(view)}
+            onOpenSearch={() => setIsSearchOpen(true)}
+            onNewReview={() => handleOpenService("ai-review")}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            onSelectService={handleOpenService}
+            onDeletePaper={(paper) => setPaperToDelete(paper)}
+          />
+
+          {/* View Content */}
+          {renderActiveTabContent()}
+        </div>
+
+        {/* Modals */}
+        <DesktopSearchModal
+          isOpen={isSearchOpen}
+          onClose={() => setIsSearchOpen(false)}
+          papers={papers}
+          onSelectItem={(id) => {
+            if (papers.some((p) => p.id === id)) {
+              handleOpenArticle(id);
+            } else if (id.startsWith("tool-")) {
+              handleOpenService(id.replace("tool-", ""));
+            }
+          }}
+        />
+
+        {/* Live Pre-Submission AI Review Scan Modal */}
+        <DesktopScanModal
+          isOpen={isScanOpen}
+          onClose={() => setIsScanOpen(false)}
+          onComplete={handleScanComplete}
+        />
+
+        {/* Project Deletion Confirmation Modal */}
+        <DeleteConfirmationModal
+          paper={paperToDelete}
+          isOpen={Boolean(paperToDelete)}
+          onClose={() => setPaperToDelete(null)}
+          onConfirm={handleDeleteProjectConfirm}
+        />
+
+        <ProviderSettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+        />
       </div>
-
-      {/* Modals */}
-      <DesktopSearchModal
-        isOpen={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
-        papers={papers}
-        onSelectItem={(id) => {
-          if (papers.some((p) => p.id === id)) {
-            handleOpenArticle(id);
-          } else if (id.startsWith("tool-")) {
-            handleOpenService(id.replace("tool-", ""));
-          }
-        }}
-      />
-
-      {/* Live Pre-Submission AI Review Scan Modal */}
-      <DesktopScanModal
-        isOpen={isScanOpen}
-        onClose={() => setIsScanOpen(false)}
-        onComplete={handleScanComplete}
-      />
-
-      {/* Project Deletion Confirmation Modal */}
-      <DeleteConfirmationModal
-        paper={paperToDelete}
-        isOpen={Boolean(paperToDelete)}
-        onClose={() => setPaperToDelete(null)}
-        onConfirm={handleDeleteProjectConfirm}
-      />
-
-      <ProviderSettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-      />
-    </div>
+    </ThemeProvider>
   );
 }

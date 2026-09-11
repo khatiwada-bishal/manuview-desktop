@@ -46,19 +46,19 @@ export function DesktopPrismaView() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-white p-6 sm:p-10 text-[#111827]">
+    <div className="flex-1 overflow-y-auto bg-white dark:bg-[#080B11] p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC]">
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-800">
               <Layers className="w-3.5 h-3.5" />
               <span>PRISMA 2020 Standard</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0F172A]">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0F172A] dark:text-white">
               Systematic Review Flow Diagram Generator
             </h1>
-            <p className="text-xs sm:text-sm text-neutral-500 max-w-2xl">
+            <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 max-w-2xl">
               Calibrate your study identification, screening, and eligibility numbers. Reconciles stage arithmetic automatically and exports publication-ready vector SVGs.
             </p>
           </div>
@@ -75,15 +75,15 @@ export function DesktopPrismaView() {
 
         {/* Arithmetic Status Banner */}
         {hasMathDiscrepancy ? (
-          <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs shadow-xs">
-            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-800/60 text-amber-900 dark:text-amber-300 text-xs shadow-xs">
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold">Arithmetic Discrepancy Detected: </span>
               Your input counts do not reconcile between identification and screening stages. Check exclusions to ensure numbers balance.
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-2 p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs shadow-xs">
+          <div className="flex items-center gap-2 p-3 rounded-2xl bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300 text-xs shadow-xs">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>PRISMA counts perfectly reconciled across all 4 evaluation phases.</span>
           </div>
@@ -92,96 +92,96 @@ export function DesktopPrismaView() {
         {/* Two-Column Workspace: Inputs on Left, Diagram on Right */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Inputs Column */}
-          <div className="lg:col-span-4 p-5 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] space-y-4 shadow-xs text-xs">
-            <div className="font-bold uppercase tracking-wider text-neutral-500 border-b border-[#E5E7EB] pb-2">
+          <div className="lg:col-span-4 p-5 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937] space-y-4 shadow-xs text-xs">
+            <div className="font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 border-b border-[#E5E7EB] dark:border-[#1F2937] pb-2">
               Phase 1: Identification
             </div>
             <div className="space-y-1">
-              <label className="text-neutral-700 font-medium">Databases Identified</label>
+              <label className="text-neutral-700 dark:text-neutral-300 font-medium">Databases Identified</label>
               <input
                 type="number"
                 value={dbIdentified}
                 onChange={(e) => setDbIdentified(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white text-xs"
+                className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white text-xs"
               />
             </div>
             <div className="space-y-1">
-              <label className="text-neutral-700 font-medium">Registers Identified</label>
+              <label className="text-neutral-700 dark:text-neutral-300 font-medium">Registers Identified</label>
               <input
                 type="number"
                 value={registersIdentified}
                 onChange={(e) => setRegistersIdentified(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white text-xs"
+                className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white text-xs"
               />
             </div>
             <div className="space-y-1">
-              <label className="text-neutral-700 font-medium">Duplicates Removed</label>
+              <label className="text-neutral-700 dark:text-neutral-300 font-medium">Duplicates Removed</label>
               <input
                 type="number"
                 value={duplicatesRemoved}
                 onChange={(e) => setDuplicatesRemoved(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white text-xs"
+                className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white text-xs"
               />
             </div>
 
-            <div className="font-bold uppercase tracking-wider text-neutral-500 border-b border-[#E5E7EB] pb-2 pt-2">
+            <div className="font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 border-b border-[#E5E7EB] dark:border-[#1F2937] pb-2 pt-2">
               Phase 2: Screening
             </div>
             <div className="space-y-1">
-              <label className="text-neutral-700 font-medium">Records Screened</label>
+              <label className="text-neutral-700 dark:text-neutral-300 font-medium">Records Screened</label>
               <input
                 type="number"
                 value={screened}
                 onChange={(e) => setScreened(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white text-xs"
+                className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white text-xs"
               />
             </div>
             <div className="space-y-1">
-              <label className="text-neutral-700 font-medium">Records Excluded</label>
+              <label className="text-neutral-700 dark:text-neutral-300 font-medium">Records Excluded</label>
               <input
                 type="number"
                 value={screenExcluded}
                 onChange={(e) => setScreenExcluded(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white text-xs"
+                className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white text-xs"
               />
             </div>
 
-            <div className="font-bold uppercase tracking-wider text-neutral-500 border-b border-[#E5E7EB] pb-2 pt-2">
+            <div className="font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 border-b border-[#E5E7EB] dark:border-[#1F2937] pb-2 pt-2">
               Phase 3: Eligibility &amp; Included
             </div>
             <div className="space-y-1">
-              <label className="text-neutral-700 font-medium">Full-Text Assessed</label>
+              <label className="text-neutral-700 dark:text-neutral-300 font-medium">Full-Text Assessed</label>
               <input
                 type="number"
                 value={assessed}
                 onChange={(e) => setAssessed(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white text-xs"
+                className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white text-xs"
               />
             </div>
             <div className="space-y-1">
-              <label className="text-neutral-700 font-medium">Excluded Eligibility</label>
+              <label className="text-neutral-700 dark:text-neutral-300 font-medium">Excluded Eligibility</label>
               <input
                 type="number"
                 value={excludedEligibility}
                 onChange={(e) => setExcludedEligibility(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white text-xs"
+                className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white text-xs"
               />
             </div>
             <div className="space-y-1">
-              <label className="text-neutral-700 font-medium text-purple-700 font-bold">
+              <label className="text-neutral-700 dark:text-neutral-300 font-medium text-purple-700 dark:text-purple-400 font-bold">
                 Final Studies Included
               </label>
               <input
                 type="number"
                 value={included}
                 onChange={(e) => setIncluded(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-lg border-2 border-purple-300 bg-purple-50/40 text-xs font-bold text-purple-900"
+                className="w-full px-3 py-2 rounded-lg border-2 border-purple-300 dark:border-purple-700 bg-purple-50/40 dark:bg-purple-950/20 text-xs font-bold text-purple-900 dark:text-purple-300"
               />
             </div>
           </div>
 
           {/* SVG Diagram Column */}
-          <div className="lg:col-span-8 p-6 rounded-2xl border border-[#E5E7EB] bg-white shadow-xs overflow-x-auto flex justify-center">
+          <div className="lg:col-span-8 p-6 rounded-2xl border border-[#E5E7EB] dark:border-[#1F2937] bg-white dark:bg-[#111827] shadow-xs overflow-x-auto flex justify-center">
             <svg
               id="desktop-prisma-svg"
               viewBox="0 0 650 620"
@@ -275,3 +275,4 @@ export function DesktopPrismaView() {
     </div>
   );
 }
+

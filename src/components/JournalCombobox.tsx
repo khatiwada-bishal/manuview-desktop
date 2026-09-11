@@ -280,13 +280,13 @@ export default function JournalCombobox({
           aria-expanded={isOpen}
           className={`w-full text-xs pl-8 pr-16 py-2 rounded-lg transition font-normal ${
             hasError
-              ? "bg-[#FDF0EF] border border-[#F7CECC] text-[#7C2D2B] placeholder-[#A05E5C] focus:outline-none ring-1 ring-[#F7CECC]"
-              : "bg-white border border-[#EBEBEA] text-[#2F3437] placeholder-[#888888] hover:border-[#CCCCCC] focus:border-[#0075eb] focus:outline-none focus:ring-2 focus:ring-[#0075eb]/20 shadow-sm"
+              ? "bg-[#FDF0EF] dark:bg-rose-950/40 border border-[#F7CECC] dark:border-rose-800 text-[#7C2D2B] dark:text-rose-300 placeholder-[#A05E5C] focus:outline-none ring-1 ring-[#F7CECC]"
+              : "bg-white dark:bg-[#1E293B] border border-[#EBEBEA] dark:border-[#334155] text-[#2F3437] dark:text-white placeholder-[#888888] dark:placeholder-neutral-500 hover:border-[#CCCCCC] dark:hover:border-neutral-600 focus:border-[#0075eb] focus:outline-none focus:ring-2 focus:ring-[#0075eb]/20 shadow-sm"
           }`}
         />
         
         {/* Left Book/Search Icon */}
-        <BookOpen className="w-3.5 h-3.5 absolute left-2.5 text-[#9B9A97] pointer-events-none" />
+        <BookOpen className="w-3.5 h-3.5 absolute left-2.5 text-[#9B9A97] dark:text-neutral-500 pointer-events-none" />
 
         {/* Right Action Buttons */}
         <div className="absolute right-2 flex items-center gap-1">
@@ -294,7 +294,7 @@ export default function JournalCombobox({
             <button
               type="button"
               onClick={handleClear}
-              className="p-1 rounded hover:bg-[#F0F0EF] text-[#9B9A97] hover:text-[#2F3437] transition"
+              className="p-1 rounded hover:bg-[#F0F0EF] dark:hover:bg-[#334155] text-[#9B9A97] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white transition"
               title="Clear selection"
             >
               <X className="w-3 h-3" />
@@ -306,7 +306,7 @@ export default function JournalCombobox({
               setIsOpen(!isOpen);
               if (!isOpen) inputRef.current?.focus();
             }}
-            className="p-1 rounded hover:bg-[#F0F0EF] text-[#9B9A97] hover:text-[#2F3437] transition"
+            className="p-1 rounded hover:bg-[#F0F0EF] dark:hover:bg-[#334155] text-[#9B9A97] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white transition"
             title={isOpen ? "Close dropdown" : "Show journal list"}
           >
             <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? "rotate-180" : ""}`} />
@@ -316,19 +316,19 @@ export default function JournalCombobox({
 
       {/* Success Notification for newly added journal */}
       {addedToast && (
-        <div className="absolute top-full left-0 mt-1.5 z-40 bg-[#EBF8F2] border border-[#BDEBD6] text-[#0F6B43] text-[11px] px-2.5 py-1 rounded-md shadow-sm flex items-center gap-1.5 animate-fadeIn">
-          <Check className="w-3 h-3 text-[#0F6B43]" />
+        <div className="absolute top-full left-0 mt-1.5 z-40 bg-[#EBF8F2] dark:bg-emerald-950/60 border border-[#BDEBD6] dark:border-emerald-800 text-[#0F6B43] dark:text-emerald-300 text-[11px] px-2.5 py-1 rounded-md shadow-sm flex items-center gap-1.5 animate-fadeIn">
+          <Check className="w-3 h-3 text-[#0F6B43] dark:text-emerald-400" />
           <span>Added <strong>"{addedToast}"</strong> to your journal list!</span>
         </div>
       )}
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1.5 w-full bg-white border border-[#EBEBEA] rounded-xl shadow-xl z-50 overflow-hidden text-xs divide-y divide-[#F7F7F5] animate-fadeIn">
+        <div className="absolute top-full left-0 mt-1.5 w-full bg-white dark:bg-[#111827] border border-[#EBEBEA] dark:border-[#1F2937] rounded-xl shadow-xl z-50 overflow-hidden text-xs divide-y divide-[#F7F7F5] dark:divide-[#1F2937] animate-fadeIn">
           {/* Header Info Bar */}
-          <div className="px-3 py-1.5 bg-[#FAF9F7] text-[10px] text-[#787774] flex items-center justify-between font-mono">
+          <div className="px-3 py-1.5 bg-[#FAF9F7] dark:bg-[#0B0F17] text-[10px] text-[#787774] dark:text-neutral-400 flex items-center justify-between font-mono">
             <span className="flex items-center gap-1">
-              <Search className="w-2.5 h-2.5 text-[#9B9A97]" />
+              <Search className="w-2.5 h-2.5 text-[#9B9A97] dark:text-neutral-500" />
               <span>{allJournals.length.toLocaleString()} catalogued journals</span>
             </span>
             <span>
@@ -341,8 +341,8 @@ export default function JournalCombobox({
             <div
               data-index={0}
               onClick={() => handleAddCustomJournal()}
-              className={`px-3 py-2.5 bg-[#F4F9FF] border-b border-[#E1EFFF] cursor-pointer flex items-center justify-between transition ${
-                activeIndex === 0 ? "bg-[#E5F2FF] text-[#0066CC]" : "hover:bg-[#EBF5FF] text-[#0075eb]"
+              className={`px-3 py-2.5 bg-[#F4F9FF] dark:bg-blue-950/40 border-b border-[#E1EFFF] dark:border-blue-900/60 cursor-pointer flex items-center justify-between transition ${
+                activeIndex === 0 ? "bg-[#E5F2FF] dark:bg-blue-900/60 text-[#0066CC] dark:text-blue-300" : "hover:bg-[#EBF5FF] dark:hover:bg-blue-900/40 text-[#0075eb] dark:text-blue-400"
               }`}
             >
               <div className="flex items-center gap-2">
@@ -350,15 +350,15 @@ export default function JournalCombobox({
                   <Plus className="w-3.5 h-3.5" />
                 </span>
                 <div>
-                  <div className="font-semibold text-xs text-[#0066CC]">
+                  <div className="font-semibold text-xs text-[#0066CC] dark:text-blue-300">
                     Add "{trimmedQuery}" to list
                   </div>
-                  <div className="text-[10px] text-[#0075eb]/70">
+                  <div className="text-[10px] text-[#0075eb]/70 dark:text-blue-300/70">
                     Not found in catalog — click to save and evaluate rubric
                   </div>
                 </div>
               </div>
-              <span className="text-[10px] font-semibold bg-[#D0E6FF] text-[#0055AA] px-1.5 py-0.5 rounded tracking-wide uppercase">
+              <span className="text-[10px] font-semibold bg-[#D0E6FF] dark:bg-blue-900/60 text-[#0055AA] dark:text-blue-200 px-1.5 py-0.5 rounded tracking-wide uppercase">
                 New Journal
               </span>
             </div>
@@ -367,21 +367,21 @@ export default function JournalCombobox({
           {/* List of Matching Journals */}
           <div
             ref={listRef}
-            className="max-h-64 overflow-y-auto divide-y divide-[#F7F7F5] overscroll-contain"
+            className="max-h-64 overflow-y-auto divide-y divide-[#F7F7F5] dark:divide-[#1F2937] overscroll-contain [scrollbar-width:thin]"
           >
             {trimmedQuery.length < 3 ? (
-              <div className="px-4 py-8 text-center text-[#787774]">
-                <BookOpen className="w-5 h-5 mx-auto mb-2 text-[#9B9A97]" />
-                <p className="font-semibold text-xs text-[#2F3437]">Type at least 3 letters to search</p>
-                <p className="text-[11px] text-[#9B9A97] mt-1 max-w-xs mx-auto">
+              <div className="px-4 py-8 text-center text-[#787774] dark:text-neutral-400">
+                <BookOpen className="w-5 h-5 mx-auto mb-2 text-[#9B9A97] dark:text-neutral-500" />
+                <p className="font-semibold text-xs text-[#2F3437] dark:text-neutral-200">Type at least 3 letters to search</p>
+                <p className="text-[11px] text-[#9B9A97] dark:text-neutral-500 mt-1 max-w-xs mx-auto">
                   Type 3 or more characters to display and scroll through all matching academic journals.
                 </p>
               </div>
             ) : filteredJournals.length === 0 && !canAddNew ? (
-              <div className="px-4 py-6 text-center text-[#787774]">
-                <BookOpen className="w-6 h-6 mx-auto mb-2 text-[#CCCCCC]" />
-                <p className="font-medium text-xs text-[#2F3437]">No matching journals found</p>
-                <p className="text-[11px] text-[#9B9A97] mt-1">
+              <div className="px-4 py-6 text-center text-[#787774] dark:text-neutral-400">
+                <BookOpen className="w-6 h-6 mx-auto mb-2 text-[#CCCCCC] dark:text-neutral-600" />
+                <p className="font-medium text-xs text-[#2F3437] dark:text-neutral-200">No matching journals found</p>
+                <p className="text-[11px] text-[#9B9A97] dark:text-neutral-500 mt-1">
                   Type at least 3 characters to create and add a new journal title.
                 </p>
               </div>
@@ -400,10 +400,10 @@ export default function JournalCombobox({
                     onClick={() => handleSelectJournal(journal)}
                     className={`px-3 py-2 cursor-pointer flex items-center justify-between transition ${
                       isSelected
-                        ? "bg-[#F7F7F5] text-[#2F3437] font-semibold"
+                        ? "bg-[#F7F7F5] dark:bg-[#1E293B] text-[#2F3437] dark:text-white font-semibold"
                         : isItemActive
-                        ? "bg-[#FAFAFA] text-[#2F3437]"
-                        : "hover:bg-[#F9F9F8] text-[#37352F]"
+                        ? "bg-[#FAFAFA] dark:bg-[#161F30] text-[#2F3437] dark:text-white"
+                        : "hover:bg-[#F9F9F8] dark:hover:bg-[#161F30]/60 text-[#37352F] dark:text-neutral-300"
                     }`}
                   >
                     <div className="flex items-center gap-2 min-w-0 pr-2">
@@ -412,32 +412,32 @@ export default function JournalCombobox({
                           isSelected
                             ? "bg-[#0075eb]"
                             : isCurated
-                            ? "bg-[#0F6B43]"
+                            ? "bg-[#0F6B43] dark:bg-emerald-400"
                             : isCustomAdded
-                            ? "bg-[#9065B0]"
-                            : "bg-[#D3D1CB]"
+                            ? "bg-[#9065B0] dark:bg-purple-400"
+                            : "bg-[#D3D1CB] dark:bg-neutral-600"
                         }`}
                       />
-                      <span className="truncate font-medium text-xs text-[#2F3437]">
+                      <span className="truncate font-medium text-xs text-[#2F3437] dark:text-neutral-200">
                         {journal}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       {isCurated && (
-                        <span className="text-[9px] font-medium bg-[#EBF8F2] text-[#0F6B43] border border-[#BDEBD6] px-1.5 py-0.5 rounded">
+                        <span className="text-[9px] font-medium bg-[#EBF8F2] dark:bg-emerald-950/50 text-[#0F6B43] dark:text-emerald-300 border border-[#BDEBD6] dark:border-emerald-800 px-1.5 py-0.5 rounded">
                           Curated
                         </span>
                       )}
                       {isCustomAdded && (
                         <div className="flex items-center gap-1">
-                          <span className="text-[9px] font-medium bg-[#F6EEFB] text-[#783CB3] border border-[#E9D4F7] px-1.5 py-0.5 rounded">
+                          <span className="text-[9px] font-medium bg-[#F6EEFB] dark:bg-purple-950/50 text-[#783CB3] dark:text-purple-300 border border-[#E9D4F7] dark:border-purple-800 px-1.5 py-0.5 rounded">
                             Custom
                           </span>
                           <button
                             type="button"
                             onClick={(e) => handleDeleteCustomJournal(e, journal)}
-                            className="p-1 hover:bg-[#FDF0EF] text-[#9B9A97] hover:text-[#7C2D2B] rounded transition"
+                            className="p-1 hover:bg-[#FDF0EF] dark:hover:bg-rose-950/50 text-[#9B9A97] dark:text-neutral-400 hover:text-[#7C2D2B] dark:hover:text-rose-300 rounded transition"
                             title="Remove from custom list"
                           >
                             <Trash2 className="w-2.5 h-2.5" />
@@ -445,7 +445,7 @@ export default function JournalCombobox({
                         </div>
                       )}
                       {isSelected && (
-                        <Check className="w-3.5 h-3.5 text-[#0075eb]" />
+                        <Check className="w-3.5 h-3.5 text-[#0075eb] dark:text-blue-400" />
                       )}
                     </div>
                   </div>
@@ -455,12 +455,12 @@ export default function JournalCombobox({
           </div>
 
           {/* Footer Guide / Status */}
-          <div className="px-3 py-1.5 bg-[#FAF9F7] text-[10px] text-[#787774] flex items-center justify-between border-t border-[#EBEBEA]">
+          <div className="px-3 py-1.5 bg-[#FAF9F7] dark:bg-[#0B0F17] text-[10px] text-[#787774] dark:text-neutral-400 flex items-center justify-between border-t border-[#EBEBEA] dark:border-[#1F2937]">
             <span>
-              Use <kbd className="bg-white border border-[#EBEBEA] rounded px-1 py-0.2 font-mono text-[9px]">↑</kbd> <kbd className="bg-white border border-[#EBEBEA] rounded px-1 py-0.2 font-mono text-[9px]">↓</kbd> to navigate, <kbd className="bg-white border border-[#EBEBEA] rounded px-1 py-0.2 font-mono text-[9px]">Enter</kbd> to pick
+              Use <kbd className="bg-white dark:bg-[#1E293B] border border-[#EBEBEA] dark:border-[#334155] rounded px-1 py-0.2 font-mono text-[9px] text-neutral-600 dark:text-neutral-300">↑</kbd> <kbd className="bg-white dark:bg-[#1E293B] border border-[#EBEBEA] dark:border-[#334155] rounded px-1 py-0.2 font-mono text-[9px] text-neutral-600 dark:text-neutral-300">↓</kbd> to navigate, <kbd className="bg-white dark:bg-[#1E293B] border border-[#EBEBEA] dark:border-[#334155] rounded px-1 py-0.2 font-mono text-[9px] text-neutral-600 dark:text-neutral-300">Enter</kbd> to pick
             </span>
             {value && (
-              <span className="text-[#0F6B43] font-medium flex items-center gap-1">
+              <span className="text-[#0F6B43] dark:text-emerald-400 font-medium flex items-center gap-1">
                 <Check className="w-2.5 h-2.5" /> Selected
               </span>
             )}

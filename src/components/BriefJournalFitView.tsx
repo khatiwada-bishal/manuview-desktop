@@ -40,7 +40,7 @@ export function BriefJournalFitView({
   const getVerdictBadge = () => {
     if (report.verdictColor === "green") {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#EDF6EE] text-[#1E5A2A] border border-[#CBE7CE] shadow-2xs">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#EDF6EE] dark:bg-emerald-950/40 text-[#1E5A2A] dark:text-emerald-400 border border-[#CBE7CE] dark:border-emerald-800 shadow-2xs">
           <CheckCircle2 className="w-3.5 h-3.5" />
           <span>{report.verdict}</span>
         </span>
@@ -48,14 +48,14 @@ export function BriefJournalFitView({
     }
     if (report.verdictColor === "amber") {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FBF3DB] text-[#78510E] border border-[#F4E2B6] shadow-2xs">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FBF3DB] dark:bg-amber-950/40 text-[#78510E] dark:text-amber-400 border border-[#F4E2B6] dark:border-amber-800 shadow-2xs">
           <AlertTriangle className="w-3.5 h-3.5" />
           <span>{report.verdict}</span>
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FDF0EF] text-[#7C2D2B] border border-[#F7CECC] shadow-2xs">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FDF0EF] dark:bg-rose-950/40 text-[#7C2D2B] dark:text-rose-400 border border-[#F7CECC] dark:border-rose-800 shadow-2xs">
         <AlertCircle className="w-3.5 h-3.5" />
         <span>{report.verdict}</span>
       </span>
@@ -63,34 +63,34 @@ export function BriefJournalFitView({
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 75) return "text-[#1E5A2A]";
-    if (score >= 50) return "text-[#78510E]";
-    return "text-[#7C2D2B]";
+    if (score >= 75) return "text-[#1E5A2A] dark:text-emerald-400";
+    if (score >= 50) return "text-[#78510E] dark:text-amber-400";
+    return "text-[#7C2D2B] dark:text-rose-400";
   };
 
   const getScoreBg = (score: number) => {
-    if (score >= 75) return "bg-[#1E5A2A]";
-    if (score >= 50) return "bg-[#78510E]";
-    return "bg-[#7C2D2B]";
+    if (score >= 75) return "bg-[#1E5A2A] dark:bg-emerald-500";
+    if (score >= 50) return "bg-[#78510E] dark:bg-amber-500";
+    return "bg-[#7C2D2B] dark:bg-rose-500";
   };
 
   return (
     <div className="space-y-6 animate-fadeIn print:hidden">
       {/* Top Navigation Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#EBEBEA]">
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#EBEBEA] dark:border-[#1F2937]">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-xs text-[#787774] hover:text-[#2F3437] hover:bg-[#F7F7F5] px-2.5 py-1.5 rounded-lg transition cursor-pointer"
+          className="flex items-center gap-1.5 text-xs text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] px-2.5 py-1.5 rounded-lg transition cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Back to Edit Manuscript</span>
         </button>
 
         <div className="flex items-center gap-2.5">
-          <div className="hidden sm:flex items-center gap-1.5 text-xs text-[#787774]">
+          <div className="hidden sm:flex items-center gap-1.5 text-xs text-[#787774] dark:text-neutral-400">
             <BookOpen className="w-3.5 h-3.5" />
             <span>Target:</span>
-            <span className="font-semibold text-[#2F3437] bg-[#F7F7F5] px-2 py-0.5 rounded border border-[#EBEBEA]">
+            <span className="font-semibold text-[#2F3437] dark:text-white bg-[#F7F7F5] dark:bg-[#161F30] px-2 py-0.5 rounded border border-[#EBEBEA] dark:border-[#334155]">
               {report.targetJournal}
             </span>
           </div>
@@ -98,27 +98,27 @@ export function BriefJournalFitView({
           <button
             type="button"
             onClick={() => exportInteractiveHtmlReport(report)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white text-[#2F3437] hover:bg-[#F7F7F5] border border-[#D0D5DD] transition shadow-2xs cursor-pointer"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-[#161F30] text-[#2F3437] dark:text-neutral-200 hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] border border-[#D0D5DD] dark:border-[#334155] transition shadow-2xs cursor-pointer"
             title="Export self-contained Interactive Web Report (.html) for offline viewing and sharing"
           >
-            <Globe className="w-3.5 h-3.5 text-blue-600" />
+            <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             <span className="hidden sm:inline">Interactive HTML</span>
           </button>
 
           <button
             type="button"
             onClick={() => exportWordDocReport(report)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white text-[#2F3437] hover:bg-[#F7F7F5] border border-[#D0D5DD] transition shadow-2xs cursor-pointer"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-[#161F30] text-[#2F3437] dark:text-neutral-200 hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] border border-[#D0D5DD] dark:border-[#334155] transition shadow-2xs cursor-pointer"
             title="Export Scope Fit Report as Microsoft Word Document (.doc / .docx)"
           >
-            <FileText className="w-3.5 h-3.5 text-[#18569C]" />
+            <FileText className="w-3.5 h-3.5 text-[#18569C] dark:text-blue-400" />
             <span className="hidden sm:inline">Word (.docx)</span>
           </button>
 
           <button
             type="button"
             onClick={() => window.print()}
-            className="p-1.5 rounded-lg border border-[#EBEBEA] hover:bg-[#F7F7F5] text-[#787774] transition"
+            className="p-1.5 rounded-lg border border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 transition"
             title="Print Brief Report"
           >
             <Printer className="w-3.5 h-3.5" />
@@ -127,7 +127,7 @@ export function BriefJournalFitView({
           <button
             type="button"
             onClick={onDownloadPDF}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#2F3437] text-white hover:bg-black transition shadow-xs cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#2F3437] hover:bg-black dark:bg-blue-600 dark:hover:bg-blue-500 text-white transition shadow-xs cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
             <span>PDF Report</span>
@@ -136,31 +136,31 @@ export function BriefJournalFitView({
       </div>
 
       {/* Hero Editorial Scope Card */}
-      <div className="p-6 rounded-2xl bg-[#FAFAFA] border border-[#EBEBEA] shadow-xs space-y-4">
+      <div className="p-6 rounded-2xl bg-[#FAFAFA] dark:bg-[#111827] border border-[#EBEBEA] dark:border-[#1F2937] shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div className="space-y-1.5 flex-1">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono uppercase tracking-wider text-[#787774]">
+              <span className="text-xs font-mono uppercase tracking-wider text-[#787774] dark:text-neutral-400">
                 Target Journal Scope Validation
               </span>
               {getVerdictBadge()}
             </div>
-            <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#2F3437] tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#2F3437] dark:text-white tracking-tight">
               {report.targetJournal}
             </h2>
           </div>
 
           {/* Fit Score Badge */}
-          <div className="flex items-center gap-3 p-3.5 rounded-xl bg-white border border-[#EBEBEA] shadow-2xs self-start">
+          <div className="flex items-center gap-3 p-3.5 rounded-xl bg-white dark:bg-[#161F30] border border-[#EBEBEA] dark:border-[#334155] shadow-2xs self-start">
             <div className="text-right">
-              <div className="text-[10px] uppercase tracking-wider text-[#787774] font-semibold">
+              <div className="text-[10px] uppercase tracking-wider text-[#787774] dark:text-neutral-400 font-semibold">
                 Overall Scope Match
               </div>
               <div className={`text-2xl font-bold font-mono ${getScoreColor(report.fitScore)}`}>
                 {report.fitScore}%
               </div>
             </div>
-            <div className="w-12 h-12 rounded-full bg-[#F7F7F5] border border-[#EBEBEA] flex items-center justify-center font-bold text-xs">
+            <div className="w-12 h-12 rounded-full bg-[#F7F7F5] dark:bg-[#1E293B] border border-[#EBEBEA] dark:border-[#334155] flex items-center justify-center font-bold text-xs">
               <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[11px] font-mono shadow-xs" style={{
                 backgroundColor: report.fitScore >= 75 ? "#1E5A2A" : report.fitScore >= 50 ? "#78510E" : "#7C2D2B"
               }}>
@@ -171,38 +171,38 @@ export function BriefJournalFitView({
         </div>
 
         {/* Executive Scope Summary */}
-        <div className="p-4 rounded-xl bg-white border border-[#EBEBEA] text-xs text-[#2F3437] leading-relaxed">
-          <div className="font-semibold text-[11px] text-[#787774] uppercase tracking-wider mb-1 flex items-center gap-1.5">
-            <Sparkles className="w-3 h-3 text-[#0A85EA]" />
+        <div className="p-4 rounded-xl bg-white dark:bg-[#161F30] border border-[#EBEBEA] dark:border-[#334155] text-xs text-[#2F3437] dark:text-neutral-200 leading-relaxed">
+          <div className="font-semibold text-[11px] text-[#787774] dark:text-neutral-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+            <Sparkles className="w-3 h-3 text-[#0A85EA] dark:text-blue-400" />
             <span>Senior Editorial Triage Synthesis</span>
           </div>
-          <p className="italic text-[#37352F] text-xs sm:text-sm">
+          <p className="italic text-[#37352F] dark:text-neutral-300 text-xs sm:text-sm">
             &ldquo;{report.summary}&rdquo;
           </p>
         </div>
       </div>
 
       {/* Manuscript Information Preview Box */}
-      <div className="p-4 rounded-xl bg-[#F7F7F5] border border-[#EBEBEA] text-xs space-y-2.5">
+      <div className="p-4 rounded-xl bg-[#F7F7F5] dark:bg-[#161F30] border border-[#EBEBEA] dark:border-[#1F2937] text-xs space-y-2.5">
         <div>
-          <span className="text-[10px] font-semibold text-[#787774] uppercase tracking-wider block mb-0.5">
+          <span className="text-[10px] font-semibold text-[#787774] dark:text-neutral-400 uppercase tracking-wider block mb-0.5">
             Evaluated Manuscript Title
           </span>
-          <span className="font-semibold text-xs sm:text-sm text-[#2F3437] block">
+          <span className="font-semibold text-xs sm:text-sm text-[#2F3437] dark:text-white block">
             {report.title}
           </span>
         </div>
 
         {report.keywords && report.keywords.length > 0 && (
           <div>
-            <span className="text-[10px] font-semibold text-[#787774] uppercase tracking-wider block mb-1">
+            <span className="text-[10px] font-semibold text-[#787774] dark:text-neutral-400 uppercase tracking-wider block mb-1">
               Author Keywords
             </span>
             <div className="flex flex-wrap gap-1.5">
               {report.keywords.map((kw, idx) => (
                 <span
                   key={idx}
-                  className="px-2 py-0.5 rounded-md bg-white border border-[#EBEBEA] text-[11px] text-[#2F3437] font-medium"
+                  className="px-2 py-0.5 rounded-md bg-white dark:bg-[#1E293B] border border-[#EBEBEA] dark:border-[#334155] text-[11px] text-[#2F3437] dark:text-neutral-200 font-medium"
                 >
                   {kw}
                 </span>
@@ -212,10 +212,10 @@ export function BriefJournalFitView({
         )}
 
         <div>
-          <span className="text-[10px] font-semibold text-[#787774] uppercase tracking-wider block mb-1">
+          <span className="text-[10px] font-semibold text-[#787774] dark:text-neutral-400 uppercase tracking-wider block mb-1">
             Abstract Synopsis
           </span>
-          <p className="text-[11px] text-[#787774] line-clamp-3 leading-relaxed bg-white p-2.5 rounded-lg border border-[#EBEBEA]">
+          <p className="text-[11px] text-[#787774] dark:text-neutral-400 line-clamp-3 leading-relaxed bg-white dark:bg-[#1E293B] p-2.5 rounded-lg border border-[#EBEBEA] dark:border-[#334155]">
             {report.abstract}
           </p>
         </div>
@@ -223,82 +223,82 @@ export function BriefJournalFitView({
 
       {/* 4 Scope Dimensions Grid */}
       <div className="space-y-2">
-        <h3 className="text-xs font-semibold text-[#787774] uppercase tracking-wider">
+        <h3 className="text-xs font-semibold text-[#787774] dark:text-neutral-400 uppercase tracking-wider">
           Editorial Scope Dimensions
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
           {/* Dimension 1: Domain Match */}
-          <div className="p-4 rounded-xl bg-white border border-[#EBEBEA] shadow-2xs space-y-1.5">
+          <div className="p-4 rounded-xl bg-white dark:bg-[#111827] border border-[#EBEBEA] dark:border-[#1F2937] shadow-2xs space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-[#2F3437]">1. Subject Domain Alignment</span>
+              <span className="font-semibold text-[#2F3437] dark:text-white">1. Subject Domain Alignment</span>
               <span className={`font-mono font-bold ${getScoreColor(report.dimensions.domainMatch.score)}`}>
                 {report.dimensions.domainMatch.score}%
               </span>
             </div>
-            <div className="w-full bg-[#F7F7F5] rounded-full h-1.5 overflow-hidden">
+            <div className="w-full bg-[#F7F7F5] dark:bg-[#1E293B] rounded-full h-1.5 overflow-hidden">
               <div
                 className={`h-full ${getScoreBg(report.dimensions.domainMatch.score)}`}
                 style={{ width: `${report.dimensions.domainMatch.score}%` }}
               />
             </div>
-            <p className="text-[11px] text-[#787774] leading-relaxed pt-0.5">
+            <p className="text-[11px] text-[#787774] dark:text-neutral-400 leading-relaxed pt-0.5">
               {report.dimensions.domainMatch.feedback}
             </p>
           </div>
 
           {/* Dimension 2: Novelty & Conceptual Depth */}
-          <div className="p-4 rounded-xl bg-white border border-[#EBEBEA] shadow-2xs space-y-1.5">
+          <div className="p-4 rounded-xl bg-white dark:bg-[#111827] border border-[#EBEBEA] dark:border-[#1F2937] shadow-2xs space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-[#2F3437]">2. Conceptual Novelty &amp; Impact Tier</span>
+              <span className="font-semibold text-[#2F3437] dark:text-white">2. Conceptual Novelty &amp; Impact Tier</span>
               <span className={`font-mono font-bold ${getScoreColor(report.dimensions.noveltySignificance.score)}`}>
                 {report.dimensions.noveltySignificance.score}%
               </span>
             </div>
-            <div className="w-full bg-[#F7F7F5] rounded-full h-1.5 overflow-hidden">
+            <div className="w-full bg-[#F7F7F5] dark:bg-[#1E293B] rounded-full h-1.5 overflow-hidden">
               <div
                 className={`h-full ${getScoreBg(report.dimensions.noveltySignificance.score)}`}
                 style={{ width: `${report.dimensions.noveltySignificance.score}%` }}
               />
             </div>
-            <p className="text-[11px] text-[#787774] leading-relaxed pt-0.5">
+            <p className="text-[11px] text-[#787774] dark:text-neutral-400 leading-relaxed pt-0.5">
               {report.dimensions.noveltySignificance.feedback}
             </p>
           </div>
 
           {/* Dimension 3: Readership & Community Fit */}
-          <div className="p-4 rounded-xl bg-white border border-[#EBEBEA] shadow-2xs space-y-1.5">
+          <div className="p-4 rounded-xl bg-white dark:bg-[#111827] border border-[#EBEBEA] dark:border-[#1F2937] shadow-2xs space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-[#2F3437]">3. Readership &amp; Community Relevance</span>
+              <span className="font-semibold text-[#2F3437] dark:text-white">3. Readership &amp; Community Relevance</span>
               <span className={`font-mono font-bold ${getScoreColor(report.dimensions.readershipAlignment.score)}`}>
                 {report.dimensions.readershipAlignment.score}%
               </span>
             </div>
-            <div className="w-full bg-[#F7F7F5] rounded-full h-1.5 overflow-hidden">
+            <div className="w-full bg-[#F7F7F5] dark:bg-[#1E293B] rounded-full h-1.5 overflow-hidden">
               <div
                 className={`h-full ${getScoreBg(report.dimensions.readershipAlignment.score)}`}
                 style={{ width: `${report.dimensions.readershipAlignment.score}%` }}
               />
             </div>
-            <p className="text-[11px] text-[#787774] leading-relaxed pt-0.5">
+            <p className="text-[11px] text-[#787774] dark:text-neutral-400 leading-relaxed pt-0.5">
               {report.dimensions.readershipAlignment.feedback}
             </p>
           </div>
 
           {/* Dimension 4: Keyword & Indexing Resonance */}
-          <div className="p-4 rounded-xl bg-white border border-[#EBEBEA] shadow-2xs space-y-1.5">
+          <div className="p-4 rounded-xl bg-white dark:bg-[#111827] border border-[#EBEBEA] dark:border-[#1F2937] shadow-2xs space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-[#2F3437]">4. Keyword &amp; Search Indexing</span>
+              <span className="font-semibold text-[#2F3437] dark:text-white">4. Keyword &amp; Search Indexing</span>
               <span className={`font-mono font-bold ${getScoreColor(report.dimensions.keywordRelevance.score)}`}>
                 {report.dimensions.keywordRelevance.score}%
               </span>
             </div>
-            <div className="w-full bg-[#F7F7F5] rounded-full h-1.5 overflow-hidden">
+            <div className="w-full bg-[#F7F7F5] dark:bg-[#1E293B] rounded-full h-1.5 overflow-hidden">
               <div
                 className={`h-full ${getScoreBg(report.dimensions.keywordRelevance.score)}`}
                 style={{ width: `${report.dimensions.keywordRelevance.score}%` }}
               />
             </div>
-            <p className="text-[11px] text-[#787774] leading-relaxed pt-0.5">
+            <p className="text-[11px] text-[#787774] dark:text-neutral-400 leading-relaxed pt-0.5">
               {report.dimensions.keywordRelevance.feedback}
             </p>
           </div>
@@ -308,15 +308,15 @@ export function BriefJournalFitView({
       {/* Two Column Section: Highlights vs Hazards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
         {/* Key Highlights */}
-        <div className="p-4 rounded-xl bg-[#EDF6EE]/60 border border-[#CBE7CE] space-y-2">
-          <div className="font-semibold text-[#1E5A2A] flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-[#1E5A2A]" />
+        <div className="p-4 rounded-xl bg-[#EDF6EE]/60 dark:bg-emerald-950/20 border border-[#CBE7CE] dark:border-emerald-800/50 space-y-2">
+          <div className="font-semibold text-[#1E5A2A] dark:text-emerald-400 flex items-center gap-1.5">
+            <CheckCircle2 className="w-4 h-4 text-[#1E5A2A] dark:text-emerald-400" />
             <span>Scope Strengths Supporting Submission</span>
           </div>
-          <ul className="space-y-1.5 text-[#1E5A2A]/90 pl-1">
+          <ul className="space-y-1.5 text-[#1E5A2A]/90 dark:text-emerald-300/90 pl-1">
             {report.keyHighlights.map((hl, i) => (
               <li key={i} className="flex items-start gap-1.5 leading-snug">
-                <span className="text-[#1E5A2A] font-bold mt-0.5">&bull;</span>
+                <span className="text-[#1E5A2A] dark:text-emerald-400 font-bold mt-0.5">&bull;</span>
                 <span>{hl}</span>
               </li>
             ))}
@@ -324,15 +324,15 @@ export function BriefJournalFitView({
         </div>
 
         {/* Desk Reject Hazards */}
-        <div className="p-4 rounded-xl bg-[#FDF0EF]/60 border border-[#F7CECC] space-y-2">
-          <div className="font-semibold text-[#7C2D2B] flex items-center gap-1.5">
-            <ShieldAlert className="w-4 h-4 text-[#7C2D2B]" />
+        <div className="p-4 rounded-xl bg-[#FDF0EF]/60 dark:bg-rose-950/20 border border-[#F7CECC] dark:border-rose-800/50 space-y-2">
+          <div className="font-semibold text-[#7C2D2B] dark:text-rose-400 flex items-center gap-1.5">
+            <ShieldAlert className="w-4 h-4 text-[#7C2D2B] dark:text-rose-400" />
             <span>Desk-Reject Hazards for {report.targetJournal}</span>
           </div>
-          <ul className="space-y-1.5 text-[#7C2D2B]/90 pl-1">
+          <ul className="space-y-1.5 text-[#7C2D2B]/90 dark:text-rose-300/90 pl-1">
             {report.deskRejectHazards.map((hz, i) => (
               <li key={i} className="flex items-start gap-1.5 leading-snug">
-                <span className="text-[#7C2D2B] font-bold mt-0.5">&bull;</span>
+                <span className="text-[#7C2D2B] dark:text-rose-400 font-bold mt-0.5">&bull;</span>
                 <span>{hz}</span>
               </li>
             ))}
@@ -342,15 +342,15 @@ export function BriefJournalFitView({
 
       {/* Abstract & Title Framing Suggestions */}
       {report.framingSuggestions && report.framingSuggestions.length > 0 && (
-        <div className="p-4 rounded-xl bg-white border border-[#EBEBEA] shadow-2xs space-y-2 text-xs">
-          <div className="font-semibold text-[#2F3437] flex items-center gap-1.5">
-            <Lightbulb className="w-4 h-4 text-[#0A85EA]" />
+        <div className="p-4 rounded-xl bg-white dark:bg-[#111827] border border-[#EBEBEA] dark:border-[#1F2937] shadow-2xs space-y-2 text-xs">
+          <div className="font-semibold text-[#2F3437] dark:text-white flex items-center gap-1.5">
+            <Lightbulb className="w-4 h-4 text-[#0A85EA] dark:text-blue-400" />
             <span>Recommendations to Optimize Title &amp; Abstract for {report.targetJournal}</span>
           </div>
           <div className="space-y-2 pl-1">
             {report.framingSuggestions.map((sug, i) => (
-              <div key={i} className="flex items-start gap-2 text-[#787774] leading-relaxed">
-                <span className="font-mono text-[10px] font-bold bg-[#F7F7F5] border border-[#EBEBEA] px-1.5 py-0.2 rounded text-[#2F3437] mt-0.5">
+              <div key={i} className="flex items-start gap-2 text-[#787774] dark:text-neutral-400 leading-relaxed">
+                <span className="font-mono text-[10px] font-bold bg-[#F7F7F5] dark:bg-[#1E293B] border border-[#EBEBEA] dark:border-[#334155] px-1.5 py-0.2 rounded text-[#2F3437] dark:text-neutral-200 mt-0.5">
                   {i + 1}
                 </span>
                 <span>{sug}</span>
@@ -363,22 +363,22 @@ export function BriefJournalFitView({
       {/* Alternative Journal Venues */}
       {report.alternativeJournals && report.alternativeJournals.length > 0 && (
         <div className="space-y-2">
-          <h3 className="text-xs font-semibold text-[#787774] uppercase tracking-wider">
+          <h3 className="text-xs font-semibold text-[#787774] dark:text-neutral-400 uppercase tracking-wider">
             Alternative &amp; Backup Journal Recommendations
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
             {report.alternativeJournals.map((alt, idx) => {
               const tierBadge =
                 alt.tier === "Reach"
-                  ? "bg-[#F6EEFB] text-[#783CB3] border-[#E9D4F7]"
+                  ? "bg-[#F6EEFB] dark:bg-purple-950/40 text-[#783CB3] dark:text-purple-300 border-[#E9D4F7] dark:border-purple-800"
                   : alt.tier === "Realistic"
-                  ? "bg-[#EDF6EE] text-[#1E5A2A] border-[#CBE7CE]"
-                  : "bg-[#F7F7F5] text-[#787774] border-[#EBEBEA]";
+                  ? "bg-[#EDF6EE] dark:bg-emerald-950/40 text-[#1E5A2A] dark:text-emerald-300 border-[#CBE7CE] dark:border-emerald-800"
+                  : "bg-[#F7F7F5] dark:bg-neutral-800 text-[#787774] dark:text-neutral-300 border-[#EBEBEA] dark:border-neutral-700";
 
               return (
                 <div
                   key={idx}
-                  className="p-3.5 rounded-xl bg-white border border-[#EBEBEA] shadow-2xs flex flex-col justify-between space-y-2"
+                  className="p-3.5 rounded-xl bg-white dark:bg-[#111827] border border-[#EBEBEA] dark:border-[#1F2937] shadow-2xs flex flex-col justify-between space-y-2"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
@@ -386,20 +386,20 @@ export function BriefJournalFitView({
                         {alt.tier}
                       </span>
                       {alt.impactFactor && (
-                        <span className="text-[10px] font-mono text-[#787774]">
+                        <span className="text-[10px] font-mono text-[#787774] dark:text-neutral-400">
                           IF {alt.impactFactor}
                         </span>
                       )}
                     </div>
-                    <div className="font-semibold text-xs text-[#2F3437]">
+                    <div className="font-semibold text-xs text-[#2F3437] dark:text-white">
                       {alt.name}
                     </div>
                     {alt.publisher && (
-                      <div className="text-[10px] text-[#9B9A97]">
+                      <div className="text-[10px] text-[#9B9A97] dark:text-neutral-500">
                         {alt.publisher}
                       </div>
                     )}
-                    <p className="text-[11px] text-[#787774] leading-snug pt-1">
+                    <p className="text-[11px] text-[#787774] dark:text-neutral-400 leading-snug pt-1">
                       {alt.matchReason}
                     </p>
                   </div>
@@ -411,16 +411,16 @@ export function BriefJournalFitView({
       )}
 
       {/* Full Audit Upgrade CTA Callout */}
-      <div className="p-5 rounded-2xl bg-[#F0FDF4] text-[#111827] border border-[#BBF7D0] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-5 rounded-2xl bg-[#F0FDF4] dark:bg-emerald-950/30 text-[#111827] dark:text-white border border-[#BBF7D0] dark:border-emerald-800/60 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
-          <div className="inline-flex items-center gap-1.5 text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-            <Sparkles className="w-3 h-3 text-emerald-600" />
+          <div className="inline-flex items-center gap-1.5 text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+            <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
             <span>Ready for Deep Diagnostic?</span>
           </div>
-          <h4 className="text-sm font-bold text-[#111827]">
+          <h4 className="text-sm font-bold text-[#111827] dark:text-white">
             Run the Full 6-Dimension Pre-Submission Manuscript Audit
           </h4>
-          <p className="text-xs text-neutral-600 max-w-xl">
+          <p className="text-xs text-neutral-600 dark:text-neutral-300 max-w-xl">
             Upload your complete manuscript (.pdf, .docx) to audit causal claims, experimental controls, methodology power, 5 simulated peer-reviewer personas, and Crossref citation integrity.
           </p>
         </div>
@@ -428,7 +428,7 @@ export function BriefJournalFitView({
         <button
           type="button"
           onClick={onBack}
-          className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#0F172A] hover:bg-[#1E293B] text-white transition whitespace-nowrap self-start sm:self-auto cursor-pointer flex items-center gap-1.5 shadow-xs"
+          className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#0F172A] hover:bg-[#1E293B] dark:bg-blue-600 dark:hover:bg-blue-500 text-white transition whitespace-nowrap self-start sm:self-auto cursor-pointer flex items-center gap-1.5 shadow-xs"
         >
           <span>Upload Full Document</span>
           <ArrowRight className="w-3.5 h-3.5" />

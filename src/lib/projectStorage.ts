@@ -2,6 +2,7 @@ import { PaperItem, DesktopActiveView } from "@/components/DesktopSidebar";
 import { DesktopDashboardData } from "@/components/DesktopDashboard";
 import { TabItem } from "@/components/DesktopHeader";
 import { FullReviewReport } from "./types";
+import { idbSet, idbDelete, idbGetAll } from "./indexed-db";
 
 export interface SavedProject {
   paper: PaperItem;
@@ -482,6 +483,7 @@ export function loadSavedProjects(): SavedProject[] {
     // If first launch (null), seed default Nepal E-Waste Study project
     if (raw === null) {
       localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify([NEPAL_EWASTE_PROJECT]));
+      idbSet({ id: NEPAL_EWASTE_PROJECT.paper.id, ...NEPAL_EWASTE_PROJECT }).catch(() => {});
       return [NEPAL_EWASTE_PROJECT];
     }
     const parsed: SavedProject[] = JSON.parse(raw);
@@ -489,6 +491,7 @@ export function loadSavedProjects(): SavedProject[] {
     // If the list is empty because of old dummy purge, reseed with Nepal E-Waste Study
     if (cleaned.length === 0 && raw !== "[]") {
       localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify([NEPAL_EWASTE_PROJECT]));
+      idbSet({ id: NEPAL_EWASTE_PROJECT.paper.id, ...NEPAL_EWASTE_PROJECT }).catch(() => {});
       return [NEPAL_EWASTE_PROJECT];
     }
     return cleaned;
@@ -499,7 +502,31 @@ export function loadSavedProjects(): SavedProject[] {
 }
 
 /**
+ * Asynchronously initialize and synchronize IndexedDB storage
+ */
+export async function initIndexedDBStorage(): Promise<SavedProject[]> {
+  if (typeof window === "undefined") return [NEPAL_EWASTE_PROJECT];
+  try {
+    const local = loadSavedProjects();
+    // Sync all existing local projects to IndexedDB
+    for (const proj of local) {
+      await idbSet({ id: proj.paper.id, ...proj });
+    }
+    const idbProjects = await idbGetAll<SavedProject & { id: string }>();
+    if (idbProjects.length > local.length) {
+      // IndexedDB has more projects than localStorage (e.g. quota limit reached)
+      return idbProjects.map(({ id, ...rest }) => rest as SavedProject);
+    }
+    return local;
+  } catch (err) {
+    console.warn("IndexedDB sync warning:", err);
+    return loadSavedProjects();
+  }
+}
+
+/**
  * Save or update a project on the user's computer
+ * Persists to both IndexedDB (unlimited quota) and localStorage (fast synchronous cache)
  */
 export function saveProject(
   paper: PaperItem,
@@ -528,9 +555,19 @@ export function saveProject(
       updated = [newProject, ...existing];
     }
 
-    localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updated));
+    // 1. Persist to IndexedDB (virtually unlimited quota for large PDFs & reports)
+    idbSet({ id: paper.id, ...newProject }).catch((err) => {
+      console.warn("Failed to persist project to IndexedDB:", err);
+    });
+
+    // 2. Persist to localStorage cache
+    try {
+      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(updated));
+    } catch (quotaErr) {
+      console.warn("localStorage quota exceeded; project safely stored in IndexedDB:", quotaErr);
+    }
   } catch (err) {
-    console.error("Error saving project to localStorage:", err);
+    console.error("Error saving project:", err);
   }
 }
 
@@ -542,7 +579,16 @@ export function deleteProject(projectId: string): void {
   try {
     const existing = loadSavedProjects();
     const filtered = existing.filter((p) => p.paper.id !== projectId);
-    localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(filtered));
+    
+    // Delete from localStorage
+    try {
+      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(filtered));
+    } catch {}
+
+    // Delete from IndexedDB
+    idbDelete(projectId).catch((err) => {
+      console.warn("Failed to delete project from IndexedDB:", err);
+    });
 
     // Also remove from saved session if open
     const session = loadSession();

@@ -12,8 +12,11 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useTheme } from "@/context/ThemeContext";
 
 export interface TabItem {
   id: string;
@@ -43,8 +46,8 @@ export function DesktopHeader({
   activeTabId,
   onSelectTab,
   onCloseTab,
-  sidebarOpen = true,
 }: DesktopHeaderProps) {
+  const { theme, toggleTheme } = useTheme();
   const containerRef = React.useRef<HTMLDivElement>(null);
   const tabsScrollRef = React.useRef<HTMLDivElement>(null);
   const activeTabRef = React.useRef<HTMLDivElement>(null);
@@ -170,7 +173,7 @@ export function DesktopHeader({
     <header
       data-tauri-drag-region
       onMouseDown={handleHeaderMouseDown}
-      className="h-[52px] border-b border-[#E5E7EB] bg-[#F3F4F6] flex select-none shrink-0 z-20 cursor-default relative"
+      className="h-[52px] border-b border-[#E5E7EB] dark:border-[#1E293B] bg-[#F3F4F6] dark:bg-[#0B0F17] flex items-center select-none shrink-0 z-20 cursor-default relative transition-colors duration-150"
     >
       {/* macOS traffic light spacer (covers window traffic controls, leaves comfortable gap) */}
       <div data-tauri-drag-region className="w-[84px] h-full shrink-0" />
@@ -187,7 +190,7 @@ export function DesktopHeader({
             type="button"
             onClick={handleScrollLeft}
             title="Scroll tabs left"
-            className="w-6 h-[38px] flex items-center justify-center rounded-md hover:bg-neutral-200/80 text-neutral-600 transition shrink-0 z-10 mr-1 cursor-pointer bg-white/90 border border-[#E5E7EB] shadow-2xs"
+            className="w-6 h-[38px] flex items-center justify-center rounded-md hover:bg-neutral-200/80 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 transition shrink-0 z-10 mr-1 cursor-pointer bg-white/90 dark:bg-[#161F30]/90 border border-[#E5E7EB] dark:border-[#334155] shadow-2xs"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
           </button>
@@ -211,8 +214,8 @@ export function DesktopHeader({
                 title={tab.title}
                 className={`group flex items-center gap-2 h-[38px] px-3 rounded-lg text-xs transition cursor-pointer max-w-[210px] min-w-[120px] border shrink-0 ${
                   isActive
-                    ? "bg-white text-[#111827] font-medium border-[#E5E7EB] shadow-xs"
-                    : "bg-transparent text-neutral-500 hover:text-neutral-800 hover:bg-neutral-200/60 border-transparent"
+                    ? "bg-white dark:bg-[#1E293B] text-[#111827] dark:text-[#F8FAFC] font-medium border-[#E5E7EB] dark:border-[#334155] shadow-xs"
+                    : "bg-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-200/60 dark:hover:bg-neutral-800/60 border-transparent"
                 }`}
               >
                 {getTabIcon(tab, isActive)}
@@ -221,7 +224,7 @@ export function DesktopHeader({
                   type="button"
                   title="Close tab"
                   onClick={(e) => onCloseTab(tab.id, e)}
-                  className={`p-0.5 rounded-md hover:bg-neutral-200 text-neutral-400 hover:text-neutral-700 transition opacity-0 group-hover:opacity-100 ${
+                  className={`p-0.5 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200 transition opacity-0 group-hover:opacity-100 ${
                     isActive ? "opacity-70" : ""
                   }`}
                 >
@@ -238,19 +241,50 @@ export function DesktopHeader({
             type="button"
             onClick={handleScrollRight}
             title="Scroll tabs right"
-            className="w-6 h-[38px] flex items-center justify-center rounded-md hover:bg-neutral-200/80 text-neutral-600 transition shrink-0 z-10 ml-1 cursor-pointer bg-white/90 border border-[#E5E7EB] shadow-2xs"
+            className="w-6 h-[38px] flex items-center justify-center rounded-md hover:bg-neutral-200/80 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 transition shrink-0 z-10 ml-1 cursor-pointer bg-white/90 dark:bg-[#161F30]/90 border border-[#E5E7EB] dark:border-[#334155] shadow-2xs"
           >
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
         )}
-
-        {/* Dedicated Window Drag Region at the far right */}
-        <div
-          data-tauri-drag-region
-          onMouseDown={handleHeaderMouseDown}
-          className="w-4 h-full shrink-0"
-        />
       </div>
+
+      {/* Top Right: Dark / Light Mode Toggle Button (Cleanly Centered Vertically in Header) */}
+      <div className="flex items-center h-full pl-2 pr-1 shrink-0 z-10">
+        <button
+          type="button"
+          data-no-drag
+          onClick={toggleTheme}
+          title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          aria-label="Toggle theme mode"
+          className="w-8 h-[34px] flex items-center justify-center rounded-lg border border-[#E5E7EB] dark:border-[#334155] bg-white/90 dark:bg-[#161F30] text-neutral-600 dark:text-amber-400 hover:bg-neutral-100 dark:hover:bg-[#1E293B] hover:text-neutral-900 dark:hover:text-amber-300 transition-colors duration-300 cursor-pointer shadow-2xs active:scale-95 group relative overflow-hidden"
+        >
+          <div className="relative w-4 h-4 flex items-center justify-center pointer-events-none">
+            {/* Sun icon: active in dark mode */}
+            <Sun
+              className={`w-3.5 h-3.5 text-amber-400 absolute transition-all duration-700 ease-[cubic-bezier(0.4,0,0.15,1)] transform ${
+                theme === "dark"
+                  ? "rotate-0 scale-100 opacity-100"
+                  : "rotate-90 scale-0 opacity-0"
+              } group-hover:rotate-45`}
+            />
+            {/* Moon icon: active in light mode */}
+            <Moon
+              className={`w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400 absolute transition-all duration-700 ease-[cubic-bezier(0.4,0,0.15,1)] transform ${
+                theme === "dark"
+                  ? "-rotate-90 scale-0 opacity-0"
+                  : "rotate-0 scale-100 opacity-100"
+              } group-hover:-rotate-12`}
+            />
+          </div>
+        </button>
+      </div>
+
+      {/* Dedicated Window Drag Region at the far right */}
+      <div
+        data-tauri-drag-region
+        onMouseDown={handleHeaderMouseDown}
+        className="w-3 h-full shrink-0"
+      />
     </header>
   );
 }
