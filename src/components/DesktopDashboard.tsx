@@ -25,6 +25,10 @@ import {
   Info,
   ExternalLink,
   ArrowLeft,
+  MessageSquare,
+  FileCode,
+  ShieldAlert,
+  Scale,
 } from "lucide-react";
 import { DesktopActiveView } from "./DesktopSidebar";
 import {
@@ -149,7 +153,7 @@ export function DesktopDashboard({
               </button>
               <span className="text-neutral-300">/</span>
               <span className="text-xs font-bold text-[#0F172A]">
-                {activeView === "personas" && "4 Reviewer Personas"}
+                {activeView === "personas" && `${personas.length || 5} Expert Reviewer Panel`}
                 {activeView === "dimensions" && "6 Scoring Dimensions"}
                 {activeView === "issues" && `Priority Action Items (${issues.length})`}
                 {(activeView === "journals" || activeView === "recommendations") &&
@@ -272,11 +276,66 @@ export function DesktopDashboard({
                   "Review prioritized action items and simulated referee assessments before submitting to your target journal."}
               </p>
             </div>
+
+            {/* CARD 4: Reporting Guideline Compliance Audit */}
+            {fullReport?.reportingGuideline && (
+              <div className="rounded-2xl bg-white border border-[#E2E8F0] p-6 sm:p-7 space-y-4 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#E2E8F0]">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Scale className="w-4 h-4 text-[#2563EB]" />
+                      <h2 className="text-base font-bold text-[#0F172A]">
+                        Reporting Guideline Compliance: {fullReport.reportingGuideline.guidelineName}
+                      </h2>
+                    </div>
+                    <p className="text-xs text-[#64748B] mt-0.5">
+                      Standard: {fullReport.reportingGuideline.standardType}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-[#64748B]">Audit Score:</span>
+                    <span className="text-base font-extrabold text-[#2563EB] bg-[#EFF6FF] px-2.5 py-0.5 rounded-full border border-blue-200">
+                      {fullReport.reportingGuideline.scorePercent}%
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0] space-y-2">
+                    <span className="text-xs font-bold text-[#166534] uppercase tracking-wider block">
+                      Compliant Checklist Items:
+                    </span>
+                    <ul className="space-y-1.5 text-xs text-[#166534]">
+                      {fullReport.reportingGuideline.compliantItems.map((item, idx) => (
+                        <li key={idx} className="flex items-start gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#16A34A]" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-[#FFFBEB] border border-[#FDE68A] space-y-2">
+                    <span className="text-xs font-bold text-[#92400E] uppercase tracking-wider block">
+                      Missing or Partial Reporting Items:
+                    </span>
+                    <ul className="space-y-1.5 text-xs text-[#92400E]">
+                      {fullReport.reportingGuideline.missingOrPartialItems.map((item, idx) => (
+                        <li key={idx} className="flex items-start gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#D97706]" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {/* ========================================================= */}
-        {/* TAB 2: 4 REVIEWER PERSONAS                                */}
+        {/* TAB 2: 5 REVIEWER PERSONAS (ADVERSARIAL PANEL)            */}
         {/* ========================================================= */}
         {activeView === "personas" && (
           <div className="space-y-6 animate-fade-in">
@@ -284,6 +343,7 @@ export function DesktopDashboard({
             <div className="flex flex-wrap items-center gap-2 pb-2">
               {personas.map((p, idx) => {
                 const isActive = selectedPersona === idx;
+                const isDevilsAdvocate = p.persona === "devils_advocate" || idx === 4;
                 return (
                   <button
                     key={idx}
@@ -291,14 +351,30 @@ export function DesktopDashboard({
                     onClick={() => setSelectedPersona(idx)}
                     className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-2 border ${
                       isActive
-                        ? "bg-[#0F172A] text-white border-[#0F172A] shadow-xs"
+                        ? isDevilsAdvocate
+                          ? "bg-[#7F1D1D] text-white border-[#7F1D1D] shadow-xs"
+                          : "bg-[#0F172A] text-white border-[#0F172A] shadow-xs"
+                        : isDevilsAdvocate
+                        ? "bg-rose-50/60 text-rose-800 border-rose-200 hover:bg-rose-100/70"
                         : "bg-white text-[#334155] border-[#CBD5E1] hover:bg-[#F1F5F9]"
                     }`}
                   >
                     <span>
-                      {idx === 0 ? "🔬" : idx === 1 ? "🧬" : idx === 2 ? "📑" : "📊"}
+                      {p.persona === "methods_reviewer" ? "🔬" :
+                       p.persona === "domain_expert" ? "🧬" :
+                       p.persona === "journal_editor" ? "📑" :
+                       p.persona === "statistician" ? "📊" :
+                       p.persona === "devils_advocate" ? "⚡" :
+                       (idx === 0 ? "🔬" : idx === 1 ? "🧬" : idx === 2 ? "📑" : idx === 3 ? "📊" : "⚡")}
                     </span>
                     <span>{p.name}</span>
+                    {isDevilsAdvocate && (
+                      <span className={`text-[9px] uppercase px-1.5 py-0.2 rounded font-extrabold ${
+                        isActive ? "bg-white/20 text-white" : "bg-rose-100 text-rose-700 border border-rose-200"
+                      }`}>
+                        Stress-Test
+                      </span>
+                    )}
                     <span
                       className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
                         isActive
@@ -316,8 +392,11 @@ export function DesktopDashboard({
             {/* Active Persona Card */}
             {personas[selectedPersona] && (() => {
               const active = personas[selectedPersona];
+              const isDevilsAdvocate = active.persona === "devils_advocate";
               return (
-                <div className="rounded-2xl bg-white border border-[#E2E8F0] p-6 sm:p-8 space-y-6 shadow-xs">
+                <div className={`rounded-2xl bg-white border p-6 sm:p-8 space-y-6 shadow-xs ${
+                  isDevilsAdvocate ? "border-rose-200 ring-1 ring-rose-200/50" : "border-[#E2E8F0]"
+                }`}>
                   {/* Persona Header */}
                   <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 pb-5 border-b border-[#E2E8F0]">
                     <div className="space-y-1">
@@ -325,9 +404,18 @@ export function DesktopDashboard({
                         <h3 className="text-lg sm:text-xl font-serif font-bold text-[#0F172A]">
                           {active.name}
                         </h3>
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                          isDevilsAdvocate
+                            ? "bg-rose-50 text-rose-800 border-rose-200"
+                            : "bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]"
+                        }`}>
                           Decision: {active.decisionRecommendation}
                         </span>
+                        {isDevilsAdvocate && (
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-red-100 text-red-800 border border-red-200">
+                            ⚡ Hostile Stress-Test / Adversarial Referee
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs font-medium text-[#475569]">{active.title}</p>
                       <p className="text-xs text-[#64748B] flex items-center gap-1.5">
@@ -343,6 +431,26 @@ export function DesktopDashboard({
                       </div>
                     )}
                   </div>
+
+                  {/* Evidence Anchors (Grounding) */}
+                  {active.evidenceAnchors && active.evidenceAnchors.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="text-xs font-bold text-[#475569] uppercase tracking-wider flex items-center gap-1.5">
+                        <FileCode className="w-3.5 h-3.5 text-[#2563EB]" />
+                        <span>Manuscript Evidence Anchors (Grounding):</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {active.evidenceAnchors.map((anchor, aIdx) => (
+                          <span
+                            key={aIdx}
+                            className="font-mono text-[11px] px-2.5 py-1 rounded-lg bg-[#F8FAFC] border border-[#CBD5E1] text-[#1E293B]"
+                          >
+                            {anchor}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Fatal Reviewer Objection / Key Challenge */}
                   <div className="p-4 rounded-xl bg-[#FEF2F2] border-l-4 border-[#EF4444] text-xs text-[#991B1B] flex items-start gap-2.5">
@@ -364,6 +472,29 @@ export function DesktopDashboard({
                       {active.assessment}
                     </div>
                   </div>
+
+                  {/* Adversarial Defenses & Counter-Arguments (if present) */}
+                  {active.counterArguments && active.counterArguments.length > 0 && (
+                    <div className="space-y-2.5">
+                      <div className="text-xs font-bold text-[#7C3AED] uppercase tracking-wider flex items-center gap-1.5">
+                        <ShieldAlert className="w-3.5 h-3.5" />
+                        <span>Adversarial Defenses &amp; Pre-emptive Arguments to Prepare:</span>
+                      </div>
+                      <div className="space-y-2">
+                        {active.counterArguments.map((arg, cIdx) => (
+                          <div
+                            key={cIdx}
+                            className="p-3 rounded-xl bg-[#F5F3FF] border border-[#DDD6FE] text-xs text-[#5B21B6] flex items-start gap-2.5 shadow-2xs"
+                          >
+                            <span className="font-mono text-[#7C3AED] font-bold text-xs mt-0.5">
+                              [{cIdx + 1}]
+                            </span>
+                            <span className="leading-relaxed">{arg}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Major Methodological Critiques */}
                   {active.majorCritiques && active.majorCritiques.length > 0 && (
@@ -590,6 +721,17 @@ export function DesktopDashboard({
                   <h3 className="text-sm sm:text-base font-bold text-[#0F172A]">{iss.title}</h3>
                   <p className="text-xs text-[#475569] leading-relaxed">{iss.description}</p>
 
+                  {/* Typed Evidence Anchor */}
+                  {iss.evidenceAnchor && (
+                    <div className="p-2.5 rounded-lg bg-[#F8FAFC] border border-[#CBD5E1] text-[11px] font-mono text-[#334155] flex items-center gap-2">
+                      <FileCode className="w-3.5 h-3.5 text-[#2563EB] shrink-0" />
+                      <span className="font-bold text-[#475569] uppercase tracking-wider text-[9px] px-1.5 py-0.5 rounded bg-white border border-[#CBD5E1]">
+                        Anchor
+                      </span>
+                      <span className="truncate">{iss.evidenceAnchor}</span>
+                    </div>
+                  )}
+
                   {/* Reviewer Anticipated Reaction */}
                   {iss.reviewerQuote && (
                     <div className="p-3 rounded-xl bg-[#F8FAFC] border-l-2 border-[#94A3B8] text-xs italic text-[#334155]">
@@ -606,6 +748,21 @@ export function DesktopDashboard({
                           Required Pre-Submission Fix:
                         </span>
                         {iss.actionableFix}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Author Rebuttal Strategy for Journal Response Letter */}
+                  {iss.rebuttalStrategy && (
+                    <div className="p-3.5 rounded-xl bg-[#EFF6FF] border-l-4 border-[#3B82F6] text-xs text-[#1E40AF] flex items-start gap-2.5">
+                      <MessageSquare className="w-4 h-4 text-[#2563EB] shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold block mb-0.5 text-[#1D4ED8]">
+                          Point-by-Point Author Rebuttal Framing (for Journal Response Letter):
+                        </span>
+                        <p className="leading-relaxed whitespace-pre-line text-[#1E3A8A] font-light">
+                          {iss.rebuttalStrategy}
+                        </p>
                       </div>
                     </div>
                   )}
