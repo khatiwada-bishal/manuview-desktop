@@ -21,6 +21,8 @@
         "fullscreen": false,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
+        "backgroundColor": "#FFFFFF",
+        "theme": "Light",
         "trafficLightPosition": {
           "x": 16,
           "y": 28

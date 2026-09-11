@@ -460,14 +460,14 @@ export function DesktopPreSubmissionScanView({
         </div>
 
         {/* Configuration & Calibration Card */}
-        <div className="rounded-3xl liquid-glass-card p-5 sm:p-6 space-y-4">
+        <div className="rounded-3xl liquid-glass-card p-5 sm:p-6 space-y-4 relative z-30">
           {/* Target Journal */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs sm:text-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs sm:text-sm relative z-30">
             <span className="w-36 flex items-center gap-2 font-semibold text-[#6B7280] dark:text-neutral-400">
               <Tag className="w-4 h-4 text-[#9CA3AF] dark:text-neutral-500" />
               Target Journal <span className="text-red-500">*</span>
             </span>
-            <div className="flex-1 max-w-lg">
+            <div className="flex-1 max-w-lg relative z-30">
               <JournalCombobox
                 value={targetJournal}
                 onChange={handleTargetJournalChange}
@@ -637,7 +637,7 @@ export function DesktopPreSubmissionScanView({
 
         {/* Input Form Card */}
         {!report && (
-          <form onSubmit={handleRunScan} className="rounded-3xl liquid-glass-card p-6 space-y-6">
+          <form onSubmit={handleRunScan} className="rounded-3xl liquid-glass-card p-6 space-y-6 relative z-10">
             {/* Header with Load Sample Preprint */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[#E5E7EB] dark:border-[#1F2937]">
               <div>

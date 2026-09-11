@@ -5,6 +5,36 @@
     <link rel="icon" type="image/png" href="/icons/32x32.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ManuView Desktop</title>
+    <style>
+      html, body {
+        background-color: #FFFFFF !important;
+        background: #FFFFFF !important;
+        margin: 0;
+        padding: 0;
+      }
+      #app-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        width: 100vw;
+        height: 100vh;
+        background-color: #FFFFFF !important;
+        background: #FFFFFF !important;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      #intro-video {
+        width: 100vw;
+        height: 100vh;
+        object-fit: cover;
+        display: block;
+        background-color: #FFFFFF !important;
+        background: #FFFFFF !important;
+      }
+    </style>
     <script>
       // Every time the application is opened, default loading is in light mode
       try {
@@ -22,10 +52,10 @@
       }
     </script>
   </head>
-  <body class="bg-[#F8FAFC] text-[#111827] dark:bg-[#080B11] dark:text-[#F8FAFC] antialiased overflow-hidden select-none">
+  <body class="bg-[#FFFFFF] text-[#111827] dark:bg-[#080B11] dark:text-[#F8FAFC] antialiased overflow-hidden select-none">
     <!-- App Startup Video Intro Screen (Full-Screen Video with Audio) -->
-    <div id="app-splash" style="position: fixed; inset: 0; z-index: 99999; width: 100vw; height: 100vh; background-color: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);">
-      <video id="intro-video" autoplay playsinline style="width: 100vw; height: 100vh; object-fit: cover; display: block;">
+    <div id="app-splash">
+      <video id="intro-video" autoplay playsinline preload="auto" poster="/intro-poster.png">
         <source src="/intro-app.mov" type="video/quicktime" />
         <source src="/intro.mp4" type="video/mp4" />
       </video>
