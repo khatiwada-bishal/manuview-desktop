@@ -262,7 +262,7 @@ export default function JournalCombobox({
   };
 
   return (
-    <div ref={containerRef} className={`relative w-full ${className}`}>
+    <div ref={containerRef} className={`relative w-full ${isOpen ? "z-50" : "z-10"} ${className}`}>
       {/* Search Input Box */}
       <div className="relative flex items-center">
         <input

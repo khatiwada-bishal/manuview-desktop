@@ -179,7 +179,7 @@ export function DesktopNewReviewModal({
         </div>
 
         <div className="space-y-4">
-          <div>
+          <div className="relative z-30">
             <label className="block text-xs font-semibold text-[#374151] dark:text-neutral-300 mb-1">
               Target Journal
             </label>

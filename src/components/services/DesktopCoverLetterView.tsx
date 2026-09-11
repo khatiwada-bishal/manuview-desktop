@@ -138,8 +138,8 @@ LETTER COMPOSITION REQUIREMENTS:
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative z-30">
+            <div className="space-y-1 relative z-30">
               <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Target Journal</label>
               <JournalCombobox value={targetJournal} onChange={setTargetJournal} placeholder="Select or type target journal..." />
             </div>
