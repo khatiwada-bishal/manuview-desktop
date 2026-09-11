@@ -29,13 +29,13 @@ export function DesktopEmptyDashboard({
   onDeletePaper,
 }: DesktopEmptyDashboardProps) {
   return (
-    <div className="flex-1 overflow-y-auto bg-[#FAFAFA] dark:bg-[#080B11] p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC]">
+    <div className="flex-1 overflow-y-auto p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC]">
       <div className="max-w-5xl mx-auto space-y-8">
         {/* HERO SECTION */}
-        <div className="rounded-3xl bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1F2937] p-8 shadow-xs space-y-4 text-center sm:text-left">
+        <div className="rounded-3xl liquid-glass-card p-8 space-y-4 text-center sm:text-left">
           <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-4">
             <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
                 <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                 <span>Pre-Submission Manuscript Diagnostic Suite</span>
               </div>
@@ -49,14 +49,14 @@ export function DesktopEmptyDashboard({
             <button
               type="button"
               onClick={() => onOpenService("ai-review")}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-[#0F172A] dark:bg-blue-600 hover:bg-neutral-800 dark:hover:bg-blue-500 transition shadow-sm cursor-pointer shrink-0"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold liquid-glass-btn-primary transition cursor-pointer shrink-0"
             >
               <Plus className="w-4 h-4" />
               <span>New Review Scan</span>
             </button>
           </div>
 
-          <div className="pt-2 border-t border-[#F3F4F6] dark:border-[#1F2937] flex flex-wrap items-center gap-4 text-[11px] text-neutral-400 dark:text-neutral-500">
+          <div className="pt-2 border-t border-black/[0.06] dark:border-white/[0.08] flex flex-wrap items-center gap-4 text-[11px] text-neutral-400 dark:text-neutral-500">
             <span className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               100% Local &amp; Private Storage
@@ -81,11 +81,11 @@ export function DesktopEmptyDashboard({
                 <div
                   key={paper.id}
                   onClick={() => onOpenArticle(paper.id)}
-                  className="group relative rounded-2xl bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1F2937] hover:border-blue-300 dark:hover:border-blue-700 p-4 shadow-2xs hover:shadow-sm transition cursor-pointer flex flex-col justify-between"
+                  className="group relative rounded-2xl liquid-glass-card liquid-glass-card-interactive p-4 transition cursor-pointer flex flex-col justify-between"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/50 border border-blue-100 dark:border-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+                      <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
                         <FileText className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
@@ -105,13 +105,13 @@ export function DesktopEmptyDashboard({
                           onDeletePaper(paper);
                         }}
                         title="Delete manuscript"
-                        className="p-1 rounded-md text-neutral-300 dark:text-neutral-600 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition opacity-0 group-hover:opacity-100 cursor-pointer shrink-0"
+                        className="p-1 rounded-md text-neutral-300 dark:text-neutral-600 hover:text-rose-600 hover:bg-rose-500/10 transition opacity-0 group-hover:opacity-100 cursor-pointer shrink-0"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
-                  <div className="flex items-center justify-between pt-3 mt-3 border-t border-neutral-100 dark:border-[#1F2937] text-[11px]">
+                  <div className="flex items-center justify-between pt-3 mt-3 border-t border-black/[0.04] dark:border-white/[0.06] text-[11px]">
                     <span className="font-semibold text-neutral-600 dark:text-neutral-400">
                       {paper.isEligibleForReview === false
                         ? paper.ineligibilityReason === "already_published"
@@ -119,8 +119,9 @@ export function DesktopEmptyDashboard({
                           : "Status: Review Ineligible"
                         : `Triage Readiness: ${paper.score ?? 0}%`}
                     </span>
-                    <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 font-medium group-hover:translate-x-0.5 transition-transform">
-                      Open <ArrowRight className="w-3 h-3" />
+                    <span className="inline-flex items-center gap-1 font-semibold text-blue-600 dark:text-blue-400 group-hover:translate-x-0.5 transition-transform">
+                      <span>Open Workspace</span>
+                      <ArrowRight className="w-3 h-3" />
                     </span>
                   </div>
                 </div>
@@ -138,13 +139,13 @@ export function DesktopEmptyDashboard({
             {/* 1. Pre-Submission AI Review */}
             <div
               onClick={() => onOpenService("ai-review")}
-              className="rounded-2xl bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1F2937] hover:border-blue-300 dark:hover:border-blue-700 p-5 shadow-2xs hover:shadow-sm transition cursor-pointer group space-y-2.5"
+              className="rounded-2xl liquid-glass-card liquid-glass-card-interactive p-5 transition cursor-pointer group space-y-2.5"
             >
               <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-100 dark:border-blue-900">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-500/20">
                   <Sparkles className="w-5 h-5" />
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
                   Full Pipeline
                 </span>
               </div>
@@ -161,13 +162,13 @@ export function DesktopEmptyDashboard({
             {/* 2. Journal Fit */}
             <div
               onClick={() => onOpenService("journal-fit")}
-              className="rounded-2xl bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1F2937] hover:border-emerald-300 dark:hover:border-emerald-700 p-5 shadow-2xs hover:shadow-sm transition cursor-pointer group space-y-2.5"
+              className="rounded-2xl liquid-glass-card liquid-glass-card-interactive p-5 transition cursor-pointer group space-y-2.5"
             >
               <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-100 dark:border-emerald-900">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20">
                   <Compass className="w-5 h-5" />
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
                   1,300+ Catalogs
                 </span>
               </div>
@@ -184,13 +185,13 @@ export function DesktopEmptyDashboard({
             {/* 3. Reference Checker */}
             <div
               onClick={() => onOpenService("reference-checker")}
-              className="rounded-2xl bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1F2937] hover:border-teal-300 dark:hover:border-teal-700 p-5 shadow-2xs hover:shadow-sm transition cursor-pointer group space-y-2.5"
+              className="rounded-2xl liquid-glass-card liquid-glass-card-interactive p-5 transition cursor-pointer group space-y-2.5"
             >
               <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 flex items-center justify-center border border-teal-100 dark:border-teal-900">
+                <div className="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center border border-teal-500/20">
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/20">
                   CrossRef &amp; Retractions
                 </span>
               </div>
@@ -207,13 +208,13 @@ export function DesktopEmptyDashboard({
             {/* 4. Citation Claim Validator */}
             <div
               onClick={() => onOpenService("citation-claim")}
-              className="rounded-2xl bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1F2937] hover:border-amber-300 dark:hover:border-amber-700 p-5 shadow-2xs hover:shadow-sm transition cursor-pointer group space-y-2.5"
+              className="rounded-2xl liquid-glass-card liquid-glass-card-interactive p-5 transition cursor-pointer group space-y-2.5"
             >
               <div className="flex items-center justify-between">
-                <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-100 dark:border-amber-900">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-500/20">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
                   Evidence Alignment
                 </span>
               </div>

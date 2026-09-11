@@ -374,7 +374,7 @@ export default function App() {
 
   return (
     <ThemeProvider>
-      <div className="h-screen w-screen flex flex-col bg-white dark:bg-[#080B11] text-[#111827] dark:text-[#F8FAFC] overflow-hidden select-none font-sans">
+      <div className="h-screen w-screen flex flex-col liquid-glass-canvas text-[#111827] dark:text-[#F8FAFC] overflow-hidden select-none font-sans relative">
         {/* Top Window Header with Browser-style Tabs */}
         <DesktopHeader
           openTabs={openTabs}

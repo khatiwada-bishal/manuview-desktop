@@ -46,7 +46,7 @@ export function DesktopPrismaView() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-white dark:bg-[#080B11] p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC]">
+    <div className="flex-1 overflow-y-auto p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC]">
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -66,7 +66,7 @@ export function DesktopPrismaView() {
           <button
             type="button"
             onClick={handleDownloadSVG}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold tracking-wide transition cursor-pointer shadow-xs shrink-0 self-start sm:self-auto"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl liquid-glass-btn-primary text-white text-xs font-semibold tracking-wide transition cursor-pointer shadow-xs shrink-0 self-start sm:self-auto"
           >
             <Download className="w-4 h-4" />
             <span>Export SVG Vector</span>
@@ -75,7 +75,7 @@ export function DesktopPrismaView() {
 
         {/* Arithmetic Status Banner */}
         {hasMathDiscrepancy ? (
-          <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-800/60 text-amber-900 dark:text-amber-300 text-xs shadow-xs">
+          <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-900 dark:text-amber-300 text-xs backdrop-blur-xs">
             <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold">Arithmetic Discrepancy Detected: </span>
@@ -83,7 +83,7 @@ export function DesktopPrismaView() {
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-2 p-3 rounded-2xl bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300 text-xs shadow-xs">
+          <div className="flex items-center gap-2 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-800 dark:text-emerald-300 text-xs backdrop-blur-xs">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>PRISMA counts perfectly reconciled across all 4 evaluation phases.</span>
           </div>
@@ -92,8 +92,8 @@ export function DesktopPrismaView() {
         {/* Two-Column Workspace: Inputs on Left, Diagram on Right */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Inputs Column */}
-          <div className="lg:col-span-4 p-5 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937] space-y-4 shadow-xs text-xs">
-            <div className="font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 border-b border-[#E5E7EB] dark:border-[#1F2937] pb-2">
+          <div className="lg:col-span-4 p-5 rounded-3xl liquid-glass-card space-y-4 text-xs">
+            <div className="font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 border-b border-black/10 dark:border-white/10 pb-2">
               Phase 1: Identification
             </div>
             <div className="space-y-1">
@@ -102,7 +102,7 @@ export function DesktopPrismaView() {
                 type="number"
                 value={dbIdentified}
                 onChange={(e) => setDbIdentified(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white text-xs"
+                className="w-full px-3 py-2 rounded-xl liquid-glass-input text-xs"
               />
             </div>
             <div className="space-y-1">
@@ -111,7 +111,7 @@ export function DesktopPrismaView() {
                 type="number"
                 value={registersIdentified}
                 onChange={(e) => setRegistersIdentified(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white text-xs"
+                className="w-full px-3 py-2 rounded-xl liquid-glass-input text-xs"
               />
             </div>
             <div className="space-y-1">
@@ -120,11 +120,11 @@ export function DesktopPrismaView() {
                 type="number"
                 value={duplicatesRemoved}
                 onChange={(e) => setDuplicatesRemoved(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white text-xs"
+                className="w-full px-3 py-2 rounded-xl liquid-glass-input text-xs"
               />
             </div>
 
-            <div className="font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 border-b border-[#E5E7EB] dark:border-[#1F2937] pb-2 pt-2">
+            <div className="font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 border-b border-black/10 dark:border-white/10 pb-2 pt-2">
               Phase 2: Screening
             </div>
             <div className="space-y-1">
@@ -133,7 +133,7 @@ export function DesktopPrismaView() {
                 type="number"
                 value={screened}
                 onChange={(e) => setScreened(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white text-xs"
+                className="w-full px-3 py-2 rounded-xl liquid-glass-input text-xs"
               />
             </div>
             <div className="space-y-1">
@@ -142,11 +142,11 @@ export function DesktopPrismaView() {
                 type="number"
                 value={screenExcluded}
                 onChange={(e) => setScreenExcluded(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white text-xs"
+                className="w-full px-3 py-2 rounded-xl liquid-glass-input text-xs"
               />
             </div>
 
-            <div className="font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 border-b border-[#E5E7EB] dark:border-[#1F2937] pb-2 pt-2">
+            <div className="font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 border-b border-black/10 dark:border-white/10 pb-2 pt-2">
               Phase 3: Eligibility &amp; Included
             </div>
             <div className="space-y-1">
@@ -155,7 +155,7 @@ export function DesktopPrismaView() {
                 type="number"
                 value={assessed}
                 onChange={(e) => setAssessed(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white text-xs"
+                className="w-full px-3 py-2 rounded-xl liquid-glass-input text-xs"
               />
             </div>
             <div className="space-y-1">
@@ -164,7 +164,7 @@ export function DesktopPrismaView() {
                 type="number"
                 value={excludedEligibility}
                 onChange={(e) => setExcludedEligibility(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-lg border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white text-xs"
+                className="w-full px-3 py-2 rounded-xl liquid-glass-input text-xs"
               />
             </div>
             <div className="space-y-1">
@@ -175,13 +175,13 @@ export function DesktopPrismaView() {
                 type="number"
                 value={included}
                 onChange={(e) => setIncluded(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-lg border-2 border-purple-300 dark:border-purple-700 bg-purple-50/40 dark:bg-purple-950/20 text-xs font-bold text-purple-900 dark:text-purple-300"
+                className="w-full px-3 py-2 rounded-xl border-2 border-purple-400/50 bg-purple-500/10 text-xs font-bold text-purple-900 dark:text-purple-200 backdrop-blur-xs"
               />
             </div>
           </div>
 
           {/* SVG Diagram Column */}
-          <div className="lg:col-span-8 p-6 rounded-2xl border border-[#E5E7EB] dark:border-[#1F2937] bg-white dark:bg-[#111827] shadow-xs overflow-x-auto flex justify-center">
+          <div className="lg:col-span-8 p-6 rounded-3xl liquid-glass-card overflow-x-auto flex justify-center">
             <svg
               id="desktop-prisma-svg"
               viewBox="0 0 650 620"

@@ -161,18 +161,18 @@ export function DesktopDashboard({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#F8FAFC] dark:bg-[#080B11] p-6 sm:p-10 text-[#1E293B] dark:text-[#E2E8F0]">
+    <div className="flex-1 overflow-y-auto p-6 sm:p-10 text-[#1E293B] dark:text-[#E2E8F0]">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* ========================================================= */}
         {/* SUB-VIEW TOP NAVIGATION (Only visible when in a sub-view) */}
         {/* ========================================================= */}
         {activeView !== "overview" && (
-          <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0] dark:border-[#1F2937]">
+          <div className="flex items-center justify-between pb-3 border-b border-black/[0.06] dark:border-white/[0.08]">
             <div className="flex items-center gap-2.5">
               <button
                 type="button"
                 onClick={() => onSelectView("overview")}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-[#111827] text-[#2563EB] dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition shadow-2xs cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold liquid-glass-btn-secondary text-[#2563EB] dark:text-blue-400 transition cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Back to Overview</span>
@@ -195,7 +195,7 @@ export function DesktopDashboard({
               <button
                 type="button"
                 onClick={handlePrint}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-[#111827] text-neutral-700 dark:text-neutral-300 border border-neutral-300 dark:border-[#334155] hover:bg-neutral-50 dark:hover:bg-[#1E293B] transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold liquid-glass-btn-secondary text-neutral-700 dark:text-neutral-300 transition cursor-pointer"
                 title="Print or Save as PDF"
               >
                 <Printer className="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400" />
@@ -211,7 +211,7 @@ export function DesktopDashboard({
         {activeView === "overview" && (
           <div className="space-y-6 animate-fade-in">
             {/* CARD 1: ManuView Diagnostic Suite Header Card */}
-            <div className="rounded-2xl bg-white dark:bg-[#111827] border border-[#E2E8F0] dark:border-[#1F2937] p-6 sm:p-8 shadow-xs space-y-6">
+            <div className="rounded-3xl liquid-glass-card p-6 sm:p-8 space-y-6">
               {/* Brand line & Target badge */}
               <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]/80 dark:border-[#1F2937]">
                 <div className="flex items-center">
@@ -427,7 +427,7 @@ export function DesktopDashboard({
                   )}
                 </div>
               ) : (
-                <div className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5 rounded-xl bg-[#F1F5F9]/80 dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#1F2937]">
+                <div className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl liquid-glass-card">
                   <div className="flex items-baseline">
                     <span className="text-3xl sm:text-4xl font-black text-[#0F172A] dark:text-white">
                       {overallScore}
@@ -441,7 +441,7 @@ export function DesktopDashboard({
                     <button
                       type="button"
                       onClick={handlePrint}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold bg-[#1E293B] dark:bg-blue-600 hover:bg-[#0F172A] dark:hover:bg-blue-500 text-white transition shadow-xs cursor-pointer"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold liquid-glass-btn-primary transition cursor-pointer"
                       title="Print or Save as PDF"
                     >
                       <Printer className="w-3.5 h-3.5 text-white" />
@@ -454,7 +454,7 @@ export function DesktopDashboard({
 
             {/* CARD 2: Editorial Synthesis & Triage Assessment Card (Omitted for non-academic documents) */}
             {!isNonAcademic && (
-              <div className="rounded-2xl bg-white dark:bg-[#111827] border border-[#E2E8F0] dark:border-[#1F2937] p-6 sm:p-7 space-y-3 shadow-xs">
+              <div className="rounded-3xl liquid-glass-card p-6 sm:p-7 space-y-3">
                 <h2 className="text-base font-bold text-[#0F172A] dark:text-white">
                   Editorial Synthesis &amp; Triage Assessment
                 </h2>
@@ -466,7 +466,7 @@ export function DesktopDashboard({
 
             {/* CARD 3: Document Classification Card (Only for review-eligible manuscripts; omitted for published articles and non-academic documents) */}
             {isReviewEligible && (
-              <div className="rounded-2xl bg-white dark:bg-[#111827] border border-[#E2E8F0] dark:border-[#1F2937] border-l-4 border-l-[#2563EB] dark:border-l-blue-500 p-6 sm:p-7 space-y-3 shadow-xs">
+              <div className="rounded-3xl liquid-glass-card border-l-4 border-l-[#2563EB] dark:border-l-blue-500 p-6 sm:p-7 space-y-3">
                 <h2 className="text-base font-bold text-[#0F172A] dark:text-white">
                   Document Classification: {classification?.categoryLabel || "Academic Research Manuscript"}
                 </h2>
@@ -488,7 +488,7 @@ export function DesktopDashboard({
 
             {/* CARD 4: Reporting Guideline Compliance Audit (Only for eligible manuscripts) */}
             {isReviewEligible && fullReport?.reportingGuideline && (
-              <div className="rounded-2xl bg-white dark:bg-[#111827] border border-[#E2E8F0] dark:border-[#1F2937] p-6 sm:p-7 space-y-4 shadow-xs">
+              <div className="rounded-3xl liquid-glass-card p-6 sm:p-7 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#E2E8F0] dark:border-[#1F2937]">
                   <div>
                     <div className="flex items-center gap-2">
@@ -547,8 +547,8 @@ export function DesktopDashboard({
         {/* INELIGIBILITY NOTICE FOR PEER-REVIEW SUBVIEWS            */}
         {/* ========================================================= */}
         {activeView !== "overview" && activeView !== "citations" && !isReviewEligible && (
-          <div className="rounded-2xl bg-white dark:bg-[#111827] border border-[#E2E8F0] dark:border-[#1F2937] p-8 sm:p-12 text-center space-y-4 shadow-xs animate-fade-in">
-            <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+          <div className="rounded-3xl liquid-glass-card p-8 sm:p-12 text-center space-y-4 shadow-xs animate-fade-in">
+            <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
               <AlertCircle className="w-6 h-6" />
             </div>
             <div>
@@ -565,7 +565,7 @@ export function DesktopDashboard({
               <button
                 type="button"
                 onClick={() => onSelectView("overview")}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-[#2563EB] dark:bg-blue-600 text-white hover:bg-blue-700 dark:hover:bg-blue-500 transition shadow-xs cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold liquid-glass-btn-primary transition cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Return to Overview</span>
@@ -593,10 +593,10 @@ export function DesktopDashboard({
                       isActive
                         ? isDevilsAdvocate
                           ? "bg-[#7F1D1D] text-white border-[#7F1D1D] shadow-xs"
-                          : "bg-[#0F172A] dark:bg-blue-600 text-white border-[#0F172A] dark:border-blue-600 shadow-xs"
+                          : "liquid-glass-tab-active font-bold text-blue-600 dark:text-blue-400"
                         : isDevilsAdvocate
-                        ? "bg-rose-50/60 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800 hover:bg-rose-100/70 dark:hover:bg-rose-900/40"
-                        : "bg-white dark:bg-[#111827] text-[#334155] dark:text-neutral-300 border-[#CBD5E1] dark:border-[#334155] hover:bg-[#F1F5F9] dark:hover:bg-[#1E293B]"
+                        ? "bg-rose-500/10 text-rose-800 dark:text-rose-300 border-rose-500/20 hover:bg-rose-500/20"
+                        : "liquid-glass-btn-secondary text-neutral-700 dark:text-neutral-300"
                     }`}
                   >
                     <span>
@@ -610,7 +610,7 @@ export function DesktopDashboard({
                     <span>{p.name}</span>
                     {isDevilsAdvocate && (
                       <span className={`text-[9px] uppercase px-1.5 py-0.2 rounded font-extrabold ${
-                        isActive ? "bg-white/20 text-white" : "bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
+                        isActive ? "bg-white/20 text-white" : "bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/30"
                       }`}>
                         Stress-Test
                       </span>
@@ -618,8 +618,8 @@ export function DesktopDashboard({
                     <span
                       className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
                         isActive
-                          ? "bg-white/20 text-white"
-                          : "bg-neutral-100 dark:bg-[#1E293B] text-neutral-600 dark:text-neutral-300"
+                          ? "bg-blue-500/20 text-blue-700 dark:text-blue-300"
+                          : "bg-black/[0.04] dark:bg-white/[0.08] text-neutral-600 dark:text-neutral-300"
                       }`}
                     >
                       {p.decisionRecommendation}
@@ -634,8 +634,8 @@ export function DesktopDashboard({
               const active = personas[selectedPersona];
               const isDevilsAdvocate = active.persona === "devils_advocate";
               return (
-                <div className={`rounded-2xl bg-white dark:bg-[#111827] border p-6 sm:p-8 space-y-6 shadow-xs ${
-                  isDevilsAdvocate ? "border-rose-200 dark:border-rose-800 ring-1 ring-rose-200/50 dark:ring-rose-900/50" : "border-[#E2E8F0] dark:border-[#1F2937]"
+                <div className={`rounded-3xl liquid-glass-card p-6 sm:p-8 space-y-6 ${
+                  isDevilsAdvocate ? "border-rose-400/40 ring-1 ring-rose-500/30" : ""
                 }`}>
                   {/* Persona Header */}
                   <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 pb-5 border-b border-[#E2E8F0] dark:border-[#1F2937]">
@@ -823,7 +823,7 @@ export function DesktopDashboard({
               {(Object.entries(dimensions) as [string, DimensionScore][]).map(([key, dim]) => (
                 <div
                   key={key}
-                  className="rounded-2xl bg-white dark:bg-[#111827] border border-[#E2E8F0] dark:border-[#1F2937] p-5 space-y-3.5 shadow-xs flex flex-col justify-between hover:border-[#CBD5E1] dark:hover:border-neutral-600 transition"
+                  className="rounded-3xl liquid-glass-card liquid-glass-card-interactive p-5 space-y-3.5 flex flex-col justify-between"
                 >
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -837,7 +837,7 @@ export function DesktopDashboard({
                     </p>
                   </div>
 
-                  <div className="space-y-2 pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937]">
+                  <div className="space-y-2 pt-2 border-t border-black/[0.06] dark:border-white/[0.08]">
                     {dim.strengths && dim.strengths.length > 0 && (
                       <div>
                         <span className="text-[10px] font-bold text-[#166534] dark:text-emerald-400 uppercase tracking-wider block mb-1">
@@ -884,10 +884,10 @@ export function DesktopDashboard({
               <button
                 type="button"
                 onClick={() => setIssueFilter("all")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                   issueFilter === "all"
-                    ? "bg-[#0F172A] dark:bg-blue-600 text-white border-[#0F172A] dark:border-blue-600"
-                    : "bg-white dark:bg-[#111827] text-[#475569] dark:text-neutral-300 border-[#CBD5E1] dark:border-[#334155] hover:bg-[#F1F5F9] dark:hover:bg-[#1E293B]"
+                    ? "liquid-glass-tab-active font-bold text-blue-600 dark:text-blue-400"
+                    : "liquid-glass-btn-secondary text-[#475569] dark:text-neutral-300"
                 }`}
               >
                 All Issues ({issues.length})
@@ -896,10 +896,10 @@ export function DesktopDashboard({
               <button
                 type="button"
                 onClick={() => setIssueFilter("A")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                   issueFilter === "A"
-                    ? "bg-[#DC2626] text-white border-[#DC2626]"
-                    : "bg-white dark:bg-[#111827] text-[#DC2626] dark:text-rose-400 border-[#FECACA] dark:border-rose-900 hover:bg-[#FEF2F2] dark:hover:bg-rose-950/40"
+                    ? "bg-rose-600 text-white shadow-xs border border-rose-500"
+                    : "liquid-glass-btn-secondary text-[#DC2626] dark:text-rose-400"
                 }`}
               >
                 🚨 Priority A (Desk-Reject Risk)
@@ -908,10 +908,10 @@ export function DesktopDashboard({
               <button
                 type="button"
                 onClick={() => setIssueFilter("B")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                   issueFilter === "B"
-                    ? "bg-[#D97706] text-white border-[#D97706]"
-                    : "bg-white dark:bg-[#111827] text-[#D97706] dark:text-amber-400 border-[#FDE68A] dark:border-amber-900 hover:bg-[#FFFBEB] dark:hover:bg-amber-950/40"
+                    ? "bg-amber-600 text-white shadow-xs border border-amber-500"
+                    : "liquid-glass-btn-secondary text-[#D97706] dark:text-amber-400"
                 }`}
               >
                 ⚠️ Priority B (Major Technical)
@@ -920,10 +920,10 @@ export function DesktopDashboard({
               <button
                 type="button"
                 onClick={() => setIssueFilter("C")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                   issueFilter === "C"
-                    ? "bg-[#16A34A] text-white border-[#16A34A]"
-                    : "bg-white dark:bg-[#111827] text-[#16A34A] dark:text-emerald-400 border-[#BBF7D0] dark:border-emerald-900 hover:bg-[#F0FDF4] dark:hover:bg-emerald-950/40"
+                    ? "bg-emerald-600 text-white shadow-xs border border-emerald-500"
+                    : "liquid-glass-btn-secondary text-[#16A34A] dark:text-emerald-400"
                 }`}
               >
                 💡 Priority C (Presentation)
@@ -935,7 +935,7 @@ export function DesktopDashboard({
               {filteredIssues.map((iss) => (
                 <div
                   key={iss.id}
-                  className="rounded-2xl bg-white dark:bg-[#111827] border border-[#E2E8F0] dark:border-[#1F2937] p-6 space-y-3.5 shadow-xs"
+                  className="rounded-3xl liquid-glass-card liquid-glass-card-interactive p-6 space-y-3.5"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -1029,14 +1029,14 @@ export function DesktopDashboard({
               {journals.map((j, idx) => (
                 <div
                   key={idx}
-                  className="rounded-2xl bg-white dark:bg-[#111827] border border-[#E2E8F0] dark:border-[#1F2937] p-5 space-y-3.5 shadow-xs flex flex-col justify-between"
+                  className="rounded-3xl liquid-glass-card liquid-glass-card-interactive p-5 space-y-3.5 flex flex-col justify-between"
                 >
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-extrabold uppercase text-[#2563EB] dark:text-blue-400 tracking-wide">
                         {j.tier} Match
                       </span>
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#EFF6FF] dark:bg-blue-950/50 text-[#1D4ED8] dark:text-blue-400 border border-[#BFDBFE] dark:border-blue-800">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20">
                         Fit: {j.fitScore}%
                       </span>
                     </div>
@@ -1048,13 +1048,13 @@ export function DesktopDashboard({
                       Impact Factor: <strong>{j.impactFactor}</strong> &bull; {j.publisher}
                     </p>
 
-                    <p className="text-xs text-[#334155] dark:text-neutral-300 leading-relaxed pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937]">
+                    <p className="text-xs text-[#334155] dark:text-neutral-300 leading-relaxed pt-2 border-t border-black/[0.06] dark:border-white/[0.08]">
                       {j.scopeRationale}
                     </p>
                   </div>
 
                   {j.rejectionRisks && j.rejectionRisks.length > 0 && (
-                    <div className="pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937]">
+                    <div className="pt-2 border-t border-black/[0.06] dark:border-white/[0.08]">
                       <span className="text-[10px] font-bold text-[#DC2626] dark:text-rose-400 uppercase tracking-wider block mb-1">
                         DESK-REJECT RISKS:
                       </span>
@@ -1077,7 +1077,7 @@ export function DesktopDashboard({
         {/* CROSSREF CITATIONS VIEW (if opened from old link)         */}
         {/* ========================================================= */}
         {activeView === "citations" && (
-          <div className="rounded-2xl bg-white dark:bg-[#111827] border border-[#E2E8F0] dark:border-[#1F2937] p-6 sm:p-8 space-y-5 animate-fade-in shadow-xs">
+          <div className="rounded-3xl liquid-glass-card p-6 sm:p-8 space-y-5 animate-fade-in shadow-xs">
             <h2 className="text-base font-bold text-[#0F172A] dark:text-white flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-[#16A34A] dark:text-emerald-400" />
               <span>Reference Integrity &amp; Retraction Verification</span>
@@ -1087,19 +1087,19 @@ export function DesktopDashboard({
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-[#F8FAFC] dark:bg-[#161F30] p-4 rounded-xl border border-[#E2E8F0] dark:border-[#1F2937]">
+              <div className="liquid-glass-card p-4 rounded-2xl">
                 <span className="text-xs text-[#64748B] dark:text-neutral-400 font-medium">Total References</span>
                 <p className="text-2xl font-bold text-[#0F172A] dark:text-white mt-1">
                   {fullReport?.citationIntegrity?.totalReferences || data.citationAudit.totalCount}
                 </p>
               </div>
-              <div className="bg-[#F8FAFC] dark:bg-[#161F30] p-4 rounded-xl border border-[#E2E8F0] dark:border-[#1F2937]">
+              <div className="liquid-glass-card p-4 rounded-2xl">
                 <span className="text-xs text-[#166534] dark:text-emerald-400 font-medium">CrossRef Verified</span>
                 <p className="text-2xl font-bold text-[#16A34A] dark:text-emerald-400 mt-1">
                   {fullReport?.citationIntegrity?.verifiedCount || data.citationAudit.verifiedCount}
                 </p>
               </div>
-              <div className="bg-[#F8FAFC] dark:bg-[#161F30] p-4 rounded-xl border border-[#E2E8F0] dark:border-[#1F2937]">
+              <div className="liquid-glass-card p-4 rounded-2xl">
                 <span className="text-xs text-[#64748B] dark:text-neutral-400 font-medium">Retraction Flags</span>
                 <p className="text-2xl font-bold text-[#16A34A] dark:text-emerald-400 mt-1">
                   {fullReport?.citationIntegrity?.retractedCount || data.citationAudit.retractedCount}

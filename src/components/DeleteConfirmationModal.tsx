@@ -30,15 +30,15 @@ export function DeleteConfirmationModal({
   if (!isOpen || !paper) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xl p-4 animate-in fade-in duration-150">
       <div
-        className="w-full max-w-md bg-white dark:bg-[#111827] rounded-2xl shadow-2xl border border-[#E5E7EB] dark:border-[#1F2937] p-6 space-y-5 animate-in zoom-in-95 duration-150"
+        className="w-full max-w-md rounded-3xl liquid-glass-modal p-6 space-y-5 animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0 backdrop-blur-xs">
               <Trash2 className="w-5 h-5" />
             </div>
             <div>
@@ -53,14 +53,14 @@ export function DeleteConfirmationModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-[#1E293B] transition cursor-pointer"
+            className="p-1.5 rounded-xl text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Project details card */}
-        <div className="rounded-xl bg-[#F9FAFB] dark:bg-[#161F30] border border-[#E5E7EB] dark:border-[#334155] p-3.5 space-y-1.5 text-left">
+        <div className="rounded-2xl liquid-glass-card p-3.5 space-y-1.5 text-left">
           <div className="text-xs font-semibold text-[#111827] dark:text-white truncate">
             {paper.title || paper.shortName}
           </div>
@@ -78,7 +78,7 @@ export function DeleteConfirmationModal({
         </div>
 
         {/* Warning text */}
-        <div className="flex items-start gap-2 text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 rounded-lg p-3">
+        <div className="flex items-start gap-2.5 text-xs text-amber-900 dark:text-amber-200 bg-amber-500/10 border border-amber-500/25 backdrop-blur-xs rounded-2xl p-3.5">
           <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <span>
             All diagnostic evaluations, persona reviewer reports, and causal claim analyses for this manuscript will be permanently removed from your computer.
@@ -86,11 +86,11 @@ export function DeleteConfirmationModal({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-2.5 pt-1 border-t border-[#E5E7EB] dark:border-[#1F2937]">
+        <div className="flex items-center justify-end gap-2.5 pt-1 border-t border-black/10 dark:border-white/10">
           <button
             type="button"
             onClick={onClose}
-            className="px-3.5 py-2 rounded-lg text-xs font-medium text-neutral-700 dark:text-neutral-300 bg-white dark:bg-[#161F30] border border-[#E5E7EB] dark:border-[#334155] hover:bg-neutral-50 dark:hover:bg-[#1E293B] transition cursor-pointer shadow-2xs"
+            className="px-4 py-2 rounded-xl liquid-glass-btn-secondary text-xs font-semibold cursor-pointer"
           >
             Cancel
           </button>
@@ -100,7 +100,7 @@ export function DeleteConfirmationModal({
               onConfirm();
               onClose();
             }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 transition cursor-pointer shadow-xs"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 shadow-xs transition cursor-pointer active:scale-95"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Delete Project</span>

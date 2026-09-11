@@ -196,7 +196,7 @@ export function DesktopSidebar({
 
   return (
     <aside
-      className={`h-full select-none shrink-0 flex flex-col relative bg-[#F9FAFB] dark:bg-[#0F141F] border-r border-[#E5E7EB] dark:border-[#1E293B] text-[#1F2937] dark:text-[#E2E8F0] sidebar-elastic-spring ${
+      className={`h-full select-none shrink-0 flex flex-col relative liquid-glass-sidebar text-[#1F2937] dark:text-[#E2E8F0] sidebar-elastic-spring ${
         isCollapsed ? "w-[68px] z-40" : "w-64 z-30"
       } ${
         isTransitioning
@@ -477,7 +477,7 @@ export function DesktopSidebar({
         </div>
 
         {/* FOOTER: Compact Settings Pill */}
-        <div className="p-3 border-t border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#0F141F] flex justify-center">
+        <div className="p-3 border-t border-black/[0.06] dark:border-white/[0.08] flex justify-center">
           <div className="relative group">
             <button
               type="button"
@@ -544,8 +544,8 @@ export function DesktopSidebar({
         } overflow-hidden`}
       >
       {/* 1. COMPANY HEADER: Logo + Title + Collapse Button */}
-      <div className="p-3 border-b border-[#E5E7EB]/70 dark:border-[#1E293B]">
-        <div className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1F2937] shadow-xs">
+      <div className="p-3 border-b border-black/[0.06] dark:border-white/[0.08]">
+        <div className="flex items-center justify-between p-2 rounded-xl liquid-glass-card shadow-xs">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-7 h-7 rounded-lg bg-[#0F172A] dark:bg-blue-600 text-white flex items-center justify-center font-serif font-black text-sm shadow-xs shrink-0">
               M
@@ -564,7 +564,7 @@ export function DesktopSidebar({
             type="button"
             onClick={onToggleCollapse}
             title="Collapse sidebar"
-            className="p-1 rounded-md hover:bg-neutral-100 dark:hover:bg-[#1E293B] text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200 transition cursor-pointer"
+            className="p-1.5 rounded-lg hover:bg-black/[0.05] dark:hover:bg-white/[0.1] text-neutral-400 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition cursor-pointer"
           >
             <PanelLeft className="w-4 h-4" />
           </button>
@@ -579,7 +579,7 @@ export function DesktopSidebar({
             <button
               type="button"
               onClick={() => setServicesExpanded(!servicesExpanded)}
-              className="flex items-center gap-1 text-[11px] font-bold text-[#9CA3AF] dark:text-neutral-400 uppercase tracking-wider hover:text-neutral-700 dark:hover:text-neutral-200 transition cursor-pointer"
+              className="flex items-center gap-1 text-[11px] font-bold text-neutral-400 dark:text-neutral-400 uppercase tracking-wider hover:text-neutral-700 dark:hover:text-neutral-200 transition cursor-pointer"
             >
               {servicesExpanded ? (
                 <ChevronDown className="w-3 h-3" />
@@ -588,7 +588,7 @@ export function DesktopSidebar({
               )}
               <span>SERVICES</span>
             </button>
-            <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 bg-neutral-100 dark:bg-[#1E293B] px-1.5 py-0.2 rounded">
+            <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-400 bg-black/[0.04] dark:bg-white/[0.08] px-1.5 py-0.2 rounded-md">
               {SERVICES.length}
             </span>
           </div>
@@ -602,7 +602,7 @@ export function DesktopSidebar({
                     key={service.id}
                     type="button"
                     onClick={service.action}
-                    className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs hover:bg-[#E5E7EB]/60 dark:hover:bg-[#1E293B]/60 hover:text-[#111827] dark:hover:text-white text-neutral-700 dark:text-neutral-300 transition text-left cursor-pointer group"
+                    className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white text-neutral-700 dark:text-neutral-300 transition text-left cursor-pointer group"
                   >
                     <div
                       className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${service.color}`}
@@ -626,13 +626,13 @@ export function DesktopSidebar({
           <button
             type="button"
             onClick={onOpenSearch}
-            className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs text-neutral-500 dark:text-neutral-400 bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1F2937] hover:border-neutral-300 dark:hover:border-neutral-700 hover:text-neutral-900 dark:hover:text-white transition shadow-2xs cursor-pointer group"
+            className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs text-neutral-500 dark:text-neutral-400 liquid-glass-input hover:text-neutral-900 dark:hover:text-white transition shadow-2xs cursor-pointer group"
           >
             <div className="flex items-center gap-2">
-              <Search className="w-3.5 h-3.5 text-neutral-400 dark:text-neutral-500 group-hover:text-neutral-600 dark:group-hover:text-neutral-300 transition" />
+              <Search className="w-3.5 h-3.5 text-neutral-400 dark:text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-200 transition" />
               <span className="text-xs">Search articles...</span>
             </div>
-            <kbd className="text-[10px] font-mono text-neutral-400 dark:text-neutral-400 bg-neutral-100 dark:bg-[#1E293B] border border-neutral-200 dark:border-[#334155] rounded px-1.5 py-0.5 shadow-2xs">
+            <kbd className="text-[10px] font-mono text-neutral-400 dark:text-neutral-400 bg-black/[0.05] dark:bg-white/[0.08] border border-black/[0.06] dark:border-white/[0.1] rounded px-1.5 py-0.5 shadow-2xs">
               ⌘K
             </kbd>
           </button>
@@ -680,12 +680,12 @@ export function DesktopSidebar({
                         onSelectPaper(paper.id);
                         onSelectView("overview");
                       }}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer ${
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer ${
                         isSelected && activeView === "overview"
-                          ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white shadow-2xs"
+                          ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
                           : isSelected
-                          ? "bg-[#F3F4F6] dark:bg-[#161F30] font-medium text-[#1F2937] dark:text-neutral-200"
-                          : "text-[#4B5563] dark:text-neutral-400 hover:bg-[#E5E7EB]/40 dark:hover:bg-[#1E293B]/40 hover:text-[#111827] dark:hover:text-white"
+                          ? "bg-blue-600/10 dark:bg-blue-500/20 font-medium text-blue-700 dark:text-blue-300 border border-blue-500/20"
+                          : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white border border-transparent"
                       }`}
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
@@ -699,16 +699,16 @@ export function DesktopSidebar({
                       <div className="flex items-center gap-1.5 shrink-0">
                         {paper.isEligibleForReview === false ? (
                           paper.ineligibilityReason === "already_published" ? (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
                               PUB
                             </span>
                           ) : (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
                               N/A
                             </span>
                           )
                         ) : (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-[#1E293B] text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-[#334155]">
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-black/[0.04] dark:bg-white/[0.08] text-neutral-600 dark:text-neutral-300 border border-black/[0.06] dark:border-white/[0.1]">
                             {paper.score ?? 0}%
                           </span>
                         )}
@@ -720,7 +720,7 @@ export function DesktopSidebar({
                               onDeletePaper(paper, e);
                             }}
                             title="Delete manuscript project"
-                            className="p-1 rounded text-neutral-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition opacity-0 group-hover/article:opacity-100 cursor-pointer shrink-0"
+                            className="p-1 rounded text-neutral-400 hover:text-rose-600 hover:bg-rose-500/10 transition opacity-0 group-hover/article:opacity-100 cursor-pointer shrink-0"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -732,84 +732,84 @@ export function DesktopSidebar({
                     {isSelected && paper.isEligibleForReview === false && (
                       <div className="pl-4 pr-2 py-1 space-y-0.5">
                         {paper.ineligibilityReason === "already_published" ? (
-                          <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400 font-medium bg-emerald-50/80 dark:bg-emerald-950/40 px-2 py-1.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/60">
+                          <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400 font-medium bg-emerald-500/10 px-2 py-1.5 rounded-lg border border-emerald-500/20">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                             <span className="truncate">Already Published</span>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1.5 text-[11px] text-amber-700 dark:text-amber-400 font-medium bg-amber-50/80 dark:bg-amber-950/40 px-2 py-1.5 rounded-md border border-amber-200/60 dark:border-amber-800/60">
+                          <div className="flex items-center gap-1.5 text-[11px] text-amber-700 dark:text-amber-400 font-medium bg-amber-500/10 px-2 py-1.5 rounded-lg border border-amber-500/20">
                             <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                            <span className="truncate">Review Bypassed</span>
+                            <span className="truncate">Ineligible Review Type</span>
                           </div>
                         )}
                       </div>
                     )}
 
-                    {/* 4 Sub-tabs for active article (Only for eligible manuscripts) */}
+                    {/* Sub-views list for currently selected paper */}
                     {isSelected && paper.isEligibleForReview !== false && (
-                      <div className="pl-4 space-y-0.5 pt-0.5">
-                      <button
-                        type="button"
-                        onClick={() => onSelectView("personas")}
-                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition text-left cursor-pointer ${
-                          activeView === "personas"
-                            ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
-                            : "text-[#4B5563] dark:text-neutral-400 hover:bg-[#E5E7EB]/40 dark:hover:bg-[#1E293B]/40 hover:text-[#111827] dark:hover:text-white"
-                        }`}
-                      >
-                        <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                        <span className="truncate">5-Persona Reviews</span>
-                      </button>
+                      <div className="pl-4 pr-2 py-1 space-y-0.5">
+                        <button
+                          type="button"
+                          onClick={() => onSelectView("personas")}
+                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer ${
+                            activeView === "personas"
+                              ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
+                              : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
+                          }`}
+                        >
+                          <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                          <span className="truncate">5-Persona Reviews</span>
+                        </button>
 
-                      <button
-                        type="button"
-                        onClick={() => onSelectView("dimensions")}
-                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition text-left cursor-pointer ${
-                          activeView === "dimensions"
-                            ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
-                            : "text-[#4B5563] dark:text-neutral-400 hover:bg-[#E5E7EB]/40 dark:hover:bg-[#1E293B]/40 hover:text-[#111827] dark:hover:text-white"
-                        }`}
-                      >
-                        <BarChart3 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                        <span className="truncate">6 Scoring Dimensions</span>
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => onSelectView("dimensions")}
+                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer ${
+                            activeView === "dimensions"
+                              ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
+                              : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
+                          }`}
+                        >
+                          <BarChart3 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <span className="truncate">6 Scoring Dimensions</span>
+                        </button>
 
-                      <button
-                        type="button"
-                        onClick={() => onSelectView("issues")}
-                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition text-left cursor-pointer ${
-                          activeView === "issues"
-                            ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
-                            : "text-[#4B5563] dark:text-neutral-400 hover:bg-[#E5E7EB]/40 dark:hover:bg-[#1E293B]/40 hover:text-[#111827] dark:hover:text-white"
-                        }`}
-                      >
-                        <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                        <span className="truncate">Priority Action Items</span>
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => onSelectView("issues")}
+                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer ${
+                            activeView === "issues"
+                              ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
+                              : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
+                          }`}
+                        >
+                          <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                          <span className="truncate">Priority Action Items</span>
+                        </button>
 
-                      <button
-                        type="button"
-                        onClick={() => onSelectView("journals")}
-                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition text-left cursor-pointer ${
-                          activeView === "journals" || activeView === "recommendations"
-                            ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
-                            : "text-[#4B5563] dark:text-neutral-400 hover:bg-[#E5E7EB]/40 dark:hover:bg-[#1E293B]/40 hover:text-[#111827] dark:hover:text-white"
-                        }`}
-                      >
-                        <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                        <span className="truncate">Target Journals</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            }))}
+                        <button
+                          type="button"
+                          onClick={() => onSelectView("journals")}
+                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer ${
+                            activeView === "journals" || activeView === "recommendations"
+                              ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
+                              : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
+                          }`}
+                        >
+                          <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                          <span className="truncate">Target Journals</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              }))}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* FOOTER: App Version (left) + Model Pill & Settings (right) */}
-      <div className="p-3 border-t border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#0F141F] flex items-center justify-between">
+        {/* FOOTER: App Version (left) + Model Pill & Settings (right) */}
+      <div className="p-3 border-t border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between">
         <span className="font-semibold text-neutral-400 dark:text-neutral-500 text-[11px] pl-1 select-none">
           v0.1.0
         </span>
