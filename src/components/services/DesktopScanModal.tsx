@@ -40,7 +40,7 @@ export function DesktopScanModal({
   onComplete,
 }: DesktopScanModalProps) {
   const { isConnected, modelName, provider } = useApiConnection();
-  const [journal, setJournal] = useState("Nature Communications");
+  const [journal, setJournal] = useState("");
   const [title, setTitle] = useState("");
   const [abstract, setAbstract] = useState("");
   const [keywords, setKeywords] = useState("");
@@ -208,7 +208,7 @@ export function DesktopScanModal({
                 New Pre-Submission AI Review
               </h2>
               <p className="text-xs text-neutral-500">
-                Run live 4-persona simulation, CrossRef audits, and causal overclaim screening.
+                Run live 5-persona simulation, CrossRef audits, and causal overclaim screening.
               </p>
               <div className="flex items-center gap-2 mt-1.5">
                 {isConnected ? (
@@ -276,7 +276,7 @@ export function DesktopScanModal({
               <JournalCombobox
                 value={journal}
                 onChange={setJournal}
-                placeholder="Select or type target journal..."
+                placeholder="Type at least 3 letters to search journals..."
               />
             </div>
 

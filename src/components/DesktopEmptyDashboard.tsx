@@ -149,7 +149,7 @@ export function DesktopEmptyDashboard({
                   Pre-Submission AI Review
                 </h3>
                 <p className="text-[11px] text-neutral-500 mt-1 line-clamp-2">
-                  4-persona reviewer simulation (Methods, Stats, Skeptic, Desk Rejector) with causal overclaim screening.
+                  5-persona reviewer simulation (Methods, Domain, Editor, Stats, Devil's Advocate) with causal overclaim screening.
                 </p>
               </div>
             </div>
