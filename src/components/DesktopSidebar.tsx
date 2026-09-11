@@ -237,10 +237,12 @@ export function DesktopSidebar({
               title="Expand sidebar"
               className="w-10 h-10 rounded-xl bg-white dark:bg-[#161F30] border border-[#E5E7EB] dark:border-[#1E293B] hover:border-neutral-300 dark:hover:border-neutral-700 shadow-xs flex items-center justify-center transition cursor-pointer relative overflow-hidden"
             >
-              {/* Logo "M" */}
-              <div className="w-8 h-8 rounded-lg bg-[#0F172A] dark:bg-blue-600 text-white flex items-center justify-center font-serif font-black text-sm shadow-xs transition-all duration-150 group-hover:opacity-0 group-hover:scale-75">
-                M
-              </div>
+              {/* Official ManuView Icon */}
+              <img
+                src="/icon.svg"
+                alt="ManuView Logo"
+                className="w-8 h-8 rounded-lg shadow-xs transition-all duration-150 group-hover:opacity-0 group-hover:scale-75 select-none"
+              />
               {/* Expand sidebar icon on hover */}
               <div className="absolute inset-0 flex items-center justify-center text-[#0F172A] dark:text-white opacity-0 group-hover:opacity-100 transition-all duration-150 group-hover:scale-100">
                 <PanelLeft className="w-4 h-4" />
@@ -559,9 +561,11 @@ export function DesktopSidebar({
       <div className="p-3 border-b border-black/[0.06] dark:border-white/[0.08]">
         <div className="flex items-center justify-between p-2 rounded-xl liquid-glass-card shadow-xs">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-7 h-7 rounded-lg bg-[#0F172A] dark:bg-blue-600 text-white flex items-center justify-center font-serif font-black text-sm shadow-xs shrink-0">
-              M
-            </div>
+            <img
+              src="/icon.svg"
+              alt="ManuView Logo"
+              className="w-7 h-7 rounded-lg shadow-xs shrink-0 select-none"
+            />
             <div className="truncate min-w-0">
               <div className="font-bold text-xs text-[#0F172A] dark:text-white tracking-tight">
                 ManuView Desktop
