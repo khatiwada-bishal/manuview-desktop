@@ -538,11 +538,53 @@ export function parseManuscriptText(rawText: string, filename?: string): ParsedM
     .map((m) => m[0].trim())
     .slice(0, 5);
 
+  // Causal assertion cues
+  const causalMatches = Array.from(
+    rawText.matchAll(
+      /(?:\b(?:proves?|proven|demonstrates? causality|directly causes?|is the driver of|dictates?|induces?|leads to direct)\b[^\.\n;]{5,80})/gi
+    )
+  )
+    .map((m) => m[0].trim().replace(/\s+/g, " "))
+    .slice(0, 6);
+
+  // Reporting guideline cues
+  const guidelineCues: string[] = [];
+  if (/randomized|placebo|double-blind|clinical trial|control arm/i.test(rawText)) {
+    guidelineCues.push("CONSORT (Randomized Trials)");
+  }
+  if (/cohort|cross-sectional|case-control|observational|customs|microdata|panel data/i.test(rawText)) {
+    guidelineCues.push("STROBE (Observational / Cohort Studies)");
+  }
+  if (/systematic review|meta-analysis|search strategy|prisma/i.test(rawText)) {
+    guidelineCues.push("PRISMA (Systematic Reviews & Meta-Analyses)");
+  }
+  if (/mice|murine|rats|in vivo|animal care|iacuc/i.test(rawText)) {
+    guidelineCues.push("ARRIVE (Animal In Vivo Research)");
+  }
+  if (/optimization|replenishment|inventory model|karush-kuhn-tucker|kkt|convexity/i.test(rawText)) {
+    guidelineCues.push("INFORMS / ORSI (Operations Research Standards)");
+  }
+  if (/arima|holt-winters|stationarity|cointegration|box-jenkins|heteroskedasticity/i.test(rawText)) {
+    guidelineCues.push("Econometric Time-Series & Microdata Standards");
+  }
+
+  // Declared limitations cues
+  const limitationMatches = Array.from(
+    rawText.matchAll(
+      /(?:(?:limitation of this (?:study|work|model)|a key caveat|subject to the limitation|data-scarce|unmeasured confounding)[^\.\n]{5,120})/gi
+    )
+  )
+    .map((m) => m[0].trim().replace(/\s+/g, " "))
+    .slice(0, 5);
+
   const empiricalCues = {
     sampleSizes: Array.from(new Set(sampleSizeMatches)),
     statisticalMetrics: Array.from(new Set(statMatches)),
     equations: Array.from(new Set(eqMatches)),
     dataRepositories: Array.from(new Set(repoMatches)),
+    causalAssertions: Array.from(new Set(causalMatches)),
+    detectedGuidelines: guidelineCues,
+    declaredLimitations: Array.from(new Set(limitationMatches)),
   };
 
   // 6. Extract Authors if detectable

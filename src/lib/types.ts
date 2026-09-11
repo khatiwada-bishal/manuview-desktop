@@ -23,12 +23,14 @@ export interface PriorityIssue {
   category: 'Methodology' | 'Causal Claims' | 'Statistics' | 'Citations' | 'Scope/Fit' | 'Clarity';
   description: string;
   location?: string;
+  evidenceAnchor?: string; // Typed anchor: text: §X "...", equation: Eq. Y, absence: ...
   reviewerQuote: string; // How a reviewer or editor would formulate this critique
   actionableFix: string; // Specific concrete step to resolve before submission
+  rebuttalStrategy?: string; // Point-by-point author rebuttal framing for journal response letter
 }
 
 export interface ReviewerPersonaFeedback {
-  persona: 'methods_reviewer' | 'domain_expert' | 'journal_editor' | 'statistician';
+  persona: 'methods_reviewer' | 'domain_expert' | 'journal_editor' | 'statistician' | 'devils_advocate';
   name: string;
   title: string;
   affiliation: string;
@@ -40,6 +42,8 @@ export interface ReviewerPersonaFeedback {
   majorCritiques: string[];
   missingControlsOrAnalyses: string[];
   mustAddressItems: string[];
+  evidenceAnchors?: string[];
+  counterArguments?: string[];
 }
 
 export interface ReferenceVerification {
@@ -125,7 +129,18 @@ export interface ParsedManuscript {
     statisticalMetrics?: string[];
     equations?: string[];
     dataRepositories?: string[];
+    causalAssertions?: string[];
+    detectedGuidelines?: string[];
+    declaredLimitations?: string[];
   };
+}
+
+export interface ReportingGuidelineCheck {
+  guidelineName: string; // e.g. STROBE, CONSORT, PRISMA, ARRIVE, Econometric Rigor
+  standardType: string; // e.g. "Observational / Customs Microdata", "Randomized Controlled Trial", "Nonlinear Model"
+  scorePercent: number; // 0 - 100
+  compliantItems: string[];
+  missingOrPartialItems: string[];
 }
 
 export interface FullReviewReport {
@@ -142,6 +157,7 @@ export interface FullReviewReport {
   reviewerPersonas: ReviewerPersonaFeedback[];
   journalRecommendations: JournalRecommendation[];
   citationIntegrity: CitationIntegritySummary;
+  reportingGuideline?: ReportingGuidelineCheck;
 }
 
 export interface BriefJournalFitReport {

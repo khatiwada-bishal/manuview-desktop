@@ -331,7 +331,7 @@ function generateFullReportHtml(r: FullReviewReport): string {
     <!-- Interactive Navigation Tabs -->
     <div class="tabs-nav">
       <button class="tab-btn active" onclick="switchTab('overview')">Executive Overview</button>
-      <button class="tab-btn" onclick="switchTab('reviewers')">4 Reviewer Personas</button>
+      <button class="tab-btn" onclick="switchTab('reviewers')">${(r.reviewerPersonas || []).length || 5} Reviewer Personas</button>
       <button class="tab-btn" onclick="switchTab('dimensions')">6 Scoring Dimensions</button>
       <button class="tab-btn" onclick="switchTab('issues')">Priority Action Items (${(r.priorityIssues || []).length})</button>
       <button class="tab-btn" onclick="switchTab('journals')">Target Journals</button>
@@ -351,6 +351,32 @@ function generateFullReportHtml(r: FullReviewReport): string {
         <p style="font-size: 12px; color: #64748B;">${escapeHtml(r.classification.customGuidance)}</p>
       </div>
       ` : ""}
+
+      ${r.reportingGuideline ? `
+      <div class="card" style="border-left: 4px solid ${r.reportingGuideline.scorePercent >= 80 ? "#10B981" : r.reportingGuideline.scorePercent >= 60 ? "#F59E0B" : "#EF4444"};">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+          <div class="card-title" style="margin-bottom: 0;">Reporting Guideline Compliance: ${escapeHtml(r.reportingGuideline.guidelineName)}</div>
+          <span style="font-size: 13px; font-weight: 700; color: ${r.reportingGuideline.scorePercent >= 80 ? "#10B981" : r.reportingGuideline.scorePercent >= 60 ? "#F59E0B" : "#EF4444"};">
+            ${r.reportingGuideline.scorePercent}% Compliant
+          </span>
+        </div>
+        <p style="font-size: 12px; color: #64748B; margin-bottom: 12px;">Standardized reporting checklist audit based on international peer-review expectations.</p>
+
+        ${(r.reportingGuideline.compliantItems && r.reportingGuideline.compliantItems.length > 0) ? `
+          <div style="font-size: 11px; font-weight: 700; color: #166534; margin-bottom: 4px;">COMPLIANT ELEMENTS:</div>
+          <ul style="font-size: 12px; padding-left: 18px; color: #166534; margin-bottom: 10px;">
+            ${r.reportingGuideline.compliantItems.map(item => `<li>${escapeHtml(item)}</li>`).join("")}
+          </ul>
+        ` : ""}
+
+        ${(r.reportingGuideline.missingOrPartialItems && r.reportingGuideline.missingOrPartialItems.length > 0) ? `
+          <div style="font-size: 11px; font-weight: 700; color: #991B1B; margin-bottom: 4px;">MISSING OR PARTIALLY ADDRESSED CHECKLIST ITEMS:</div>
+          <ul style="font-size: 12px; padding-left: 18px; color: #991B1B;">
+            ${r.reportingGuideline.missingOrPartialItems.map(item => `<li>${escapeHtml(item)}</li>`).join("")}
+          </ul>
+        ` : ""}
+      </div>
+      ` : ""}
     </div>
 
     <!-- Tab 2: Reviewer Personas -->
@@ -359,14 +385,17 @@ function generateFullReportHtml(r: FullReviewReport): string {
         <div class="persona-selector" id="persona-buttons">
           ${(r.reviewerPersonas || []).map((p, idx) => `
             <button class="persona-pill ${idx === 0 ? "active" : ""}" onclick="switchPersona(${idx})">
-              ${escapeHtml(p.name)} (${escapeHtml(p.roleDescription)})
+              ${p.persona === "devils_advocate" ? "⚡ " : ""}${escapeHtml(p.name)} (${escapeHtml(p.roleDescription)})
             </button>
           `).join("")}
         </div>
 
         ${(r.reviewerPersonas || []).map((p, idx) => `
-          <div id="persona-panel-${idx}" class="persona-panel ${idx === 0 ? "active" : ""}">
-            <div class="persona-badge">${escapeHtml(p.decisionRecommendation)}</div>
+          <div id="persona-panel-${idx}" class="persona-panel ${idx === 0 ? "active" : ""}" ${p.persona === "devils_advocate" ? 'style="border-left: 3px solid #F43F5E; padding-left: 12px;"' : ""}>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <div class="persona-badge" ${p.persona === "devils_advocate" ? 'style="background: #FFE4E6; color: #9F1239;"' : ""}>${escapeHtml(p.decisionRecommendation)}</div>
+              ${p.persona === "devils_advocate" ? `<span style="font-size: 11px; font-weight: 700; color: #E11D48; background: #FFF1F2; border: 1px solid #FECDD3; border-radius: 4px; padding: 2px 6px;">⚡ Hostile Stress-Test / Adversarial Referee</span>` : ""}
+            </div>
             <h3 style="font-size: 18px; margin-bottom: 4px;">${escapeHtml(p.name)}</h3>
             <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">${escapeHtml(p.title)} • ${escapeHtml(p.affiliation)}</p>
             
@@ -376,6 +405,15 @@ function generateFullReportHtml(r: FullReviewReport): string {
 
             <p style="font-size: 13px; line-height: 1.6; color: #334155; margin-bottom: 16px;">${escapeHtml(p.assessment)}</p>
 
+            ${(p.evidenceAnchors && p.evidenceAnchors.length > 0) ? `
+              <div style="margin-bottom: 14px; background: #F8FAFC; border: 1px dashed #CBD5E1; padding: 10px 14px; border-radius: 8px;">
+                <strong style="font-size: 11px; color: #0F172A; text-transform: uppercase; letter-spacing: 0.5px;">Manuscript Evidence Anchors (Grounding):</strong>
+                <ul style="font-size: 12px; font-family: monospace; padding-left: 18px; color: #334155; margin-top: 6px;">
+                  ${p.evidenceAnchors.map(a => `<li style="margin-bottom: 3px;">${escapeHtml(a)}</li>`).join("")}
+                </ul>
+              </div>
+            ` : ""}
+
             <div style="margin-bottom: 12px;">
               <strong style="font-size: 13px; color: #0F172A;">Major Critiques:</strong>
               <ul style="font-size: 13px; padding-left: 20px; color: #334155; margin-top: 6px;">
@@ -383,12 +421,21 @@ function generateFullReportHtml(r: FullReviewReport): string {
               </ul>
             </div>
 
-            <div>
+            <div style="margin-bottom: 12px;">
               <strong style="font-size: 13px; color: #0F172A;">Must-Address Prior to Submission:</strong>
               <ul style="font-size: 13px; padding-left: 20px; color: #166534; margin-top: 6px;">
                 ${(p.mustAddressItems || []).map(m => `<li style="margin-bottom: 4px;">${escapeHtml(m)}</li>`).join("")}
               </ul>
             </div>
+
+            ${(p.counterArguments && p.counterArguments.length > 0) ? `
+              <div style="margin-top: 14px; background: #FFF1F2; border: 1px solid #FECDD3; padding: 10px 14px; border-radius: 8px;">
+                <strong style="font-size: 11px; color: #9F1239; text-transform: uppercase; letter-spacing: 0.5px;">Adversarial Defenses & Pre-emptive Arguments:</strong>
+                <ul style="font-size: 12px; padding-left: 18px; color: #9F1239; margin-top: 6px;">
+                  ${p.counterArguments.map(arg => `<li style="margin-bottom: 3px;">${escapeHtml(arg)}</li>`).join("")}
+                </ul>
+              </div>
+            ` : ""}
           </div>
         `).join("")}
       </div>
@@ -438,9 +485,19 @@ function generateFullReportHtml(r: FullReviewReport): string {
               <span style="font-size: 11px; color: var(--text-muted); font-mono;">${iss.id}</span>
             </div>
             <h4 style="font-size: 15px; margin: 6px 0;">${escapeHtml(iss.title)}</h4>
+            ${iss.evidenceAnchor ? `
+              <div style="font-family: monospace; font-size: 11px; background: #F1F5F9; color: #475569; padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 6px;">
+                Anchor: ${escapeHtml(iss.evidenceAnchor)}
+              </div>
+            ` : ""}
             <p style="font-size: 13px; color: #334155;">${escapeHtml(iss.description)}</p>
             ${iss.reviewerQuote ? `<div class="quote-box">Reviewer Anticipated Reaction: ${escapeHtml(iss.reviewerQuote)}</div>` : ""}
             ${iss.actionableFix ? `<div class="fix-box"><strong>Actionable Fix:</strong> ${escapeHtml(iss.actionableFix)}</div>` : ""}
+            ${iss.rebuttalStrategy ? `
+              <div style="margin-top: 8px; background: #F5F3FF; border-left: 3px solid #8B5CF6; padding: 8px 12px; font-size: 12px; color: #5B21B6; border-radius: 0 6px 6px 0;">
+                <strong>Author Rebuttal Strategy:</strong> ${escapeHtml(iss.rebuttalStrategy)}
+              </div>
+            ` : ""}
           </div>
         `).join("")}
       </div>
@@ -661,12 +718,18 @@ function generateFullReportWord(r: FullReviewReport): string {
     `).join("")}
   </table>
 
-  <h2>2. Simulated 4-Persona Peer Review</h2>
+  <h2>2. Simulated ${(r.reviewerPersonas || []).length || 5}-Persona Peer Review (Adversarial Panel)</h2>
   ${(r.reviewerPersonas || []).map(p => `
-    <h3>${escapeHtml(p.name)} — ${escapeHtml(p.roleDescription)}</h3>
+    <h3>${p.persona === "devils_advocate" ? "⚡ [Adversarial Stress-Test] " : ""}${escapeHtml(p.name)} — ${escapeHtml(p.roleDescription)}</h3>
     <p style="font-size: 9.5pt; color: #64748B; margin-bottom: 4pt;">${escapeHtml(p.title)} • ${escapeHtml(p.affiliation)}</p>
     <p><strong>Recommendation:</strong> ${escapeHtml(p.decisionRecommendation)} | <strong>Key Challenge:</strong> ${escapeHtml(p.keyChallenge)}</p>
     <p>${escapeHtml(p.assessment)}</p>
+    ${(p.evidenceAnchors && p.evidenceAnchors.length > 0) ? `
+      <p><strong>Manuscript Evidence Anchors (Grounding):</strong></p>
+      <ul style="font-family: 'Courier New', monospace; font-size: 9pt; color: #334155;">
+        ${p.evidenceAnchors.map(a => `<li>${escapeHtml(a)}</li>`).join("")}
+      </ul>
+    ` : ""}
     <p><strong>Major Critiques:</strong></p>
     <ul>
       ${(p.majorCritiques || []).map(c => `<li>${escapeHtml(c)}</li>`).join("")}
@@ -675,22 +738,35 @@ function generateFullReportWord(r: FullReviewReport): string {
     <ul>
       ${(p.mustAddressItems || []).map(m => `<li>${escapeHtml(m)}</li>`).join("")}
     </ul>
+    ${(p.counterArguments && p.counterArguments.length > 0) ? `
+      <p style="color: #9F1239;"><strong>Adversarial Defenses & Pre-emptive Arguments:</strong></p>
+      <ul style="color: #9F1239; font-size: 9.5pt;">
+        ${p.counterArguments.map(ca => `<li>${escapeHtml(ca)}</li>`).join("")}
+      </ul>
+    ` : ""}
   `).join("")}
 
-  <h2>3. Actionable Priority Issues</h2>
+  <h2>3. Actionable Priority Issues & Rebuttal Strategies</h2>
   <table>
     <tr>
       <th style="width: 12%;">Priority</th>
-      <th style="width: 20%;">Category</th>
-      <th style="width: 34%;">Issue Description</th>
-      <th style="width: 34%;">Actionable Revision Fix</th>
+      <th style="width: 22%;">Category & Anchor</th>
+      <th style="width: 33%;">Issue Description</th>
+      <th style="width: 33%;">Actionable Fix & Author Rebuttal Strategy</th>
     </tr>
     ${(r.priorityIssues || []).map(iss => `
       <tr>
         <td class="badge-${iss.priority.toLowerCase()}">Priority ${iss.priority}</td>
-        <td><strong>${escapeHtml(iss.title)}</strong><br><span style="font-size: 9pt; color: #64748B;">${escapeHtml(iss.category)}</span></td>
+        <td>
+          <strong>${escapeHtml(iss.title)}</strong><br>
+          <span style="font-size: 9pt; color: #64748B;">${escapeHtml(iss.category)}</span>
+          ${iss.evidenceAnchor ? `<br><code style="font-size: 8pt; color: #475569;">${escapeHtml(iss.evidenceAnchor)}</code>` : ""}
+        </td>
         <td>${escapeHtml(iss.description)}</td>
-        <td>${escapeHtml(iss.actionableFix)}</td>
+        <td>
+          <div><strong>Fix:</strong> ${escapeHtml(iss.actionableFix)}</div>
+          ${iss.rebuttalStrategy ? `<div style="margin-top: 4pt; color: #5B21B6; font-size: 9pt;"><strong>Rebuttal Framing:</strong> ${escapeHtml(iss.rebuttalStrategy)}</div>` : ""}
+        </td>
       </tr>
     `).join("")}
   </table>
@@ -715,6 +791,25 @@ function generateFullReportWord(r: FullReviewReport): string {
       </tr>
     `).join("")}
   </table>
+
+  ${r.reportingGuideline ? `
+  <h2>5. Reporting Guideline Compliance Audit (${escapeHtml(r.reportingGuideline.guidelineName)})</h2>
+  <div class="callout" style="background-color: #F8FAFC; border-left: 4pt solid ${r.reportingGuideline.scorePercent >= 80 ? "#10B981" : r.reportingGuideline.scorePercent >= 60 ? "#D97706" : "#DC2626"};">
+    <p style="font-weight: bold; margin: 0; font-size: 11pt;">Compliance Score: ${r.reportingGuideline.scorePercent}%</p>
+    ${(r.reportingGuideline.compliantItems && r.reportingGuideline.compliantItems.length > 0) ? `
+      <p style="color: #166534; font-size: 9.5pt; margin-top: 6pt; margin-bottom: 2pt;"><strong>Compliant Items:</strong></p>
+      <ul style="color: #166534; font-size: 9.5pt;">
+        ${r.reportingGuideline.compliantItems.map(item => `<li>${escapeHtml(item)}</li>`).join("")}
+      </ul>
+    ` : ""}
+    ${(r.reportingGuideline.missingOrPartialItems && r.reportingGuideline.missingOrPartialItems.length > 0) ? `
+      <p style="color: #DC2626; font-size: 9.5pt; margin-top: 6pt; margin-bottom: 2pt;"><strong>Missing / Partially Addressed Items:</strong></p>
+      <ul style="color: #DC2626; font-size: 9.5pt;">
+        ${r.reportingGuideline.missingOrPartialItems.map(item => `<li>${escapeHtml(item)}</li>`).join("")}
+      </ul>
+    ` : ""}
+  </div>
+  ` : ""}
 </body>
 </html>`;
 }
