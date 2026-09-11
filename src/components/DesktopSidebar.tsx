@@ -36,7 +36,11 @@ export interface PaperItem {
   title: string;
   shortName: string;
   journal: string;
-  score: number;
+  score?: number;
+  isEligibleForReview?: boolean;
+  ineligibilityReason?: "already_published" | "non_academic_document";
+  isPublished?: boolean;
+  publishedJournal?: string;
 }
 
 interface DesktopSidebarProps {
@@ -316,9 +320,21 @@ export function DesktopSidebar({
                             </div>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 border border-neutral-200">
-                              {paper.score}%
-                            </span>
+                            {paper.isEligibleForReview === false ? (
+                              paper.ineligibilityReason === "already_published" ? (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  PUB
+                                </span>
+                              ) : (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                                  N/A
+                                </span>
+                              )
+                            ) : (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 border border-neutral-200">
+                                {paper.score ?? 0}%
+                              </span>
+                            )}
                             {onDeletePaper && (
                               <button
                                 type="button"
@@ -335,8 +351,25 @@ export function DesktopSidebar({
                           </div>
                         </div>
 
-                        {/* 4 Sub-menus in flyout when selected */}
-                        {isSelected && (
+                        {/* Status notification when selected for ineligible papers */}
+                        {isSelected && paper.isEligibleForReview === false && (
+                          <div className="pl-3 pr-1 py-1 space-y-0.5">
+                            {paper.ineligibilityReason === "already_published" ? (
+                              <div className="flex items-center gap-1.5 text-[10px] text-emerald-700 font-medium bg-emerald-50/70 px-2 py-1 rounded">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                                <span className="truncate">Already Published</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 text-[10px] text-amber-700 font-medium bg-amber-50/70 px-2 py-1 rounded">
+                                <AlertCircle className="w-3 h-3 text-amber-600 shrink-0" />
+                                <span className="truncate">Review Bypassed</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* 4 Sub-menus in flyout when selected (Only for eligible manuscripts) */}
+                        {isSelected && paper.isEligibleForReview !== false && (
                           <div className="pl-3 space-y-0.5 pt-0.5 pb-1">
                             <button
                               type="button"
@@ -626,24 +659,58 @@ export function DesktopSidebar({
                         />
                         <span className="truncate">{paper.shortName}</span>
                       </div>
-                      {onDeletePaper && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeletePaper(paper, e);
-                          }}
-                          title="Delete manuscript project"
-                          className="p-1 rounded text-neutral-300 hover:text-rose-600 hover:bg-rose-50 transition opacity-0 group-hover/article:opacity-100 cursor-pointer shrink-0"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {paper.isEligibleForReview === false ? (
+                          paper.ineligibilityReason === "already_published" ? (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              PUB
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                              N/A
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 border border-neutral-200">
+                            {paper.score ?? 0}%
+                          </span>
+                        )}
+                        {onDeletePaper && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeletePaper(paper, e);
+                            }}
+                            title="Delete manuscript project"
+                            className="p-1 rounded text-neutral-300 hover:text-rose-600 hover:bg-rose-50 transition opacity-0 group-hover/article:opacity-100 cursor-pointer shrink-0"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
 
-                  {/* 4 Sub-tabs for active article */}
-                  {isSelected && (
-                    <div className="pl-4 space-y-0.5 pt-0.5">
+                    {/* Status notification when selected for ineligible papers */}
+                    {isSelected && paper.isEligibleForReview === false && (
+                      <div className="pl-4 pr-2 py-1 space-y-0.5">
+                        {paper.ineligibilityReason === "already_published" ? (
+                          <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium bg-emerald-50/80 px-2 py-1.5 rounded-md border border-emerald-200/60">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span className="truncate">Already Published</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 text-[11px] text-amber-700 font-medium bg-amber-50/80 px-2 py-1.5 rounded-md border border-amber-200/60">
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                            <span className="truncate">Review Bypassed</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* 4 Sub-tabs for active article (Only for eligible manuscripts) */}
+                    {isSelected && paper.isEligibleForReview !== false && (
+                      <div className="pl-4 space-y-0.5 pt-0.5">
                       <button
                         type="button"
                         onClick={() => onSelectView("personas")}

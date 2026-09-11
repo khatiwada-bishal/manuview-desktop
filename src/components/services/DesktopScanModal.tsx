@@ -131,6 +131,11 @@ export function DesktopScanModal({
       );
 
       const newId = `paper-${Date.now()}`;
+      const isEligible = fullReport.isEligibleForReview !== false;
+      const isPublished =
+        fullReport.ineligibilityReason === "already_published" ||
+        Boolean(fullReport.publishedDetails?.isPublished);
+
       const newPaper: PaperItem = {
         id: newId,
         title: fullReport.title || title || "Manuscript Pre-Submission",
@@ -138,8 +143,12 @@ export function DesktopScanModal({
           (fullReport.title || title).length > 24
             ? (fullReport.title || title).substring(0, 24) + "..."
             : fullReport.title || title,
-        journal: journal,
-        score: fullReport.overallScore || 80,
+        journal: fullReport.publishedDetails?.journalName || journal,
+        score: isEligible ? (fullReport.overallScore || 80) : undefined,
+        isEligibleForReview: isEligible,
+        ineligibilityReason: fullReport.ineligibilityReason,
+        isPublished: isPublished,
+        publishedJournal: fullReport.publishedDetails?.journalName,
       };
 
       const engineName = isConnected && provider
@@ -150,12 +159,20 @@ export function DesktopScanModal({
 
       const dashboardData: DesktopDashboardData = {
         paperTitle: fullReport.title || title,
-        headlineTitle: `${journal} Pre-Submission Diagnostic`,
-        targetJournal: journal,
+        headlineTitle: isPublished
+          ? `${newPaper.journal} (Published Article)`
+          : `${journal} Pre-Submission Diagnostic`,
+        targetJournal: newPaper.journal,
         aiEngine: engineName,
         latencyMs: 120,
-        score: fullReport.overallScore || 80,
-        statusText: (fullReport.overallScore || 80) >= 80 ? "High Acceptance Probability" : "Revision Prioritized",
+        score: isEligible ? (fullReport.overallScore || 80) : undefined,
+        statusText: !isEligible
+          ? isPublished
+            ? "Already Published Article"
+            : "Ineligible Document Type"
+          : (fullReport.overallScore || 80) >= 80
+          ? "High Acceptance Probability"
+          : "Revision Prioritized",
         vulnerabilities: fullReport.priorityIssues?.map((issue) => ({
           type: (issue.category === "Causal Claims" ? "overclaim" : "sample_size") as "overclaim" | "sample_size",
           title: issue.title,

@@ -35,7 +35,7 @@ function triggerDownload(content: string, filename: string, mimeType: string) {
  * interactive HTML report that opens in any browser offline.
  */
 export function exportInteractiveHtmlReport(report: ReviewReport) {
-  const isFullReport = "overallScore" in report;
+  const isFullReport = !("fitScore" in report);
   const filename = `ManuView_Interactive_Report_${sanitizeFilename(report.title)}.html`;
   const htmlContent = isFullReport
     ? generateFullReportHtml(report as FullReviewReport)
@@ -48,7 +48,7 @@ export function exportInteractiveHtmlReport(report: ReviewReport) {
  * Generates and triggers download of a native-compatible Microsoft Word document (.doc/.docx).
  */
 export function exportWordDocReport(report: ReviewReport) {
-  const isFullReport = "overallScore" in report;
+  const isFullReport = !("fitScore" in report);
   const filename = `ManuView_Diagnostic_Report_${sanitizeFilename(report.title)}.doc`;
   const wordContent = isFullReport
     ? generateFullReportWord(report as FullReviewReport)
@@ -63,7 +63,12 @@ export function exportWordDocReport(report: ReviewReport) {
 function generateFullReportHtml(r: FullReviewReport): string {
   const title = escapeHtml(r.title);
   const targetJournal = escapeHtml(r.targetJournal || "General High Impact Journal");
-  const overallScore = r.overallScore || 70;
+  const overallScore =
+    r.isEligibleForReview === false
+      ? r.ineligibilityReason === "already_published"
+        ? "PUB"
+        : "N/A"
+      : r.overallScore || 70;
   const dateStr = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 
   const personasJson = JSON.stringify(r.reviewerPersonas || []);
@@ -694,7 +699,7 @@ function generateFullReportWord(r: FullReviewReport): string {
   <p style="font-size: 10pt; color: #64748B;">Target Journal: <strong>${targetJournal}</strong> | Evaluation Date: ${dateStr}</p>
   
   <div class="callout" style="background-color: #EFF6FF; border-left: 4pt solid #2563EB;">
-    <p style="font-size: 16pt; font-weight: bold; margin: 0; color: #1E40AF;">Overall Potential Score: ${overallScore} / 100</p>
+    <p style="font-size: 16pt; font-weight: bold; margin: 0; color: #1E40AF;">${r.isEligibleForReview === false ? (r.ineligibilityReason === "already_published" ? "Status: Already Published Article" : "Status: Ineligible (Non-Article)") : `Overall Potential Score: ${overallScore} / 100`}</p>
     <p style="font-size: 10pt; margin-top: 4pt; margin-bottom: 0;">${escapeHtml(r.summary)}</p>
   </div>
 

@@ -4,6 +4,7 @@ import { batchVerifyReferences } from "./crossref";
 import { findMatchingJournals, JOURNAL_CATALOG } from "./journals";
 import { classifyDocument } from "./parser";
 import { cleanAndRepairJson } from "./json-repair";
+import { detectPublishedArticle } from "./publication-detector";
 
 export async function runManuscriptDiagnostic(
   manuscript: ParsedManuscript,
@@ -19,7 +20,91 @@ export async function runManuscriptDiagnostic(
     } catch {}
   }
 
-  // 2. Bibliographic & Citation Integrity Check
+  // 2. Document Classification Check (Early Exit for Non-Academic Files)
+  const heuristicClassification = manuscript.classification || classifyDocument(manuscript.rawText);
+  if (!heuristicClassification.isAcademicManuscript) {
+    return {
+      id: "rev_" + Math.random().toString(36).substring(2, 9),
+      createdAt: new Date().toISOString(),
+      title: manuscript.title,
+      targetJournal: targetJournalName,
+      isEligibleForReview: false,
+      ineligibilityReason: "non_academic_document",
+      overallScore: undefined,
+      summary:
+        heuristicClassification.advisoryMessage ||
+        `The uploaded document was classified as "${heuristicClassification.categoryLabel}". ManuView pre-submission peer review is specifically calibrated for empirical and theoretical scientific manuscripts. Pre-submission peer review evaluation and acceptance probability scoring have been safely bypassed.`,
+      classification: heuristicClassification,
+      reviewerPersonas: [],
+      priorityIssues: [],
+      dimensions: undefined,
+      journalRecommendations: [],
+      citationIntegrity: {
+        totalReferences: manuscript.references.length,
+        verifiedCount: 0,
+        unresolvableCount: 0,
+        retractedCount: 0,
+        selfCitationRatio: 0,
+        recencyProfile: { last5YearsPercent: 0, olderThan5YearsPercent: 0 },
+        references: [],
+      },
+      reportingGuideline: undefined,
+    };
+  }
+
+  // 3. Check if Manuscript is Already Published in Scientific Literature
+  const publishedDetails = await detectPublishedArticle(manuscript.rawText, manuscript.title);
+  if (publishedDetails && publishedDetails.isPublished) {
+    // Run bibliography check as a valuable reference integrity audit for published papers
+    const sampleRefs = manuscript.references.slice(0, 20);
+    const verifiedRefs = await batchVerifyReferences(sampleRefs);
+    const totalRefs = manuscript.references.length || verifiedRefs.length;
+    const retractedCount = verifiedRefs.filter((r) => r.isRetracted).length;
+    const unresolvableCount = verifiedRefs.filter((r) => r.status === "unresolvable").length;
+    const verifiedCount = verifiedRefs.filter((r) => r.status === "valid").length;
+    const currentYear = new Date().getFullYear();
+    let recentCount = 0;
+    verifiedRefs.forEach((r) => {
+      if (r.year && currentYear - r.year <= 5) recentCount++;
+    });
+
+    const citationIntegrity: CitationIntegritySummary = {
+      totalReferences: totalRefs,
+      verifiedCount,
+      unresolvableCount,
+      retractedCount,
+      selfCitationRatio: 12.5,
+      recencyProfile: {
+        last5YearsPercent:
+          verifiedRefs.length > 0 ? Math.round((recentCount / verifiedRefs.length) * 100) : 65,
+        olderThan5YearsPercent:
+          verifiedRefs.length > 0 ? Math.round(((verifiedRefs.length - recentCount) / verifiedRefs.length) * 100) : 35,
+      },
+      references: verifiedRefs,
+    };
+
+    const pubJournal = publishedDetails.journalName || targetJournalName || "an academic journal";
+    return {
+      id: "rev_" + Math.random().toString(36).substring(2, 9),
+      createdAt: new Date().toISOString(),
+      title: manuscript.title,
+      targetJournal: publishedDetails.journalName || targetJournalName,
+      isEligibleForReview: false,
+      ineligibilityReason: "already_published",
+      publishedDetails,
+      overallScore: undefined,
+      summary: `This article has already been published in ${pubJournal}${publishedDetails.publicationDate ? ` (${publishedDetails.publicationDate})` : ""}${publishedDetails.doi ? ` with official DOI ${publishedDetails.doi}` : ""}. Because this work is already an established part of the permanent scholarly literature, pre-submission peer review simulation and acceptance potential scoring have been safely bypassed.`,
+      classification: heuristicClassification,
+      reviewerPersonas: [],
+      priorityIssues: [],
+      dimensions: undefined,
+      journalRecommendations: [],
+      citationIntegrity,
+      reportingGuideline: undefined,
+    };
+  }
+
+  // 4. Bibliographic & Citation Integrity Check for Eligible Manuscripts
   const sampleRefs = manuscript.references.slice(0, 20);
   const verifiedRefs = await batchVerifyReferences(sampleRefs);
 
@@ -49,8 +134,6 @@ export async function runManuscriptDiagnostic(
     references: verifiedRefs,
   };
 
-  // 3. Document Classification & Domain Match
-  const heuristicClassification = manuscript.classification || classifyDocument(manuscript.rawText);
   const journalMatches = findMatchingJournals(manuscript.title, manuscript.abstract, targetJournalName);
   const detectedDiscipline = journalMatches.detectedDiscipline || "Scholarly Research";
 
@@ -241,6 +324,29 @@ Please return your analysis as a JSON object matching this schema:
     customGuidance: parsedLLM?.classification?.customGuidance || heuristicClassification.customGuidance,
   };
 
+  // If classification determined this is not an academic manuscript, exit early
+  if (!finalClassification.isAcademicManuscript) {
+    return {
+      id: "rev_" + Math.random().toString(36).substring(2, 9),
+      createdAt: new Date().toISOString(),
+      title: manuscript.title,
+      targetJournal: targetJournalName,
+      isEligibleForReview: false,
+      ineligibilityReason: "non_academic_document",
+      overallScore: undefined,
+      summary:
+        finalClassification.advisoryMessage ||
+        `The uploaded document was classified as "${finalClassification.categoryLabel}". Pre-submission peer review calibration and acceptance scoring have been safely bypassed.`,
+      classification: finalClassification,
+      reviewerPersonas: [],
+      priorityIssues: [],
+      dimensions: undefined,
+      journalRecommendations: [],
+      citationIntegrity,
+      reportingGuideline: undefined,
+    };
+  }
+
   // 5. Intelligent Domain-Adaptive Scientific Review Synthesizer
   const domainSynthesis = synthesizeGroundedAcademicReview(
     manuscript,
@@ -317,6 +423,7 @@ Please return your analysis as a JSON object matching this schema:
     createdAt: new Date().toISOString(),
     title: manuscript.title,
     targetJournal: targetJournalName,
+    isEligibleForReview: true,
     overallScore: finalOverallScore,
     summary: finalSummary,
     classification: finalClassification,
@@ -581,29 +688,13 @@ function synthesizeGroundedAcademicReview(
   const isAcademic = classification?.isAcademicManuscript ?? true;
   if (!isAcademic) {
     return {
-      overallScore: 35,
+      overallScore: 0,
       summary: `${classification?.salutation || "Notice"}: This document has been classified as ${classification?.categoryLabel || "a non-academic file"} rather than an academic research manuscript. ${classification?.advisoryMessage || "Please submit a scholarly manuscript with formal IMRaD sections and citations for peer-review calibration."}`,
-      dimensions: {
-        originality: { score: 2, label: "Originality & Novelty", verdict: "Document is non-academic", strengths: [], vulnerabilities: ["Not structured as an academic manuscript"] },
-        broad_interest: { score: 2, label: "Importance & Broad Interest", verdict: "Scope does not match scholarly journals", strengths: [], vulnerabilities: ["Does not address peer-reviewed scientific readership"] },
-        claims_vs_evidence: { score: 1, label: "Strength of Claims vs. Evidence", verdict: "No empirical scientific claims supported by data", strengths: [], vulnerabilities: ["Lacks empirical research methods"] },
-        methodology: { score: 1, label: "Methodological & Statistical Soundness", verdict: "No scientific methodology reported", strengths: [], vulnerabilities: ["Lacks experimental protocols or statistical models"] },
-        clarity: { score: 3, label: "Clarity & Presentation", verdict: "Readable document format", strengths: ["Text structure is coherent"], vulnerabilities: [] },
-        prior_work: { score: 1, label: "Prior Work & Reference Integrity", verdict: "Absence of peer-reviewed citations", strengths: [], vulnerabilities: ["No scholarly bibliography detected"] },
-      },
-      priorityIssues: [
-        {
-          id: "iss-non-manuscript",
-          priority: "A",
-          title: `Non-Manuscript Detected: ${classification?.categoryLabel || "Non-Scholarly Document"}`,
-          category: "Scope/Fit",
-          description: "The uploaded file does not contain scholarly IMRaD sections (Introduction, Methods, Results, Discussion) or peer-reviewed literature citations.",
-          reviewerQuote: "'This submission falls outside the scope of academic peer review.'",
-          actionableFix: classification?.customGuidance || "Please submit an empirical or theoretical research manuscript in PDF, Word, or text format.",
-        },
-      ],
+      dimensions: {},
+      priorityIssues: [],
       personas: [],
       journalRecommendations: [],
+      reportingGuideline: undefined,
     };
   }
 
