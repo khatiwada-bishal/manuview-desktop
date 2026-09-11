@@ -50,7 +50,7 @@ export function DesktopEmptyDashboard({
 
             <button
               type="button"
-              onClick={() => onOpenService("triage")}
+              onClick={() => onOpenService("ai-review")}
               className="px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md hover:shadow-lg transition cursor-pointer flex items-center gap-2.5 shrink-0"
             >
               <Plus className="w-4 h-4" />

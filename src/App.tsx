@@ -197,6 +197,11 @@ export default function App() {
 
   // Open a service tool in a tab
   const handleOpenService = (serviceId: string) => {
+    const normalizedServiceId =
+      serviceId === "triage" || serviceId === "pre-submission"
+        ? "ai-review"
+        : serviceId;
+
     const toolMap: Record<string, { title: string; shortName: string }> = {
       "ai-review": { title: "Pre-Submission AI Review", shortName: "AI Review" },
       "journal-fit": { title: "Journal Fit Predictor", shortName: "Journal Fit" },
@@ -207,10 +212,10 @@ export default function App() {
       "response-builder": { title: "Review Response Builder", shortName: "Response Matrix" },
     };
 
-    const toolInfo = toolMap[serviceId];
+    const toolInfo = toolMap[normalizedServiceId];
     if (!toolInfo) return;
 
-    const tabId = `tool-${serviceId}`;
+    const tabId = `tool-${normalizedServiceId}`;
     if (!openTabs.some((t) => t.id === tabId)) {
       setOpenTabs((prev) => [
         ...prev,
@@ -219,7 +224,7 @@ export default function App() {
           type: "tool",
           title: toolInfo.title,
           shortName: toolInfo.shortName,
-          toolType: serviceId,
+          toolType: normalizedServiceId,
         },
       ]);
     }
