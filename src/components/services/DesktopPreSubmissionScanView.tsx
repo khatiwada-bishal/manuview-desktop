@@ -804,18 +804,22 @@ export function DesktopPreSubmissionScanView({
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 px-4 rounded-xl font-semibold text-xs sm:text-sm bg-[#0F172A] hover:bg-[#1E293B] text-white transition flex items-center justify-center gap-2 shadow-xs disabled:opacity-60 cursor-pointer"
+              className="w-full py-3.5 px-4 rounded-xl font-semibold text-xs sm:text-sm bg-[#0F172A] hover:bg-[#1E293B] text-white transition-colors duration-150 flex items-center justify-center gap-2 shadow-xs disabled:cursor-not-allowed disabled:bg-[#1E293B] disabled:text-white/80 cursor-pointer isolate relative overflow-hidden select-none"
             >
               {loading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin text-blue-400" />
-                  <span>{loadingStep || "Analyzing Manuscript..."}</span>
-                </>
+                <span key="btn-loading-state" className="flex items-center justify-center gap-2 truncate max-w-full">
+                  <RefreshCw className="w-4 h-4 animate-spin text-blue-400 shrink-0" />
+                  <span key={loadingStep || "analyzing-step"} className="truncate">
+                    {loadingStep || "Analyzing Manuscript..."}
+                  </span>
+                </span>
               ) : (
-                <>
-                  <Sparkles className="w-4 h-4 text-amber-400" />
-                  <span>{file ? "Run Pre-Submission Diagnostic Scan" : "Validate Target Journal Scope & Fit"}</span>
-                </>
+                <span key="btn-idle-state" className="flex items-center justify-center gap-2 truncate max-w-full">
+                  <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="truncate">
+                    {file ? "Run Pre-Submission Diagnostic Scan" : "Validate Target Journal Scope & Fit"}
+                  </span>
+                </span>
               )}
             </button>
           </form>
