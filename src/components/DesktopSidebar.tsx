@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Search,
   Sparkles,
@@ -81,6 +81,24 @@ export function DesktopSidebar({
   onDeletePaper,
 }: DesktopSidebarProps) {
   const [servicesExpanded, setServicesExpanded] = useState(true);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const isFirstRender = useRef(true);
+  const prevCollapsedRef = useRef(isCollapsed);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (prevCollapsedRef.current !== isCollapsed) {
+      prevCollapsedRef.current = isCollapsed;
+      setIsTransitioning(true);
+      const timer = setTimeout(() => {
+        setIsTransitioning(false);
+      }, 520);
+      return () => clearTimeout(timer);
+    }
+  }, [isCollapsed]);
 
   // Connection status: "connected" (green) | "connecting" (orange/yellow) | "disconnected" (red)
   const connectionStatus = isLoading
@@ -102,7 +120,7 @@ export function DesktopSidebar({
       name: "Pre-Submission AI Review",
       description: "5-Persona reviewer simulation",
       icon: Sparkles,
-      color: "text-blue-600 bg-blue-50",
+      color: "text-blue-600 bg-blue-50 dark:bg-blue-950/50 dark:text-blue-400",
       action: () => {
         if (onSelectService) onSelectService("ai-review");
         else onNewReview();
@@ -113,7 +131,7 @@ export function DesktopSidebar({
       name: "Journal Fit Predictor",
       description: "1,300+ catalog matcher",
       icon: Compass,
-      color: "text-emerald-600 bg-emerald-50",
+      color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 dark:text-emerald-400",
       action: () => {
         if (onSelectService) onSelectService("journal-fit");
         else onNewReview();
@@ -124,7 +142,7 @@ export function DesktopSidebar({
       name: "Reference Integrity Audit",
       description: "Crossref & Retraction Watch",
       icon: CheckCircle2,
-      color: "text-teal-600 bg-teal-50",
+      color: "text-teal-600 bg-teal-50 dark:bg-teal-950/50 dark:text-teal-400",
       action: () => {
         if (onSelectService) onSelectService("reference-checker");
         else onSelectView("citations");
@@ -135,7 +153,7 @@ export function DesktopSidebar({
       name: "Citation Claim Validator",
       description: "Evidence claim alignment",
       icon: ShieldCheck,
-      color: "text-amber-600 bg-amber-50",
+      color: "text-amber-600 bg-amber-50 dark:bg-amber-950/50 dark:text-amber-400",
       action: () => {
         if (onSelectService) onSelectService("citation-claim");
         else onNewReview();
@@ -146,7 +164,7 @@ export function DesktopSidebar({
       name: "PRISMA Flow Diagram",
       description: "Systematic review generator",
       icon: Layers,
-      color: "text-purple-600 bg-purple-50",
+      color: "text-purple-600 bg-purple-50 dark:bg-purple-950/50 dark:text-purple-400",
       action: () => {
         if (onSelectService) onSelectService("prisma");
         else onNewReview();
@@ -157,7 +175,7 @@ export function DesktopSidebar({
       name: "Journal Cover Letter",
       description: "Formal editor submission letter",
       icon: FileText,
-      color: "text-indigo-600 bg-indigo-50",
+      color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/50 dark:text-indigo-400",
       action: () => {
         if (onSelectService) onSelectService("cover-letter");
         else onNewReview();
@@ -168,7 +186,7 @@ export function DesktopSidebar({
       name: "Review Response Builder",
       description: "Point-by-point rebuttal matrix",
       icon: MessageSquare,
-      color: "text-rose-600 bg-rose-50",
+      color: "text-rose-600 bg-rose-50 dark:bg-rose-950/50 dark:text-rose-400",
       action: () => {
         if (onSelectService) onSelectService("response-builder");
         else onSelectView("personas");
@@ -176,27 +194,43 @@ export function DesktopSidebar({
     },
   ];
 
-  // -------------------------------------------------------------
-  // COLLAPSED SIDEBAR VIEW
-  // -------------------------------------------------------------
-  if (isCollapsed) {
-    return (
-      <aside className="w-[68px] bg-[#F9FAFB] border-r border-[#E5E7EB] flex flex-col h-full select-none shrink-0 text-[#1F2937] transition-all duration-200 ease-in-out relative z-40 overflow-visible">
+  return (
+    <aside
+      className={`h-full select-none shrink-0 flex flex-col relative bg-[#F9FAFB] dark:bg-[#0F141F] border-r border-[#E5E7EB] dark:border-[#1E293B] text-[#1F2937] dark:text-[#E2E8F0] sidebar-elastic-spring ${
+        isCollapsed ? "w-[68px] z-40" : "w-64 z-30"
+      } ${
+        isTransitioning
+          ? "overflow-hidden"
+          : isCollapsed
+          ? "overflow-visible"
+          : "overflow-hidden"
+      }`}
+    >
+      {/* ------------------------------------------------------------- */}
+      {/* COLLAPSED SIDEBAR VIEW LAYER                                  */}
+      {/* ------------------------------------------------------------- */}
+      <div
+        className={`absolute inset-y-0 left-0 w-[68px] flex flex-col h-full transition-opacity duration-200 ease-in-out ${
+          isCollapsed
+            ? "opacity-100 pointer-events-auto z-20"
+            : "opacity-0 pointer-events-none z-10"
+        } ${isTransitioning ? "overflow-hidden" : "overflow-visible"}`}
+      >
         {/* LOGO: Hover reveals expand icon */}
-        <div className="p-3 border-b border-[#E5E7EB]/70 flex justify-center">
+        <div className="p-3 border-b border-[#E5E7EB]/70 dark:border-[#1E293B] flex justify-center">
           <div className="relative group flex justify-center">
             <button
               type="button"
               onClick={onToggleCollapse}
               title="Expand sidebar"
-              className="w-10 h-10 rounded-xl bg-white border border-[#E5E7EB] hover:border-neutral-300 shadow-xs flex items-center justify-center transition cursor-pointer relative overflow-hidden"
+              className="w-10 h-10 rounded-xl bg-white dark:bg-[#161F30] border border-[#E5E7EB] dark:border-[#1E293B] hover:border-neutral-300 dark:hover:border-neutral-700 shadow-xs flex items-center justify-center transition cursor-pointer relative overflow-hidden"
             >
               {/* Logo "M" */}
-              <div className="w-8 h-8 rounded-lg bg-[#0F172A] text-white flex items-center justify-center font-serif font-black text-sm shadow-xs transition-all duration-150 group-hover:opacity-0 group-hover:scale-75">
+              <div className="w-8 h-8 rounded-lg bg-[#0F172A] dark:bg-blue-600 text-white flex items-center justify-center font-serif font-black text-sm shadow-xs transition-all duration-150 group-hover:opacity-0 group-hover:scale-75">
                 M
               </div>
               {/* Expand sidebar icon on hover */}
-              <div className="absolute inset-0 flex items-center justify-center text-[#0F172A] opacity-0 group-hover:opacity-100 transition-all duration-150 group-hover:scale-100">
+              <div className="absolute inset-0 flex items-center justify-center text-[#0F172A] dark:text-white opacity-0 group-hover:opacity-100 transition-all duration-150 group-hover:scale-100">
                 <PanelLeft className="w-4 h-4" />
               </div>
             </button>
@@ -235,14 +269,14 @@ export function DesktopSidebar({
           </div>
 
           {/* Divider */}
-          <div className="w-8 h-px bg-[#E5E7EB] mx-auto" />
+          <div className="w-8 h-px bg-[#E5E7EB] dark:bg-[#1E293B] mx-auto" />
 
           {/* Search Icon */}
           <div className="relative group flex justify-center">
             <button
               type="button"
               onClick={onOpenSearch}
-              className="w-9 h-9 rounded-xl flex items-center justify-center bg-white border border-[#E5E7EB] hover:border-neutral-300 text-neutral-500 hover:text-neutral-800 transition shadow-2xs cursor-pointer"
+              className="w-9 h-9 rounded-xl flex items-center justify-center bg-white dark:bg-[#161F30] border border-[#E5E7EB] dark:border-[#1E293B] hover:border-neutral-300 dark:hover:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 transition shadow-2xs cursor-pointer"
             >
               <Search className="w-4 h-4" />
             </button>
@@ -258,23 +292,23 @@ export function DesktopSidebar({
               type="button"
               className={`w-9 h-9 rounded-xl flex items-center justify-center transition cursor-pointer shadow-2xs ${
                 activePaperId
-                  ? "bg-blue-50 text-blue-600 border border-blue-200"
-                  : "bg-white border border-[#E5E7EB] hover:border-neutral-300 text-neutral-600 hover:text-neutral-900"
+                  ? "bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800"
+                  : "bg-white dark:bg-[#161F30] border border-[#E5E7EB] dark:border-[#1E293B] hover:border-neutral-300 dark:hover:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200"
               }`}
             >
               <BookOpen className="w-4 h-4" />
             </button>
 
             {/* Submenu popover on hover */}
-            <div className="absolute left-full top-0 ml-2 w-64 bg-white border border-[#E5E7EB] rounded-xl shadow-xl p-2.5 z-50 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-150 before:absolute before:-left-3 before:top-0 before:bottom-0 before:w-3 before:content-['']">
-              <div className="flex items-center justify-between pb-2 mb-1.5 border-b border-[#E5E7EB]">
-                <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+            <div className="absolute left-full top-0 ml-2 w-64 bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1F2937] rounded-xl shadow-xl p-2.5 z-50 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-150 before:absolute before:-left-3 before:top-0 before:bottom-0 before:w-3 before:content-['']">
+              <div className="flex items-center justify-between pb-2 mb-1.5 border-b border-[#E5E7EB] dark:border-[#1F2937]">
+                <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
                   Articles ({papers.length})
                 </span>
                 <button
                   type="button"
                   onClick={onNewReview}
-                  className="flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline transition cursor-pointer"
+                  className="flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline transition cursor-pointer"
                 >
                   <Plus className="w-3 h-3" />
                   <span>New</span>
@@ -283,7 +317,7 @@ export function DesktopSidebar({
 
               <div className="max-h-64 overflow-y-auto space-y-1 [scrollbar-width:thin]">
                 {papers.length === 0 ? (
-                  <div className="text-xs text-neutral-400 py-2 text-center">
+                  <div className="text-xs text-neutral-400 dark:text-neutral-500 py-2 text-center">
                     No articles yet
                   </div>
                 ) : (
@@ -298,23 +332,23 @@ export function DesktopSidebar({
                           }}
                           className={`group/item w-full flex items-center justify-between p-2 rounded-lg text-xs text-left transition cursor-pointer ${
                             isSelected && activeView === "overview"
-                              ? "bg-[#E5E7EB] font-semibold text-[#111827]"
+                              ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
                               : isSelected
-                              ? "bg-[#F3F4F6] font-medium text-[#111827]"
-                              : "hover:bg-neutral-50 text-neutral-700"
+                              ? "bg-[#F3F4F6] dark:bg-[#161F30] font-medium text-[#111827] dark:text-white"
+                              : "hover:bg-neutral-50 dark:hover:bg-[#1E293B]/50 text-neutral-700 dark:text-neutral-300"
                           }`}
                         >
                           <div className="flex items-center gap-2 min-w-0 pr-2">
                             <FileText
                               className={`w-3.5 h-3.5 shrink-0 ${
-                                isSelected ? "text-blue-600" : "text-neutral-400"
+                                isSelected ? "text-blue-600 dark:text-blue-400" : "text-neutral-400 dark:text-neutral-500"
                               }`}
                             />
                             <div className="truncate">
-                              <div className="truncate font-medium text-xs text-[#111827]">
+                              <div className="truncate font-medium text-xs text-[#111827] dark:text-neutral-100">
                                 {paper.shortName}
                               </div>
-                              <div className="text-[10px] text-neutral-400 truncate">
+                              <div className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate">
                                 {paper.journal}
                               </div>
                             </div>
@@ -322,16 +356,16 @@ export function DesktopSidebar({
                           <div className="flex items-center gap-1.5 shrink-0">
                             {paper.isEligibleForReview === false ? (
                               paper.ineligibilityReason === "already_published" ? (
-                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                                   PUB
                                 </span>
                               ) : (
-                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
                                   N/A
                                 </span>
                               )
                             ) : (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 border border-neutral-200">
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-[#1E293B] text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-[#334155]">
                                 {paper.score ?? 0}%
                               </span>
                             )}
@@ -343,7 +377,7 @@ export function DesktopSidebar({
                                   onDeletePaper(paper, e);
                                 }}
                                 title="Delete manuscript project"
-                                className="p-1 rounded text-neutral-300 hover:text-rose-600 hover:bg-rose-50 transition opacity-0 group-hover/item:opacity-100 cursor-pointer"
+                                className="p-1 rounded text-neutral-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition opacity-0 group-hover/item:opacity-100 cursor-pointer"
                               >
                                 <Trash2 className="w-3 h-3" />
                               </button>
@@ -355,13 +389,13 @@ export function DesktopSidebar({
                         {isSelected && paper.isEligibleForReview === false && (
                           <div className="pl-3 pr-1 py-1 space-y-0.5">
                             {paper.ineligibilityReason === "already_published" ? (
-                              <div className="flex items-center gap-1.5 text-[10px] text-emerald-700 font-medium bg-emerald-50/70 px-2 py-1 rounded">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                              <div className="flex items-center gap-1.5 text-[10px] text-emerald-700 dark:text-emerald-400 font-medium bg-emerald-50/70 dark:bg-emerald-950/40 px-2 py-1 rounded border border-emerald-200/50 dark:border-emerald-800/50">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
                                 <span className="truncate">Already Published</span>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-1.5 text-[10px] text-amber-700 font-medium bg-amber-50/70 px-2 py-1 rounded">
-                                <AlertCircle className="w-3 h-3 text-amber-600 shrink-0" />
+                              <div className="flex items-center gap-1.5 text-[10px] text-amber-700 dark:text-amber-400 font-medium bg-amber-50/70 dark:bg-amber-950/40 px-2 py-1 rounded border border-amber-200/50 dark:border-amber-800/50">
+                                <AlertCircle className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
                                 <span className="truncate">Review Bypassed</span>
                               </div>
                             )}
@@ -379,11 +413,11 @@ export function DesktopSidebar({
                               }}
                               className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-[11px] transition text-left cursor-pointer ${
                                 activeView === "personas"
-                                  ? "bg-[#E5E7EB] font-semibold text-[#111827]"
-                                  : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+                                  ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
+                                  : "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#1E293B]/60 hover:text-neutral-900 dark:hover:text-white"
                               }`}
                             >
-                              <Users className="w-3 h-3 text-blue-600 shrink-0" />
+                              <Users className="w-3 h-3 text-blue-600 dark:text-blue-400 shrink-0" />
                               <span className="truncate">5-Persona Reviews</span>
                             </button>
                             <button
@@ -394,11 +428,11 @@ export function DesktopSidebar({
                               }}
                               className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-[11px] transition text-left cursor-pointer ${
                                 activeView === "dimensions"
-                                  ? "bg-[#E5E7EB] font-semibold text-[#111827]"
-                                  : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+                                  ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
+                                  : "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#1E293B]/60 hover:text-neutral-900 dark:hover:text-white"
                               }`}
                             >
-                              <BarChart3 className="w-3 h-3 text-emerald-600 shrink-0" />
+                              <BarChart3 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
                               <span className="truncate">6 Scoring Dimensions</span>
                             </button>
                             <button
@@ -409,11 +443,11 @@ export function DesktopSidebar({
                               }}
                               className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-[11px] transition text-left cursor-pointer ${
                                 activeView === "issues"
-                                  ? "bg-[#E5E7EB] font-semibold text-[#111827]"
-                                  : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+                                  ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
+                                  : "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#1E293B]/60 hover:text-neutral-900 dark:hover:text-white"
                               }`}
                             >
-                              <AlertCircle className="w-3 h-3 text-amber-600 shrink-0" />
+                              <AlertCircle className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
                               <span className="truncate">Priority Action Items</span>
                             </button>
                             <button
@@ -424,11 +458,11 @@ export function DesktopSidebar({
                               }}
                               className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-[11px] transition text-left cursor-pointer ${
                                 activeView === "journals" || activeView === "recommendations"
-                                  ? "bg-[#E5E7EB] font-semibold text-[#111827]"
-                                  : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+                                  ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
+                                  : "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#1E293B]/60 hover:text-neutral-900 dark:hover:text-white"
                               }`}
                             >
-                              <BookOpen className="w-3 h-3 text-indigo-600 shrink-0" />
+                              <BookOpen className="w-3 h-3 text-indigo-600 dark:text-indigo-400 shrink-0" />
                               <span className="truncate">Target Journals</span>
                             </button>
                           </div>
@@ -443,7 +477,7 @@ export function DesktopSidebar({
         </div>
 
         {/* FOOTER: Compact Settings Pill */}
-        <div className="p-3 border-t border-[#E5E7EB] bg-white flex justify-center">
+        <div className="p-3 border-t border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#0F141F] flex justify-center">
           <div className="relative group">
             <button
               type="button"
@@ -457,10 +491,10 @@ export function DesktopSidebar({
               }
               className={`w-10 h-10 rounded-full border transition shadow-2xs flex items-center justify-center cursor-pointer relative ${
                 connectionStatus === "connected"
-                  ? "border-[#86efac] bg-[#f0fdf4] text-[#065f46] hover:bg-[#dcfce7] hover:border-[#4ade80]"
+                  ? "border-[#86efac] dark:border-[#065f46] bg-[#f0fdf4] dark:bg-[#064e3b]/30 text-[#065f46] dark:text-[#34d399] hover:bg-[#dcfce7] dark:hover:bg-[#064e3b]/50 hover:border-[#4ade80]"
                   : connectionStatus === "connecting"
-                  ? "border-[#fde68a] bg-[#fffbeb] text-[#92400e] hover:bg-[#fef3c7] hover:border-[#fcd34d]"
-                  : "border-[#fecaca] bg-[#fef2f2] text-[#991b1b] hover:bg-[#fee2e2] hover:border-[#fca5a5]"
+                  ? "border-[#fde68a] dark:border-[#78350f] bg-[#fffbeb] dark:bg-[#78350f]/30 text-[#92400e] dark:text-[#fbbf24] hover:bg-[#fef3c7] hover:border-[#fcd34d]"
+                  : "border-[#fecaca] dark:border-[#7f1d1d] bg-[#fef2f2] dark:bg-[#7f1d1d]/30 text-[#991b1b] dark:text-[#f87171] hover:bg-[#fee2e2] hover:border-[#fca5a5]"
               }`}
             >
               <span
@@ -475,10 +509,10 @@ export function DesktopSidebar({
               <Settings
                 className={`w-4 h-4 ${
                   connectionStatus === "connected"
-                    ? "text-[#047857]"
+                    ? "text-[#047857] dark:text-[#34d399]"
                     : connectionStatus === "connecting"
-                    ? "text-[#b45309]"
-                    : "text-[#dc2626]"
+                    ? "text-[#b45309] dark:text-[#fbbf24]"
+                    : "text-[#dc2626] dark:text-[#f87171]"
                 }`}
               />
             </button>
@@ -497,27 +531,30 @@ export function DesktopSidebar({
             </div>
           </div>
         </div>
-      </aside>
-    );
-  }
+      </div>
 
-  // -------------------------------------------------------------
-  // EXPANDED SIDEBAR VIEW
-  // -------------------------------------------------------------
-  return (
-    <aside className="w-64 bg-[#F9FAFB] border-r border-[#E5E7EB] flex flex-col h-full select-none shrink-0 text-[#1F2937] transition-all duration-200 ease-in-out relative z-30">
+      {/* ------------------------------------------------------------- */}
+      {/* EXPANDED SIDEBAR VIEW LAYER                                   */}
+      {/* ------------------------------------------------------------- */}
+      <div
+        className={`absolute inset-y-0 left-0 w-64 flex flex-col h-full transition-opacity duration-200 ease-in-out ${
+          !isCollapsed
+            ? "opacity-100 pointer-events-auto z-20"
+            : "opacity-0 pointer-events-none z-10"
+        } overflow-hidden`}
+      >
       {/* 1. COMPANY HEADER: Logo + Title + Collapse Button */}
-      <div className="p-3 border-b border-[#E5E7EB]/70">
-        <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-[#E5E7EB] shadow-xs">
+      <div className="p-3 border-b border-[#E5E7EB]/70 dark:border-[#1E293B]">
+        <div className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1F2937] shadow-xs">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-7 h-7 rounded-lg bg-[#0F172A] text-white flex items-center justify-center font-serif font-black text-sm shadow-xs shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-[#0F172A] dark:bg-blue-600 text-white flex items-center justify-center font-serif font-black text-sm shadow-xs shrink-0">
               M
             </div>
             <div className="truncate min-w-0">
-              <div className="font-bold text-xs text-[#0F172A] tracking-tight">
+              <div className="font-bold text-xs text-[#0F172A] dark:text-white tracking-tight">
                 ManuView Desktop
               </div>
-              <div className="text-[10px] text-neutral-400 font-medium">
+              <div className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">
                 Research & Review Suite
               </div>
             </div>
@@ -527,7 +564,7 @@ export function DesktopSidebar({
             type="button"
             onClick={onToggleCollapse}
             title="Collapse sidebar"
-            className="p-1 rounded-md hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700 transition cursor-pointer"
+            className="p-1 rounded-md hover:bg-neutral-100 dark:hover:bg-[#1E293B] text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200 transition cursor-pointer"
           >
             <PanelLeft className="w-4 h-4" />
           </button>
@@ -535,14 +572,14 @@ export function DesktopSidebar({
       </div>
 
       {/* SCROLLABLE MAIN CONTENT */}
-      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-4">
+      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-4 [scrollbar-width:thin]">
         {/* 2. SERVICES LIST */}
         <div>
           <div className="flex items-center justify-between px-2 mb-1.5">
             <button
               type="button"
               onClick={() => setServicesExpanded(!servicesExpanded)}
-              className="flex items-center gap-1 text-[11px] font-bold text-[#9CA3AF] uppercase tracking-wider hover:text-neutral-700 transition cursor-pointer"
+              className="flex items-center gap-1 text-[11px] font-bold text-[#9CA3AF] dark:text-neutral-400 uppercase tracking-wider hover:text-neutral-700 dark:hover:text-neutral-200 transition cursor-pointer"
             >
               {servicesExpanded ? (
                 <ChevronDown className="w-3 h-3" />
@@ -551,7 +588,7 @@ export function DesktopSidebar({
               )}
               <span>SERVICES</span>
             </button>
-            <span className="text-[10px] font-mono text-neutral-400 bg-neutral-100 px-1.5 py-0.2 rounded">
+            <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 bg-neutral-100 dark:bg-[#1E293B] px-1.5 py-0.2 rounded">
               {SERVICES.length}
             </span>
           </div>
@@ -565,7 +602,7 @@ export function DesktopSidebar({
                     key={service.id}
                     type="button"
                     onClick={service.action}
-                    className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs hover:bg-[#E5E7EB]/60 hover:text-[#111827] text-neutral-700 transition text-left cursor-pointer group"
+                    className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs hover:bg-[#E5E7EB]/60 dark:hover:bg-[#1E293B]/60 hover:text-[#111827] dark:hover:text-white text-neutral-700 dark:text-neutral-300 transition text-left cursor-pointer group"
                   >
                     <div
                       className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${service.color}`}
@@ -573,7 +610,7 @@ export function DesktopSidebar({
                       <Icon className="w-3 h-3" />
                     </div>
                     <div className="truncate min-w-0">
-                      <div className="font-medium text-xs text-neutral-800 group-hover:text-black truncate">
+                      <div className="font-medium text-xs text-neutral-800 dark:text-neutral-200 group-hover:text-black dark:group-hover:text-white truncate">
                         {service.name}
                       </div>
                     </div>
@@ -589,13 +626,13 @@ export function DesktopSidebar({
           <button
             type="button"
             onClick={onOpenSearch}
-            className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs text-neutral-500 bg-white border border-[#E5E7EB] hover:border-neutral-300 hover:text-neutral-900 transition shadow-2xs cursor-pointer group"
+            className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs text-neutral-500 dark:text-neutral-400 bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1F2937] hover:border-neutral-300 dark:hover:border-neutral-700 hover:text-neutral-900 dark:hover:text-white transition shadow-2xs cursor-pointer group"
           >
             <div className="flex items-center gap-2">
-              <Search className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-600 transition" />
+              <Search className="w-3.5 h-3.5 text-neutral-400 dark:text-neutral-500 group-hover:text-neutral-600 dark:group-hover:text-neutral-300 transition" />
               <span className="text-xs">Search articles...</span>
             </div>
-            <kbd className="text-[10px] font-mono text-neutral-400 bg-neutral-100 border border-neutral-200 rounded px-1.5 py-0.5 shadow-2xs">
+            <kbd className="text-[10px] font-mono text-neutral-400 dark:text-neutral-400 bg-neutral-100 dark:bg-[#1E293B] border border-neutral-200 dark:border-[#334155] rounded px-1.5 py-0.5 shadow-2xs">
               ⌘K
             </kbd>
           </button>
@@ -604,14 +641,14 @@ export function DesktopSidebar({
         {/* 4. ARTICLES LIST */}
         <div>
           <div className="flex items-center justify-between px-2 mb-1.5">
-            <span className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-[#9CA3AF] dark:text-neutral-400 uppercase tracking-wider">
               ARTICLES
             </span>
             <button
               type="button"
               onClick={onNewReview}
               title="Add new manuscript review"
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium text-blue-600 hover:bg-blue-50 transition cursor-pointer"
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition cursor-pointer"
             >
               <Plus className="w-3 h-3" />
               <span>New</span>
@@ -620,14 +657,14 @@ export function DesktopSidebar({
 
           <div className="space-y-1">
             {papers.length === 0 ? (
-              <div className="px-3 py-4 text-center rounded-xl bg-white border border-dashed border-[#E5E7EB]">
-                <FileText className="w-5 h-5 mx-auto text-neutral-300 mb-1.5" />
-                <p className="text-[11px] font-medium text-neutral-500">No manuscripts yet</p>
-                <p className="text-[10px] text-neutral-400 mt-0.5">Run a review to track your paper</p>
+              <div className="px-3 py-4 text-center rounded-xl bg-white dark:bg-[#111827] border border-dashed border-[#E5E7EB] dark:border-[#1F2937]">
+                <FileText className="w-5 h-5 mx-auto text-neutral-300 dark:text-neutral-600 mb-1.5" />
+                <p className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">No manuscripts yet</p>
+                <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">Run a review to track your paper</p>
                 <button
                   type="button"
                   onClick={onNewReview}
-                  className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 transition cursor-pointer"
+                  className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition cursor-pointer"
                 >
                   <Plus className="w-3 h-3" />
                   <span>Start Review</span>
@@ -645,16 +682,16 @@ export function DesktopSidebar({
                       }}
                       className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer ${
                         isSelected && activeView === "overview"
-                          ? "bg-[#E5E7EB] font-semibold text-[#111827] shadow-2xs"
+                          ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white shadow-2xs"
                           : isSelected
-                          ? "bg-[#F3F4F6] font-medium text-[#1F2937]"
-                          : "text-[#4B5563] hover:bg-[#E5E7EB]/40 hover:text-[#111827]"
+                          ? "bg-[#F3F4F6] dark:bg-[#161F30] font-medium text-[#1F2937] dark:text-neutral-200"
+                          : "text-[#4B5563] dark:text-neutral-400 hover:bg-[#E5E7EB]/40 dark:hover:bg-[#1E293B]/40 hover:text-[#111827] dark:hover:text-white"
                       }`}
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
                         <FileText
                           className={`w-4 h-4 shrink-0 ${
-                            isSelected ? "text-blue-600" : "text-neutral-500"
+                            isSelected ? "text-blue-600 dark:text-blue-400" : "text-neutral-500 dark:text-neutral-400"
                           }`}
                         />
                         <span className="truncate">{paper.shortName}</span>
@@ -662,16 +699,16 @@ export function DesktopSidebar({
                       <div className="flex items-center gap-1.5 shrink-0">
                         {paper.isEligibleForReview === false ? (
                           paper.ineligibilityReason === "already_published" ? (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                               PUB
                             </span>
                           ) : (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
                               N/A
                             </span>
                           )
                         ) : (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 border border-neutral-200">
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-[#1E293B] text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-[#334155]">
                             {paper.score ?? 0}%
                           </span>
                         )}
@@ -683,7 +720,7 @@ export function DesktopSidebar({
                               onDeletePaper(paper, e);
                             }}
                             title="Delete manuscript project"
-                            className="p-1 rounded text-neutral-300 hover:text-rose-600 hover:bg-rose-50 transition opacity-0 group-hover/article:opacity-100 cursor-pointer shrink-0"
+                            className="p-1 rounded text-neutral-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition opacity-0 group-hover/article:opacity-100 cursor-pointer shrink-0"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -695,13 +732,13 @@ export function DesktopSidebar({
                     {isSelected && paper.isEligibleForReview === false && (
                       <div className="pl-4 pr-2 py-1 space-y-0.5">
                         {paper.ineligibilityReason === "already_published" ? (
-                          <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium bg-emerald-50/80 px-2 py-1.5 rounded-md border border-emerald-200/60">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400 font-medium bg-emerald-50/80 dark:bg-emerald-950/40 px-2 py-1.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/60">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                             <span className="truncate">Already Published</span>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1.5 text-[11px] text-amber-700 font-medium bg-amber-50/80 px-2 py-1.5 rounded-md border border-amber-200/60">
-                            <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          <div className="flex items-center gap-1.5 text-[11px] text-amber-700 dark:text-amber-400 font-medium bg-amber-50/80 dark:bg-amber-950/40 px-2 py-1.5 rounded-md border border-amber-200/60 dark:border-amber-800/60">
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
                             <span className="truncate">Review Bypassed</span>
                           </div>
                         )}
@@ -716,11 +753,11 @@ export function DesktopSidebar({
                         onClick={() => onSelectView("personas")}
                         className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition text-left cursor-pointer ${
                           activeView === "personas"
-                            ? "bg-[#E5E7EB] font-semibold text-[#111827]"
-                            : "text-[#4B5563] hover:bg-[#E5E7EB]/40 hover:text-[#111827]"
+                            ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
+                            : "text-[#4B5563] dark:text-neutral-400 hover:bg-[#E5E7EB]/40 dark:hover:bg-[#1E293B]/40 hover:text-[#111827] dark:hover:text-white"
                         }`}
                       >
-                        <Users className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                        <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
                         <span className="truncate">5-Persona Reviews</span>
                       </button>
 
@@ -729,11 +766,11 @@ export function DesktopSidebar({
                         onClick={() => onSelectView("dimensions")}
                         className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition text-left cursor-pointer ${
                           activeView === "dimensions"
-                            ? "bg-[#E5E7EB] font-semibold text-[#111827]"
-                            : "text-[#4B5563] hover:bg-[#E5E7EB]/40 hover:text-[#111827]"
+                            ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
+                            : "text-[#4B5563] dark:text-neutral-400 hover:bg-[#E5E7EB]/40 dark:hover:bg-[#1E293B]/40 hover:text-[#111827] dark:hover:text-white"
                         }`}
                       >
-                        <BarChart3 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <BarChart3 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                         <span className="truncate">6 Scoring Dimensions</span>
                       </button>
 
@@ -742,11 +779,11 @@ export function DesktopSidebar({
                         onClick={() => onSelectView("issues")}
                         className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition text-left cursor-pointer ${
                           activeView === "issues"
-                            ? "bg-[#E5E7EB] font-semibold text-[#111827]"
-                            : "text-[#4B5563] hover:bg-[#E5E7EB]/40 hover:text-[#111827]"
+                            ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
+                            : "text-[#4B5563] dark:text-neutral-400 hover:bg-[#E5E7EB]/40 dark:hover:bg-[#1E293B]/40 hover:text-[#111827] dark:hover:text-white"
                         }`}
                       >
-                        <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
                         <span className="truncate">Priority Action Items</span>
                       </button>
 
@@ -755,11 +792,11 @@ export function DesktopSidebar({
                         onClick={() => onSelectView("journals")}
                         className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition text-left cursor-pointer ${
                           activeView === "journals" || activeView === "recommendations"
-                            ? "bg-[#E5E7EB] font-semibold text-[#111827]"
-                            : "text-[#4B5563] hover:bg-[#E5E7EB]/40 hover:text-[#111827]"
+                            ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
+                            : "text-[#4B5563] dark:text-neutral-400 hover:bg-[#E5E7EB]/40 dark:hover:bg-[#1E293B]/40 hover:text-[#111827] dark:hover:text-white"
                         }`}
                       >
-                        <BookOpen className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                        <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
                         <span className="truncate">Target Journals</span>
                       </button>
                     </div>
@@ -772,8 +809,8 @@ export function DesktopSidebar({
       </div>
 
       {/* FOOTER: App Version (left) + Model Pill & Settings (right) */}
-      <div className="p-3 border-t border-[#E5E7EB] bg-white flex items-center justify-between">
-        <span className="font-semibold text-neutral-400 text-[11px] pl-1 select-none">
+      <div className="p-3 border-t border-[#E5E7EB] dark:border-[#1E293B] bg-white dark:bg-[#0F141F] flex items-center justify-between">
+        <span className="font-semibold text-neutral-400 dark:text-neutral-500 text-[11px] pl-1 select-none">
           v0.1.0
         </span>
         <button
@@ -788,10 +825,10 @@ export function DesktopSidebar({
           }
           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition shadow-2xs cursor-pointer text-xs font-medium ${
             connectionStatus === "connected"
-              ? "border-[#86efac] bg-[#f0fdf4] text-[#065f46] hover:bg-[#dcfce7] hover:border-[#4ade80]"
+              ? "border-[#86efac] dark:border-[#065f46] bg-[#f0fdf4] dark:bg-[#064e3b]/30 text-[#065f46] dark:text-[#34d399] hover:bg-[#dcfce7] dark:hover:bg-[#064e3b]/50 hover:border-[#4ade80]"
               : connectionStatus === "connecting"
-              ? "border-[#fde68a] bg-[#fffbeb] text-[#92400e] hover:bg-[#fef3c7] hover:border-[#fcd34d]"
-              : "border-[#fecaca] bg-[#fef2f2] text-[#991b1b] hover:bg-[#fee2e2] hover:border-[#fca5a5]"
+              ? "border-[#fde68a] dark:border-[#78350f] bg-[#fffbeb] dark:bg-[#78350f]/30 text-[#92400e] dark:text-[#fbbf24] hover:bg-[#fef3c7] hover:border-[#fcd34d]"
+              : "border-[#fecaca] dark:border-[#7f1d1d] bg-[#fef2f2] dark:bg-[#7f1d1d]/30 text-[#991b1b] dark:text-[#f87171] hover:bg-[#fee2e2] hover:border-[#fca5a5]"
           }`}
         >
           <span
@@ -809,13 +846,14 @@ export function DesktopSidebar({
           <Settings
             className={`w-3.5 h-3.5 shrink-0 ${
               connectionStatus === "connected"
-                ? "text-[#047857]"
+                ? "text-[#047857] dark:text-[#34d399]"
                 : connectionStatus === "connecting"
-                ? "text-[#b45309]"
-                : "text-[#dc2626]"
+                ? "text-[#b45309] dark:text-[#fbbf24]"
+                : "text-[#dc2626] dark:text-[#f87171]"
             }`}
           />
         </button>
+      </div>
       </div>
     </aside>
   );

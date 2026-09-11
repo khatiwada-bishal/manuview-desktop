@@ -113,26 +113,26 @@ Return a JSON object with:
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-white p-6 sm:p-10 text-[#111827]">
+    <div className="flex-1 overflow-y-auto bg-white dark:bg-[#080B11] p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC]">
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Header */}
         <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800">
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>Claim-to-Evidence Alignment</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0F172A]">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0F172A] dark:text-white">
             Citation Claim &amp; Overclaim Validator
           </h1>
-          <p className="text-xs sm:text-sm text-neutral-500 max-w-2xl">
+          <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 max-w-2xl">
             Audit whether a stated sentence or factual claim in your manuscript is authentically substantiated by the cited publication, preventing causal overclaims during peer review.
           </p>
         </div>
 
         {/* Input Form */}
-        <form onSubmit={handleValidate} className="p-6 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] space-y-4 shadow-xs">
+        <form onSubmit={handleValidate} className="p-6 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937] space-y-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+            <span className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
               Claim &amp; Citation Input
             </span>
             <button
@@ -146,29 +146,29 @@ Return a JSON object with:
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-neutral-700">Manuscript Assertion / Claim Sentence</label>
+            <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Manuscript Assertion / Claim Sentence</label>
             <textarea
               rows={3}
               value={sentence}
               onChange={(e) => setSentence(e.target.value)}
               placeholder="e.g. Prior studies have established that POU2F1 proves DLL3 expression without rescue..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 resize-none"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white dark:placeholder-neutral-500 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 resize-none"
             />
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-neutral-700">Cited Paper DOI</label>
+            <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Cited Paper DOI</label>
             <input
               type="text"
               value={doi}
               onChange={(e) => setDoi(e.target.value)}
               placeholder="e.g. 10.1126/scitranslmed.aac9459"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-mono"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white dark:placeholder-neutral-500 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-mono"
             />
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs">
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-rose-950/30 text-red-700 dark:text-rose-300 border border-red-200 dark:border-rose-800 text-xs">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -197,51 +197,51 @@ Return a JSON object with:
 
         {/* Validation Results */}
         {result && (
-          <div className="space-y-4 p-6 rounded-2xl border border-[#E5E7EB] bg-[#FAFAFA] shadow-xs animate-in fade-in duration-300">
+          <div className="space-y-4 p-6 rounded-2xl border border-[#E5E7EB] dark:border-[#1F2937] bg-[#FAFAFA] dark:bg-[#111827] shadow-xs animate-in fade-in duration-300">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+              <span className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                 Audit Verdict
               </span>
               {result.verdict === "supported" ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   SUBSTANTIATED BY EVIDENCE
                 </span>
               ) : result.verdict === "partially_supported" ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800">
                   <AlertTriangle className="w-3.5 h-3.5" />
                   PARTIAL SUPPORT (OVERCLAIM RISK)
                 </span>
               ) : result.verdict === "not_supported" ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-300">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-300 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800">
                   <AlertCircle className="w-3.5 h-3.5" />
                   UNSUBSTANTIATED / MISATTRIBUTED
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-neutral-100 text-neutral-800 border border-neutral-300">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-neutral-100 text-neutral-800 border border-neutral-300 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700">
                   UNABLE TO VERIFY
                 </span>
               )}
             </div>
 
             <div>
-              <div className="text-xs text-neutral-500 font-medium">Cited Target Publication:</div>
-              <div className="text-sm font-bold text-neutral-900 mt-0.5">{result.paperTitle}</div>
+              <div className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">Cited Target Publication:</div>
+              <div className="text-sm font-bold text-neutral-900 dark:text-white mt-0.5">{result.paperTitle}</div>
             </div>
 
-            <div className="p-4 rounded-xl bg-white border border-[#E5E7EB] space-y-2">
-              <div className="text-xs font-bold text-neutral-700">Scientific Rationale:</div>
-              <p className="text-xs text-neutral-600 leading-relaxed">{result.explanation}</p>
+            <div className="p-4 rounded-xl bg-white border border-[#E5E7EB] dark:bg-[#161F30] dark:border-[#334155] space-y-2">
+              <div className="text-xs font-bold text-neutral-700 dark:text-neutral-300">Scientific Rationale:</div>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">{result.explanation}</p>
             </div>
 
             {result.suggestedRewrite && (
-              <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 space-y-2">
-                <div className="flex items-center gap-1 text-xs font-bold text-emerald-900">
+              <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800/50 space-y-2">
+                <div className="flex items-center gap-1 text-xs font-bold text-emerald-900 dark:text-emerald-300">
                   <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
                   <span>Calibrated Academic Rephrasing:</span>
                 </div>
-                <p className="text-xs text-emerald-950 font-medium leading-relaxed italic">
-                  "{result.suggestedRewrite}"
+                <p className="text-xs text-emerald-950 dark:text-emerald-200 font-medium leading-relaxed italic">
+                  &ldquo;{result.suggestedRewrite}&rdquo;
                 </p>
               </div>
             )}

@@ -1,6 +1,5 @@
 import JSZip from "jszip";
 import * as mammoth from "mammoth";
-import { extractText as extractPdfText } from "unpdf";
 import { ParsedManuscript, DocumentClassification, DocumentCategory } from "./types";
 import { extractReferencesFromText } from "./utils";
 
@@ -75,9 +74,10 @@ async function extractDocxText(buffer: ArrayBuffer): Promise<string> {
  * Robust PDF text extraction using unpdf and stream fallbacks.
  */
 async function extractPdfTextFromBuffer(buffer: ArrayBuffer): Promise<string> {
-  // 1. Try unpdf
+  // 1. Try unpdf via dynamic import (code-splits 1.6MB pdfjs into on-demand chunk)
   try {
-    const { text } = await extractPdfText(new Uint8Array(buffer));
+    const { extractText } = await import("unpdf");
+    const { text } = await extractText(new Uint8Array(buffer));
     const fullText = Array.isArray(text) ? text.join("\n\n") : text;
     if (fullText && fullText.trim().length > 20) {
       return fullText.trim();

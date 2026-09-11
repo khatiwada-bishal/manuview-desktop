@@ -11,10 +11,13 @@ import {
   FileText,
   Sparkles,
   Info,
+  Bookmark,
+  Download,
 } from "lucide-react";
 import { ReferenceVerification } from "@/lib/types";
 import { batchVerifyReferences } from "@/lib/crossref";
 import { extractReferencesFromText } from "@/lib/utils";
+import { exportBibTeX } from "@/lib/export-generator";
 
 const SAMPLE_BIBLIOGRAPHY = `1. Saunders D, et al. A DLL3-targeted antibody-drug conjugate for small cell lung cancer. Sci Transl Med. 2015. DOI: 10.1126/scitranslmed.aac9459
 2. Wakefield AJ, et al. Ileal-lymphoid-nodular hyperplasia and pervasive developmental disorder in children. Lancet. 1998. DOI: 10.1016/S0140-6736(97)11096-0
@@ -70,26 +73,26 @@ export function DesktopReferenceView() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-white p-6 sm:p-10 text-[#111827]">
+    <div className="flex-1 overflow-y-auto bg-white dark:bg-[#080B11] p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC]">
       <div className="max-w-5xl mx-auto space-y-8">
         {/* Header */}
         <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-950/40 dark:text-teal-400 dark:border-teal-800">
             <CheckCircle2 className="w-3.5 h-3.5" />
             <span>Crossref Open API &amp; Retraction Watch</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0F172A]">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0F172A] dark:text-white">
             Reference Integrity &amp; Retraction Hazard Audit
           </h1>
-          <p className="text-xs sm:text-sm text-neutral-500 max-w-2xl">
+          <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 max-w-2xl">
             Audit manuscript bibliographies against live scholarly registers. Identify unresolvable citations, phantom DOIs, and retracted studies before peer review.
           </p>
         </div>
 
         {/* Input Form */}
-        <form onSubmit={handleAudit} className="p-6 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] space-y-4 shadow-xs">
+        <form onSubmit={handleAudit} className="p-6 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937] space-y-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+            <span className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
               Manuscript Bibliography / Citations
             </span>
             <button
@@ -107,11 +110,11 @@ export function DesktopReferenceView() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Paste your manuscript reference list, bibliography, or DOIs..."
-            className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 font-mono resize-none"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E7EB] bg-white dark:bg-[#1E293B] dark:border-[#334155] dark:text-white dark:placeholder-neutral-500 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 font-mono resize-none"
           />
 
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs">
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-rose-950/30 text-red-700 dark:text-rose-300 border border-red-200 dark:border-rose-800 text-xs">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -143,13 +146,13 @@ export function DesktopReferenceView() {
           <div className="space-y-6 animate-in fade-in duration-300">
             {/* Retraction Alert Banner */}
             {results.retractedCount > 0 && (
-              <div className="p-4 rounded-2xl bg-red-50 border-2 border-red-300 flex items-start gap-3 text-red-900 shadow-xs">
-                <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+              <div className="p-4 rounded-2xl bg-red-50 dark:bg-rose-950/30 border-2 border-red-300 dark:border-rose-800 flex items-start gap-3 text-red-900 dark:text-rose-200 shadow-xs">
+                <AlertTriangle className="w-5 h-5 text-red-600 dark:text-rose-400 shrink-0 mt-0.5" />
                 <div>
                   <h3 className="font-bold text-sm">
                     {results.retractedCount} Retracted Publication(s) Detected!
                   </h3>
-                  <p className="text-xs text-red-700 mt-1">
+                  <p className="text-xs text-red-700 dark:text-rose-300 mt-1">
                     Citing retracted studies is one of the most critical desk-rejection triggers in scholarly publishing. Immediately replace or remove these citations.
                   </p>
                 </div>
@@ -158,34 +161,49 @@ export function DesktopReferenceView() {
 
             {/* Metrics */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="p-4 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB]">
-                <div className="text-[11px] font-semibold text-neutral-500 uppercase">Total Audited</div>
-                <div className="text-2xl font-bold text-neutral-900 mt-1">{results.total}</div>
+              <div className="p-4 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937]">
+                <div className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Total Audited</div>
+                <div className="text-2xl font-bold text-neutral-900 dark:text-white mt-1">{results.total}</div>
               </div>
-              <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200">
-                <div className="text-[11px] font-semibold text-emerald-700 uppercase">Verified Valid</div>
-                <div className="text-2xl font-bold text-emerald-800 mt-1">
+              <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800">
+                <div className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase">Verified Valid</div>
+                <div className="text-2xl font-bold text-emerald-800 dark:text-emerald-300 mt-1">
                   {results.total - results.unresolvableCount - results.retractedCount}
                 </div>
               </div>
-              <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200">
-                <div className="text-[11px] font-semibold text-amber-700 uppercase">Unresolvable</div>
-                <div className="text-2xl font-bold text-amber-800 mt-1">{results.unresolvableCount}</div>
+              <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800">
+                <div className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 uppercase">Unresolvable</div>
+                <div className="text-2xl font-bold text-amber-800 dark:text-amber-300 mt-1">{results.unresolvableCount}</div>
               </div>
-              <div className="p-4 rounded-2xl bg-red-50/60 border border-red-200">
-                <div className="text-[11px] font-semibold text-red-700 uppercase">Retracted</div>
-                <div className="text-2xl font-bold text-red-800 mt-1">{results.retractedCount}</div>
+              <div className="p-4 rounded-2xl bg-red-50/60 border border-red-200 dark:bg-rose-950/30 dark:border-rose-800">
+                <div className="text-[11px] font-semibold text-red-700 dark:text-rose-400 uppercase">Retracted</div>
+                <div className="text-2xl font-bold text-red-800 dark:text-rose-300 mt-1">{results.retractedCount}</div>
               </div>
             </div>
 
             {/* Citations Table */}
             <div className="space-y-3 pt-2">
-              <h3 className="text-sm font-bold text-neutral-700 uppercase tracking-wider">
-                Audited Reference Registry
-              </h3>
-              <div className="border border-[#E5E7EB] rounded-2xl overflow-hidden shadow-xs">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider">
+                  Audited Reference Registry
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    exportBibTeX({
+                      title: "Audited_Bibliography",
+                      citationIntegrity: { references: results.verified }
+                    } as any);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-[#161F30] text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition shadow-2xs cursor-pointer"
+                >
+                  <Bookmark className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  <span>Export BibTeX (.bib)</span>
+                </button>
+              </div>
+              <div className="border border-[#E5E7EB] dark:border-[#1F2937] rounded-2xl overflow-hidden shadow-xs">
                 <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-[#F9FAFB] border-b border-[#E5E7EB] text-neutral-500 font-semibold uppercase tracking-wider text-[10px]">
+                  <thead className="bg-[#F9FAFB] dark:bg-[#161F30] border-b border-[#E5E7EB] dark:border-[#1F2937] text-neutral-500 dark:text-neutral-400 font-semibold uppercase tracking-wider text-[10px]">
                     <tr>
                       <th className="px-4 py-3">Status</th>
                       <th className="px-4 py-3">Reference / Article Title</th>
@@ -193,49 +211,49 @@ export function DesktopReferenceView() {
                       <th className="px-4 py-3 text-right">Identifier</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#E5E7EB]">
+                  <tbody className="divide-y divide-[#E5E7EB] dark:divide-[#1F2937]">
                     {results.verified.map((ref, idx) => (
                       <tr
                         key={idx}
                         className={
                           ref.isRetracted
-                            ? "bg-red-50/60"
+                            ? "bg-red-50/60 dark:bg-rose-950/20"
                             : ref.status === "unresolvable"
-                            ? "bg-amber-50/40"
-                            : "hover:bg-neutral-50/70"
+                            ? "bg-amber-50/40 dark:bg-amber-950/10"
+                            : "hover:bg-neutral-50/70 dark:hover:bg-[#161F30]"
                         }
                       >
                         <td className="px-4 py-3 whitespace-nowrap">
                           {ref.isRetracted ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 border border-red-300">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 border border-red-300 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800">
                               <AlertTriangle className="w-2.5 h-2.5" />
                               RETRACTED
                             </span>
                           ) : ref.status === "valid" ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800">
                               <CheckCircle2 className="w-2.5 h-2.5" />
                               VERIFIED
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800">
                               <Info className="w-2.5 h-2.5" />
                               UNRESOLVABLE
                             </span>
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="font-medium text-neutral-900 line-clamp-2">
+                          <div className="font-medium text-neutral-900 dark:text-white line-clamp-2">
                             {ref.title || ref.raw}
                           </div>
                           {ref.authors && ref.authors.length > 0 && (
-                            <div className="text-[11px] text-neutral-500 mt-0.5">
+                            <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
                               {ref.authors.join(", ")}
                             </div>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-neutral-600 whitespace-nowrap">
-                          {ref.journal && <div className="font-medium text-neutral-800">{ref.journal}</div>}
-                          {ref.year && <div className="text-[11px] text-neutral-400">{ref.year}</div>}
+                        <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400 whitespace-nowrap">
+                          {ref.journal && <div className="font-medium text-neutral-800 dark:text-neutral-200">{ref.journal}</div>}
+                          {ref.year && <div className="text-[11px] text-neutral-400 dark:text-neutral-500">{ref.year}</div>}
                         </td>
                         <td className="px-4 py-3 text-right whitespace-nowrap">
                           {ref.doi ? (
@@ -243,13 +261,13 @@ export function DesktopReferenceView() {
                               href={`https://doi.org/${ref.doi}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-mono text-[11px]"
+                              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-mono text-[11px]"
                             >
                               <span>{ref.doi}</span>
                               <ExternalLink className="w-3 h-3" />
                             </a>
                           ) : (
-                            <span className="text-neutral-400 font-mono text-[11px]">No DOI</span>
+                            <span className="text-neutral-400 dark:text-neutral-500 font-mono text-[11px]">No DOI</span>
                           )}
                         </td>
                       </tr>

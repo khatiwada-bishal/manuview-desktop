@@ -30,6 +30,9 @@ import {
   ShieldAlert,
   Scale,
   Upload,
+  Download,
+  ChevronDown,
+  Bookmark,
 } from "lucide-react";
 import { DesktopActiveView } from "./DesktopSidebar";
 import {
@@ -41,6 +44,8 @@ import {
 import {
   exportInteractiveHtmlReport,
   exportWordDocReport,
+  exportLatexRebuttalTable,
+  exportBibTeX,
 } from "@/lib/export-generator";
 
 export interface DesktopDashboardData {
@@ -139,29 +144,41 @@ export function DesktopDashboard({
     }
   };
 
+  const handleExportLatex = () => {
+    if (fullReport) {
+      exportLatexRebuttalTable(fullReport);
+    }
+  };
+
+  const handleExportBibTeX = () => {
+    if (fullReport) {
+      exportBibTeX(fullReport);
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#F8FAFC] p-6 sm:p-10 text-[#1E293B]">
+    <div className="flex-1 overflow-y-auto bg-[#F8FAFC] dark:bg-[#080B11] p-6 sm:p-10 text-[#1E293B] dark:text-[#E2E8F0]">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* ========================================================= */}
         {/* SUB-VIEW TOP NAVIGATION (Only visible when in a sub-view) */}
         {/* ========================================================= */}
         {activeView !== "overview" && (
-          <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
+          <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0] dark:border-[#1F2937]">
             <div className="flex items-center gap-2.5">
               <button
                 type="button"
                 onClick={() => onSelectView("overview")}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-[#2563EB] border border-blue-200 hover:bg-blue-50 transition shadow-2xs cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-[#111827] text-[#2563EB] dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition shadow-2xs cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Back to Overview</span>
               </button>
-              <span className="text-neutral-300">/</span>
-              <span className="text-xs font-bold text-[#0F172A]">
+              <span className="text-neutral-300 dark:text-neutral-600">/</span>
+              <span className="text-xs font-bold text-[#0F172A] dark:text-white">
                 {activeView === "personas" && `${personas.length || 5} Expert Reviewer Panel`}
                 {activeView === "dimensions" && "6 Scoring Dimensions"}
                 {activeView === "issues" && `Priority Action Items (${issues.length})`}
@@ -172,16 +189,16 @@ export function DesktopDashboard({
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs text-neutral-400 font-medium truncate max-w-md hidden md:inline">
+              <span className="text-xs text-neutral-400 dark:text-neutral-500 font-medium truncate max-w-md hidden md:inline">
                 {title}
               </span>
               <button
                 type="button"
                 onClick={handlePrint}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-neutral-700 border border-neutral-300 hover:bg-neutral-50 transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-[#111827] text-neutral-700 dark:text-neutral-300 border border-neutral-300 dark:border-[#334155] hover:bg-neutral-50 dark:hover:bg-[#1E293B] transition cursor-pointer"
                 title="Print or Save as PDF"
               >
-                <Printer className="w-3.5 h-3.5 text-neutral-600" />
+                <Printer className="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400" />
                 <span>Print / PDF</span>
               </button>
             </div>
@@ -194,26 +211,82 @@ export function DesktopDashboard({
         {activeView === "overview" && (
           <div className="space-y-6 animate-fade-in">
             {/* CARD 1: ManuView Diagnostic Suite Header Card */}
-            <div className="rounded-2xl bg-white border border-[#E2E8F0] p-6 sm:p-8 shadow-xs space-y-6">
+            <div className="rounded-2xl bg-white dark:bg-[#111827] border border-[#E2E8F0] dark:border-[#1F2937] p-6 sm:p-8 shadow-xs space-y-6">
               {/* Brand line & Target badge */}
-              <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]/80">
+              <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]/80 dark:border-[#1F2937]">
                 <div className="flex items-center">
-                  <span className="font-bold text-base tracking-tight text-[#0F172A]">
-                    Manu<span className="text-[#2563EB]">View</span> Diagnostic Suite
+                  <span className="font-bold text-base tracking-tight text-[#0F172A] dark:text-white">
+                    Manu<span className="text-[#2563EB] dark:text-blue-400">View</span> Diagnostic Suite
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center px-4 py-1.5 rounded-full bg-[#EFF6FF] border border-[#BFDBFE]/70 text-xs font-semibold text-[#2563EB]">
+                  <span className="inline-flex items-center px-4 py-1.5 rounded-full bg-[#EFF6FF] dark:bg-blue-950/50 border border-[#BFDBFE]/70 dark:border-blue-800/70 text-xs font-semibold text-[#2563EB] dark:text-blue-400">
                     Target: {targetJournal}
                   </span>
+
+                  {/* Export Options Dropdown */}
+                  <div className="relative group">
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-[#161F30] text-neutral-700 dark:text-neutral-200 border border-[#E5E7EB] dark:border-[#334155] hover:bg-neutral-50 dark:hover:bg-[#1E293B] transition shadow-2xs cursor-pointer"
+                      title="Export diagnostic report in multiple academic formats"
+                    >
+                      <Download className="w-3.5 h-3.5 text-[#2563EB] dark:text-blue-400" />
+                      <span>Export</span>
+                      <ChevronDown className="w-3 h-3 text-neutral-400" />
+                    </button>
+                    <div className="absolute right-0 top-full mt-1 w-52 rounded-xl bg-white dark:bg-[#161F30] border border-[#E5E7EB] dark:border-[#334155] shadow-lg py-1.5 z-30 hidden group-hover:block transition-all animate-fade-in">
+                      <button
+                        type="button"
+                        onClick={handleExportWord}
+                        className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2.5 cursor-pointer"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-blue-500" />
+                        <span>Word Document (.doc)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleExportHTML}
+                        className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2.5 cursor-pointer"
+                      >
+                        <Globe className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>Interactive HTML (.html)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleExportLatex}
+                        className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2.5 cursor-pointer"
+                      >
+                        <FileCode className="w-3.5 h-3.5 text-purple-500" />
+                        <span>LaTeX Rebuttal (.tex)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleExportBibTeX}
+                        className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2.5 cursor-pointer"
+                      >
+                        <Bookmark className="w-3.5 h-3.5 text-amber-500" />
+                        <span>BibTeX Citations (.bib)</span>
+                      </button>
+                      <div className="my-1 border-t border-neutral-100 dark:border-neutral-800" />
+                      <button
+                        type="button"
+                        onClick={handlePrint}
+                        className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2.5 cursor-pointer"
+                      >
+                        <Printer className="w-3.5 h-3.5 text-neutral-500" />
+                        <span>Print / Save as PDF</span>
+                      </button>
+                    </div>
+                  </div>
 
                   {onDeleteArticle && (
                     <button
                       type="button"
                       onClick={onDeleteArticle}
                       title="Delete manuscript project"
-                      className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-600 hover:bg-rose-50 border border-neutral-200/60 hover:border-rose-200 transition cursor-pointer"
+                      className="p-1.5 rounded-lg text-neutral-400 dark:text-neutral-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-neutral-200/60 dark:border-[#334155] hover:border-rose-200 transition cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -223,39 +296,39 @@ export function DesktopDashboard({
 
               {/* Manuscript Title */}
               <div>
-                <h1 className="text-xl sm:text-2xl font-serif font-bold text-[#0F172A] leading-snug">
+                <h1 className="text-xl sm:text-2xl font-serif font-bold text-[#0F172A] dark:text-white leading-snug">
                   {title}
                 </h1>
-                <p className="text-xs text-[#64748B] mt-2 font-medium">
+                <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-2 font-medium">
                   Generated on September 10, 2026 • Peer-Review Calibrated Pre-Submission Diagnostic
                 </p>
               </div>
 
               {/* Acceptance Potential Banner OR Ineligibility Banner */}
               {isAlreadyPublished ? (
-                <div className="p-5 rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200 shadow-2xs space-y-3.5">
+                <div className="p-5 rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 dark:from-emerald-950/30 dark:via-teal-950/30 dark:to-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 shadow-2xs space-y-3.5">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
                         <CheckCircle2 className="w-4 h-4" />
                       </div>
                       <div>
-                        <span className="text-sm font-bold text-emerald-950 block">
+                        <span className="text-sm font-bold text-emerald-950 dark:text-emerald-200 block">
                           Already Published Article Detected
                         </span>
-                        <span className="text-[11px] text-emerald-800">
+                        <span className="text-[11px] text-emerald-800 dark:text-emerald-400">
                           Established Record in Scholarly Literature • Pre-Submission Peer-Review Simulation Bypassed
                         </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
                         Published Article
                       </span>
                       <button
                         type="button"
                         onClick={handlePrint}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-emerald-900 border border-emerald-300 hover:bg-emerald-100/50 transition cursor-pointer shadow-2xs"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-[#111827] text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/40 transition cursor-pointer shadow-2xs"
                       >
                         <Printer className="w-3.5 h-3.5" />
                         <span>Print / PDF</span>
@@ -264,39 +337,39 @@ export function DesktopDashboard({
                   </div>
 
                   {/* Published Metadata Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-2 border-t border-emerald-200/70 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-2 border-t border-emerald-200/70 dark:border-emerald-800/60 text-xs">
                     {fullReport?.publishedDetails?.journalName && (
-                      <div className="p-2.5 rounded-lg bg-white/80 border border-emerald-200/60">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">Published Journal</span>
-                        <span className="font-semibold text-emerald-950 truncate block mt-0.5" title={fullReport.publishedDetails.journalName}>
+                      <div className="p-2.5 rounded-lg bg-white/80 dark:bg-[#161F30]/80 border border-emerald-200/60 dark:border-emerald-800/50">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">Published Journal</span>
+                        <span className="font-semibold text-emerald-950 dark:text-emerald-100 truncate block mt-0.5" title={fullReport.publishedDetails.journalName}>
                           {fullReport.publishedDetails.journalName}
                         </span>
                       </div>
                     )}
                     {fullReport?.publishedDetails?.publicationDate && (
-                      <div className="p-2.5 rounded-lg bg-white/80 border border-emerald-200/60">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">Publication Date</span>
-                        <span className="font-semibold text-emerald-950 block mt-0.5">
+                      <div className="p-2.5 rounded-lg bg-white/80 dark:bg-[#161F30]/80 border border-emerald-200/60 dark:border-emerald-800/50">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">Publication Date</span>
+                        <span className="font-semibold text-emerald-950 dark:text-emerald-100 block mt-0.5">
                           {fullReport.publishedDetails.publicationDate}
                         </span>
                       </div>
                     )}
                     {fullReport?.publishedDetails?.publisher && (
-                      <div className="p-2.5 rounded-lg bg-white/80 border border-emerald-200/60">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">Publisher</span>
-                        <span className="font-semibold text-emerald-950 truncate block mt-0.5" title={fullReport.publishedDetails.publisher}>
+                      <div className="p-2.5 rounded-lg bg-white/80 dark:bg-[#161F30]/80 border border-emerald-200/60 dark:border-emerald-800/50">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">Publisher</span>
+                        <span className="font-semibold text-emerald-950 dark:text-emerald-100 truncate block mt-0.5" title={fullReport.publishedDetails.publisher}>
                           {fullReport.publishedDetails.publisher}
                         </span>
                       </div>
                     )}
                     {fullReport?.publishedDetails?.doi && (
-                      <div className="p-2.5 rounded-lg bg-white/80 border border-emerald-200/60">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">Official Article DOI</span>
+                      <div className="p-2.5 rounded-lg bg-white/80 dark:bg-[#161F30]/80 border border-emerald-200/60 dark:border-emerald-800/50">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">Official Article DOI</span>
                         <a
                           href={`https://doi.org/${fullReport.publishedDetails.doi}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="font-mono text-emerald-700 hover:text-emerald-900 hover:underline inline-flex items-center gap-1 truncate block mt-0.5"
+                          className="font-mono text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-300 hover:underline inline-flex items-center gap-1 truncate block mt-0.5"
                         >
                           <span className="truncate">{fullReport.publishedDetails.doi}</span>
                           <ExternalLink className="w-3 h-3 shrink-0" />
@@ -305,7 +378,7 @@ export function DesktopDashboard({
                     )}
                   </div>
 
-                  <div className="text-[11px] text-emerald-800/90 pt-1 flex items-center justify-between flex-wrap gap-2">
+                  <div className="text-[11px] text-emerald-800/90 dark:text-emerald-400 pt-1 flex items-center justify-between flex-wrap gap-2">
                     <span>Verified via: {fullReport?.publishedDetails?.detectedVia || "Official Crossref Registry"}</span>
                     {fullReport?.publishedDetails?.citationCount !== undefined && (
                       <span>Scholarly Citation Count: <strong>{fullReport.publishedDetails.citationCount}</strong></span>
@@ -313,23 +386,23 @@ export function DesktopDashboard({
                   </div>
                 </div>
               ) : isNonAcademic ? (
-                <div className="p-5 rounded-xl bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border border-amber-200 shadow-2xs space-y-3">
+                <div className="p-5 rounded-xl bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 dark:from-amber-950/30 dark:via-orange-950/30 dark:to-amber-950/30 border border-amber-200 dark:border-amber-800/60 shadow-2xs space-y-3">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-lg bg-amber-600 text-white flex items-center justify-center shadow-xs">
                         <AlertTriangle className="w-4 h-4" />
                       </div>
                       <div>
-                        <span className="text-sm font-bold text-amber-950 block">
+                        <span className="text-sm font-bold text-amber-950 dark:text-amber-200 block">
                           Document Ineligible for Peer-Review Evaluation
                         </span>
-                        <span className="text-[11px] text-amber-800">
+                        <span className="text-[11px] text-amber-800 dark:text-amber-400">
                           Classified as {classification?.categoryLabel || "Non-Academic Document"} • Pre-Submission Simulation Bypassed
                         </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-900 border border-amber-300">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
                         Review Bypassed (N/A)
                       </span>
                       <button
@@ -343,24 +416,23 @@ export function DesktopDashboard({
                     </div>
                   </div>
 
-                  <p className="text-xs text-amber-900/90 leading-relaxed pt-2 border-t border-amber-200/70">
+                  <p className="text-xs text-amber-900/90 dark:text-amber-300/90 leading-relaxed pt-2 border-t border-amber-200/70 dark:border-amber-800/60">
                     {classification?.advisoryMessage ||
                       "This document does not contain empirical scientific research, IMRaD sections, or scholarly bibliography citations. Acceptance scoring and persona simulations have been safely skipped."}
                   </p>
-
                   {classification?.customGuidance && (
-                    <p className="text-xs text-amber-800 leading-relaxed pt-2 border-t border-amber-200/50">
+                    <p className="text-xs text-amber-800 dark:text-amber-400 leading-relaxed pt-2 border-t border-amber-200/50 dark:border-amber-800/50">
                       {classification.customGuidance}
                     </p>
                   )}
                 </div>
               ) : (
-                <div className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5 rounded-xl bg-[#F1F5F9]/80 border border-[#E2E8F0]">
+                <div className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5 rounded-xl bg-[#F1F5F9]/80 dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#1F2937]">
                   <div className="flex items-baseline">
-                    <span className="text-3xl sm:text-4xl font-black text-[#0F172A]">
+                    <span className="text-3xl sm:text-4xl font-black text-[#0F172A] dark:text-white">
                       {overallScore}
                     </span>
-                    <span className="text-xs sm:text-sm font-bold text-[#64748B] uppercase tracking-wider ml-2">
+                    <span className="text-xs sm:text-sm font-bold text-[#64748B] dark:text-neutral-400 uppercase tracking-wider ml-2">
                       / 100 OVERALL ACCEPTANCE POTENTIAL
                     </span>
                   </div>
@@ -369,7 +441,7 @@ export function DesktopDashboard({
                     <button
                       type="button"
                       onClick={handlePrint}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold bg-[#1E293B] hover:bg-[#0F172A] text-white transition shadow-xs cursor-pointer"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold bg-[#1E293B] dark:bg-blue-600 hover:bg-[#0F172A] dark:hover:bg-blue-500 text-white transition shadow-xs cursor-pointer"
                       title="Print or Save as PDF"
                     >
                       <Printer className="w-3.5 h-3.5 text-white" />
@@ -382,11 +454,11 @@ export function DesktopDashboard({
 
             {/* CARD 2: Editorial Synthesis & Triage Assessment Card (Omitted for non-academic documents) */}
             {!isNonAcademic && (
-              <div className="rounded-2xl bg-white border border-[#E2E8F0] p-6 sm:p-7 space-y-3 shadow-xs">
-                <h2 className="text-base font-bold text-[#0F172A]">
+              <div className="rounded-2xl bg-white dark:bg-[#111827] border border-[#E2E8F0] dark:border-[#1F2937] p-6 sm:p-7 space-y-3 shadow-xs">
+                <h2 className="text-base font-bold text-[#0F172A] dark:text-white">
                   Editorial Synthesis &amp; Triage Assessment
                 </h2>
-                <p className="text-xs sm:text-sm text-[#334155] leading-relaxed font-light whitespace-pre-line">
+                <p className="text-xs sm:text-sm text-[#334155] dark:text-neutral-300 leading-relaxed font-light whitespace-pre-line">
                   {summary || data.statusText}
                 </p>
               </div>
@@ -394,20 +466,20 @@ export function DesktopDashboard({
 
             {/* CARD 3: Document Classification Card (Only for review-eligible manuscripts; omitted for published articles and non-academic documents) */}
             {isReviewEligible && (
-              <div className="rounded-2xl bg-white border border-[#E2E8F0] border-l-4 border-l-[#2563EB] p-6 sm:p-7 space-y-3 shadow-xs">
-                <h2 className="text-base font-bold text-[#0F172A]">
+              <div className="rounded-2xl bg-white dark:bg-[#111827] border border-[#E2E8F0] dark:border-[#1F2937] border-l-4 border-l-[#2563EB] dark:border-l-blue-500 p-6 sm:p-7 space-y-3 shadow-xs">
+                <h2 className="text-base font-bold text-[#0F172A] dark:text-white">
                   Document Classification: {classification?.categoryLabel || "Academic Research Manuscript"}
                 </h2>
 
-                <p className="text-xs sm:text-sm text-[#334155] leading-relaxed">
-                  <strong className="font-bold text-[#0F172A]">
+                <p className="text-xs sm:text-sm text-[#334155] dark:text-neutral-300 leading-relaxed">
+                  <strong className="font-bold text-[#0F172A] dark:text-white">
                     {classification?.salutation ? (classification.salutation.endsWith(":") ? classification.salutation : `${classification.salutation}:`) : "Dear Author / Contributing Researcher:"}
                   </strong>{" "}
                   {classification?.advisoryMessage ||
                     "This manuscript has undergone rigorous pre-submission peer-review calibration across core methodological, empirical, and bibliographic dimensions against the target journal's editorial standards."}
                 </p>
 
-                <p className="text-xs sm:text-sm text-[#64748B] leading-relaxed">
+                <p className="text-xs sm:text-sm text-[#64748B] dark:text-neutral-400 leading-relaxed">
                   {classification?.customGuidance ||
                     "Review prioritized action items and simulated referee assessments before submitting to your target journal."}
                 </p>
@@ -416,50 +488,50 @@ export function DesktopDashboard({
 
             {/* CARD 4: Reporting Guideline Compliance Audit (Only for eligible manuscripts) */}
             {isReviewEligible && fullReport?.reportingGuideline && (
-              <div className="rounded-2xl bg-white border border-[#E2E8F0] p-6 sm:p-7 space-y-4 shadow-xs">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#E2E8F0]">
+              <div className="rounded-2xl bg-white dark:bg-[#111827] border border-[#E2E8F0] dark:border-[#1F2937] p-6 sm:p-7 space-y-4 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#E2E8F0] dark:border-[#1F2937]">
                   <div>
                     <div className="flex items-center gap-2">
-                      <Scale className="w-4 h-4 text-[#2563EB]" />
-                      <h2 className="text-base font-bold text-[#0F172A]">
+                      <Scale className="w-4 h-4 text-[#2563EB] dark:text-blue-400" />
+                      <h2 className="text-base font-bold text-[#0F172A] dark:text-white">
                         Reporting Guideline Compliance: {fullReport.reportingGuideline.guidelineName}
                       </h2>
                     </div>
-                    <p className="text-xs text-[#64748B] mt-0.5">
+                    <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
                       Standard: {fullReport.reportingGuideline.standardType}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-[#64748B]">Audit Score:</span>
-                    <span className="text-base font-extrabold text-[#2563EB] bg-[#EFF6FF] px-2.5 py-0.5 rounded-full border border-blue-200">
+                    <span className="text-xs font-semibold text-[#64748B] dark:text-neutral-400">Audit Score:</span>
+                    <span className="text-base font-extrabold text-[#2563EB] dark:text-blue-400 bg-[#EFF6FF] dark:bg-blue-950/50 px-2.5 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
                       {fullReport.reportingGuideline.scorePercent}%
                     </span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0] space-y-2">
-                    <span className="text-xs font-bold text-[#166534] uppercase tracking-wider block">
+                  <div className="p-4 rounded-xl bg-[#F0FDF4] dark:bg-emerald-950/30 border border-[#BBF7D0] dark:border-emerald-800/60 space-y-2">
+                    <span className="text-xs font-bold text-[#166534] dark:text-emerald-300 uppercase tracking-wider block">
                       Compliant Checklist Items:
                     </span>
-                    <ul className="space-y-1.5 text-xs text-[#166534]">
+                    <ul className="space-y-1.5 text-xs text-[#166534] dark:text-emerald-300">
                       {fullReport.reportingGuideline.compliantItems.map((item, idx) => (
                         <li key={idx} className="flex items-start gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#16A34A]" />
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#16A34A] dark:text-emerald-400" />
                           <span>{item}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-[#FFFBEB] border border-[#FDE68A] space-y-2">
-                    <span className="text-xs font-bold text-[#92400E] uppercase tracking-wider block">
+                  <div className="p-4 rounded-xl bg-[#FFFBEB] dark:bg-amber-950/30 border border-[#FDE68A] dark:border-amber-800/60 space-y-2">
+                    <span className="text-xs font-bold text-[#92400E] dark:text-amber-300 uppercase tracking-wider block">
                       Missing or Partial Reporting Items:
                     </span>
-                    <ul className="space-y-1.5 text-xs text-[#92400E]">
+                    <ul className="space-y-1.5 text-xs text-[#92400E] dark:text-amber-300">
                       {fullReport.reportingGuideline.missingOrPartialItems.map((item, idx) => (
                         <li key={idx} className="flex items-start gap-1.5">
-                          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#D97706]" />
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#D97706] dark:text-amber-400" />
                           <span>{item}</span>
                         </li>
                       ))}
@@ -475,15 +547,15 @@ export function DesktopDashboard({
         {/* INELIGIBILITY NOTICE FOR PEER-REVIEW SUBVIEWS            */}
         {/* ========================================================= */}
         {activeView !== "overview" && activeView !== "citations" && !isReviewEligible && (
-          <div className="rounded-2xl bg-white border border-[#E2E8F0] p-8 sm:p-12 text-center space-y-4 shadow-xs animate-fade-in">
-            <div className="w-12 h-12 rounded-full bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto">
+          <div className="rounded-2xl bg-white dark:bg-[#111827] border border-[#E2E8F0] dark:border-[#1F2937] p-8 sm:p-12 text-center space-y-4 shadow-xs animate-fade-in">
+            <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
               <AlertCircle className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-[#0F172A]">
+              <h2 className="text-lg font-bold text-[#0F172A] dark:text-white">
                 {isAlreadyPublished ? "Already Published Article" : "Ineligible for Pre-Submission Simulation"}
               </h2>
-              <p className="text-xs sm:text-sm text-neutral-500 max-w-md mx-auto mt-1 leading-relaxed">
+              <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 max-w-md mx-auto mt-1 leading-relaxed">
                 {isAlreadyPublished
                   ? "This article has already been published in the peer-reviewed scientific literature. Simulated referee personas, scoring dimensions, and pre-submission action items are not applicable."
                   : "Simulated peer-reviewer personas, scoring dimensions, and target journal calibrations are only generated for empirical research manuscripts."}
@@ -493,7 +565,7 @@ export function DesktopDashboard({
               <button
                 type="button"
                 onClick={() => onSelectView("overview")}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-[#2563EB] text-white hover:bg-blue-700 transition shadow-xs cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-[#2563EB] dark:bg-blue-600 text-white hover:bg-blue-700 dark:hover:bg-blue-500 transition shadow-xs cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Return to Overview</span>
@@ -521,10 +593,10 @@ export function DesktopDashboard({
                       isActive
                         ? isDevilsAdvocate
                           ? "bg-[#7F1D1D] text-white border-[#7F1D1D] shadow-xs"
-                          : "bg-[#0F172A] text-white border-[#0F172A] shadow-xs"
+                          : "bg-[#0F172A] dark:bg-blue-600 text-white border-[#0F172A] dark:border-blue-600 shadow-xs"
                         : isDevilsAdvocate
-                        ? "bg-rose-50/60 text-rose-800 border-rose-200 hover:bg-rose-100/70"
-                        : "bg-white text-[#334155] border-[#CBD5E1] hover:bg-[#F1F5F9]"
+                        ? "bg-rose-50/60 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800 hover:bg-rose-100/70 dark:hover:bg-rose-900/40"
+                        : "bg-white dark:bg-[#111827] text-[#334155] dark:text-neutral-300 border-[#CBD5E1] dark:border-[#334155] hover:bg-[#F1F5F9] dark:hover:bg-[#1E293B]"
                     }`}
                   >
                     <span>
@@ -538,7 +610,7 @@ export function DesktopDashboard({
                     <span>{p.name}</span>
                     {isDevilsAdvocate && (
                       <span className={`text-[9px] uppercase px-1.5 py-0.2 rounded font-extrabold ${
-                        isActive ? "bg-white/20 text-white" : "bg-rose-100 text-rose-700 border border-rose-200"
+                        isActive ? "bg-white/20 text-white" : "bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
                       }`}>
                         Stress-Test
                       </span>
@@ -547,7 +619,7 @@ export function DesktopDashboard({
                       className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
                         isActive
                           ? "bg-white/20 text-white"
-                          : "bg-neutral-100 text-neutral-600"
+                          : "bg-neutral-100 dark:bg-[#1E293B] text-neutral-600 dark:text-neutral-300"
                       }`}
                     >
                       {p.decisionRecommendation}
@@ -562,39 +634,39 @@ export function DesktopDashboard({
               const active = personas[selectedPersona];
               const isDevilsAdvocate = active.persona === "devils_advocate";
               return (
-                <div className={`rounded-2xl bg-white border p-6 sm:p-8 space-y-6 shadow-xs ${
-                  isDevilsAdvocate ? "border-rose-200 ring-1 ring-rose-200/50" : "border-[#E2E8F0]"
+                <div className={`rounded-2xl bg-white dark:bg-[#111827] border p-6 sm:p-8 space-y-6 shadow-xs ${
+                  isDevilsAdvocate ? "border-rose-200 dark:border-rose-800 ring-1 ring-rose-200/50 dark:ring-rose-900/50" : "border-[#E2E8F0] dark:border-[#1F2937]"
                 }`}>
                   {/* Persona Header */}
-                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 pb-5 border-b border-[#E2E8F0]">
+                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 pb-5 border-b border-[#E2E8F0] dark:border-[#1F2937]">
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2.5">
-                        <h3 className="text-lg sm:text-xl font-serif font-bold text-[#0F172A]">
+                        <h3 className="text-lg sm:text-xl font-serif font-bold text-[#0F172A] dark:text-white">
                           {active.name}
                         </h3>
                         <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
                           isDevilsAdvocate
-                            ? "bg-rose-50 text-rose-800 border-rose-200"
-                            : "bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]"
+                            ? "bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800"
+                            : "bg-[#FEF3C7] dark:bg-amber-950/40 text-[#92400E] dark:text-amber-300 border-[#FDE68A] dark:border-amber-800"
                         }`}>
                           Decision: {active.decisionRecommendation}
                         </span>
                         {isDevilsAdvocate && (
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-red-100 text-red-800 border border-red-200">
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-red-100 dark:bg-red-950/50 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800">
                             ⚡ Hostile Stress-Test / Adversarial Referee
                           </span>
                         )}
                       </div>
-                      <p className="text-xs font-medium text-[#475569]">{active.title}</p>
-                      <p className="text-xs text-[#64748B] flex items-center gap-1.5">
+                      <p className="text-xs font-medium text-[#475569] dark:text-neutral-300">{active.title}</p>
+                      <p className="text-xs text-[#64748B] dark:text-neutral-400 flex items-center gap-1.5">
                         <GraduationCap className="w-3.5 h-3.5" />
                         <span>{active.affiliation}</span>
                       </p>
                     </div>
 
                     {active.expertise && (
-                      <div className="p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-[#475569] md:max-w-xs">
-                        <span className="font-bold text-[#0F172A] block mb-0.5">Focus:</span>
+                      <div className="p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#1F2937] text-xs text-[#475569] dark:text-neutral-300 md:max-w-xs">
+                        <span className="font-bold text-[#0F172A] dark:text-white block mb-0.5">Focus:</span>
                         {active.expertise}
                       </div>
                     )}
@@ -603,15 +675,15 @@ export function DesktopDashboard({
                   {/* Evidence Anchors (Grounding) */}
                   {active.evidenceAnchors && active.evidenceAnchors.length > 0 && (
                     <div className="space-y-2">
-                      <div className="text-xs font-bold text-[#475569] uppercase tracking-wider flex items-center gap-1.5">
-                        <FileCode className="w-3.5 h-3.5 text-[#2563EB]" />
+                      <div className="text-xs font-bold text-[#475569] dark:text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <FileCode className="w-3.5 h-3.5 text-[#2563EB] dark:text-blue-400" />
                         <span>Manuscript Evidence Anchors (Grounding):</span>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {active.evidenceAnchors.map((anchor, aIdx) => (
                           <span
                             key={aIdx}
-                            className="font-mono text-[11px] px-2.5 py-1 rounded-lg bg-[#F8FAFC] border border-[#CBD5E1] text-[#1E293B]"
+                            className="font-mono text-[11px] px-2.5 py-1 rounded-lg bg-[#F8FAFC] dark:bg-[#161F30] border border-[#CBD5E1] dark:border-[#334155] text-[#1E293B] dark:text-neutral-200"
                           >
                             {anchor}
                           </span>
@@ -621,10 +693,10 @@ export function DesktopDashboard({
                   )}
 
                   {/* Fatal Reviewer Objection / Key Challenge */}
-                  <div className="p-4 rounded-xl bg-[#FEF2F2] border-l-4 border-[#EF4444] text-xs text-[#991B1B] flex items-start gap-2.5">
-                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-[#DC2626]" />
+                  <div className="p-4 rounded-xl bg-[#FEF2F2] dark:bg-rose-950/30 border-l-4 border-[#EF4444] dark:border-rose-600 text-xs text-[#991B1B] dark:text-rose-300 flex items-start gap-2.5">
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-[#DC2626] dark:text-rose-400" />
                     <div>
-                      <span className="font-bold block uppercase tracking-wide text-[10px] text-[#7F1D1D] mb-0.5">
+                      <span className="font-bold block uppercase tracking-wide text-[10px] text-[#7F1D1D] dark:text-rose-400 mb-0.5">
                         Key Challenge / Reviewer Objection:
                       </span>
                       {active.keyChallenge}
@@ -633,10 +705,10 @@ export function DesktopDashboard({
 
                   {/* Detailed Peer-Review Assessment */}
                   <div className="space-y-2">
-                    <div className="text-xs font-bold text-[#64748B] uppercase tracking-wider">
+                    <div className="text-xs font-bold text-[#64748B] dark:text-neutral-400 uppercase tracking-wider">
                       Detailed Peer-Review Assessment:
                     </div>
-                    <div className="text-xs sm:text-sm text-[#334155] leading-relaxed p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] font-light whitespace-pre-line">
+                    <div className="text-xs sm:text-sm text-[#334155] dark:text-neutral-300 leading-relaxed p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#1F2937] font-light whitespace-pre-line">
                       {active.assessment}
                     </div>
                   </div>
@@ -644,7 +716,7 @@ export function DesktopDashboard({
                   {/* Adversarial Defenses & Counter-Arguments (if present) */}
                   {active.counterArguments && active.counterArguments.length > 0 && (
                     <div className="space-y-2.5">
-                      <div className="text-xs font-bold text-[#7C3AED] uppercase tracking-wider flex items-center gap-1.5">
+                      <div className="text-xs font-bold text-[#7C3AED] dark:text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
                         <ShieldAlert className="w-3.5 h-3.5" />
                         <span>Adversarial Defenses &amp; Pre-emptive Arguments to Prepare:</span>
                       </div>
@@ -652,9 +724,9 @@ export function DesktopDashboard({
                         {active.counterArguments.map((arg, cIdx) => (
                           <div
                             key={cIdx}
-                            className="p-3 rounded-xl bg-[#F5F3FF] border border-[#DDD6FE] text-xs text-[#5B21B6] flex items-start gap-2.5 shadow-2xs"
+                            className="p-3 rounded-xl bg-[#F5F3FF] dark:bg-purple-950/30 border border-[#DDD6FE] dark:border-purple-800/50 text-xs text-[#5B21B6] dark:text-purple-300 flex items-start gap-2.5 shadow-2xs"
                           >
-                            <span className="font-mono text-[#7C3AED] font-bold text-xs mt-0.5">
+                            <span className="font-mono text-[#7C3AED] dark:text-purple-400 font-bold text-xs mt-0.5">
                               [{cIdx + 1}]
                             </span>
                             <span className="leading-relaxed">{arg}</span>
@@ -667,7 +739,7 @@ export function DesktopDashboard({
                   {/* Major Methodological Critiques */}
                   {active.majorCritiques && active.majorCritiques.length > 0 && (
                     <div className="space-y-2.5">
-                      <div className="text-xs font-bold text-[#DC2626] uppercase tracking-wider flex items-center gap-1.5">
+                      <div className="text-xs font-bold text-[#DC2626] dark:text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
                         <AlertCircle className="w-3.5 h-3.5" />
                         <span>Major Methodological Vulnerabilities:</span>
                       </div>
@@ -675,9 +747,9 @@ export function DesktopDashboard({
                         {active.majorCritiques.map((critique, idx) => (
                           <div
                             key={idx}
-                            className="p-3 rounded-xl bg-white border border-[#E2E8F0] text-xs text-[#334155] flex items-start gap-2.5 shadow-2xs"
+                            className="p-3 rounded-xl bg-white dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#1F2937] text-xs text-[#334155] dark:text-neutral-300 flex items-start gap-2.5 shadow-2xs"
                           >
-                            <span className="font-mono text-[#DC2626] font-bold text-xs mt-0.5">
+                            <span className="font-mono text-[#DC2626] dark:text-rose-400 font-bold text-xs mt-0.5">
                               [{idx + 1}]
                             </span>
                             <span className="leading-relaxed">{critique}</span>
@@ -690,7 +762,7 @@ export function DesktopDashboard({
                   {/* Missing Experimental Controls & Analyses */}
                   {active.missingControlsOrAnalyses && active.missingControlsOrAnalyses.length > 0 && (
                     <div className="space-y-2.5">
-                      <div className="text-xs font-bold text-[#D97706] uppercase tracking-wider flex items-center gap-1.5">
+                      <div className="text-xs font-bold text-[#D97706] dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
                         <FlaskConical className="w-3.5 h-3.5" />
                         <span>Supplementary Analyses &amp; Control Checks:</span>
                       </div>
@@ -698,9 +770,9 @@ export function DesktopDashboard({
                         {active.missingControlsOrAnalyses.map((item, idx) => (
                           <div
                             key={idx}
-                            className="p-3 rounded-xl bg-white border border-[#E2E8F0] text-xs text-[#334155] flex items-start gap-2 shadow-2xs"
+                            className="p-3 rounded-xl bg-white dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#1F2937] text-xs text-[#334155] dark:text-neutral-300 flex items-start gap-2 shadow-2xs"
                           >
-                            <span className="text-[#D97706] font-bold">&bull;</span>
+                            <span className="text-[#D97706] dark:text-amber-400 font-bold">&bull;</span>
                             <span className="leading-relaxed">{item}</span>
                           </div>
                         ))}
@@ -710,8 +782,8 @@ export function DesktopDashboard({
 
                   {/* Mandatory Revisions Checklist */}
                   {active.mustAddressItems && active.mustAddressItems.length > 0 && (
-                    <div className="space-y-2.5 pt-2 border-t border-[#E2E8F0]">
-                      <div className="text-xs font-bold text-[#16A34A] uppercase tracking-wider flex items-center gap-1.5">
+                    <div className="space-y-2.5 pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937]">
+                      <div className="text-xs font-bold text-[#16A34A] dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
                         <CheckSquare className="w-3.5 h-3.5" />
                         <span>Must-Address Prior to Submission:</span>
                       </div>
@@ -719,9 +791,9 @@ export function DesktopDashboard({
                         {active.mustAddressItems.map((item, idx) => (
                           <div
                             key={idx}
-                            className="p-3 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0] text-xs text-[#166534] flex items-start gap-2.5 shadow-2xs"
+                            className="p-3 rounded-xl bg-[#F0FDF4] dark:bg-emerald-950/30 border border-[#BBF7D0] dark:border-emerald-800/60 text-xs text-[#166534] dark:text-emerald-300 flex items-start gap-2.5 shadow-2xs"
                           >
-                            <CheckCircle2 className="w-4 h-4 text-[#16A34A] shrink-0 mt-0.5" />
+                            <CheckCircle2 className="w-4 h-4 text-[#16A34A] dark:text-emerald-400 shrink-0 mt-0.5" />
                             <span className="leading-relaxed font-medium">{item}</span>
                           </div>
                         ))}
@@ -740,38 +812,38 @@ export function DesktopDashboard({
         {activeView === "dimensions" && isReviewEligible && (
           <div className="space-y-5 animate-fade-in">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-[#2563EB]" />
+              <h2 className="text-base font-bold text-[#0F172A] dark:text-white flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-[#2563EB] dark:text-blue-400" />
                 <span>The 6 Evaluation Dimensions (1–5 Rubric)</span>
               </h2>
-              <span className="text-xs text-[#64748B]">Calibrated against top-tier standards</span>
+              <span className="text-xs text-[#64748B] dark:text-neutral-400">Calibrated against top-tier standards</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {(Object.entries(dimensions) as [string, DimensionScore][]).map(([key, dim]) => (
                 <div
                   key={key}
-                  className="rounded-2xl bg-white border border-[#E2E8F0] p-5 space-y-3.5 shadow-xs flex flex-col justify-between hover:border-[#CBD5E1] transition"
+                  className="rounded-2xl bg-white dark:bg-[#111827] border border-[#E2E8F0] dark:border-[#1F2937] p-5 space-y-3.5 shadow-xs flex flex-col justify-between hover:border-[#CBD5E1] dark:hover:border-neutral-600 transition"
                 >
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-[#0F172A]">{dim.label}</span>
-                      <span className="px-2.5 py-0.5 rounded-full font-mono text-xs font-extrabold bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE]">
+                      <span className="text-xs font-bold text-[#0F172A] dark:text-white">{dim.label}</span>
+                      <span className="px-2.5 py-0.5 rounded-full font-mono text-xs font-extrabold bg-[#EFF6FF] dark:bg-blue-950/50 text-[#1D4ED8] dark:text-blue-400 border border-[#BFDBFE] dark:border-blue-800">
                         {dim.score} / 5
                       </span>
                     </div>
-                    <p className="text-xs text-[#475569] leading-relaxed font-medium">
+                    <p className="text-xs text-[#475569] dark:text-neutral-300 leading-relaxed font-medium">
                       {dim.verdict}
                     </p>
                   </div>
 
-                  <div className="space-y-2 pt-2 border-t border-[#E2E8F0]">
+                  <div className="space-y-2 pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937]">
                     {dim.strengths && dim.strengths.length > 0 && (
                       <div>
-                        <span className="text-[10px] font-bold text-[#166534] uppercase tracking-wider block mb-1">
+                        <span className="text-[10px] font-bold text-[#166534] dark:text-emerald-400 uppercase tracking-wider block mb-1">
                           STRENGTHS:
                         </span>
-                        <ul className="space-y-1 text-xs text-[#334155] pl-3 list-disc">
+                        <ul className="space-y-1 text-xs text-[#334155] dark:text-neutral-300 pl-3 list-disc">
                           {dim.strengths.map((s, i) => (
                             <li key={i} className="leading-relaxed">
                               {s}
@@ -783,10 +855,10 @@ export function DesktopDashboard({
 
                     {dim.vulnerabilities && dim.vulnerabilities.length > 0 && (
                       <div>
-                        <span className="text-[10px] font-bold text-[#DC2626] uppercase tracking-wider block mb-1">
+                        <span className="text-[10px] font-bold text-[#DC2626] dark:text-rose-400 uppercase tracking-wider block mb-1">
                           VULNERABILITIES:
                         </span>
-                        <ul className="space-y-1 text-xs text-[#B91C1C] pl-3 list-disc">
+                        <ul className="space-y-1 text-xs text-[#B91C1C] dark:text-rose-300 pl-3 list-disc">
                           {dim.vulnerabilities.map((v, i) => (
                             <li key={i} className="leading-relaxed">
                               {v}
@@ -814,8 +886,8 @@ export function DesktopDashboard({
                 onClick={() => setIssueFilter("all")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
                   issueFilter === "all"
-                    ? "bg-[#0F172A] text-white border-[#0F172A]"
-                    : "bg-white text-[#475569] border-[#CBD5E1] hover:bg-[#F1F5F9]"
+                    ? "bg-[#0F172A] dark:bg-blue-600 text-white border-[#0F172A] dark:border-blue-600"
+                    : "bg-white dark:bg-[#111827] text-[#475569] dark:text-neutral-300 border-[#CBD5E1] dark:border-[#334155] hover:bg-[#F1F5F9] dark:hover:bg-[#1E293B]"
                 }`}
               >
                 All Issues ({issues.length})
@@ -827,7 +899,7 @@ export function DesktopDashboard({
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
                   issueFilter === "A"
                     ? "bg-[#DC2626] text-white border-[#DC2626]"
-                    : "bg-white text-[#DC2626] border-[#FECACA] hover:bg-[#FEF2F2]"
+                    : "bg-white dark:bg-[#111827] text-[#DC2626] dark:text-rose-400 border-[#FECACA] dark:border-rose-900 hover:bg-[#FEF2F2] dark:hover:bg-rose-950/40"
                 }`}
               >
                 🚨 Priority A (Desk-Reject Risk)
@@ -839,7 +911,7 @@ export function DesktopDashboard({
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
                   issueFilter === "B"
                     ? "bg-[#D97706] text-white border-[#D97706]"
-                    : "bg-white text-[#D97706] border-[#FDE68A] hover:bg-[#FFFBEB]"
+                    : "bg-white dark:bg-[#111827] text-[#D97706] dark:text-amber-400 border-[#FDE68A] dark:border-amber-900 hover:bg-[#FFFBEB] dark:hover:bg-amber-950/40"
                 }`}
               >
                 ⚠️ Priority B (Major Technical)
@@ -851,7 +923,7 @@ export function DesktopDashboard({
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
                   issueFilter === "C"
                     ? "bg-[#16A34A] text-white border-[#16A34A]"
-                    : "bg-white text-[#16A34A] border-[#BBF7D0] hover:bg-[#F0FDF4]"
+                    : "bg-white dark:bg-[#111827] text-[#16A34A] dark:text-emerald-400 border-[#BBF7D0] dark:border-emerald-900 hover:bg-[#F0FDF4] dark:hover:bg-emerald-950/40"
                 }`}
               >
                 💡 Priority C (Presentation)
@@ -863,37 +935,37 @@ export function DesktopDashboard({
               {filteredIssues.map((iss) => (
                 <div
                   key={iss.id}
-                  className="rounded-2xl bg-white border border-[#E2E8F0] p-6 space-y-3.5 shadow-xs"
+                  className="rounded-2xl bg-white dark:bg-[#111827] border border-[#E2E8F0] dark:border-[#1F2937] p-6 space-y-3.5 shadow-xs"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span
                         className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-md border ${
                           iss.priority === "A"
-                            ? "bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]"
+                            ? "bg-[#FEF2F2] dark:bg-rose-950/50 text-[#991B1B] dark:text-rose-300 border-[#FECACA] dark:border-rose-900"
                             : iss.priority === "B"
-                            ? "bg-[#FFFBEB] text-[#92400E] border-[#FDE68A]"
-                            : "bg-[#F0FDF4] text-[#166534] border-[#BBF7D0]"
+                            ? "bg-[#FFFBEB] dark:bg-amber-950/50 text-[#92400E] dark:text-amber-300 border-[#FDE68A] dark:border-amber-900"
+                            : "bg-[#F0FDF4] dark:bg-emerald-950/50 text-[#166534] dark:text-emerald-300 border-[#BBF7D0] dark:border-emerald-900"
                         }`}
                       >
                         Priority {iss.priority}: {iss.category}
                       </span>
-                      <span className="font-mono text-[11px] text-[#64748B]">{iss.id}</span>
+                      <span className="font-mono text-[11px] text-[#64748B] dark:text-neutral-400">{iss.id}</span>
                     </div>
 
-                    <span className="text-[11px] font-medium text-[#64748B]">
+                    <span className="text-[11px] font-medium text-[#64748B] dark:text-neutral-400">
                       {iss.priority === "A" ? "Desk-Reject Hazard" : "Reviewer Objection"}
                     </span>
                   </div>
 
-                  <h3 className="text-sm sm:text-base font-bold text-[#0F172A]">{iss.title}</h3>
-                  <p className="text-xs text-[#475569] leading-relaxed">{iss.description}</p>
+                  <h3 className="text-sm sm:text-base font-bold text-[#0F172A] dark:text-white">{iss.title}</h3>
+                  <p className="text-xs text-[#475569] dark:text-neutral-300 leading-relaxed">{iss.description}</p>
 
                   {/* Typed Evidence Anchor */}
                   {iss.evidenceAnchor && (
-                    <div className="p-2.5 rounded-lg bg-[#F8FAFC] border border-[#CBD5E1] text-[11px] font-mono text-[#334155] flex items-center gap-2">
-                      <FileCode className="w-3.5 h-3.5 text-[#2563EB] shrink-0" />
-                      <span className="font-bold text-[#475569] uppercase tracking-wider text-[9px] px-1.5 py-0.5 rounded bg-white border border-[#CBD5E1]">
+                    <div className="p-2.5 rounded-lg bg-[#F8FAFC] dark:bg-[#161F30] border border-[#CBD5E1] dark:border-[#334155] text-[11px] font-mono text-[#334155] dark:text-neutral-300 flex items-center gap-2">
+                      <FileCode className="w-3.5 h-3.5 text-[#2563EB] dark:text-blue-400 shrink-0" />
+                      <span className="font-bold text-[#475569] dark:text-neutral-300 uppercase tracking-wider text-[9px] px-1.5 py-0.5 rounded bg-white dark:bg-[#1E293B] border border-[#CBD5E1] dark:border-[#334155]">
                         Anchor
                       </span>
                       <span className="truncate">{iss.evidenceAnchor}</span>
@@ -902,17 +974,17 @@ export function DesktopDashboard({
 
                   {/* Reviewer Anticipated Reaction */}
                   {iss.reviewerQuote && (
-                    <div className="p-3 rounded-xl bg-[#F8FAFC] border-l-2 border-[#94A3B8] text-xs italic text-[#334155]">
+                    <div className="p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#161F30] border-l-2 border-[#94A3B8] dark:border-[#475569] text-xs italic text-[#334155] dark:text-neutral-300">
                       &ldquo;{iss.reviewerQuote}&rdquo;
                     </div>
                   )}
 
                   {/* Required Actionable Fix */}
                   {iss.actionableFix && (
-                    <div className="p-3.5 rounded-xl bg-[#ECFDF5] border-l-4 border-[#10B981] text-xs text-[#065F46] flex items-start gap-2.5">
+                    <div className="p-3.5 rounded-xl bg-[#ECFDF5] dark:bg-emerald-950/30 border-l-4 border-[#10B981] text-xs text-[#065F46] dark:text-emerald-300 flex items-start gap-2.5">
                       <CheckCircle2 className="w-4 h-4 text-[#10B981] shrink-0 mt-0.5" />
                       <div>
-                        <span className="font-bold block mb-0.5 text-[#047857]">
+                        <span className="font-bold block mb-0.5 text-[#047857] dark:text-emerald-400">
                           Required Pre-Submission Fix:
                         </span>
                         {iss.actionableFix}
@@ -922,13 +994,13 @@ export function DesktopDashboard({
 
                   {/* Author Rebuttal Strategy for Journal Response Letter */}
                   {iss.rebuttalStrategy && (
-                    <div className="p-3.5 rounded-xl bg-[#EFF6FF] border-l-4 border-[#3B82F6] text-xs text-[#1E40AF] flex items-start gap-2.5">
-                      <MessageSquare className="w-4 h-4 text-[#2563EB] shrink-0 mt-0.5" />
+                    <div className="p-3.5 rounded-xl bg-[#EFF6FF] dark:bg-blue-950/30 border-l-4 border-[#3B82F6] text-xs text-[#1E40AF] dark:text-blue-300 flex items-start gap-2.5">
+                      <MessageSquare className="w-4 h-4 text-[#2563EB] dark:text-blue-400 shrink-0 mt-0.5" />
                       <div>
-                        <span className="font-bold block mb-0.5 text-[#1D4ED8]">
+                        <span className="font-bold block mb-0.5 text-[#1D4ED8] dark:text-blue-400">
                           Point-by-Point Author Rebuttal Framing (for Journal Response Letter):
                         </span>
-                        <p className="leading-relaxed whitespace-pre-line text-[#1E3A8A] font-light">
+                        <p className="leading-relaxed whitespace-pre-line text-[#1E3A8A] dark:text-blue-200 font-light">
                           {iss.rebuttalStrategy}
                         </p>
                       </div>
@@ -946,47 +1018,47 @@ export function DesktopDashboard({
         {(activeView === "journals" || activeView === "recommendations") && isReviewEligible && (
           <div className="space-y-5 animate-fade-in">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-[#2563EB]" />
+              <h2 className="text-base font-bold text-[#0F172A] dark:text-white flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-[#2563EB] dark:text-blue-400" />
                 <span>Target Journal Recommendation Tiers</span>
               </h2>
-              <span className="text-xs text-[#64748B]">Verified authentic peer-reviewed journals</span>
+              <span className="text-xs text-[#64748B] dark:text-neutral-400">Verified authentic peer-reviewed journals</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               {journals.map((j, idx) => (
                 <div
                   key={idx}
-                  className="rounded-2xl bg-white border border-[#E2E8F0] p-5 space-y-3.5 shadow-xs flex flex-col justify-between"
+                  className="rounded-2xl bg-white dark:bg-[#111827] border border-[#E2E8F0] dark:border-[#1F2937] p-5 space-y-3.5 shadow-xs flex flex-col justify-between"
                 >
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-extrabold uppercase text-[#2563EB] tracking-wide">
+                      <span className="text-xs font-extrabold uppercase text-[#2563EB] dark:text-blue-400 tracking-wide">
                         {j.tier} Match
                       </span>
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE]">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#EFF6FF] dark:bg-blue-950/50 text-[#1D4ED8] dark:text-blue-400 border border-[#BFDBFE] dark:border-blue-800">
                         Fit: {j.fitScore}%
                       </span>
                     </div>
 
-                    <h3 className="text-base font-bold text-[#0F172A] leading-snug">
+                    <h3 className="text-base font-bold text-[#0F172A] dark:text-white leading-snug">
                       {j.journalName}
                     </h3>
-                    <p className="text-xs text-[#64748B]">
+                    <p className="text-xs text-[#64748B] dark:text-neutral-400">
                       Impact Factor: <strong>{j.impactFactor}</strong> &bull; {j.publisher}
                     </p>
 
-                    <p className="text-xs text-[#334155] leading-relaxed pt-2 border-t border-[#E2E8F0]">
+                    <p className="text-xs text-[#334155] dark:text-neutral-300 leading-relaxed pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937]">
                       {j.scopeRationale}
                     </p>
                   </div>
 
                   {j.rejectionRisks && j.rejectionRisks.length > 0 && (
-                    <div className="pt-2 border-t border-[#E2E8F0]">
-                      <span className="text-[10px] font-bold text-[#DC2626] uppercase tracking-wider block mb-1">
+                    <div className="pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937]">
+                      <span className="text-[10px] font-bold text-[#DC2626] dark:text-rose-400 uppercase tracking-wider block mb-1">
                         DESK-REJECT RISKS:
                       </span>
-                      <ul className="space-y-1 text-xs text-[#B91C1C] pl-3 list-disc">
+                      <ul className="space-y-1 text-xs text-[#B91C1C] dark:text-rose-300 pl-3 list-disc">
                         {j.rejectionRisks.map((risk, rIdx) => (
                           <li key={rIdx} className="leading-relaxed">
                             {risk}
@@ -1005,31 +1077,31 @@ export function DesktopDashboard({
         {/* CROSSREF CITATIONS VIEW (if opened from old link)         */}
         {/* ========================================================= */}
         {activeView === "citations" && (
-          <div className="rounded-2xl bg-white border border-[#E2E8F0] p-6 sm:p-8 space-y-5 animate-fade-in shadow-xs">
-            <h2 className="text-base font-bold text-[#0F172A] flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-[#16A34A]" />
+          <div className="rounded-2xl bg-white dark:bg-[#111827] border border-[#E2E8F0] dark:border-[#1F2937] p-6 sm:p-8 space-y-5 animate-fade-in shadow-xs">
+            <h2 className="text-base font-bold text-[#0F172A] dark:text-white flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-[#16A34A] dark:text-emerald-400" />
               <span>Reference Integrity &amp; Retraction Verification</span>
             </h2>
-            <p className="text-xs text-[#64748B]">
+            <p className="text-xs text-[#64748B] dark:text-neutral-400">
               Verified against CrossRef Open API and Retraction Watch database.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E2E8F0]">
-                <span className="text-xs text-[#64748B] font-medium">Total References</span>
-                <p className="text-2xl font-bold text-[#0F172A] mt-1">
+              <div className="bg-[#F8FAFC] dark:bg-[#161F30] p-4 rounded-xl border border-[#E2E8F0] dark:border-[#1F2937]">
+                <span className="text-xs text-[#64748B] dark:text-neutral-400 font-medium">Total References</span>
+                <p className="text-2xl font-bold text-[#0F172A] dark:text-white mt-1">
                   {fullReport?.citationIntegrity?.totalReferences || data.citationAudit.totalCount}
                 </p>
               </div>
-              <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E2E8F0]">
-                <span className="text-xs text-[#166534] font-medium">CrossRef Verified</span>
-                <p className="text-2xl font-bold text-[#16A34A] mt-1">
+              <div className="bg-[#F8FAFC] dark:bg-[#161F30] p-4 rounded-xl border border-[#E2E8F0] dark:border-[#1F2937]">
+                <span className="text-xs text-[#166534] dark:text-emerald-400 font-medium">CrossRef Verified</span>
+                <p className="text-2xl font-bold text-[#16A34A] dark:text-emerald-400 mt-1">
                   {fullReport?.citationIntegrity?.verifiedCount || data.citationAudit.verifiedCount}
                 </p>
               </div>
-              <div className="bg-[#F8FAFC] p-4 rounded-xl border border-[#E2E8F0]">
-                <span className="text-xs text-[#64748B] font-medium">Retraction Flags</span>
-                <p className="text-2xl font-bold text-[#16A34A] mt-1">
+              <div className="bg-[#F8FAFC] dark:bg-[#161F30] p-4 rounded-xl border border-[#E2E8F0] dark:border-[#1F2937]">
+                <span className="text-xs text-[#64748B] dark:text-neutral-400 font-medium">Retraction Flags</span>
+                <p className="text-2xl font-bold text-[#16A34A] dark:text-emerald-400 mt-1">
                   {fullReport?.citationIntegrity?.retractedCount || data.citationAudit.retractedCount}
                 </p>
               </div>
