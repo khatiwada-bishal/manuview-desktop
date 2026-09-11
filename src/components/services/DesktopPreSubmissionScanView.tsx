@@ -887,8 +887,8 @@ export function DesktopPreSubmissionScanView({
                 </h2>
               </div>
 
-              {/* Document Classification */}
-              {report.classification && (
+              {/* Document Classification (Only for review-eligible manuscripts; omitted for published articles and non-academic files) */}
+              {report.isEligibleForReview !== false && report.classification?.isAcademicManuscript && (
                 <div
                   className={`p-5 rounded-2xl border text-xs space-y-3 ${
                     report.classification.isAcademicManuscript
@@ -1002,6 +1002,11 @@ export function DesktopPreSubmissionScanView({
                     <p className="text-xs text-amber-900/90 leading-relaxed pt-2 border-t border-amber-200/70">
                       {report.classification?.advisoryMessage || report.summary}
                     </p>
+                    {report.classification?.customGuidance && (
+                      <p className="text-xs text-amber-800 leading-relaxed pt-2 border-t border-amber-200/50">
+                        {report.classification.customGuidance}
+                      </p>
+                    )}
                   </div>
                 )
               ) : (

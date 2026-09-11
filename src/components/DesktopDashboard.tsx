@@ -347,6 +347,12 @@ export function DesktopDashboard({
                     {classification?.advisoryMessage ||
                       "This document does not contain empirical scientific research, IMRaD sections, or scholarly bibliography citations. Acceptance scoring and persona simulations have been safely skipped."}
                   </p>
+
+                  {classification?.customGuidance && (
+                    <p className="text-xs text-amber-800 leading-relaxed pt-2 border-t border-amber-200/50">
+                      {classification.customGuidance}
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5 rounded-xl bg-[#F1F5F9]/80 border border-[#E2E8F0]">
@@ -374,35 +380,39 @@ export function DesktopDashboard({
               )}
             </div>
 
-            {/* CARD 2: Editorial Synthesis & Triage Assessment Card */}
-            <div className="rounded-2xl bg-white border border-[#E2E8F0] p-6 sm:p-7 space-y-3 shadow-xs">
-              <h2 className="text-base font-bold text-[#0F172A]">
-                Editorial Synthesis &amp; Triage Assessment
-              </h2>
-              <p className="text-xs sm:text-sm text-[#334155] leading-relaxed font-light whitespace-pre-line">
-                {summary || data.statusText}
-              </p>
-            </div>
+            {/* CARD 2: Editorial Synthesis & Triage Assessment Card (Omitted for non-academic documents) */}
+            {!isNonAcademic && (
+              <div className="rounded-2xl bg-white border border-[#E2E8F0] p-6 sm:p-7 space-y-3 shadow-xs">
+                <h2 className="text-base font-bold text-[#0F172A]">
+                  Editorial Synthesis &amp; Triage Assessment
+                </h2>
+                <p className="text-xs sm:text-sm text-[#334155] leading-relaxed font-light whitespace-pre-line">
+                  {summary || data.statusText}
+                </p>
+              </div>
+            )}
 
-            {/* CARD 3: Document Classification Card (with solid blue left border) */}
-            <div className="rounded-2xl bg-white border border-[#E2E8F0] border-l-4 border-l-[#2563EB] p-6 sm:p-7 space-y-3 shadow-xs">
-              <h2 className="text-base font-bold text-[#0F172A]">
-                Document Classification: {classification?.categoryLabel || "Academic Research Manuscript"}
-              </h2>
+            {/* CARD 3: Document Classification Card (Only for review-eligible manuscripts; omitted for published articles and non-academic documents) */}
+            {isReviewEligible && (
+              <div className="rounded-2xl bg-white border border-[#E2E8F0] border-l-4 border-l-[#2563EB] p-6 sm:p-7 space-y-3 shadow-xs">
+                <h2 className="text-base font-bold text-[#0F172A]">
+                  Document Classification: {classification?.categoryLabel || "Academic Research Manuscript"}
+                </h2>
 
-              <p className="text-xs sm:text-sm text-[#334155] leading-relaxed">
-                <strong className="font-bold text-[#0F172A]">
-                  {classification?.salutation ? (classification.salutation.endsWith(":") ? classification.salutation : `${classification.salutation}:`) : "Dear Author / Contributing Researcher:"}
-                </strong>{" "}
-                {classification?.advisoryMessage ||
-                  "This manuscript has undergone rigorous pre-submission peer-review calibration across core methodological, empirical, and bibliographic dimensions against the target journal's editorial standards."}
-              </p>
+                <p className="text-xs sm:text-sm text-[#334155] leading-relaxed">
+                  <strong className="font-bold text-[#0F172A]">
+                    {classification?.salutation ? (classification.salutation.endsWith(":") ? classification.salutation : `${classification.salutation}:`) : "Dear Author / Contributing Researcher:"}
+                  </strong>{" "}
+                  {classification?.advisoryMessage ||
+                    "This manuscript has undergone rigorous pre-submission peer-review calibration across core methodological, empirical, and bibliographic dimensions against the target journal's editorial standards."}
+                </p>
 
-              <p className="text-xs sm:text-sm text-[#64748B] leading-relaxed">
-                {classification?.customGuidance ||
-                  "Review prioritized action items and simulated referee assessments before submitting to your target journal."}
-              </p>
-            </div>
+                <p className="text-xs sm:text-sm text-[#64748B] leading-relaxed">
+                  {classification?.customGuidance ||
+                    "Review prioritized action items and simulated referee assessments before submitting to your target journal."}
+                </p>
+              </div>
+            )}
 
             {/* CARD 4: Reporting Guideline Compliance Audit (Only for eligible manuscripts) */}
             {isReviewEligible && fullReport?.reportingGuideline && (
