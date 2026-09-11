@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
-    "desktop:build": "tauri build"
+    "desktop:build": "tauri build",
+    "desktop:build:mac": "./scripts/build-mac.sh"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",

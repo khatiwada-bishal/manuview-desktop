@@ -1,0 +1,58 @@
+name: Release Multi-Platform Installers
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag (e.g. v0.1.0)"
+        required: false
+        default: "v0.1.0"
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-tauri:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: "macos-latest"
+            target: "universal-apple-darwin"
+            args: "--target universal-apple-darwin"
+          - platform: "windows-latest"
+            target: "x86_64-pc-windows-msvc"
+            args: ""
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build Tauri Installers
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name || inputs.release_tag || 'v0.1.0' }}
+          releaseName: "ManuView Desktop ${{ github.ref_name || inputs.release_tag || 'v0.1.0' }}"
+          releaseBody: "Automated multi-platform desktop release for macOS (Universal: Apple Silicon & Intel) and Windows (x64 Installer)."
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
