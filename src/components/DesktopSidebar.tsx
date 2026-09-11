@@ -20,6 +20,8 @@ import {
   AlertCircle,
   PanelLeft,
   Trash2,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
 
 export type DesktopActiveView =
@@ -82,8 +84,20 @@ export function DesktopSidebar({
 }: DesktopSidebarProps) {
   const [servicesExpanded, setServicesExpanded] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
+  const disclaimerRef = useRef<HTMLDivElement>(null);
   const isFirstRender = useRef(true);
   const prevCollapsedRef = useRef(isCollapsed);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (disclaimerRef.current && !disclaimerRef.current.contains(e.target as Node)) {
+        setShowDisclaimer(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -201,9 +215,7 @@ export function DesktopSidebar({
       } ${
         isTransitioning
           ? "overflow-hidden"
-          : isCollapsed
-          ? "overflow-visible"
-          : "overflow-hidden"
+          : "overflow-visible"
       }`}
     >
       {/* ------------------------------------------------------------- */}
@@ -804,6 +816,79 @@ export function DesktopSidebar({
                   </div>
                 );
               }))}
+            </div>
+          </div>
+        </div>
+
+        {/* AI DISCLAIMER & USAGE PILL (Positioned in designated sidebar zone above footer) */}
+        <div className="px-3 pb-2 pt-1 border-t border-black/[0.04] dark:border-white/[0.04]">
+          <div ref={disclaimerRef} className="relative group">
+            <button
+              type="button"
+              onClick={() => setShowDisclaimer((prev) => !prev)}
+              className="w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-[11px] font-semibold bg-amber-500/10 hover:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/20 transition cursor-pointer shadow-2xs"
+              title="View AI Advisory & Publication Disclaimer"
+            >
+              <div className="flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span>Disclaimer &amp; Usage</span>
+              </div>
+              <Info className="w-3.5 h-3.5 text-amber-500/80 dark:text-amber-400/80 shrink-0" />
+            </button>
+
+            {/* macOS Liquid Glass Tooltip Popover */}
+            <div
+              className={`absolute left-full bottom-0 ml-3 w-80 sm:w-[390px] rounded-2xl p-4.5 bg-white/95 dark:bg-[#151D2A]/95 backdrop-blur-2xl border border-black/[0.08] dark:border-white/[0.12] shadow-[0_20px_45px_-10px_rgba(0,0,0,0.22),0_0_0_1px_rgba(255,255,255,0.7)_inset] dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.12)_inset] z-50 text-left space-y-3 transition-all duration-200 ${
+                showDisclaimer
+                  ? "opacity-100 pointer-events-auto translate-x-0"
+                  : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-x-0 translate-x-1"
+              }`}
+            >
+              {/* macOS Popover Pointer Notch */}
+              <div className="absolute right-full bottom-3.5 w-2.5 h-2.5 -mr-[6px] rotate-45 bg-white/95 dark:bg-[#151D2A]/95 border-l border-b border-black/[0.08] dark:border-white/[0.12]" />
+
+              {/* Header */}
+              <div className="flex items-center gap-2.5 pb-2.5 border-b border-black/[0.06] dark:border-white/[0.08]">
+                <div className="w-7 h-7 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20">
+                  <AlertTriangle className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-[#0F172A] dark:text-white">
+                    AI Advisory &amp; Publication Disclaimer
+                  </h4>
+                  <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">
+                    Scholarly Decision-Support System
+                  </span>
+                </div>
+              </div>
+
+              {/* Body Content */}
+              <div className="space-y-2 text-[11px] leading-relaxed text-neutral-600 dark:text-neutral-300">
+                <div className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-1.5" />
+                  <p>
+                    <strong className="text-[#0F172A] dark:text-white font-semibold">Use AI with Caution:</strong> Generative AI models can produce inaccuracies, factual errors, or imprecise recommendations. Always exercise rigorous scholarly judgment and independently verify all citations, methodological critiques, and statistical bounds.
+                  </p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0 mt-1.5" />
+                  <p>
+                    <strong className="text-[#0F172A] dark:text-white font-semibold">Supporting Purpose Only:</strong> ManuView is an assistive simulation platform intended solely to aid pre-submission diagnostic preparation. It does not substitute for domain expertise or formal ethical review.
+                  </p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0 mt-1.5" />
+                  <p>
+                    <strong className="text-[#0F172A] dark:text-white font-semibold">No Acceptance Guarantee:</strong> No automated diagnostic system can guarantee manuscript acceptance, editorial review outcomes, or publication in any journal. Final decisions rest exclusively with journal editors and external human peer reviewers.
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer badge */}
+              <div className="pt-2 border-t border-black/[0.05] dark:border-white/[0.06] flex items-center justify-between text-[10px] text-neutral-400 dark:text-neutral-500">
+                <span>Adheres to COPE &amp; ICMJE Guidelines</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">100% Local &amp; Private</span>
+              </div>
             </div>
           </div>
         </div>

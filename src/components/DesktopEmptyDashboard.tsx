@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React from "react";
 import {
   Sparkles,
   Compass,
@@ -8,13 +8,11 @@ import {
   ShieldCheck,
   Plus,
   FileText,
-  Clock,
   Layers,
   ArrowRight,
   Trash2,
   MessageSquare,
   AlertTriangle,
-  Info,
 } from "lucide-react";
 import { PaperItem } from "./DesktopSidebar";
 
@@ -31,124 +29,44 @@ export function DesktopEmptyDashboard({
   onOpenService,
   onDeletePaper,
 }: DesktopEmptyDashboardProps) {
-  const [showDisclaimer, setShowDisclaimer] = useState(false);
-  const disclaimerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (disclaimerRef.current && !disclaimerRef.current.contains(e.target as Node)) {
-        setShowDisclaimer(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   return (
     <div className="flex-1 overflow-y-auto p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC]">
       <div className="max-w-5xl mx-auto space-y-8">
-        {/* HERO SECTION */}
-        <div className="rounded-3xl liquid-glass-card p-8 space-y-4 text-center sm:text-left">
-          <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-4">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
-                <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                <span>Pre-Submission Manuscript Diagnostic Suite</span>
+        {/* HERO / WELCOME CARD */}
+        <div className="relative rounded-3xl liquid-glass-card p-6 sm:p-8 space-y-6 overflow-hidden">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+            <div className="space-y-2 max-w-xl">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Pre-Submission Manuscript Intelligence</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0F172A] dark:text-white">
                 Welcome to ManuView Desktop
               </h1>
-              <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 max-w-xl">
-                Run pre-submission peer review simulations, benchmark against 1,300+ journal scopes, and validate citation integrity before formal submission.
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                Run pre-submission diagnostics, multi-reviewer simulations, reference audits, and journal fit matching completely locally on your machine.
               </p>
             </div>
+
             <button
               type="button"
-              onClick={() => onOpenService("ai-review")}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold liquid-glass-btn-primary transition cursor-pointer shrink-0"
+              onClick={() => onOpenService("triage")}
+              className="px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md hover:shadow-lg transition cursor-pointer flex items-center gap-2.5 shrink-0"
             >
               <Plus className="w-4 h-4" />
               <span>New Review Scan</span>
             </button>
           </div>
 
-          <div className="pt-3 border-t border-black/[0.06] dark:border-white/[0.08] flex flex-wrap items-center justify-between gap-3 text-[11px] text-neutral-400 dark:text-neutral-500">
-            <div className="flex flex-wrap items-center gap-3.5">
-              <span className="flex items-center gap-1.5 font-medium text-neutral-600 dark:text-neutral-300">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                100% Local &amp; Private Storage
-              </span>
-              <span>&bull;</span>
-              <span>All reports saved on your computer</span>
-              <span>&bull;</span>
-              <span>Fast Native Performance</span>
-            </div>
-
-            {/* AI Disclaimer & Usage Pill with macOS Liquid Glass Tooltip */}
-            <div ref={disclaimerRef} className="relative group">
-              <button
-                type="button"
-                onClick={() => setShowDisclaimer((prev) => !prev)}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-amber-500/10 hover:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/20 transition cursor-pointer shadow-2xs"
-                title="View AI Advisory & Publication Disclaimer"
-              >
-                <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
-                <span>Disclaimer &amp; Usage</span>
-                <Info className="w-3 h-3 text-amber-500/70 shrink-0" />
-              </button>
-
-              {/* macOS Liquid Glass Tooltip Popover */}
-              <div
-                className={`absolute right-0 bottom-full mb-2.5 w-80 sm:w-[410px] rounded-2xl p-4.5 bg-white/92 dark:bg-[#151D2A]/95 backdrop-blur-2xl border border-black/[0.08] dark:border-white/[0.12] shadow-[0_20px_45px_-10px_rgba(0,0,0,0.18),0_0_0_1px_rgba(255,255,255,0.7)_inset] dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.12)_inset] z-50 text-left space-y-3 transition-all duration-200 ${
-                  showDisclaimer
-                    ? "opacity-100 pointer-events-auto translate-y-0"
-                    : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0 translate-y-1"
-                }`}
-              >
-                {/* Header */}
-                <div className="flex items-center gap-2.5 pb-2.5 border-b border-black/[0.06] dark:border-white/[0.08]">
-                  <div className="w-7 h-7 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20">
-                    <AlertTriangle className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-[#0F172A] dark:text-white">
-                      AI Advisory &amp; Publication Disclaimer
-                    </h4>
-                    <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">
-                      Scholarly Decision-Support System
-                    </span>
-                  </div>
-                </div>
-
-                {/* Body Content */}
-                <div className="space-y-2 text-[11px] leading-relaxed text-neutral-600 dark:text-neutral-300">
-                  <div className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-1.5" />
-                    <p>
-                      <strong className="text-[#0F172A] dark:text-white font-semibold">Use AI with Caution:</strong> Generative AI models can produce inaccuracies, factual errors, or imprecise recommendations. Always exercise rigorous scholarly judgment and independently verify all citations, methodological critiques, and statistical bounds.
-                    </p>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0 mt-1.5" />
-                    <p>
-                      <strong className="text-[#0F172A] dark:text-white font-semibold">Supporting Purpose Only:</strong> ManuView is an assistive simulation platform intended solely to aid pre-submission diagnostic preparation. It does not substitute for domain expertise or formal ethical review.
-                    </p>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0 mt-1.5" />
-                    <p>
-                      <strong className="text-[#0F172A] dark:text-white font-semibold">No Acceptance Guarantee:</strong> No automated diagnostic system can guarantee manuscript acceptance, editorial review outcomes, or publication in any journal. Final decisions rest exclusively with journal editors and external human peer reviewers.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Footer badge */}
-                <div className="pt-2 border-t border-black/[0.05] dark:border-white/[0.06] flex items-center justify-between text-[10px] text-neutral-400 dark:text-neutral-500">
-                  <span>Adheres to COPE &amp; ICMJE Guidelines</span>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">100% Local &amp; Private</span>
-                </div>
-              </div>
-            </div>
+          <div className="pt-3 border-t border-black/[0.06] dark:border-white/[0.08] flex flex-wrap items-center gap-3.5 text-[11px] text-neutral-500 dark:text-neutral-400 font-medium">
+            <span className="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-300">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              100% Local &amp; Private Storage
+            </span>
+            <span>&bull;</span>
+            <span>All reports saved on your computer</span>
+            <span>&bull;</span>
+            <span>Fast Native Performance</span>
           </div>
         </div>
 
@@ -357,6 +275,77 @@ export function DesktopEmptyDashboard({
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* FULL DETAILED AI DISCLAIMER & SCHOLARLY USAGE SECTION */}
+        <div className="rounded-2xl liquid-glass-card p-6 border border-black/[0.06] dark:border-white/[0.08] space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-black/[0.06] dark:border-white/[0.08]">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-500/20 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-[#0F172A] dark:text-white flex items-center gap-2">
+                  AI Advisory &amp; Publication Disclaimer
+                </h3>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  Scholarly Decision-Support System &bull; Guidelines for Responsible Academic Use
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-[11px]">
+              <span className="px-2.5 py-1 rounded-full font-medium bg-neutral-100 dark:bg-neutral-800/60 text-neutral-600 dark:text-neutral-300 border border-black/[0.05] dark:border-white/[0.08]">
+                Adheres to COPE &amp; ICMJE Standards
+              </span>
+              <span className="px-2.5 py-1 rounded-full font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                100% Local &amp; Private
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            {/* Disclaimer Point 1 */}
+            <div className="p-4 rounded-xl bg-amber-500/[0.04] dark:bg-amber-500/[0.06] border border-amber-500/15 space-y-2">
+              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 font-bold">
+                <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                <h4>Use AI with Caution</h4>
+              </div>
+              <p className="text-neutral-600 dark:text-neutral-300 leading-relaxed text-[11px]">
+                Generative AI models can produce hallucinations, factual inaccuracies, or imprecise critique points. Authors and researchers must exercise independent scholarly judgment and independently verify all cited literature, methodological critiques, and statistical bounds before acting upon diagnostic feedback.
+              </p>
+            </div>
+
+            {/* Disclaimer Point 2 */}
+            <div className="p-4 rounded-xl bg-blue-500/[0.04] dark:bg-blue-500/[0.06] border border-blue-500/15 space-y-2">
+              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 font-bold">
+                <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                <h4>Supporting Purpose Only</h4>
+              </div>
+              <p className="text-neutral-600 dark:text-neutral-300 leading-relaxed text-[11px]">
+                ManuView is an assistive pre-submission diagnostic simulation platform designed to aid editorial triage preparation. It is not an automated co-author, does not substitute for domain expertise, and cannot replace formal institutional review, ethical approvals, or human peer review.
+              </p>
+            </div>
+
+            {/* Disclaimer Point 3 */}
+            <div className="p-4 rounded-xl bg-rose-500/[0.04] dark:bg-rose-500/[0.06] border border-rose-500/15 space-y-2">
+              <div className="flex items-center gap-2 text-rose-700 dark:text-rose-300 font-bold">
+                <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                <h4>No Acceptance Guarantee</h4>
+              </div>
+              <p className="text-neutral-600 dark:text-neutral-300 leading-relaxed text-[11px]">
+                No diagnostic platform or algorithmic review can guarantee manuscript acceptance, favorable peer review outcomes, or publication in any academic journal. Editorial decisions remain solely within the exclusive authority of journal editors and external peer reviewers.
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-black/[0.04] dark:border-white/[0.06] flex flex-wrap items-center justify-between gap-3 text-[11px] text-neutral-400 dark:text-neutral-500">
+            <span>
+              All evaluations are processed locally on your hardware. Your unpublished manuscripts and research findings are never uploaded or retained by external servers.
+            </span>
+            <span className="font-medium text-neutral-500 dark:text-neutral-400">
+              ManuView Scholarly Integrity
+            </span>
           </div>
         </div>
       </div>
