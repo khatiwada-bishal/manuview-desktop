@@ -96,7 +96,7 @@ export function DesktopPreSubmissionScanView({
   const [manuscriptTitle, setManuscriptTitle] = useState("");
   const [manuscriptAbstract, setManuscriptAbstract] = useState("");
   const [manuscriptKeywords, setManuscriptKeywords] = useState("");
-  const [targetJournal, setTargetJournal] = useState("Nature Communications");
+  const [targetJournal, setTargetJournal] = useState("");
   const [targetJournalError, setTargetJournalError] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -458,7 +458,7 @@ export function DesktopPreSubmissionScanView({
                 value={targetJournal}
                 onChange={handleTargetJournalChange}
                 hasError={targetJournalError}
-                placeholder="Search 1,390+ academic journals or type custom title..."
+                placeholder="Type at least 3 letters to search 1,390+ journals..."
               />
               {targetJournalError && (
                 <div className="text-[11px] text-[#991B1B] font-medium flex items-center gap-1 mt-1.5">
@@ -603,7 +603,7 @@ export function DesktopPreSubmissionScanView({
               Diagnostic Scope
             </span>
             <div className="flex-1 text-neutral-600 text-xs">
-              6 Evaluation Dimensions &bull; 4 Reviewer Personas &bull; Live Crossref DOI Validation &bull; Retraction Screening
+              6 Evaluation Dimensions &bull; 5 Reviewer Personas &bull; Live Crossref DOI Validation &bull; Retraction Screening
             </div>
           </div>
 
@@ -682,7 +682,7 @@ export function DesktopPreSubmissionScanView({
                     <span className="text-[11px] text-neutral-500 mt-1 text-center max-w-xs px-2 leading-relaxed">
                       {file
                         ? `${(file.size / 1024).toFixed(1)} KB • Click to change file`
-                        : "Audits causal overclaims, missing controls, 4-persona referee reviews & Crossref DOIs"}
+                        : "Audits causal overclaims, missing controls, 5-persona referee reviews & Crossref DOIs"}
                     </span>
                   </button>
                 ) : (
@@ -696,7 +696,7 @@ export function DesktopPreSubmissionScanView({
                     <span className="text-[11px] text-neutral-500 mt-1 text-center max-w-xs px-2 leading-relaxed">
                       {file
                         ? `${(file.size / 1024).toFixed(1)} KB • Click to change file`
-                        : "Audits causal overclaims, missing controls, 4-persona referee reviews & Crossref DOIs"}
+                        : "Audits causal overclaims, missing controls, 5-persona referee reviews & Crossref DOIs"}
                     </span>
                     <input
                       type="file"
@@ -1036,12 +1036,12 @@ export function DesktopPreSubmissionScanView({
                 </div>
               </div>
 
-              {/* 4-Persona Peer-Review Simulation */}
+              {/* 5-Persona Peer-Review Simulation */}
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <div className="flex items-center gap-2 text-sm font-bold text-[#111827]">
                     <Users className="w-4 h-4 text-neutral-500" />
-                    <span>4-Persona Peer-Review Simulation</span>
+                    <span>5-Persona Peer-Review Simulation</span>
                   </div>
                   <span className="text-xs text-neutral-400">Independent domain evaluations</span>
                 </div>

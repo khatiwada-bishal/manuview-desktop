@@ -86,6 +86,13 @@ export const NEPAL_EWASTE_PROJECT: SavedProject = {
         quote: "The statistical treatment of forecasting models is rigorous and refreshingly honest. Authors demonstrate exemplary statistical integrity by transparently reporting model limitations on short series.",
         detail: "Ensure predictive interval construction methodology is fully transparent for replication.",
       },
+      {
+        name: "Prof. Marcus Vance",
+        role: "Devil's Advocate / Rigor Referee (Oxford)",
+        tag: "Major",
+        quote: "Rival explanations: authors must test sensitivity bounds against unmeasured border porosity and substantiate that the mass-device divergence crosses operational facility thresholds.",
+        detail: "Provide explicit E-value bounds and evaluate infrastructure sizing under pessimistic scenario bounds.",
+      },
     ],
     citationAudit: {
       verifiedCount: 52,
@@ -299,6 +306,37 @@ export const NEPAL_EWASTE_PROJECT: SavedProject = {
         mustAddressItems: [
           "Ensure the predictive interval construction methodology is fully transparent for replication.",
           "Validate that residual variance shrinkage parameters are clearly defined in the supplementary materials.",
+        ],
+      },
+      {
+        persona: "devils_advocate",
+        name: "Prof. Marcus Vance",
+        roleDescription: "Adversarial Stress-Test, Boundary Violations & Rival Hypotheses",
+        title: "Chair of Empirical Rigor and Reproducibility",
+        affiliation: "Centre for Open Science & Decision Analytics, Oxford",
+        expertise: "Adversarial Methodology & Falsification Analysis",
+        decisionRecommendation: "Major Revision",
+        keyChallenge: "Defending against unruled-out rival hypotheses regarding informal border porosity and observational selection bias in customs tariff concordances.",
+        assessment: "As the designated devil's advocate referee, my role is to challenge whether the reported divergence between device count and aggregate mass could be explained by unmeasured informal transit, tariff misclassification, or model misspecification. First, how sensitive are the panel estimates to informal porosity across the open Indo-Nepal border? Second, without explicit E-value or Oster bounds, can unmeasured confounding be ruled out? Third, while statistical significance is established, the operational 'So What?' threshold requires showing that municipal e-waste recycling facilities would face catastrophic under-capacity if lower-bound scenario projections materialize.",
+        majorCritiques: [
+          "Rival explanations: Informal border porosity and second-hand unregistered flows could skew the observed mass-device divergence.",
+          "Omission of formal sensitivity bounds (e.g. Oster bounds or E-values) for unmeasured trade distortion confounding.",
+          "Practical operational threshold: Connect scenario bounds directly to physical facility recycling capacity limits.",
+        ],
+        missingControlsOrAnalyses: [
+          "Placebo test or sensitivity bound evaluating stability against informal unrecorded border transit.",
+          "Quantitative E-value threshold for unmeasured confounding in panel regression specifications.",
+        ],
+        mustAddressItems: [
+          "Moderate causal terminology when discussing policy interventions in Section 5.",
+          "Provide explicit sensitivity bounds regarding informal border trade in the Supplementary Materials.",
+        ],
+        evidenceAnchors: [
+          'text: §1.2 "Unregistered transboundary movements are excluded from official ASYCUDA customs declarations"',
+          'equation: Eq. (3) panel fixed-effects specification',
+        ],
+        counterArguments: [
+          "Authors note that border sensitivity analysis in Supplementary Table S18 demonstrates results remain robust under ±25% unrecorded flow bounds.",
         ],
       },
     ],

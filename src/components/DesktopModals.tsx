@@ -45,7 +45,7 @@ export function DesktopSearchModal({
   if (!isOpen) return null;
 
   const staticServices = [
-    { id: "tool-ai-review", title: "Pre-Submission AI Review (4-Persona Diagnostic)", cat: "Service" },
+    { id: "tool-ai-review", title: "Pre-Submission AI Review (5-Persona Diagnostic)", cat: "Service" },
     { id: "tool-journal-fit", title: "Journal Fit Predictor (1,300+ Catalogs)", cat: "Service" },
     { id: "tool-reference-checker", title: "Reference Integrity Audit (CrossRef & Retractions)", cat: "Service" },
     { id: "tool-citation-claim", title: "Citation Claim Validator", cat: "Service" },
@@ -134,7 +134,7 @@ export function DesktopNewReviewModal({
   onClose,
   onSubmit,
 }: DesktopNewReviewModalProps) {
-  const [journal, setJournal] = useState("Nature Communications");
+  const [journal, setJournal] = useState("");
   const [title, setTitle] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -165,7 +165,7 @@ export function DesktopNewReviewModal({
                 New Pre-Submission Review
               </h2>
               <p className="text-xs text-neutral-500">
-                Run 4-persona simulations &amp; cross-ref audits on your manuscript.
+                Run 5-persona simulations &amp; cross-ref audits on your manuscript.
               </p>
             </div>
           </div>
@@ -186,7 +186,7 @@ export function DesktopNewReviewModal({
             <JournalCombobox
               value={journal}
               onChange={setJournal}
-              placeholder="Select target journal..."
+              placeholder="Type at least 3 letters to search journals..."
             />
           </div>
 

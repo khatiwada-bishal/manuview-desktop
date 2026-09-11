@@ -96,7 +96,7 @@ export function DesktopSidebar({
     {
       id: "ai-review",
       name: "Pre-Submission AI Review",
-      description: "4-Persona reviewer simulation",
+      description: "5-Persona reviewer simulation",
       icon: Sparkles,
       color: "text-blue-600 bg-blue-50",
       action: () => {
@@ -351,7 +351,7 @@ export function DesktopSidebar({
                               }`}
                             >
                               <Users className="w-3 h-3 text-blue-600 shrink-0" />
-                              <span className="truncate">4-Persona Reviews</span>
+                              <span className="truncate">5-Persona Reviews</span>
                             </button>
                             <button
                               type="button"
@@ -654,7 +654,7 @@ export function DesktopSidebar({
                         }`}
                       >
                         <Users className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                        <span className="truncate">4-Persona Reviews</span>
+                        <span className="truncate">5-Persona Reviews</span>
                       </button>
 
                       <button
