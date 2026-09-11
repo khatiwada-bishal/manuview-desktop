@@ -206,15 +206,21 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
     if (hasAcademicTerms) detected.push('Domain scientific & quantitative terminology verified');
 
     let subType = 'Empirical / Theoretical Research Article';
-    if (/nonlinear optimization|supply chain|inventory model|decision variable|theorem|lemma|objective function|cap-and-trade/i.test(clean)) {
+    if (/e-waste|weee|waste electrical|trade statistics|customs microdata|material flow|circular economy/i.test(clean)) {
+      subType = 'Empirical Study in Environmental & Resource Economics';
+    } else if (/nonlinear optimization|inventory model|decision variable|kkt\b|convex optimization|karush-kuhn-tucker|eoq\b/i.test(clean)) {
       subType = 'Theoretical & Operations Research Formulation';
-    } else if (/in vivo|in vitro|clinical trial|patient|cohort|assay|crispr|tumor|pathology/i.test(clean)) {
+    } else if (/in vivo|in vitro|clinical trial|patient|cohort|assay|crispr|tumor|pathology|oncology/i.test(clean)) {
       subType = 'Empirical Laboratory / Clinical Study';
     } else if (/systematic review|meta-analysis|prisma|literature review|scoping review/i.test(clean)) {
       subType = 'Review / Synthesis Article';
-    } else if (/neural network|deep learning|transformer|benchmark|dataset|convolutional/i.test(clean)) {
+    } else if (/neural network|deep learning|transformer|computer vision|representation learning/i.test(clean)) {
       subType = 'Computational & Algorithmic Research';
+    } else if (/econometric|panel data|time series|gdp|growth intensity|macroeconomic/i.test(clean)) {
+      subType = 'Empirical Economic & Statistical Investigation';
     }
+
+    const featuresSummary = detected.length > 0 ? detected.slice(0, 3).join(', ') : 'standard scholarly architecture';
 
     return {
       category: 'academic_manuscript',
@@ -223,8 +229,8 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
       confidence: Math.min(0.85 + (academicScore * 0.02), 0.99),
       detectedFeatures: detected,
       salutation: 'Dear Author / Contributing Researcher',
-      advisoryMessage: `Your submission has been verified as an authentic ${subType}. ManuView has evaluated your work against rigorous peer-review rubrics across 6 core dimensions, screening for causal overclaims, mathematical/statistical soundness, reference integrity, and journal desk-rejection hazards.`,
-      customGuidance: 'Review the prioritized action items (Priority A desk-reject hazards and Priority B reviewer pushback) and consult the 4 simulated peer-reviewer personas before submitting to your target journal.'
+      advisoryMessage: `Your submission has been verified as an authentic ${subType}. Structural analysis confirmed ${featuresSummary}. ManuView has evaluated your work against calibrated peer-review rubrics across 6 core dimensions, screening for causal overclaims, empirical/statistical rigor, reference integrity, and journal desk-rejection hazards.`,
+      customGuidance: 'Review the prioritized action items (Priority A desk-reject hazards and Priority B reviewer pushback) and consult the 5 simulated peer-reviewer personas before submitting to your target journal.'
     };
   }
 

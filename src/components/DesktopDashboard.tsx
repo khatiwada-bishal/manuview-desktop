@@ -103,9 +103,9 @@ export function DesktopDashboard({
 
   // Normalized values prioritizing fullReport
   const title = fullReport?.title || data.paperTitle || data.headlineTitle;
-  const overallScore = fullReport?.overallScore ?? data.score ?? 91;
+  const overallScore = fullReport?.overallScore ?? data.score ?? 78;
   const targetJournal =
-    fullReport?.targetJournal || data.targetJournal || "International Journal of Production Economics";
+    fullReport?.targetJournal || data.targetJournal || "Target Journal";
   const summary = fullReport?.summary;
   const classification = fullReport?.classification;
   const personas = fullReport?.reviewerPersonas || [];

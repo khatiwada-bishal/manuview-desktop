@@ -139,19 +139,58 @@ export async function callLLM(
     const cleanKey = encodeURIComponent(apiKey.trim());
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${cleanKey}`;
     try {
-      const contents = messages.map(m => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
-      }));
+      const systemMessage = messages.find(m => m.role === 'system')?.content;
+      const nonSystemMessages = messages.filter(m => m.role !== 'system');
 
-      const response = await fetch(geminiUrl, {
+      // Ensure alternating turns without consecutive duplicate roles
+      let contents: any[] = [];
+      if (nonSystemMessages.length === 0 && systemMessage) {
+        contents = [{ role: 'user', parts: [{ text: systemMessage }] }];
+      } else {
+        nonSystemMessages.forEach(m => {
+          const role = m.role === 'assistant' ? 'model' : 'user';
+          if (contents.length > 0 && contents[contents.length - 1].role === role) {
+            contents[contents.length - 1].parts[0].text += `\n\n${m.content}`;
+          } else {
+            contents.push({ role, parts: [{ text: m.content }] });
+          }
+        });
+      }
+
+      const requestPayload: any = {
+        contents,
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 8192,
+          responseMimeType: "application/json",
+        },
+      };
+
+      if (systemMessage) {
+        requestPayload.systemInstruction = {
+          parts: [{ text: systemMessage }],
+        };
+      }
+
+      let response = await fetch(geminiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents,
-          generationConfig: { temperature: 0.2, maxOutputTokens: 8192 },
-        }),
+        body: JSON.stringify(requestPayload),
       });
+
+      // Fallback: If systemInstruction or responseMimeType is rejected on legacy models with 400, retry merged
+      if (!response.ok && response.status === 400 && systemMessage) {
+        console.warn("Gemini rejected systemInstruction/json mode, retrying with prepended prompt...");
+        const mergedText = `[SYSTEM INSTRUCTIONS]\n${systemMessage}\n\n[USER INPUT]\n${nonSystemMessages.map(m => m.content).join("\n\n")}`;
+        response = await fetch(geminiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: mergedText }] }],
+            generationConfig: { temperature: 0.2, maxOutputTokens: 8192 },
+          }),
+        });
+      }
 
       if (!response.ok) {
         let errText = `HTTP ${response.status}`;
