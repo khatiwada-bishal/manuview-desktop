@@ -45,6 +45,7 @@ export function DesktopHeader({
   onCloseTab,
   sidebarOpen = true,
 }: DesktopHeaderProps) {
+  const containerRef = React.useRef<HTMLDivElement>(null);
   const tabsScrollRef = React.useRef<HTMLDivElement>(null);
   const activeTabRef = React.useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = React.useState(false);
@@ -77,21 +78,43 @@ export function DesktopHeader({
   };
 
   const checkScroll = React.useCallback(() => {
-    const el = tabsScrollRef.current;
-    if (!el) return;
-    const overflow = el.scrollWidth > el.clientWidth + 2;
+    const scrollEl = tabsScrollRef.current;
+    const containerEl = containerRef.current;
+    if (!scrollEl || !containerEl) return;
+
+    // Available width in top bar tab area
+    const availableWidth = containerEl.clientWidth;
+    // Actual width required by all tabs combined
+    const contentWidth = scrollEl.scrollWidth;
+
+    // Tabs only overflow when their combined width genuinely exceeds the available top bar width
+    const overflow = contentWidth > availableWidth + 4;
     setHasOverflow(overflow);
-    setCanScrollLeft(el.scrollLeft > 2);
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+
+    if (overflow) {
+      setCanScrollLeft(scrollEl.scrollLeft > 4);
+      setCanScrollRight(scrollEl.scrollLeft + scrollEl.clientWidth < scrollEl.scrollWidth - 4);
+    } else {
+      setCanScrollLeft(false);
+      setCanScrollRight(false);
+    }
   }, []);
 
   React.useEffect(() => {
     checkScroll();
-    const el = tabsScrollRef.current;
-    if (!el) return;
+    const containerEl = containerRef.current;
+    const scrollEl = tabsScrollRef.current;
+    if (!containerEl || !scrollEl) return;
+
     const observer = new ResizeObserver(() => checkScroll());
-    observer.observe(el);
-    return () => observer.disconnect();
+    observer.observe(containerEl);
+    observer.observe(scrollEl);
+    window.addEventListener("resize", checkScroll);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", checkScroll);
+    };
   }, [checkScroll, openTabs]);
 
   // Smooth scroll active tab into view when activeTabId changes
@@ -154,34 +177,28 @@ export function DesktopHeader({
 
       {/* CENTER: BROWSER-STYLE SCROLLABLE TAB BAR WITH OVERFLOW ARROWS */}
       <div
+        ref={containerRef}
         data-tauri-drag-region
         className="flex-1 h-full flex items-end pb-1 min-w-0 px-2 relative"
       >
-        {/* Left Scroll Arrow (Shown when tabs overflow) */}
-        {hasOverflow && (
+        {/* Left Scroll Arrow (Shown ONLY when tabs genuinely overflow and can scroll left) */}
+        {hasOverflow && canScrollLeft && (
           <button
             type="button"
             onClick={handleScrollLeft}
-            disabled={!canScrollLeft}
             title="Scroll tabs left"
-            className={`w-6 h-[38px] flex items-center justify-center rounded-md transition shrink-0 z-10 mr-0.5 ${
-              canScrollLeft
-                ? "hover:bg-neutral-200/80 text-neutral-600 cursor-pointer"
-                : "text-neutral-300 cursor-default opacity-40"
-            }`}
+            className="w-6 h-[38px] flex items-center justify-center rounded-md hover:bg-neutral-200/80 text-neutral-600 transition shrink-0 z-10 mr-1 cursor-pointer bg-white/90 border border-[#E5E7EB] shadow-2xs"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-3.5 h-3.5" />
           </button>
         )}
 
-        {/* Scrollable Tabs Container (No scrollbar visible) */}
+        {/* Scrollable Tabs Container (Takes full available width, only scrolls on true overflow) */}
         <div
           ref={tabsScrollRef}
           onScroll={checkScroll}
           data-tauri-drag-region
-          className={`flex items-center gap-1 h-[42px] min-w-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth shrink-0 ${
-            hasOverflow ? "flex-1 overflow-x-auto" : "max-w-full overflow-visible"
-          }`}
+          className="flex-1 flex items-center gap-1 h-[42px] min-w-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth overflow-x-auto"
         >
           {openTabs.map((tab) => {
             const isActive = tab.id === activeTabId;
@@ -215,28 +232,23 @@ export function DesktopHeader({
           })}
         </div>
 
-        {/* Right Scroll Arrow (Shown when tabs overflow) */}
-        {hasOverflow && (
+        {/* Right Scroll Arrow (Shown ONLY when tabs genuinely overflow and can scroll right) */}
+        {hasOverflow && canScrollRight && (
           <button
             type="button"
             onClick={handleScrollRight}
-            disabled={!canScrollRight}
             title="Scroll tabs right"
-            className={`w-6 h-[38px] flex items-center justify-center rounded-md transition shrink-0 z-10 ml-0.5 ${
-              canScrollRight
-                ? "hover:bg-neutral-200/80 text-neutral-600 cursor-pointer"
-                : "text-neutral-300 cursor-default opacity-40"
-            }`}
+            className="w-6 h-[38px] flex items-center justify-center rounded-md hover:bg-neutral-200/80 text-neutral-600 transition shrink-0 z-10 ml-1 cursor-pointer bg-white/90 border border-[#E5E7EB] shadow-2xs"
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-3.5 h-3.5" />
           </button>
         )}
 
-        {/* Dedicated Window Drag Region filling remaining header width */}
+        {/* Dedicated Window Drag Region at the far right */}
         <div
           data-tauri-drag-region
           onMouseDown={handleHeaderMouseDown}
-          className="flex-1 h-full min-w-[24px]"
+          className="w-4 h-full shrink-0"
         />
       </div>
     </header>
