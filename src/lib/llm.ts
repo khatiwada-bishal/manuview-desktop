@@ -604,7 +604,10 @@ export const CURATED_MODELS: Record<LLMProvider, AvailableModel[]> = {
   ],
 };
 
-export async function fetchAvailableModels(config?: ProviderConfig): Promise<AvailableModel[]> {
+export async function fetchAvailableModels(
+  config?: ProviderConfig,
+  options?: { throwOnError?: boolean }
+): Promise<AvailableModel[]> {
   const serverStatus = getServerConfigStatus();
   const provider: LLMProvider = config?.provider || (serverStatus.activeProvider !== "none" ? serverStatus.activeProvider : "gemini");
   let apiKey = config?.apiKey?.trim() || "";
@@ -623,11 +626,15 @@ export async function fetchAvailableModels(config?: ProviderConfig): Promise<Ava
 
   const defaultList = CURATED_MODELS[provider] || CURATED_MODELS.gemini;
 
+  if (options?.throwOnError && !apiKey && provider !== "ollama") {
+    throw new Error(`Please enter your ${provider.toUpperCase()} API key first.`);
+  }
+
   try {
     if (provider === "gemini" && apiKey) {
       const cleanKey = encodeURIComponent(apiKey.trim());
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`, {
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -647,14 +654,23 @@ export async function fetchAvailableModels(config?: ProviderConfig): Promise<Ava
                 name: m.displayName || existing?.name || id,
                 description: existing?.description || m.description || "Google Generative AI Model",
                 tag: existing?.tag || (id.includes("flash") ? "⚡ Fast" : id.includes("pro") ? "🧠 Frontier" : undefined),
-                recommended: existing?.recommended || false,
+                recommended: existing?.recommended || id.includes("2.5-flash") || id.includes("1.5-flash"),
+                isLive: true,
               };
             });
           if (liveModels.length > 0) {
-            // Put recommended first
             return liveModels.sort((a, b) => (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0));
           }
         }
+      } else if (options?.throwOnError) {
+        let errMessage = `HTTP ${res.status}`;
+        try {
+          const errJson = await res.json();
+          errMessage = errJson.error?.message || errMessage;
+        } catch {
+          errMessage = (await res.text()) || errMessage;
+        }
+        throw new Error(`Gemini API error (${res.status}): ${errMessage}`);
       }
     } else if (provider === "openai" && apiKey) {
       let cleanBase = (baseUrl || "https://api.openai.com/v1").trim();
@@ -664,7 +680,7 @@ export async function fetchAvailableModels(config?: ProviderConfig): Promise<Ava
       cleanBase = cleanBase.replace(/\/+$/, "");
       const endpoint = cleanBase.endsWith("/models") ? cleanBase : `${cleanBase}/models`;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
       const res = await fetch(endpoint, {
         headers: { Authorization: `Bearer ${apiKey.trim()}` },
         signal: controller.signal,
@@ -676,7 +692,7 @@ export async function fetchAvailableModels(config?: ProviderConfig): Promise<Ava
         if (Array.isArray(data.data)) {
           const chatIds = data.data
             .map((m: any) => m.id)
-            .filter((id: string) => id.includes("gpt") || id.startsWith("o1") || id.startsWith("o3") || id.includes("chat"));
+            .filter((id: string) => id.includes("gpt") || id.startsWith("o1") || id.startsWith("o3") || id.includes("chat") || id.includes("claude"));
           if (chatIds.length > 0) {
             const mapped: AvailableModel[] = chatIds.map((id: string) => {
               const existing = defaultList.find((d) => d.id === id);
@@ -686,15 +702,25 @@ export async function fetchAvailableModels(config?: ProviderConfig): Promise<Ava
                 description: existing?.description || `OpenAI model ${id}`,
                 tag: existing?.tag || (id.startsWith("o") ? "🧠 Reasoning" : id.includes("mini") ? "⚡ Fast" : undefined),
                 recommended: existing?.recommended || id === "gpt-4o",
+                isLive: true,
               };
             });
             return mapped.sort((a, b) => (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0));
           }
         }
+      } else if (options?.throwOnError) {
+        let errMessage = `HTTP ${res.status}`;
+        try {
+          const errJson = await res.json();
+          errMessage = errJson.error?.message || errJson.message || errMessage;
+        } catch {
+          errMessage = (await res.text()) || errMessage;
+        }
+        throw new Error(`OpenAI API error (${res.status}): ${errMessage}`);
       }
     } else if (provider === "groq" && apiKey) {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
       const res = await fetch("https://api.groq.com/openai/v1/models", {
         headers: { Authorization: `Bearer ${apiKey.trim()}` },
         signal: controller.signal,
@@ -715,12 +741,64 @@ export async function fetchAvailableModels(config?: ProviderConfig): Promise<Ava
                 description: existing?.description || `Groq LPU accelerated model (${m.owned_by || "Meta"})`,
                 tag: existing?.tag || (id.includes("70b") ? "✨ High Quality" : id.includes("8b") ? "⚡ Ultra Fast" : undefined),
                 recommended: existing?.recommended || id.includes("llama-3.3-70b"),
+                isLive: true,
               };
             });
           if (mapped.length > 0) {
             return mapped.sort((a, b) => (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0));
           }
         }
+      } else if (options?.throwOnError) {
+        let errMessage = `HTTP ${res.status}`;
+        try {
+          const errJson = await res.json();
+          errMessage = errJson.error?.message || errJson.message || errMessage;
+        } catch {
+          errMessage = (await res.text()) || errMessage;
+        }
+        throw new Error(`Groq API error (${res.status}): ${errMessage}`);
+      }
+    } else if (provider === "anthropic" && apiKey) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch("https://api.anthropic.com/v1/models", {
+        headers: {
+          "x-api-key": apiKey.trim(),
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.data)) {
+          const mapped: AvailableModel[] = data.data.map((m: any) => {
+            const id = m.id;
+            const existing = defaultList.find((d) => d.id === id);
+            return {
+              id,
+              name: m.display_name || existing?.name || id,
+              description: existing?.description || `Anthropic model ${id}`,
+              tag: existing?.tag || (id.includes("sonnet") ? "🧠 Frontier" : id.includes("haiku") ? "⚡ Fast" : undefined),
+              recommended: existing?.recommended || id.includes("sonnet-3-7") || id.includes("sonnet-3-5"),
+              isLive: true,
+            };
+          });
+          if (mapped.length > 0) {
+            return mapped.sort((a, b) => (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0));
+          }
+        }
+      } else if (options?.throwOnError) {
+        let errMessage = `HTTP ${res.status}`;
+        try {
+          const errJson = await res.json();
+          errMessage = errJson.error?.message || errMessage;
+        } catch {
+          errMessage = (await res.text()) || errMessage;
+        }
+        throw new Error(`Anthropic API error (${res.status}): ${errMessage}`);
       }
     } else if (provider === "ollama") {
       let cleanBase = (baseUrl || "http://localhost:11434").trim();
@@ -729,7 +807,7 @@ export async function fetchAvailableModels(config?: ProviderConfig): Promise<Ava
       }
       cleanBase = cleanBase.replace(/\/+$/, "");
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
       const res = await fetch(`${cleanBase}/api/tags`, {
         signal: controller.signal,
       });
@@ -744,12 +822,21 @@ export async function fetchAvailableModels(config?: ProviderConfig): Promise<Ava
             description: `Locally pulled model (${Math.round(((m.size || 0) / 1024 / 1024 / 1024) * 10) / 10} GB)`,
             tag: idx === 0 ? "✨ Active Local" : "Local",
             recommended: idx === 0,
+            isLive: true,
           }));
           return installed;
+        } else if (options?.throwOnError) {
+          throw new Error(`Connected to Ollama, but no local models were found. Run 'ollama pull llama3.3' in your terminal.`);
         }
+      } else if (options?.throwOnError) {
+        throw new Error(`Ollama server returned HTTP ${res.status}. Check that 'ollama serve' is running.`);
       }
     }
-  } catch {}
+  } catch (err: any) {
+    if (options?.throwOnError) {
+      throw err;
+    }
+  }
 
   return defaultList;
 }

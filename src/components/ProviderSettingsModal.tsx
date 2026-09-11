@@ -28,6 +28,13 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [testing, setTesting] = useState(false);
   const [loadingModels, setLoadingModels] = useState(false);
+  const [fetchingModels, setFetchingModels] = useState(false);
+  const [hasFetchedLive, setHasFetchedLive] = useState(false);
+  const [fetchFeedback, setFetchFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+    count?: number;
+  } | null>(null);
   const [availableModels, setAvailableModels] = useState<AvailableModel[]>([]);
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
@@ -59,6 +66,8 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
     }
 
     setTestResult(null);
+    setFetchFeedback(null);
+    setHasFetchedLive(false);
 
     // Check server / env status
     const status = getServerConfigStatus();
@@ -84,6 +93,9 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
       const models = await fetchAvailableModels(targetConfig);
       if (Array.isArray(models) && models.length > 0) {
         setAvailableModels(models);
+        if (models.some((m) => m.isLive)) {
+          setHasFetchedLive(true);
+        }
         // If current model is not set or empty, pick the recommended or first
         if (!targetConfig.model) {
           const rec = models.find((m: AvailableModel) => m.recommended) || models[0];
@@ -94,6 +106,53 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
       console.error("Failed to load models for provider:", err);
     } finally {
       setLoadingModels(false);
+    }
+  };
+
+  const handleFetchModels = async () => {
+    if (!config.apiKey?.trim() && config.provider !== "ollama") {
+      setFetchFeedback({
+        type: "error",
+        message: `Please enter your ${config.provider.toUpperCase()} API key first.`,
+      });
+      return;
+    }
+
+    setFetchingModels(true);
+    setFetchFeedback(null);
+    try {
+      const models = await fetchAvailableModels(config, { throwOnError: true });
+      if (Array.isArray(models) && models.length > 0) {
+        setAvailableModels(models);
+        setHasFetchedLive(true);
+        setFetchFeedback({
+          type: "success",
+          message: `Successfully retrieved ${models.length} authorized models from ${config.provider.toUpperCase()}! Select a model below.`,
+          count: models.length,
+        });
+
+        // If current model is not in the live list, pick the recommended or first
+        const exists = models.some((m) => m.id === config.model);
+        if (!exists) {
+          const rec = models.find((m: AvailableModel) => m.recommended) || models[0];
+          setConfig((prev) => ({ ...prev, model: rec.id }));
+        }
+
+        // Open the dropdown so the user can easily review the fetched models
+        setModelDropdownOpen(true);
+      } else {
+        setFetchFeedback({
+          type: "error",
+          message: `No models returned from ${config.provider.toUpperCase()}.`,
+        });
+      }
+    } catch (err: any) {
+      setFetchFeedback({
+        type: "error",
+        message: err.message || `Failed to fetch models from ${config.provider.toUpperCase()}. Please check your API key.`,
+      });
+    } finally {
+      setFetchingModels(false);
     }
   };
 
@@ -116,6 +175,8 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
     };
     setConfig(updated);
     setTestResult(null);
+    setFetchFeedback(null);
+    setHasFetchedLive(false);
     loadModelsForProvider(updated);
   };
 
@@ -127,6 +188,9 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
       setTestResult(result);
       if (Array.isArray(result.availableModels) && result.availableModels.length > 0) {
         setAvailableModels(result.availableModels);
+        if (result.availableModels.some((m: AvailableModel) => m.isLive)) {
+          setHasFetchedLive(true);
+        }
       }
     } catch (err: any) {
       setTestResult({
@@ -339,7 +403,16 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
               <input
                 type="password"
                 value={config.apiKey || ""}
-                onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
+                onChange={(e) => {
+                  setConfig({ ...config, apiKey: e.target.value });
+                  setFetchFeedback(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleFetchModels();
+                  }
+                }}
                 placeholder={
                   config.provider === "gemini"
                     ? "AIzaSy..."
@@ -350,7 +423,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                 className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#EBEBEA] focus:border-[#2F3437] focus:outline-none text-xs text-[#2F3437] font-mono transition shadow-2xs placeholder:text-[#9B9A97]"
               />
               <p className="text-[11px] text-[#787774] mt-1">
-                Client keys are stored strictly in your local browser sandbox and never shared.
+                Client keys are stored strictly in your local sandbox and never shared.
               </p>
 
               {config.provider === "openai" && (
@@ -361,7 +434,16 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                   <input
                     type="text"
                     value={config.baseUrl || ""}
-                    onChange={(e) => setConfig({ ...config, baseUrl: e.target.value })}
+                    onChange={(e) => {
+                      setConfig({ ...config, baseUrl: e.target.value });
+                      setFetchFeedback(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleFetchModels();
+                      }
+                    }}
                     placeholder="https://api.openai.com/v1 (or your custom proxy URL)"
                     className="w-full px-3.5 py-2 rounded-xl bg-white border border-[#EBEBEA] focus:border-[#2F3437] focus:outline-none text-xs text-[#2F3437] font-mono transition shadow-2xs placeholder:text-[#9B9A97]"
                   />
@@ -376,7 +458,16 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
               <input
                 type="text"
                 value={config.baseUrl || "http://localhost:11434"}
-                onChange={(e) => setConfig({ ...config, baseUrl: e.target.value })}
+                onChange={(e) => {
+                  setConfig({ ...config, baseUrl: e.target.value });
+                  setFetchFeedback(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleFetchModels();
+                  }
+                }}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#EBEBEA] focus:border-[#2F3437] focus:outline-none text-xs text-[#2F3437] font-mono transition shadow-2xs"
               />
               <p className="text-[11px] text-[#787774] mt-1">
@@ -385,17 +476,90 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
             </div>
           )}
 
+          {/* Dedicated Fetch Models Action & Live Status */}
+          <div className="pt-0.5">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                onClick={handleFetchModels}
+                disabled={fetchingModels || (!config.apiKey?.trim() && config.provider !== "ollama")}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-[#2F3437] text-white hover:bg-black disabled:bg-[#F7F7F5] disabled:text-[#9B9A97] disabled:border-[#EBEBEA] border border-[#2F3437] transition shadow-xs cursor-pointer disabled:cursor-not-allowed"
+              >
+                {fetchingModels ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                    <span>Fetching models from {config.provider.toUpperCase()}...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Fetch Models</span>
+                  </>
+                )}
+              </button>
+
+              {!config.apiKey?.trim() && config.provider !== "ollama" ? (
+                <span className="text-[11px] text-[#787774]">
+                  Enter your API key, then click <strong>Fetch Models</strong>
+                </span>
+              ) : hasFetchedLive ? (
+                <span className="text-[11px] text-[#1E5A2A] font-medium flex items-center gap-1.5 bg-[#EDF6EE] px-2.5 py-1 rounded-lg border border-[#CBE7CE]">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#1E5A2A]" />
+                  <span>{availableModels.length} live models retrieved for this key</span>
+                </span>
+              ) : (
+                <span className="text-[11px] text-[#787774]">
+                  Click to fetch authorized models directly from {config.provider.toUpperCase()}
+                </span>
+              )}
+            </div>
+
+            {/* Fetch Status / Error Feedback Banner */}
+            {fetchFeedback && (
+              <div
+                className={`mt-2.5 p-3 rounded-xl border text-xs flex items-start gap-2.5 animate-fadeIn ${
+                  fetchFeedback.type === "success"
+                    ? "bg-[#EDF6EE] border-[#CBE7CE] text-[#1E5A2A]"
+                    : "bg-[#FDF0EF] border-[#F7CECC] text-[#7C2D2B]"
+                }`}
+              >
+                {fetchFeedback.type === "success" ? (
+                  <CheckCircle2 className="w-4 h-4 text-[#1E5A2A] flex-shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-[#7C2D2B] flex-shrink-0 mt-0.5" />
+                )}
+                <div className="flex-1 font-medium leading-relaxed">
+                  {fetchFeedback.message}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFetchFeedback(null)}
+                  className="text-[#787774] hover:text-[#2F3437] p-0.5 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* 3. Available Models Picker (Dropdown Selector) */}
           <div ref={dropdownRef} className="relative z-20">
             <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <label className="text-xs font-semibold text-[#2F3437]">
                   3. Select Model
                 </label>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#F7F7F5] border border-[#EBEBEA] text-[#787774] font-medium">
-                  {availableModels.length} available
-                </span>
-                {loadingModels && (
+                {hasFetchedLive ? (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#EDF6EE] border border-[#CBE7CE] text-[#1E5A2A] font-semibold flex items-center gap-1">
+                    <Check className="w-3 h-3 text-[#1E5A2A]" />
+                    {availableModels.length} Live Models
+                  </span>
+                ) : (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#F7F7F5] border border-[#EBEBEA] text-[#787774] font-medium">
+                    {availableModels.length} available
+                  </span>
+                )}
+                {fetchingModels && (
                   <RefreshCw className="w-3 h-3 text-[#787774] animate-spin ml-1" />
                 )}
               </div>
@@ -405,9 +569,9 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                   setShowCustomInput(!showCustomInput);
                   setModelDropdownOpen(false);
                 }}
-                className="text-[11px] text-[#0A85EA] hover:underline font-medium"
+                className="text-[11px] text-[#0A85EA] hover:underline font-medium cursor-pointer"
               >
-                {showCustomInput ? "Show Preset Models" : "Custom Model ID"}
+                {showCustomInput ? "Show Model List" : "Manual Model ID"}
               </button>
             </div>
 
@@ -489,6 +653,22 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                       <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-[#9B9A97] pointer-events-none" />
                     </div>
 
+                    {/* Header banner inside dropdown */}
+                    {hasFetchedLive ? (
+                      <div className="px-2.5 py-1.5 mb-1.5 border-b border-[#EBEBEA] flex items-center justify-between text-[11px] text-[#1E5A2A] bg-[#EDF6EE]/70 rounded-lg">
+                        <span className="flex items-center gap-1.5 font-medium">
+                          <Sparkles className="w-3 h-3 text-[#1E5A2A]" />
+                          Verified live models from {config.provider.toUpperCase()}
+                        </span>
+                        <span className="text-[10px] font-bold text-[#1E5A2A]">{availableModels.length} total</span>
+                      </div>
+                    ) : (
+                      <div className="px-2.5 py-1.5 mb-1.5 border-b border-[#EBEBEA] flex items-center justify-between text-[11px] text-[#78510E] bg-[#FBF3DB]/70 rounded-lg">
+                        <span>Curated preset models</span>
+                        <span className="text-[10px] text-[#787774]">Click "Fetch Models" above to load live</span>
+                      </div>
+                    )}
+
                     {/* Populated Models List */}
                     <div className="max-h-60 overflow-y-auto divide-y divide-[#F7F7F5] overscroll-contain">
                       {(() => {
@@ -529,6 +709,11 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                                   <span className="font-mono text-xs font-semibold text-[#2F3437]">
                                     {m.id}
                                   </span>
+                                  {m.isLive && (
+                                    <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded-md border bg-[#EDF6EE] text-[#1E5A2A] border-[#CBE7CE]">
+                                      Live
+                                    </span>
+                                  )}
                                   {m.tag && (
                                     <span
                                       className={`text-[9px] font-semibold px-1.5 py-0.2 rounded-md border ${

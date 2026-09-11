@@ -191,5 +191,6 @@ export interface AvailableModel {
   description: string;
   tag?: string;
   recommended?: boolean;
+  isLive?: boolean;
 }
 
