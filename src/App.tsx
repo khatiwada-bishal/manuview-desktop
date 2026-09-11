@@ -35,32 +35,49 @@ import {
 } from "@/lib/projectStorage";
 
 export default function App() {
-  // Purge legacy mock data & synchronize IndexedDB on startup
+  // Purge legacy mock data, synchronize IndexedDB & dismiss splash screen
   useEffect(() => {
     purgeLegacyDummyData();
-    initIndexedDBStorage().then((syncedProjects) => {
-      if (syncedProjects && syncedProjects.length > papers.length) {
-        setPapers(syncedProjects.map((s) => s.paper));
-        setDashboardStore((prev) => {
-          const next = { ...prev };
-          for (const item of syncedProjects) {
-            if (!next[item.paper.id]) {
-              next[item.paper.id] = item.dashboardData;
+    const startTime = Date.now();
+
+    initIndexedDBStorage()
+      .then((syncedProjects) => {
+        if (syncedProjects && syncedProjects.length > papers.length) {
+          setPapers(syncedProjects.map((s) => s.paper));
+          setDashboardStore((prev) => {
+            const next = { ...prev };
+            for (const item of syncedProjects) {
+              if (!next[item.paper.id]) {
+                next[item.paper.id] = item.dashboardData;
+              }
             }
-          }
-          return next;
-        });
-        setFullReportsStore((prev) => {
-          const next = { ...prev };
-          for (const item of syncedProjects) {
-            if (item.fullReport && !next[item.paper.id]) {
-              next[item.paper.id] = item.fullReport;
+            return next;
+          });
+          setFullReportsStore((prev) => {
+            const next = { ...prev };
+            for (const item of syncedProjects) {
+              if (item.fullReport && !next[item.paper.id]) {
+                next[item.paper.id] = item.fullReport;
+              }
             }
+            return next;
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        // Allow at least 650ms for the animated glass splash screen to play smoothly
+        const elapsed = Date.now() - startTime;
+        const delay = Math.max(0, 650 - elapsed);
+        setTimeout(() => {
+          const splash = document.getElementById("app-splash");
+          if (splash) {
+            splash.style.opacity = "0";
+            splash.style.pointerEvents = "none";
+            setTimeout(() => splash.remove(), 450);
           }
-          return next;
-        });
-      }
-    }).catch(() => {});
+        }, delay);
+      });
   }, []);
 
   // Saved papers loaded from local storage

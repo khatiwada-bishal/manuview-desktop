@@ -20,6 +20,7 @@ import { DesktopDashboardData } from "@/components/DesktopDashboard";
 import { PaperItem } from "@/components/DesktopSidebar";
 import { FullReviewReport, ProviderConfig } from "@/lib/types";
 import { useApiConnection } from "@/lib/useApiConnection";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 interface DesktopScanModalProps {
   isOpen: boolean;
@@ -255,21 +256,14 @@ export function DesktopScanModal({
         </div>
 
         {loading ? (
-          <div className="py-12 flex flex-col items-center justify-center space-y-4 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 backdrop-blur-xs">
-              <RefreshCw className="w-6 h-6 animate-spin" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="font-bold text-sm text-neutral-900 dark:text-white">
-                Running Full Diagnostic Engine...
-              </h3>
-              <p className="text-xs text-blue-600 dark:text-blue-400 font-medium animate-pulse">
-                {loadingStep}
-              </p>
-            </div>
-            <p className="text-[11px] text-neutral-400 dark:text-neutral-500 max-w-xs">
-              Calibrating against {journal} editorial standards and cross-checking references.
-            </p>
+          <div className="py-6 flex flex-col items-center justify-center">
+            <LoadingScreen
+              fullScreen={false}
+              size="md"
+              title="Running Full Diagnostic Engine..."
+              step={loadingStep}
+              subtext={`Calibrating against ${journal || "target"} editorial standards and cross-checking references.`}
+            />
           </div>
         ) : (
           <form onSubmit={handleStartScan} className="space-y-4">
