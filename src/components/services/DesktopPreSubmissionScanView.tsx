@@ -584,11 +584,20 @@ export function DesktopPreSubmissionScanView({
                 type="button"
                 onClick={checkProviderStatus}
                 disabled={pinging}
-                className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-white dark:bg-[#1E293B] hover:bg-neutral-50 dark:hover:bg-[#334155] border border-[#E5E7EB] dark:border-[#334155] text-neutral-700 dark:text-neutral-300 shadow-2xs transition disabled:opacity-50 cursor-pointer"
+                className="isolate inline-flex items-center justify-center gap-1.5 text-xs px-2.5 py-1 min-w-[110px] rounded-lg bg-white dark:bg-[#1E293B] hover:bg-neutral-50 dark:hover:bg-[#334155] border border-[#E5E7EB] dark:border-[#334155] text-neutral-700 dark:text-neutral-300 shadow-2xs transition-colors disabled:opacity-60 cursor-pointer select-none"
+                style={{ transform: "translateZ(0)" }}
                 title="Test API connection & ping latency"
               >
-                <Activity className={`w-3.5 h-3.5 ${pinging ? "animate-spin text-emerald-600" : "text-neutral-400 dark:text-neutral-500"}`} />
-                <span>{pinging ? "Testing Ping..." : "Check Latency"}</span>
+                {pinging ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-600 shrink-0" />
+                ) : (
+                  <Activity className="w-3.5 h-3.5 text-neutral-400 dark:text-neutral-500 shrink-0" />
+                )}
+                {pinging ? (
+                  <span key="pinging">Testing...</span>
+                ) : (
+                  <span key="idle">Check Latency</span>
+                )}
               </button>
 
               {scanPingResult && (
