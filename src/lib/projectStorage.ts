@@ -22,8 +22,8 @@ export interface SessionState {
 const PROJECTS_STORAGE_KEY = "manuview_projects_v1";
 const SESSION_STORAGE_KEY = "manuview_session_v1";
 
-// Purge any old dummy IDs that might have been cached in user localStorage
-const LEGACY_DUMMY_IDS = new Set(["dll3-sclc", "crispr-screen", "paper-1", "paper-2"]);
+// Purge any old dummy IDs that might have been cached in user localStorage or IndexedDB
+const LEGACY_DUMMY_IDS = new Set(["dll3-sclc", "crispr-screen", "paper-1", "paper-2", "nepal-ewaste-study"]);
 
 /**
  * Default comprehensive research project seeded from the user's empirical study
@@ -434,18 +434,20 @@ export const NEPAL_EWASTE_PROJECT: SavedProject = {
 };
 
 /**
- * Clean up legacy mock data from localStorage if present
+ * Clean up legacy mock data from localStorage and IndexedDB if present
  */
 export function purgeLegacyDummyData(): void {
   if (typeof window === "undefined") return;
   try {
+    for (const dummyId of LEGACY_DUMMY_IDS) {
+      idbDelete(dummyId).catch(() => {});
+    }
+
     const raw = localStorage.getItem(PROJECTS_STORAGE_KEY);
     if (raw) {
       const projects: SavedProject[] = JSON.parse(raw);
       const cleaned = projects.filter((p) => !LEGACY_DUMMY_IDS.has(p.paper.id));
-      if (cleaned.length !== projects.length) {
-        localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(cleaned));
-      }
+      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(cleaned));
     }
 
     const sessionRaw = localStorage.getItem(SESSION_STORAGE_KEY);
@@ -477,27 +479,18 @@ export function purgeLegacyDummyData(): void {
  * Load all saved projects from the user's computer
  */
 export function loadSavedProjects(): SavedProject[] {
-  if (typeof window === "undefined") return [NEPAL_EWASTE_PROJECT];
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(PROJECTS_STORAGE_KEY);
-    // If first launch (null), seed default Nepal E-Waste Study project
-    if (raw === null) {
-      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify([NEPAL_EWASTE_PROJECT]));
-      idbSet({ id: NEPAL_EWASTE_PROJECT.paper.id, ...NEPAL_EWASTE_PROJECT }).catch(() => {});
-      return [NEPAL_EWASTE_PROJECT];
+    if (!raw) {
+      return [];
     }
     const parsed: SavedProject[] = JSON.parse(raw);
     const cleaned = parsed.filter((p) => !LEGACY_DUMMY_IDS.has(p.paper.id));
-    // If the list is empty because of old dummy purge, reseed with Nepal E-Waste Study
-    if (cleaned.length === 0 && raw !== "[]") {
-      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify([NEPAL_EWASTE_PROJECT]));
-      idbSet({ id: NEPAL_EWASTE_PROJECT.paper.id, ...NEPAL_EWASTE_PROJECT }).catch(() => {});
-      return [NEPAL_EWASTE_PROJECT];
-    }
     return cleaned;
   } catch (err) {
     console.error("Error loading saved projects from localStorage:", err);
-    return [NEPAL_EWASTE_PROJECT];
+    return [];
   }
 }
 
@@ -505,17 +498,26 @@ export function loadSavedProjects(): SavedProject[] {
  * Asynchronously initialize and synchronize IndexedDB storage
  */
 export async function initIndexedDBStorage(): Promise<SavedProject[]> {
-  if (typeof window === "undefined") return [NEPAL_EWASTE_PROJECT];
+  if (typeof window === "undefined") return [];
   try {
+    // Delete any legacy dummy records from IndexedDB
+    for (const dummyId of LEGACY_DUMMY_IDS) {
+      await idbDelete(dummyId).catch(() => {});
+    }
+
     const local = loadSavedProjects();
     // Sync all existing local projects to IndexedDB
     for (const proj of local) {
       await idbSet({ id: proj.paper.id, ...proj });
     }
     const idbProjects = await idbGetAll<SavedProject & { id: string }>();
-    if (idbProjects.length > local.length) {
+    const validIdb = idbProjects
+      .filter((p) => !LEGACY_DUMMY_IDS.has(p.id))
+      .map(({ id, ...rest }) => rest as SavedProject);
+
+    if (validIdb.length > local.length) {
       // IndexedDB has more projects than localStorage (e.g. quota limit reached)
-      return idbProjects.map(({ id, ...rest }) => rest as SavedProject);
+      return validIdb;
     }
     return local;
   } catch (err) {
@@ -618,17 +620,9 @@ export function loadSession(): SessionState | null {
   try {
     const raw = localStorage.getItem(SESSION_STORAGE_KEY);
     if (!raw) {
-      // Default session with Nepal E-Waste Study open
       return {
-        openTabs: [
-          {
-            id: NEPAL_EWASTE_PROJECT.paper.id,
-            type: "article",
-            title: NEPAL_EWASTE_PROJECT.paper.title,
-            shortName: NEPAL_EWASTE_PROJECT.paper.shortName,
-          },
-        ],
-        activeTabId: NEPAL_EWASTE_PROJECT.paper.id,
+        openTabs: [],
+        activeTabId: null,
         activeView: "overview",
         lastActiveAt: new Date().toISOString(),
       };
@@ -639,15 +633,8 @@ export function loadSession(): SessionState | null {
     );
     if (validTabs.length === 0) {
       return {
-        openTabs: [
-          {
-            id: NEPAL_EWASTE_PROJECT.paper.id,
-            type: "article",
-            title: NEPAL_EWASTE_PROJECT.paper.title,
-            shortName: NEPAL_EWASTE_PROJECT.paper.shortName,
-          },
-        ],
-        activeTabId: NEPAL_EWASTE_PROJECT.paper.id,
+        openTabs: [],
+        activeTabId: null,
         activeView: "overview",
         lastActiveAt: new Date().toISOString(),
       };
