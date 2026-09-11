@@ -102,7 +102,7 @@ export function DesktopScanModal({
     t1 = setTimeout(() => setLoadingStep("Resolving references against Crossref & Retraction Watch..."), 1500);
     t2 = setTimeout(() => setLoadingStep("Auditing causal claims against experimental controls..."), 3000);
     t3 = setTimeout(() => setLoadingStep("Evaluating methodology, sample power, and statistics..."), 4500);
-    t4 = setTimeout(() => setLoadingStep("Simulating 4 peer-reviewer personas..."), 6000);
+    t4 = setTimeout(() => setLoadingStep("Simulating 5 peer-reviewer personas (including Devil's Advocate)..."), 6000);
 
     try {
       let rawText = "";
