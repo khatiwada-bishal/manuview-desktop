@@ -225,59 +225,60 @@ export function DesktopDashboard({
     data.citationAudit,
   ]);
 
-  const handleExportHTML = async () => {
+  const isExportingRef = useRef<boolean>(false);
+  const [activeExportFormat, setActiveExportFormat] = useState<string | null>(null);
+
+  const handleExportFormat = async (
+    format: "word" | "html" | "latex" | "bibtex",
+    e?: React.MouseEvent
+  ) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    // Prevent double invocation or concurrent exports
+    if (isExportingRef.current) return;
+    isExportingRef.current = true;
+    setActiveExportFormat(format);
     setIsExportOpen(false);
+
     try {
-      const res = await exportInteractiveHtmlReport(effectiveReport);
+      let res: { success: boolean; filePath?: string; error?: string } | undefined;
+      let label = "";
+
+      if (format === "word") {
+        label = "Word Document (.doc)";
+        res = await exportWordDocReport(effectiveReport);
+      } else if (format === "html") {
+        label = "Interactive HTML (.html)";
+        res = await exportInteractiveHtmlReport(effectiveReport);
+      } else if (format === "latex") {
+        label = "LaTeX Rebuttal Table (.tex)";
+        res = await exportLatexRebuttalTable(effectiveReport);
+      } else if (format === "bibtex") {
+        label = "BibTeX Citations (.bib)";
+        res = await exportBibTeX(effectiveReport);
+      }
+
       if (res?.success) {
-        setExportToast("Report exported successfully as Interactive HTML");
+        setExportToast(`Report exported successfully as ${label}`);
         setTimeout(() => setExportToast(null), 3500);
       }
     } catch (err) {
-      console.error("Failed to export HTML:", err);
+      console.error(`Failed to export ${format}:`, err);
+    } finally {
+      setActiveExportFormat(null);
+      setTimeout(() => {
+        isExportingRef.current = false;
+      }, 400);
     }
   };
 
-  const handleExportWord = async () => {
-    setIsExportOpen(false);
-    try {
-      const res = await exportWordDocReport(effectiveReport);
-      if (res?.success) {
-        setExportToast("Report exported successfully as Word Document (.doc)");
-        setTimeout(() => setExportToast(null), 3500);
-      }
-    } catch (err) {
-      console.error("Failed to export Word doc:", err);
+  const handlePrint = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
     }
-  };
-
-  const handleExportLatex = async () => {
-    setIsExportOpen(false);
-    try {
-      const res = await exportLatexRebuttalTable(effectiveReport);
-      if (res?.success) {
-        setExportToast("Report exported successfully as LaTeX Rebuttal Table (.tex)");
-        setTimeout(() => setExportToast(null), 3500);
-      }
-    } catch (err) {
-      console.error("Failed to export LaTeX:", err);
-    }
-  };
-
-  const handleExportBibTeX = async () => {
-    setIsExportOpen(false);
-    try {
-      const res = await exportBibTeX(effectiveReport);
-      if (res?.success) {
-        setExportToast("Report exported successfully as BibTeX Citations (.bib)");
-        setTimeout(() => setExportToast(null), 3500);
-      }
-    } catch (err) {
-      console.error("Failed to export BibTeX:", err);
-    }
-  };
-
-  const handlePrint = () => {
     setIsExportOpen(false);
     window.print();
   };
@@ -364,40 +365,44 @@ export function DesktopDashboard({
                       <div className="absolute right-0 top-full mt-1 w-52 rounded-xl bg-white dark:bg-[#161F30] border border-[#E5E7EB] dark:border-[#334155] shadow-lg py-1.5 z-30 transition-all animate-fade-in">
                         <button
                           type="button"
-                          onClick={handleExportWord}
-                          className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2.5 cursor-pointer"
+                          disabled={activeExportFormat !== null}
+                          onClick={(e) => handleExportFormat("word", e)}
+                          className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2.5 cursor-pointer disabled:opacity-50"
                         >
                           <FileText className="w-3.5 h-3.5 text-blue-500" />
-                          <span>Word Document (.doc)</span>
+                          <span>{activeExportFormat === "word" ? "Exporting Word..." : "Word Document (.doc)"}</span>
                         </button>
                         <button
                           type="button"
-                          onClick={handleExportHTML}
-                          className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2.5 cursor-pointer"
+                          disabled={activeExportFormat !== null}
+                          onClick={(e) => handleExportFormat("html", e)}
+                          className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2.5 cursor-pointer disabled:opacity-50"
                         >
                           <Globe className="w-3.5 h-3.5 text-emerald-500" />
-                          <span>Interactive HTML (.html)</span>
+                          <span>{activeExportFormat === "html" ? "Exporting HTML..." : "Interactive HTML (.html)"}</span>
                         </button>
                         <button
                           type="button"
-                          onClick={handleExportLatex}
-                          className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2.5 cursor-pointer"
+                          disabled={activeExportFormat !== null}
+                          onClick={(e) => handleExportFormat("latex", e)}
+                          className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2.5 cursor-pointer disabled:opacity-50"
                         >
                           <FileCode className="w-3.5 h-3.5 text-purple-500" />
-                          <span>LaTeX Rebuttal (.tex)</span>
+                          <span>{activeExportFormat === "latex" ? "Exporting LaTeX..." : "LaTeX Rebuttal (.tex)"}</span>
                         </button>
                         <button
                           type="button"
-                          onClick={handleExportBibTeX}
-                          className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2.5 cursor-pointer"
+                          disabled={activeExportFormat !== null}
+                          onClick={(e) => handleExportFormat("bibtex", e)}
+                          className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2.5 cursor-pointer disabled:opacity-50"
                         >
                           <Bookmark className="w-3.5 h-3.5 text-amber-500" />
-                          <span>BibTeX Citations (.bib)</span>
+                          <span>{activeExportFormat === "bibtex" ? "Exporting BibTeX..." : "BibTeX Citations (.bib)"}</span>
                         </button>
                         <div className="my-1 border-t border-neutral-100 dark:border-neutral-800" />
                         <button
                           type="button"
-                          onClick={handlePrint}
+                          onClick={(e) => handlePrint(e)}
                           className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2.5 cursor-pointer"
                         >
                           <Printer className="w-3.5 h-3.5 text-neutral-500" />
