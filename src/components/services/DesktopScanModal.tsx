@@ -20,6 +20,7 @@ import { DesktopDashboardData } from "@/components/DesktopDashboard";
 import { PaperItem } from "@/components/DesktopSidebar";
 import { FullReviewReport, ProviderConfig } from "@/lib/types";
 import { useApiConnection } from "@/lib/useApiConnection";
+import { sanitizeErrorMessage } from "@/lib/llm";
 
 interface DesktopScanModalProps {
   isOpen: boolean;
@@ -200,7 +201,7 @@ export function DesktopScanModal({
       onComplete(newPaper, dashboardData, fullReport);
       onClose();
     } catch (err: any) {
-      setError(err.message || "Diagnostic review failed.");
+      setError(sanitizeErrorMessage(err.message || "Diagnostic review failed."));
     } finally {
       setLoading(false);
       setLoadingStep("");

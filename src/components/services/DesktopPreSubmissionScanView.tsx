@@ -47,7 +47,7 @@ import { exportInteractiveHtmlReport, exportWordDocReport } from "@/lib/export-g
 import { pickManuscriptFileDesktop, isDesktopApp } from "@/lib/desktop";
 import { extractTextFromFile, parseManuscriptText } from "@/lib/parser";
 import { runManuscriptDiagnostic, runBriefJournalFitAnalysis } from "@/lib/diagnostic-engine";
-import { callLLM, fetchAvailableModels, testLLMConnection } from "@/lib/llm";
+import { callLLM, fetchAvailableModels, testLLMConnection, sanitizeErrorMessage } from "@/lib/llm";
 import { PaperItem } from "@/components/DesktopSidebar";
 import { DesktopDashboardData } from "@/components/DesktopDashboard";
 import { findMatchingJournals } from "@/lib/journals";
@@ -458,7 +458,7 @@ export function DesktopPreSubmissionScanView({
       }
     } catch (err: any) {
       console.error("Diagnostic scan error:", err);
-      setError(err?.message || "Failed to generate diagnostic report. Please verify your AI provider credentials.");
+      setError(sanitizeErrorMessage(err?.message || "Failed to generate diagnostic report. Please verify your AI provider credentials."));
     } finally {
       setLoading(false);
       setLoadingStep("");
