@@ -36,11 +36,31 @@ function getSavedClientConfig(): ProviderConfig | undefined {
 export function sanitizeErrorMessage(msg: string): string {
   if (!msg) return "";
   return msg
+    .replace(/([?&](?:key|apiKey|api_key|token|auth)=)[a-zA-Z0-9_\-]+/gi, "$1[REDACTED]")
     .replace(/key=[a-zA-Z0-9_\-]+/gi, "key=[REDACTED]")
     .replace(/Bearer\s+[a-zA-Z0-9_\-\.]+/gi, "Bearer [REDACTED]")
+    .replace(/(?:x-api-key|authorization|api[-_]?key)\s*[:=]\s*["']?[a-zA-Z0-9_\-\.]+["']?/gi, "api-key: [REDACTED]")
+    .replace(/sk-ant-[a-zA-Z0-9_\-]{20,}/gi, "sk-ant-[REDACTED]")
     .replace(/sk-[a-zA-Z0-9_\-]{20,}/gi, "sk-[REDACTED]")
     .replace(/AIza[a-zA-Z0-9_\-]{30,}/gi, "AIza[REDACTED]")
     .replace(/gsk_[a-zA-Z0-9_\-]{20,}/gi, "gsk_[REDACTED]");
+}
+
+/**
+ * Sanitizes untrusted user/author text before LLM prompt injection (REQ-SEC-02).
+ * Disarms custom delimiter sequences, fake XML boundary tags, and common prompt injection directives.
+ */
+export function sanitizeAuthorText(text: string): string {
+  if (!text) return "";
+  return text
+    // Neutralize custom boundary tags and XML wrapper impersonations
+    .replace(/<{3,}[^>]+>{3,}/gi, "[delimiter neutralized]")
+    .replace(/<\/?(?:untrusted_[a-zA-Z0-9_-]+|system|instructions|prompt|admin|evaluator)[^>]*>/gi, "[tag neutralized]")
+    // Neutralize prompt injection attempts targeting instruction overrides
+    .replace(/\bignore\s+(?:all\s+)?(?:previous|prior|above)\s+(?:instructions|directives|prompts|rules)\b/gi, "[filtered injection attempt: ignore instructions]")
+    .replace(/\b(?:system\s+prompt\s+override|override\s+system\s+prompt)\b/gi, "[filtered injection attempt: system prompt override]")
+    .replace(/\byou\s+are\s+now\s+(?:in\s+debug\s+mode|an?\s+unrestricted|DAN|jailbroken)\b/gi, "[filtered injection attempt: jailbreak]")
+    .replace(/\boutput\s+(?:only\s+|strictly\s+)?(?:a\s+)?score\s+(?:of\s+)?100\b/gi, "[filtered injection attempt: forced score]");
 }
 
 export function getServerConfigStatus(): {
