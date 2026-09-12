@@ -241,9 +241,11 @@ export function DesktopHeader({
                 className="flex items-center gap-2.5 min-w-0 text-left hover:opacity-85 transition cursor-pointer"
                 title="Back to Landing Page"
               >
-                <div className="w-7 h-7 rounded-lg bg-[#0F172A] dark:bg-white text-white dark:text-[#0F172A] flex items-center justify-center font-serif font-bold text-xs shadow-xs shrink-0">
-                  M
-                </div>
+                <img
+                  src="/icon.svg"
+                  alt="ManuView Logo"
+                  className="w-7 h-7 rounded-lg shadow-xs shrink-0 select-none"
+                />
                 <div className="truncate min-w-0">
                   <div className="font-bold text-xs text-[#0F172A] dark:text-white tracking-tight leading-tight">
                     ManuView Desktop
