@@ -51,6 +51,119 @@ function parseManuscriptAuthor(authorStr: string): { family: string; initial?: s
   return familyToken.length >= 3 ? { family: familyToken, initial } : null;
 }
 
+const STOPWORDS = new Set([
+  'the', 'and', 'a', 'to', 'of', 'in', 'is', 'that', 'for', 'with',
+  'as', 'by', 'on', 'at', 'from', 'this', 'was', 'were', 'it', 'be',
+  'are', 'an', 'or', 'which', 'we', 'our', 'not', 'but', 'can', 'have',
+  'has', 'had', 'been', 'their', 'they', 'all', 'any', 'such', 'into'
+]);
+
+/**
+ * Grounds an LLM-generated evidence anchor against the genuine manuscript text.
+ * Prevents LLMs from hallucinating verbatim quotes that the authors never wrote.
+ * If a quote cannot be verified in the document or structured sections,
+ * it is safely transformed into a grounded contextual thematic anchor.
+ */
+export function groundEvidenceAnchor(
+  anchor: string,
+  rawText: string,
+  sections?: Record<string, string> | null
+): string {
+  if (!anchor || typeof anchor !== "string") {
+    return "text: §General";
+  }
+
+  const trimmed = anchor.trim();
+  if (!trimmed) return "text: §General";
+
+  // Non-verbatim structural anchors (absence, references, equation, table, figure, context)
+  if (
+    trimmed.startsWith("absence:") ||
+    trimmed.startsWith("references:") ||
+    trimmed.startsWith("equation:") ||
+    trimmed.startsWith("table:") ||
+    trimmed.startsWith("figure:") ||
+    trimmed.startsWith("context:")
+  ) {
+    return trimmed;
+  }
+
+  // Extract explicit section identifier if present, e.g., §Methods, §Introduction, §Results
+  const sectionMatch = trimmed.match(/§([A-Za-z0-9_\-]+)/);
+  const explicitSection = sectionMatch ? `§${sectionMatch[1]}` : "§General";
+
+  // Extract quoted text within double quotes, smart quotes, or single quotes
+  let quoteCandidate: string | null = null;
+  const quoteMatch = trimmed.match(/["“]([^"”]+)["”]/);
+  if (quoteMatch && quoteMatch[1].trim().length > 0) {
+    quoteCandidate = quoteMatch[1].trim();
+  } else {
+    // If no quotes, check if prefixed with text:
+    const textPrefixMatch = trimmed.match(/^text:\s*(?:§[A-Za-z0-9_\-]+\s*)?(.*)/i);
+    if (textPrefixMatch && textPrefixMatch[1].trim().length > 0) {
+      quoteCandidate = textPrefixMatch[1].trim();
+    }
+  }
+
+  if (!quoteCandidate) {
+    return trimmed;
+  }
+
+  // Normalize document content for resilient matching
+  const docCorpus = [
+    rawText || "",
+    ...Object.values(sections || {})
+  ].join(" ").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ");
+
+  const normQuote = quoteCandidate
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (normQuote.length < 4) {
+    return trimmed;
+  }
+
+  // 1. Direct normalized substring match
+  if (docCorpus.includes(normQuote)) {
+    return `text: ${explicitSection} "${quoteCandidate}"`;
+  }
+
+  // 2. Contiguous 4-word window n-gram match (resilient to minor paraphrasing or punctuation)
+  const words = normQuote.split(" ").filter((w) => w.length > 0);
+  let hasContiguousMatch = false;
+
+  if (words.length >= 4) {
+    for (let i = 0; i <= words.length - 4; i++) {
+      const windowStr = words.slice(i, i + 4).join(" ");
+      if (docCorpus.includes(windowStr)) {
+        hasContiguousMatch = true;
+        break;
+      }
+    }
+  } else if (words.length >= 2) {
+    if (docCorpus.includes(normQuote)) {
+      hasContiguousMatch = true;
+    }
+  }
+
+  if (hasContiguousMatch) {
+    return `text: ${explicitSection} "${quoteCandidate}"`;
+  }
+
+  // 3. Hallucinated Quote: Convert from false verbatim claim to thematic context anchor
+  const informativeTokens = words
+    .filter((w) => w.length > 2 && !STOPWORDS.has(w))
+    .slice(0, 5);
+
+  if (informativeTokens.length > 0) {
+    return `context: ${explicitSection} (thematic focus: ${informativeTokens.join(", ")})`;
+  }
+
+  return `context: ${explicitSection} (unverified reference)`;
+}
+
 export function computeCitationIntegrity(
   verifiedRefs: any[],
   totalRefsCount: number,
@@ -592,8 +705,40 @@ Please return your analysis as a JSON object matching this schema:
     try {
       parsedLLM = cleanAndRepairJson(rawResult);
     } catch (parseErr: any) {
-      console.warn("JSON repair could not parse LLM output:", parseErr.message);
-      llmCallError = "AI response was received but could not be parsed as valid JSON.";
+      console.warn("JSON repair could not parse initial LLM output:", parseErr.message);
+
+      // Automated Micro-Repair Loop: If we received substantive response that failed initial parsing,
+      // trigger a fast targeted recovery call to repair the JSON syntax before falling back to offline heuristics.
+      if (rawResult && rawResult.trim().length > 100) {
+        onProgress?.({
+          stage: 'generating_review',
+          message: 'Resolving JSON syntax boundary via micro-repair loop...',
+          percent: 92,
+        });
+
+        try {
+          const repairPrompt = [
+            {
+              role: "system" as const,
+              content:
+                "You are an automated JSON syntax repair engine. The provided text contains a valid JSON payload that was truncated, has unescaped quotes, missing closing braces, or syntax errors. Fix all syntax errors and output ONLY the valid JSON object. Do not include markdown codeblocks or conversational text.",
+            },
+            {
+              role: "user" as const,
+              content: `Repair this malformed JSON and return valid JSON:\n\n${rawResult}`,
+            },
+          ];
+
+          const repairedRaw = await callLLM(repairPrompt, activeConfig);
+          parsedLLM = cleanAndRepairJson(repairedRaw);
+          console.log("Micro-repair loop successfully restored valid JSON review structure.");
+        } catch (repairErr: any) {
+          console.warn("Micro-repair loop also failed:", repairErr.message);
+          llmCallError = "AI response was received but could not be parsed as valid JSON.";
+        }
+      } else {
+        llmCallError = "AI response was received but could not be parsed as valid JSON.";
+      }
     }
   } catch (err: any) {
     const safeError = sanitizeErrorMessage(err?.message || "AI provider call failed or is not connected.");
@@ -721,6 +866,9 @@ Please return your analysis as a JSON object matching this schema:
       priority: iss.priority,
       category: iss.category || ("Methodology" as const),
       source: "llm" as const,
+      evidenceAnchor: iss.evidenceAnchor
+        ? groundEvidenceAnchor(iss.evidenceAnchor, manuscript.rawText, manuscript.sections)
+        : undefined,
     }));
   } else {
     // In heuristic mode, emit deterministic issues without invented reviewer quotes (REQ-EN-06)
@@ -728,6 +876,9 @@ Please return your analysis as a JSON object matching this schema:
       ...iss,
       reviewerQuote: executionMode === "heuristic_offline" ? "" : iss.reviewerQuote,
       source: "heuristic" as const,
+      evidenceAnchor: iss.evidenceAnchor
+        ? groundEvidenceAnchor(iss.evidenceAnchor, manuscript.rawText, manuscript.sections)
+        : undefined,
     }));
   }
 
@@ -789,6 +940,9 @@ Please return your analysis as a JSON object matching this schema:
         missingControlsOrAnalyses: p.missingControlsOrAnalyses || [],
         mustAddressItems: p.mustAddressItems || [],
         source: "llm" as const,
+        evidenceAnchors: Array.isArray(p.evidenceAnchors)
+          ? p.evidenceAnchors.map((a) => groundEvidenceAnchor(a, manuscript.rawText, manuscript.sections))
+          : [],
       }));
 
       // Ensure all 5 canonical roles are represented.
@@ -803,6 +957,9 @@ Please return your analysis as a JSON object matching this schema:
             assembledPersonas.push({
               ...fallback,
               source: "heuristic" as const,
+              evidenceAnchors: Array.isArray(fallback.evidenceAnchors)
+                ? fallback.evidenceAnchors.map((a) => groundEvidenceAnchor(a, manuscript.rawText, manuscript.sections))
+                : [],
             });
             existingRoles.add(role);
           }
@@ -822,6 +979,9 @@ Please return your analysis as a JSON object matching this schema:
       finalPersonas = domainSynthesis.personas.map((p) => ({
         ...p,
         source: "heuristic" as const,
+        evidenceAnchors: Array.isArray(p.evidenceAnchors)
+          ? p.evidenceAnchors.map((a) => groundEvidenceAnchor(a, manuscript.rawText, manuscript.sections))
+          : [],
       }));
     }
   }
@@ -1066,7 +1226,24 @@ Respond with ONLY a valid JSON object matching this schema:
       );
       try {
         parsedLLM = cleanAndRepairJson(rawResponse);
-      } catch {}
+      } catch (parseErr: any) {
+        if (rawResponse && rawResponse.trim().length > 100) {
+          try {
+            const repairPrompt = [
+              {
+                role: "system" as const,
+                content: "You are an automated JSON syntax repair engine. Fix all syntax errors and output ONLY the valid JSON object.",
+              },
+              {
+                role: "user" as const,
+                content: `Repair this malformed JSON and return valid JSON:\n\n${rawResponse}`,
+              },
+            ];
+            const repairedRaw = await callLLM(repairPrompt, activeConfig);
+            parsedLLM = cleanAndRepairJson(repairedRaw);
+          } catch {}
+        }
+      }
     } catch (err: any) {
       console.warn("LLM brief fit evaluation failed or timed out, falling back to catalog heuristics:", sanitizeErrorMessage(err?.message || String(err)));
     }
