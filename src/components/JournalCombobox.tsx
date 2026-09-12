@@ -13,6 +13,7 @@ interface JournalComboboxProps {
   errorMessage?: string;
   placeholder?: string;
   className?: string;
+  inputClassName?: string;
 }
 
 const STORAGE_KEY = "manuview_custom_journals";
@@ -24,6 +25,7 @@ export default function JournalCombobox({
   errorMessage,
   placeholder = "Type at least 3 letters to search journals...",
   className = "",
+  inputClassName = "",
 }: JournalComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -329,18 +331,22 @@ export default function JournalCombobox({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           aria-expanded={isOpen}
-          className={`w-full text-xs pl-8 pr-16 py-2 rounded-lg transition font-normal ${
-            hasError
-              ? "bg-[#FDF0EF] dark:bg-rose-950/30 border border-[#F7CECC] dark:border-rose-900 text-[#7C2D2B] dark:text-rose-300 placeholder-[#A05E5C] focus:outline-none ring-1 ring-[#F7CECC]"
-              : "bg-white dark:bg-[#161F30] border border-[#EBEBEA] dark:border-[#334155] text-[#2F3437] dark:text-neutral-100 placeholder-[#888888] dark:placeholder-neutral-500 hover:border-[#CCCCCC] dark:hover:border-neutral-500 focus:border-[#0075eb] focus:outline-none focus:ring-2 focus:ring-[#0075eb]/20 shadow-sm"
-          }`}
+          className={
+            inputClassName
+              ? `w-full transition font-normal ${inputClassName}`
+              : `w-full text-xs pl-8 pr-16 py-2 rounded-lg transition font-normal ${
+                  hasError
+                    ? "bg-[#FDF0EF] dark:bg-rose-950/30 border border-[#F7CECC] dark:border-rose-900 text-[#7C2D2B] dark:text-rose-300 placeholder-[#A05E5C] focus:outline-none ring-1 ring-[#F7CECC]"
+                    : "bg-white dark:bg-[#161F30] border border-[#EBEBEA] dark:border-[#334155] text-[#2F3437] dark:text-neutral-100 placeholder-[#888888] dark:placeholder-neutral-500 hover:border-[#CCCCCC] dark:hover:border-neutral-500 focus:border-[#0075eb] focus:outline-none focus:ring-2 focus:ring-[#0075eb]/20 shadow-sm"
+                }`
+          }
         />
         
         {/* Left Book/Search Icon */}
-        <BookOpen className="w-3.5 h-3.5 absolute left-2.5 text-[#9B9A97] pointer-events-none" />
+        <BookOpen className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#9B9A97] pointer-events-none" />
 
         {/* Right Action Buttons */}
-        <div className="absolute right-2 flex items-center gap-1">
+        <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
           {searchQuery && (
             <button
               type="button"
