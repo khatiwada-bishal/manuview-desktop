@@ -62,6 +62,7 @@ interface DesktopSidebarProps {
   onOpenSettings: () => void;
   onSelectService?: (serviceId: string) => void;
   onDeletePaper?: (paper: PaperItem, e: React.MouseEvent) => void;
+  onGoHome?: () => void;
 }
 
 export function DesktopSidebar({
@@ -81,6 +82,7 @@ export function DesktopSidebar({
   onOpenSettings,
   onSelectService,
   onDeletePaper,
+  onGoHome,
 }: DesktopSidebarProps) {
   const [servicesExpanded, setServicesExpanded] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -575,7 +577,11 @@ export function DesktopSidebar({
       {/* 1. COMPANY HEADER: Logo + Title + Collapse Button */}
       <div className="p-3 border-b border-black/[0.06] dark:border-white/[0.08]">
         <div className="flex items-center justify-between p-2 rounded-xl liquid-glass-card shadow-xs">
-          <div className="flex items-center gap-2.5 min-w-0">
+          <div
+            onClick={onGoHome}
+            className={`flex items-center gap-2.5 min-w-0 ${onGoHome ? "cursor-pointer hover:opacity-85 transition" : ""}`}
+            title={onGoHome ? "Back to Landing Page" : undefined}
+          >
             <img
               src="/icon.svg"
               alt="ManuView Logo"
