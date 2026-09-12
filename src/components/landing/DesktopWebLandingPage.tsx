@@ -13,34 +13,137 @@ import {
   Check, 
   Search, 
   ShieldCheck, 
-  SlidersHorizontal,
-  ChevronRight,
-  RefreshCw,
-  ExternalLink,
-  MessageSquare,
-  FileText,
-  Tag,
-  FlaskConical,
-  GraduationCap,
-  PanelLeft,
-  Download,
-  Printer,
-  Scale,
-  Compass,
-  ShieldAlert,
-  Trash2,
-  Moon,
-  Sun,
-  X,
-  ChevronDown,
-  Settings,
-  AlertCircle,
-  Shuffle,
-  Zap,
-  Heart
+  ChevronRight, 
+  RefreshCw, 
+  ExternalLink, 
+  MessageSquare, 
+  FileText, 
+  FlaskConical, 
+  GraduationCap, 
+  PanelLeft, 
+  Download, 
+  Printer, 
+  Compass, 
+  ShieldAlert, 
+  Trash2, 
+  Moon, 
+  Sun, 
+  X, 
+  ChevronDown, 
+  Settings, 
+  Shuffle, 
+  Zap, 
+  Heart 
 } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { openExternalLink } from "@/lib/desktop";
+
+export type PlatformId = "mac-silicon" | "mac-intel" | "windows" | "linux";
+
+export interface PlatformOption {
+  id: PlatformId;
+  label: string;
+  sublabel: string;
+  osName: string;
+  extension: string;
+  downloadUrl: string;
+}
+
+export const PLATFORMS: PlatformOption[] = [
+  {
+    id: "mac-silicon",
+    label: "MacOS Silicon",
+    sublabel: "Apple Silicon (M1/M2/M3/M4)",
+    osName: "macOS",
+    extension: ".dmg",
+    downloadUrl: "https://github.com/khatiwada-bishal/manuview-desktop/releases/latest/download/ManuView_aarch64.dmg",
+  },
+  {
+    id: "mac-intel",
+    label: "MacOS Intel",
+    sublabel: "Intel Processors",
+    osName: "macOS",
+    extension: ".dmg",
+    downloadUrl: "https://github.com/khatiwada-bishal/manuview-desktop/releases/latest/download/ManuView_x64.dmg",
+  },
+  {
+    id: "windows",
+    label: "Windows",
+    sublabel: "Windows 10 / 11 (64-bit)",
+    osName: "Windows",
+    extension: ".msi",
+    downloadUrl: "https://github.com/khatiwada-bishal/manuview-desktop/releases/latest/download/ManuView_x64_en-US.msi",
+  },
+  {
+    id: "linux",
+    label: "Linux",
+    sublabel: "x86_64 (.AppImage)",
+    osName: "Linux",
+    extension: ".AppImage",
+    downloadUrl: "https://github.com/khatiwada-bishal/manuview-desktop/releases/latest/download/manuview_amd64.AppImage",
+  },
+];
+
+function detectPlatform(): PlatformId {
+  if (typeof window === "undefined" || typeof navigator === "undefined") {
+    return "mac-silicon";
+  }
+  const ua = (navigator.userAgent || "").toLowerCase();
+  const platform = (
+    (navigator as any).userAgentData?.platform ||
+    navigator.platform ||
+    ""
+  ).toLowerCase();
+
+  if (platform.includes("win") || ua.includes("windows")) {
+    return "windows";
+  }
+  if (
+    (platform.includes("linux") || ua.includes("linux")) &&
+    !ua.includes("android")
+  ) {
+    return "linux";
+  }
+  if (
+    platform.includes("mac") ||
+    ua.includes("macintosh") ||
+    ua.includes("mac os")
+  ) {
+    try {
+      const gl = document.createElement("canvas").getContext("webgl");
+      if (gl) {
+        const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
+        if (debugInfo) {
+          const renderer = gl
+            .getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)
+            .toLowerCase();
+          if (renderer.includes("intel")) return "mac-intel";
+          if (renderer.includes("apple")) return "mac-silicon";
+        }
+      }
+    } catch {}
+    return "mac-silicon";
+  }
+  return "mac-silicon";
+}
+
+const AppleIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 170 170" className={className} fill="currentColor">
+    <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.7-7.83-12-14.36-6.19-9.35-11-20.35-14.42-33-3.42-12.65-5.13-24.3-5.13-34.95 0-14.36 3.6-26.35 10.8-35.97 7.2-9.62 16.4-14.53 27.6-14.75 5.26 0 11.05 1.41 17.37 4.23 6.32 2.82 10.22 4.3 11.7 4.43 1.96-.24 5.98-1.78 12.06-4.63 6.08-2.85 11.66-4.14 16.74-3.87 12.72.65 22.86 5.48 30.42 14.49-11.09 6.74-16.52 16.03-16.3 27.87.22 9.35 3.86 17.17 10.92 23.48 7.06 6.3 15.43 9.89 25.1 10.76-2.17 6.74-4.89 13.59-8.15 20.55zM119.22 31.84c0-7.18 2.61-13.91 7.83-20.2 5.22-6.29 11.74-10.43 19.56-12.43.22 1.3.33 2.39.33 3.26 0 7.18-2.67 14.13-8.01 20.87-5.34 6.74-12.06 10.76-20.17 12.06-.22-.76-.33-1.42-.33-2.07l.79-1.49z" />
+  </svg>
+);
+
+const WindowsIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 88 88" className={className} fill="currentColor">
+    <path d="M0 12.402l35.687-4.86.016 34.423-35.67.202L0 12.402zm35.67 33.529l.028 34.453L0 75.48v-29.75l35.67.201zm4.326-39.027L87.914 0v41.527l-47.918.375V6.904zm47.918 38.928v42.168l-47.918-6.735V45.629l47.918.203z" />
+  </svg>
+);
+
+const LinuxIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" className={className} fill="currentColor">
+    <path d="M12.002 0c-3.13 0-5.67 2.54-5.67 5.67 0 .58.09 1.14.25 1.67-1.74.83-2.95 2.6-2.95 4.66 0 1.25.44 2.4 1.18 3.3-.23.67-.37 1.39-.37 2.14 0 3.63 3.37 6.56 7.56 6.56s7.56-2.93 7.56-6.56c0-.75-.14-1.47-.37-2.14.74-.9 1.18-2.05 1.18-3.3 0-2.06-1.21-3.83-2.95-4.66.16-.53.25-1.09.25-1.67 0-3.13-2.54-5.67-5.67-5.67z" />
+  </svg>
+);
 
 const CHARACTER_LAYOUTS = [
   // Preset 0: "Orbiting Workshop" (Cross-diagonal scatter)
@@ -51,7 +154,7 @@ const CHARACTER_LAYOUTS = [
     referees: "right-6 lg:right-24 xl:right-12 -top-16 rotate-[2deg] animate-float-2",
     editor: "-right-24 xl:-right-40 bottom-6 rotate-[-2deg] animate-float-4",
   },
-  // Preset 1: "Constellation Scatter" (Top-left, Mid-right, Bottom-left, Top-right)
+  // Preset 1: "Constellation Scatter"
   {
     name: "Constellation Scatter",
     citations: "left-6 lg:left-20 xl:left-12 -top-16 rotate-[-2deg] animate-float-1",
@@ -59,7 +162,7 @@ const CHARACTER_LAYOUTS = [
     editor: "-right-24 xl:-right-40 -top-10 rotate-[2deg] animate-float-2",
     referees: "-right-24 xl:-right-44 bottom-12 rotate-[-3deg] animate-float-4",
   },
-  // Preset 2: "Dynamic Editorial Desk" (Asymmetric Perimeter)
+  // Preset 2: "Dynamic Editorial Desk"
   {
     name: "Dynamic Editorial Desk",
     referees: "-left-24 xl:-left-44 top-[25%] rotate-[-2deg] animate-float-2",
@@ -67,7 +170,7 @@ const CHARACTER_LAYOUTS = [
     drafter: "-right-28 xl:-right-44 -top-6 rotate-[2deg] animate-float-1",
     citations: "-right-24 xl:-right-40 top-[55%] rotate-[-3deg] animate-float-3",
   },
-  // Preset 3: "Adversarial Field" (Scattered across edges)
+  // Preset 3: "Adversarial Field"
   {
     name: "Adversarial Field",
     editor: "left-12 lg:left-28 xl:left-16 -top-16 rotate-[-3deg] animate-float-3",
@@ -93,22 +196,34 @@ export function DesktopWebLandingPage({
   onOpenScan,
   onOpenService,
   onOpenSettings,
-  isConnected = false,
-  isApiLoading = false,
-  modelName = null,
-  latencyMs = null,
 }: DesktopWebLandingPageProps) {
   const { theme, toggleTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<'overview' | 'personas' | 'references' | 'dimensions' | 'issues' | 'journals'>('overview');
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "personas" | "references" | "dimensions" | "issues" | "journals"
+  >("overview");
   const [layoutPreset, setLayoutPreset] = useState<number>(0);
-  const [toolsDropdown, setToolsDropdown] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Operating system detection & download dropdown state
+  const [detectedPlatformId, setDetectedPlatformId] = useState<PlatformId>("mac-silicon");
+  const [selectedPlatform, setSelectedPlatform] = useState<PlatformOption>(PLATFORMS[0]);
+  const [downloadDropdownOpen, setDownloadDropdownOpen] = useState(false);
+  const downloadDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const detected = detectPlatform();
+    setDetectedPlatformId(detected);
+    const matched = PLATFORMS.find((p) => p.id === detected) || PLATFORMS[0];
+    setSelectedPlatform(matched);
+  }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setToolsDropdown(false);
+      if (
+        downloadDropdownRef.current &&
+        !downloadDropdownRef.current.contains(e.target as Node)
+      ) {
+        setDownloadDropdownOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -126,8 +241,22 @@ export function DesktopWebLandingPage({
 
   const currentLayout = CHARACTER_LAYOUTS[layoutPreset] || CHARACTER_LAYOUTS[0];
 
+  const handleDownload = (platform: PlatformOption) => {
+    try {
+      const a = document.createElement("a");
+      a.href = platform.downloadUrl;
+      a.download = "";
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch {
+      openExternalLink(platform.downloadUrl);
+    }
+  };
+
   const handleToolClick = (toolId: string) => {
-    setToolsDropdown(false);
     if (onOpenService) {
       onOpenService(toolId);
     } else {
@@ -145,268 +274,33 @@ export function DesktopWebLandingPage({
   return (
     <div className="flex flex-col min-h-screen text-neutral-900 dark:text-white bg-[#FFFFFF] dark:bg-[#080B11]">
       {/* ------------------------------------------------------------- */}
-      {/* 0. STICKY TOP NAVBAR / HEADER                                 */}
+      {/* 0. STICKY TOP NAVBAR / HEADER (Exact match with screenshot)    */}
       {/* ------------------------------------------------------------- */}
-      <header className="sticky top-0 z-50 w-full border-b border-black/5 dark:border-white/10 bg-white/75 dark:bg-[#0B0F17]/85 backdrop-blur-xl transition-colors duration-200">
+      <header className="sticky top-0 z-50 w-full border-b border-black/[0.06] dark:border-white/[0.08] bg-white/80 dark:bg-[#080B11]/85 backdrop-blur-xl transition-colors duration-200">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
-          {/* Brand Identity */}
-          <div className="flex items-center gap-6">
-            <button
-              type="button"
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="flex items-center gap-2.5 text-neutral-900 dark:text-neutral-100 font-bold text-sm tracking-tight group cursor-pointer"
-            >
-              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-blue-600 text-white font-serif font-black text-xs shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform duration-200">
-                M
-              </div>
-              <span className="font-bold text-base tracking-tight text-neutral-900 dark:text-white">
-                Manu<span className="text-blue-600 dark:text-blue-400">View</span>
-              </span>
-            </button>
+          {/* Brand Identity: Circular Blue 'M' Badge + ManuView */}
+          <button
+            type="button"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="flex items-center gap-2 text-neutral-900 dark:text-neutral-100 font-bold tracking-tight group cursor-pointer"
+          >
+            <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-blue-600 text-white font-serif font-bold text-xs sm:text-sm shadow-xs group-hover:scale-105 transition-transform duration-200">
+              M
+            </div>
+            <span className="font-bold text-base sm:text-lg tracking-tight text-neutral-900 dark:text-white">
+              Manu<span className="text-blue-600 dark:text-blue-400">View</span>
+            </span>
+          </button>
 
-            {/* Desktop Navigation Links */}
-            <nav className="hidden md:flex items-center gap-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">
-              <button
-                type="button"
-                onClick={onOpenScan || onLaunchApp}
-                className="px-3 py-1.5 rounded-lg hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/[0.08] transition cursor-pointer"
-              >
-                Pre-Submission Scan
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('dimensions');
-                  scrollToSection('demo');
-                }}
-                className="px-3 py-1.5 rounded-lg hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/[0.08] transition cursor-pointer"
-              >
-                Rubrics
-              </button>
-
-              <button
-                type="button"
-                onClick={() => scrollToSection('personas')}
-                className="px-3 py-1.5 rounded-lg hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/[0.08] transition cursor-pointer"
-              >
-                Simulated Peer Review
-              </button>
-
-              {/* Research Tools Dropdown Menu */}
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setToolsDropdown(!toolsDropdown)}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/[0.08] transition cursor-pointer"
-                >
-                  <span>Research Tools</span>
-                  <ChevronDown className={`w-3 h-3 text-neutral-400 transition-transform duration-200 ${toolsDropdown ? "rotate-180" : ""}`} />
-                </button>
-
-                {toolsDropdown && (
-                  <div className="absolute left-0 top-full mt-2 w-80 rounded-2xl liquid-glass-modal p-2 shadow-2xl border border-black/10 dark:border-white/10 z-50 animate-fade-in backdrop-blur-2xl bg-white/95 dark:bg-[#0f172a]/95">
-                    <div className="px-3 py-2 text-[10px] font-bold text-neutral-400 uppercase tracking-wider border-b border-black/5 dark:border-white/10">
-                      Editorial & Verification Tools
-                    </div>
-                    <div className="space-y-1 mt-1.5">
-                      <button
-                        type="button"
-                        onClick={() => handleToolClick('reference-checker')}
-                        className="w-full text-left p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition flex items-start gap-2.5 group cursor-pointer"
-                      >
-                        <div className="w-7 h-7 rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <div className="font-semibold text-xs text-neutral-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400">
-                            Reference Integrity Audit
-                          </div>
-                          <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                            Crossref DOI verification &amp; Retraction Watch
-                          </div>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleToolClick('citation-claim')}
-                        className="w-full text-left p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition flex items-start gap-2.5 group cursor-pointer"
-                      >
-                        <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                          <ShieldCheck className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <div className="font-semibold text-xs text-neutral-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400">
-                            Citation Claim Validator
-                          </div>
-                          <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                            Detect overclaimed conclusions &amp; miscitations
-                          </div>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleToolClick('prisma')}
-                        className="w-full text-left p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition flex items-start gap-2.5 group cursor-pointer"
-                      >
-                        <div className="w-7 h-7 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                          <Layers className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <div className="font-semibold text-xs text-neutral-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400">
-                            PRISMA 2020 Flow Generator
-                          </div>
-                          <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                            Systematic review flow diagrams &amp; checklists
-                          </div>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleToolClick('journal-fit')}
-                        className="w-full text-left p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition flex items-start gap-2.5 group cursor-pointer"
-                      >
-                        <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                          <Compass className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <div className="font-semibold text-xs text-neutral-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400">
-                            Journal Fit Predictor
-                          </div>
-                          <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                            Match scope across 1,300+ peer-reviewed titles
-                          </div>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleToolClick('cover-letter')}
-                        className="w-full text-left p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition flex items-start gap-2.5 group cursor-pointer"
-                      >
-                        <div className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                          <FileText className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <div className="font-semibold text-xs text-neutral-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400">
-                            Journal Cover Letter
-                          </div>
-                          <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                            Tailored editor pitch highlighting novelty
-                          </div>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleToolClick('response-builder')}
-                        className="w-full text-left p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition flex items-start gap-2.5 group cursor-pointer"
-                      >
-                        <div className="w-7 h-7 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                          <MessageSquare className="w-3.5 h-3.5" />
-                        </div>
-                        <div>
-                          <div className="font-semibold text-xs text-neutral-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400">
-                            Review Response Builder
-                          </div>
-                          <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                            Structured rebuttal matrix with academic tone
-                          </div>
-                        </div>
-                      </button>
-                    </div>
-
-                    <div className="mt-2 pt-2 border-t border-black/5 dark:border-white/10 flex items-center justify-between px-2 text-[10px] text-neutral-400">
-                      <span>100% Free &amp; Private</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setToolsDropdown(false);
-                          scrollToSection('tools');
-                        }}
-                        className="text-blue-600 dark:text-blue-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
-                      >
-                        <span>View all</span>
-                        <ChevronRight className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => scrollToSection('demo')}
-                className="px-3 py-1.5 rounded-lg hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/[0.08] transition cursor-pointer"
-              >
-                Examples
-              </button>
-            </nav>
-          </div>
-
-          {/* Right Action Controls */}
+          {/* Right Action Controls: Dark/Light Mode, GitHub Link, Launch App Button */}
           <div className="flex items-center gap-2 sm:gap-2.5">
-            {/* Live AI Engine Status & Latency Badge */}
-            {isApiLoading ? (
-              <button
-                type="button"
-                onClick={onOpenSettings}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-black/5 dark:bg-white/[0.06] hover:bg-black/10 dark:hover:bg-white/[0.1] border border-black/10 dark:border-white/10 text-xs font-medium text-neutral-600 dark:text-neutral-400 transition shadow-xs cursor-pointer"
-                title="Checking AI connection status..."
-              >
-                <RefreshCw className="w-3 h-3 animate-spin text-neutral-500 dark:text-neutral-400" />
-                <span className="hidden sm:inline text-[11px]">Connecting...</span>
-              </button>
-            ) : !isConnected ? (
-              <button
-                type="button"
-                onClick={onOpenSettings}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs font-medium transition shadow-xs cursor-pointer"
-                title="No AI connection active. Click to configure API keys or local Ollama."
-              >
-                <span className="inline-block w-2 h-2 rounded-full bg-rose-500" />
-                <span className="font-semibold text-[11px] sm:text-xs">Not Connected</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={onOpenSettings}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-medium transition shadow-xs cursor-pointer"
-                title="AI Engine Active. Click to configure models & providers."
-              >
-                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
-                <span className="font-semibold truncate max-w-[120px] sm:max-w-[170px] text-[11px] sm:text-xs">
-                  {modelName || "AI Connected"}
-                </span>
-                {latencyMs !== undefined && latencyMs !== null && (
-                  <span className="text-emerald-700 dark:text-emerald-400/80 font-mono text-[11px] hidden sm:flex items-center">
-                    ( <Zap className="w-2.5 h-2.5 text-amber-500 dark:text-amber-400 fill-amber-500 dark:fill-amber-400 inline mr-0.5" />
-                    {latencyMs}ms )
-                  </span>
-                )}
-              </button>
-            )}
-
-            {/* AI Settings Cog */}
-            <button
-              type="button"
-              onClick={onOpenSettings}
-              className="p-1.5 rounded-lg text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/[0.08] transition cursor-pointer"
-              title="Configure API Keys & Models"
-            >
-              <Settings className="w-3.5 h-3.5" />
-            </button>
-
             {/* Dark / Light Mode Toggle Button with Wave Transition */}
             <button
               type="button"
               onClick={(e) => toggleTheme(e)}
               title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
               aria-label="Toggle theme mode"
-              className="w-8 h-[34px] flex items-center justify-center rounded-lg liquid-glass-btn-secondary text-neutral-600 dark:text-amber-400 hover:text-neutral-900 dark:hover:text-amber-300 transition-colors duration-300 cursor-pointer active:scale-95 group relative overflow-hidden"
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-black/10 dark:border-white/15 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors duration-300 cursor-pointer active:scale-95 group relative overflow-hidden"
             >
               <div className="relative w-4 h-4 flex items-center justify-center pointer-events-none">
                 <Sun
@@ -426,12 +320,14 @@ export function DesktopWebLandingPage({
               </div>
             </button>
 
-            {/* GitHub Star */}
+            {/* GitHub Link Button */}
             <button
               type="button"
-              onClick={() => openExternalLink("https://github.com/khatiwada-bishal/manuview")}
-              className="p-1.5 rounded-lg text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/[0.08] transition cursor-pointer"
-              title="Star on GitHub"
+              onClick={() =>
+                openExternalLink("https://github.com/khatiwada-bishal/manuview-desktop")
+              }
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-black/10 dark:border-white/15 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition cursor-pointer"
+              title="View on GitHub"
             >
               <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
                 <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
@@ -442,7 +338,7 @@ export function DesktopWebLandingPage({
             <button
               type="button"
               onClick={onLaunchApp}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg liquid-glass-btn-primary text-xs sm:text-sm font-semibold text-white shadow-xs transition active:scale-[0.98] cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-semibold shadow-xs transition active:scale-[0.98] cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-white" />
               <span>Launch App</span>
@@ -454,15 +350,15 @@ export function DesktopWebLandingPage({
       {/* ------------------------------------------------------------- */}
       {/* 1. HERO SECTION                                               */}
       {/* ------------------------------------------------------------- */}
-      <section className="relative pt-16 sm:pt-24 pb-16 sm:pb-24 px-4 sm:px-6 overflow-hidden aura-bg-gradient aura-grid-pattern">
+      <section className="relative pt-14 sm:pt-20 pb-16 sm:pb-24 px-4 sm:px-6 overflow-hidden aura-bg-gradient aura-grid-pattern">
         <div className="mx-auto max-w-5xl text-center">
           {/* AI Badge Chip */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/[0.04] dark:bg-white/[0.05] border border-black/10 dark:border-white/10 text-neutral-700 dark:text-neutral-300 text-xs font-medium mb-6 shadow-2xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-            <span className="font-mono text-[11px] text-emerald-600 dark:text-emerald-400">Pre-Submission Scientific Diagnostics</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-medium mb-6 shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+            <span className="font-mono text-[11px]">Pre-Submission Scientific Diagnostics</span>
           </div>
 
-          {/* Main Headline with Iconic Inline Yellow Pill */}
+          {/* Main Headline with Iconic Inline Peach Review Pill */}
           <h1 className="text-4xl sm:text-6xl md:text-[68px] font-bold text-neutral-900 dark:text-white tracking-[-0.03em] leading-[1.08] mb-6">
             Where researchers and <br />
             agents{" "}
@@ -478,21 +374,128 @@ export function DesktopWebLandingPage({
             Catch desk-reject flaws, citation hallucinations, and causal overclaims before submitting to top journals. A free, open-source editorial diagnostic for science.
           </p>
 
-          {/* Action Buttons */}
+          {/* Action Buttons: OS-Aware Split Download Button + Explore Tools */}
           <div className="flex flex-wrap items-center justify-center gap-3.5 mb-14 sm:mb-18">
-            <button
-              type="button"
-              onClick={onLaunchApp}
-              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl liquid-glass-btn-primary text-white font-semibold text-sm shadow-xs transition active:scale-[0.98] cursor-pointer"
-            >
-              <Sparkles className="w-4 h-4 text-white" />
-              <span>Try ManuView free</span>
-            </button>
+            {/* Split Download Button with Platform Detection & Dropdown */}
+            <div className="relative inline-flex items-center" ref={downloadDropdownRef}>
+              <div className="inline-flex items-center rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-md transition-all duration-200 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => handleDownload(selectedPlatform)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 font-semibold text-sm cursor-pointer hover:bg-blue-700/40 transition active:scale-[0.98]"
+                  title={`Download ManuView for ${selectedPlatform.label}`}
+                >
+                  <Sparkles className="w-4 h-4 text-white" />
+                  <span>Download for {selectedPlatform.label}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDownloadDropdownOpen((prev) => !prev);
+                  }}
+                  aria-label="Other operating system downloads"
+                  className="px-2.5 py-2.5 border-l border-white/20 hover:bg-blue-700/50 cursor-pointer transition flex items-center justify-center"
+                  title="Choose other operating system (MacOS Intel, Windows, Linux)"
+                >
+                  <ChevronDown
+                    className={`w-4 h-4 text-white transition-transform duration-200 ${
+                      downloadDropdownOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+              </div>
 
+              {/* Dropdown Menu for Other Operating Systems */}
+              {downloadDropdownOpen && (
+                <div className="absolute left-1/2 -translate-x-1/2 sm:translate-x-0 sm:left-0 top-full mt-2 w-72 rounded-2xl liquid-glass-modal bg-white dark:bg-[#0f172a] p-2 shadow-2xl border border-black/10 dark:border-white/10 z-50 animate-fade-in backdrop-blur-2xl">
+                  <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400 border-b border-black/5 dark:border-white/10 flex items-center justify-between">
+                    <span>Operating Systems</span>
+                    <span className="font-mono text-[9px] text-emerald-600 dark:text-emerald-400">
+                      Desktop v0.1.0
+                    </span>
+                  </div>
+                  <div className="space-y-1 mt-1.5">
+                    {PLATFORMS.map((plat) => {
+                      const isCurrentSelected = plat.id === selectedPlatform.id;
+                      const isDetected = plat.id === detectedPlatformId;
+                      return (
+                        <button
+                          key={plat.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedPlatform(plat);
+                            setDownloadDropdownOpen(false);
+                            handleDownload(plat);
+                          }}
+                          className={`w-full text-left p-2.5 rounded-xl transition flex items-center justify-between group cursor-pointer ${
+                            isCurrentSelected
+                              ? "bg-blue-500/10 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 font-semibold"
+                              : "hover:bg-black/5 dark:hover:bg-white/10 text-neutral-800 dark:text-neutral-200"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div
+                              className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                                plat.id.startsWith("mac")
+                                  ? "bg-neutral-100 dark:bg-white/10 text-neutral-800 dark:text-white"
+                                  : plat.id === "windows"
+                                  ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                              }`}
+                            >
+                              {plat.id.startsWith("mac") ? (
+                                <AppleIcon className="w-4 h-4 fill-current" />
+                              ) : plat.id === "windows" ? (
+                                <WindowsIcon className="w-4 h-4 fill-current" />
+                              ) : (
+                                <LinuxIcon className="w-4 h-4 fill-current" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xs font-bold truncate flex items-center gap-1.5">
+                                <span>{plat.label}</span>
+                                {isDetected && (
+                                  <span className="text-[9px] px-1.5 py-0.2 rounded font-normal bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                    Detected
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate font-normal">
+                                {plat.sublabel} ({plat.extension})
+                              </div>
+                            </div>
+                          </div>
+                          <Download className="w-3.5 h-3.5 text-neutral-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 shrink-0 ml-2" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-black/5 dark:border-white/10 px-2 py-1 flex items-center justify-between text-[11px] text-neutral-400">
+                    <span>Verified &amp; Signed</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDownloadDropdownOpen(false);
+                        openExternalLink(
+                          "https://github.com/khatiwada-bishal/manuview-desktop/releases"
+                        );
+                      }}
+                      className="text-blue-600 dark:text-blue-400 hover:underline font-medium text-[10px] flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>All Releases</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Secondary Button: Explore Research Tools */}
             <button
               type="button"
-              onClick={() => scrollToSection('tools')}
-              className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl liquid-glass-btn-secondary text-neutral-700 dark:text-neutral-200 font-medium text-sm transition cursor-pointer"
+              onClick={() => scrollToSection("tools")}
+              className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl border border-black/10 dark:border-white/15 bg-white/80 dark:bg-white/[0.05] hover:bg-black/5 dark:hover:bg-white/10 text-neutral-700 dark:text-neutral-200 font-medium text-sm transition cursor-pointer shadow-2xs"
             >
               <span>Explore Research Tools</span>
               <ArrowRight className="w-4 h-4" />
@@ -506,9 +509,9 @@ export function DesktopWebLandingPage({
             {/* 1: The Author Drafter */}
             <button
               type="button"
-              onClick={() => setActiveTab('overview')}
+              onClick={() => setActiveTab("overview")}
               className={`group relative flex items-center gap-3 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl transition-all duration-300 text-left border cursor-pointer ${
-                activeTab === 'overview'
+                activeTab === "overview"
                   ? "liquid-glass-card bg-white/95 dark:bg-white/10 border-blue-500/50 dark:border-blue-400/50 shadow-md ring-2 ring-blue-500/20"
                   : "liquid-glass-card hover:bg-white/70 dark:hover:bg-white/[0.07] border-black/5 dark:border-white/10"
               }`}
@@ -532,9 +535,9 @@ export function DesktopWebLandingPage({
             {/* 2: The Co-Authors / Referees */}
             <button
               type="button"
-              onClick={() => setActiveTab('personas')}
+              onClick={() => setActiveTab("personas")}
               className={`group relative flex items-center gap-3 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl transition-all duration-300 text-left border cursor-pointer ${
-                activeTab === 'personas'
+                activeTab === "personas"
                   ? "liquid-glass-card bg-white/95 dark:bg-white/10 border-purple-500/50 dark:border-purple-400/50 shadow-md ring-2 ring-purple-500/20"
                   : "liquid-glass-card hover:bg-white/70 dark:hover:bg-white/[0.07] border-black/5 dark:border-white/10"
               }`}
@@ -558,9 +561,9 @@ export function DesktopWebLandingPage({
             {/* 3: Citation & Literature Integrity Audit */}
             <button
               type="button"
-              onClick={() => setActiveTab('references')}
+              onClick={() => setActiveTab("references")}
               className={`group relative flex items-center gap-3 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl transition-all duration-300 text-left border cursor-pointer ${
-                activeTab === 'references'
+                activeTab === "references"
                   ? "liquid-glass-card bg-white/95 dark:bg-white/10 border-teal-500/50 dark:border-teal-400/50 shadow-md ring-2 ring-teal-500/20"
                   : "liquid-glass-card hover:bg-white/70 dark:hover:bg-white/[0.07] border-black/5 dark:border-white/10"
               }`}
@@ -584,9 +587,9 @@ export function DesktopWebLandingPage({
             {/* 4: The Journal Editor */}
             <button
               type="button"
-              onClick={() => setActiveTab('journals')}
+              onClick={() => setActiveTab("journals")}
               className={`group relative flex items-center gap-3 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl transition-all duration-300 text-left border cursor-pointer ${
-                activeTab === 'journals'
+                activeTab === "journals"
                   ? "liquid-glass-card bg-white/95 dark:bg-white/10 border-emerald-500/50 dark:border-emerald-400/50 shadow-md ring-2 ring-emerald-500/20"
                   : "liquid-glass-card hover:bg-white/70 dark:hover:bg-white/[0.07] border-black/5 dark:border-white/10"
               }`}
@@ -620,7 +623,7 @@ export function DesktopWebLandingPage({
           </div>
 
           {/* --------------------------------------------------------- */}
-          {/* Hero macOS Desktop App Mockup (100% Parity with Desktop)  */}
+          {/* Hero macOS Desktop App Mockup                             */}
           {/* --------------------------------------------------------- */}
           <div id="demo" className="relative mx-auto max-w-5xl text-left">
 
@@ -628,10 +631,9 @@ export function DesktopWebLandingPage({
             <div className={`hidden xl:block absolute w-40 z-30 pointer-events-auto transition-all duration-700 ease-out ${currentLayout.drafter}`}>
               <div 
                 className="relative group cursor-pointer" 
-                onClick={() => setActiveTab('overview')}
+                onClick={() => setActiveTab("overview")}
                 title="Click to view manuscript self-audit report"
               >
-                {/* Speech Bubble */}
                 <div className="mb-2 p-3 rounded-2xl liquid-glass-card border border-black/10 dark:border-white/15 text-[11px] text-neutral-800 dark:text-neutral-200 shadow-xl transition-all duration-300 group-hover:translate-y-[-2px] group-hover:shadow-glow-blue/30">
                   <div className="flex items-center gap-1 font-bold text-blue-600 dark:text-blue-400 text-[10px] uppercase tracking-wider mb-0.5">
                     <Sparkles className="w-3 h-3" />
@@ -639,7 +641,6 @@ export function DesktopWebLandingPage({
                   </div>
                   &ldquo;Auditing sample power &amp; controls before our referees see it.&rdquo;
                 </div>
-                {/* Character Image */}
                 <div className="relative p-2 rounded-2xl liquid-glass-card/60 backdrop-blur-sm transition-all duration-300 group-hover:scale-105 group-hover:rotate-0">
                   <img
                     src="/illustrations/researcher-typing-laptop.png"
@@ -654,7 +655,7 @@ export function DesktopWebLandingPage({
             <div className={`hidden xl:block absolute w-40 z-30 pointer-events-auto transition-all duration-700 ease-out ${currentLayout.citations}`}>
               <div 
                 className="relative group cursor-pointer" 
-                onClick={() => setActiveTab('references')}
+                onClick={() => setActiveTab("references")}
                 title="Click to view citation integrity & retraction audit"
               >
                 <div className="relative p-2 rounded-2xl liquid-glass-card/60 backdrop-blur-sm mb-2 transition-all duration-300 group-hover:scale-105 group-hover:rotate-0">
@@ -678,7 +679,7 @@ export function DesktopWebLandingPage({
             <div className={`hidden xl:block absolute w-44 z-30 pointer-events-auto transition-all duration-700 ease-out ${currentLayout.referees}`}>
               <div 
                 className="relative group cursor-pointer" 
-                onClick={() => setActiveTab('personas')}
+                onClick={() => setActiveTab("personas")}
                 title="Click to view 5-persona simulated reviews"
               >
                 <div className="mb-2 p-3 rounded-2xl liquid-glass-card border border-black/10 dark:border-white/15 text-[11px] text-neutral-800 dark:text-neutral-200 shadow-xl transition-all duration-300 group-hover:translate-y-[-2px] group-hover:shadow-glow-violet/30">
@@ -702,7 +703,7 @@ export function DesktopWebLandingPage({
             <div className={`hidden xl:block absolute w-40 z-30 pointer-events-auto transition-all duration-700 ease-out ${currentLayout.editor}`}>
               <div 
                 className="relative group cursor-pointer" 
-                onClick={() => setActiveTab('journals')}
+                onClick={() => setActiveTab("journals")}
                 title="Click to view target journal fit recommendations"
               >
                 <div className="relative p-2 rounded-2xl liquid-glass-card/60 backdrop-blur-sm mb-2 transition-all duration-300 group-hover:scale-105 group-hover:rotate-0">
@@ -738,9 +739,9 @@ export function DesktopWebLandingPage({
                 <div className="flex items-center gap-1.5 overflow-hidden no-scrollbar py-0.5 flex-1 min-w-0 select-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   <button
                     type="button"
-                    onClick={() => setActiveTab('overview')}
+                    onClick={() => setActiveTab("overview")}
                     className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium shrink-0 cursor-pointer transition ${
-                      activeTab === 'overview'
+                      activeTab === "overview"
                         ? "bg-white dark:bg-[#1E2536] text-neutral-900 dark:text-white font-semibold shadow-xs border border-black/5 dark:border-white/10"
                         : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
                     }`}
@@ -756,9 +757,9 @@ export function DesktopWebLandingPage({
 
                   <button
                     type="button"
-                    onClick={() => setActiveTab('journals')}
+                    onClick={() => setActiveTab("journals")}
                     className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium shrink-0 transition cursor-pointer ${
-                      activeTab === 'journals'
+                      activeTab === "journals"
                         ? "bg-white dark:bg-[#1E2536] text-neutral-900 dark:text-white font-semibold shadow-xs border border-black/5 dark:border-white/10"
                         : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
                     }`}
@@ -769,9 +770,9 @@ export function DesktopWebLandingPage({
 
                   <button
                     type="button"
-                    onClick={() => setActiveTab('references')}
+                    onClick={() => setActiveTab("references")}
                     className={`hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium shrink-0 transition cursor-pointer ${
-                      activeTab === 'references'
+                      activeTab === "references"
                         ? "bg-white dark:bg-[#1E2536] text-neutral-900 dark:text-white font-semibold shadow-xs border border-black/5 dark:border-white/10"
                         : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
                     }`}
@@ -782,7 +783,7 @@ export function DesktopWebLandingPage({
 
                   <button
                     type="button"
-                    onClick={() => handleToolClick('prisma')}
+                    onClick={() => handleToolClick("prisma")}
                     className="hidden 2xl:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 text-xs font-medium shrink-0 transition cursor-pointer"
                   >
                     <Layers className="w-3.5 h-3.5 text-purple-500" />
@@ -810,7 +811,6 @@ export function DesktopWebLandingPage({
                 {/* Left Desktop Sidebar */}
                 <div className="hidden lg:flex lg:col-span-4 xl:col-span-3 border-r border-black/5 dark:border-white/10 liquid-glass-sidebar p-3.5 text-xs flex-col justify-between space-y-4">
                   <div className="space-y-4">
-                    {/* Header */}
                     <div className="flex items-center justify-between p-2 rounded-xl liquid-glass-card">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className="w-7 h-7 rounded-lg bg-blue-600 text-white font-serif font-bold text-xs flex items-center justify-center shrink-0">
@@ -838,7 +838,7 @@ export function DesktopWebLandingPage({
                       <div className="space-y-0.5">
                         <button
                           type="button"
-                          onClick={() => setActiveTab('overview')}
+                          onClick={() => setActiveTab("overview")}
                           className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-blue-500/10 text-blue-700 dark:text-blue-300 font-semibold cursor-pointer transition"
                         >
                           <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
@@ -846,7 +846,7 @@ export function DesktopWebLandingPage({
                         </button>
                         <button
                           type="button"
-                          onClick={() => setActiveTab('journals')}
+                          onClick={() => setActiveTab("journals")}
                           className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-neutral-600 dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition"
                         >
                           <Compass className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
@@ -854,7 +854,7 @@ export function DesktopWebLandingPage({
                         </button>
                         <button
                           type="button"
-                          onClick={() => setActiveTab('references')}
+                          onClick={() => setActiveTab("references")}
                           className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-neutral-600 dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition"
                         >
                           <ShieldCheck className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
@@ -862,7 +862,7 @@ export function DesktopWebLandingPage({
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleToolClick('citation-claim')}
+                          onClick={() => handleToolClick("citation-claim")}
                           className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-neutral-600 dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition"
                         >
                           <ShieldAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
@@ -870,7 +870,7 @@ export function DesktopWebLandingPage({
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleToolClick('prisma')}
+                          onClick={() => handleToolClick("prisma")}
                           className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-neutral-600 dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition"
                         >
                           <Layers className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
@@ -878,7 +878,7 @@ export function DesktopWebLandingPage({
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleToolClick('cover-letter')}
+                          onClick={() => handleToolClick("cover-letter")}
                           className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-neutral-600 dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition"
                         >
                           <FileText className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
@@ -886,7 +886,7 @@ export function DesktopWebLandingPage({
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleToolClick('response-builder')}
+                          onClick={() => handleToolClick("response-builder")}
                           className="w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-neutral-600 dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition"
                         >
                           <MessageSquare className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
@@ -925,9 +925,9 @@ export function DesktopWebLandingPage({
                       {/* Active Article Card */}
                       <button
                         type="button"
-                        onClick={() => setActiveTab('overview')}
+                        onClick={() => setActiveTab("overview")}
                         className={`w-full text-left p-2 rounded-xl transition flex items-center justify-between gap-1.5 cursor-pointer ${
-                          activeTab === 'overview'
+                          activeTab === "overview"
                             ? "bg-white dark:bg-white/10 shadow-xs border border-black/5 dark:border-white/10"
                             : "hover:bg-black/5 dark:hover:bg-white/5"
                         }`}
@@ -947,9 +947,9 @@ export function DesktopWebLandingPage({
                       <div className="pl-5 space-y-0.5 border-l border-black/5 dark:border-white/10 ml-3.5">
                         <button
                           type="button"
-                          onClick={() => setActiveTab('personas')}
+                          onClick={() => setActiveTab("personas")}
                           className={`w-full text-left px-2 py-1.5 rounded-lg flex items-center gap-2 transition text-[11px] font-medium cursor-pointer ${
-                            activeTab === 'personas'
+                            activeTab === "personas"
                               ? "bg-purple-500/15 text-purple-700 dark:text-purple-300 font-semibold"
                               : "text-neutral-600 dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/5"
                           }`}
@@ -959,9 +959,9 @@ export function DesktopWebLandingPage({
                         </button>
                         <button
                           type="button"
-                          onClick={() => setActiveTab('references')}
+                          onClick={() => setActiveTab("references")}
                           className={`w-full text-left px-2 py-1.5 rounded-lg flex items-center gap-2 transition text-[11px] font-medium cursor-pointer ${
-                            activeTab === 'references'
+                            activeTab === "references"
                               ? "bg-teal-500/15 text-teal-700 dark:text-teal-300 font-semibold"
                               : "text-neutral-600 dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/5"
                           }`}
@@ -971,9 +971,9 @@ export function DesktopWebLandingPage({
                         </button>
                         <button
                           type="button"
-                          onClick={() => setActiveTab('dimensions')}
+                          onClick={() => setActiveTab("dimensions")}
                           className={`w-full text-left px-2 py-1.5 rounded-lg flex items-center gap-2 transition text-[11px] font-medium cursor-pointer ${
-                            activeTab === 'dimensions'
+                            activeTab === "dimensions"
                               ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 font-semibold"
                               : "text-neutral-600 dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/5"
                           }`}
@@ -983,9 +983,9 @@ export function DesktopWebLandingPage({
                         </button>
                         <button
                           type="button"
-                          onClick={() => setActiveTab('issues')}
+                          onClick={() => setActiveTab("issues")}
                           className={`w-full text-left px-2 py-1.5 rounded-lg flex items-center gap-2 transition text-[11px] font-medium cursor-pointer ${
-                            activeTab === 'issues'
+                            activeTab === "issues"
                               ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 font-semibold"
                               : "text-neutral-600 dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/5"
                           }`}
@@ -995,9 +995,9 @@ export function DesktopWebLandingPage({
                         </button>
                         <button
                           type="button"
-                          onClick={() => setActiveTab('journals')}
+                          onClick={() => setActiveTab("journals")}
                           className={`w-full text-left px-2 py-1.5 rounded-lg flex items-center gap-2 transition text-[11px] font-medium cursor-pointer ${
-                            activeTab === 'journals'
+                            activeTab === "journals"
                               ? "bg-blue-500/15 text-blue-700 dark:text-blue-300 font-semibold"
                               : "text-neutral-600 dark:text-neutral-400 hover:bg-black/5 dark:hover:bg-white/5"
                           }`}
@@ -1038,10 +1038,8 @@ export function DesktopWebLandingPage({
 
                 {/* Main Content Area */}
                 <div className="lg:col-span-8 xl:col-span-9 p-4 sm:p-6 lg:p-7 space-y-4 overflow-y-auto no-scrollbar max-h-[640px]">
-                  
-                  {activeTab === 'overview' && (
+                  {activeTab === "overview" && (
                     <div className="space-y-4 animate-fade-in">
-                      {/* CARD 1: Header + Score Card */}
                       <div className="rounded-2xl sm:rounded-3xl liquid-glass-card p-5 sm:p-7 space-y-4">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-black/5 dark:border-white/10">
                           <span className="font-bold text-sm sm:text-base tracking-tight text-neutral-900 dark:text-white">
@@ -1081,7 +1079,6 @@ export function DesktopWebLandingPage({
                           </p>
                         </div>
 
-                        {/* Acceptance Potential Banner */}
                         <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5 rounded-2xl liquid-glass-card">
                           <div className="flex items-baseline">
                             <span className="text-3xl sm:text-4xl font-black text-neutral-900 dark:text-white">
@@ -1103,7 +1100,6 @@ export function DesktopWebLandingPage({
                         </div>
                       </div>
 
-                      {/* CARD 2: Editorial Synthesis & Triage Assessment */}
                       <div className="rounded-2xl sm:rounded-3xl liquid-glass-card p-5 sm:p-6 space-y-2">
                         <h3 className="text-sm sm:text-base font-bold text-neutral-900 dark:text-white">
                           Editorial Synthesis &amp; Triage Assessment
@@ -1113,7 +1109,6 @@ export function DesktopWebLandingPage({
                         </p>
                       </div>
 
-                      {/* CARD 3: Document Classification */}
                       <div className="rounded-2xl sm:rounded-3xl liquid-glass-card p-5 sm:p-6 space-y-2">
                         <h3 className="text-sm sm:text-base font-bold text-neutral-900 dark:text-white">
                           Document Classification: Empirical Laboratory Study
@@ -1128,8 +1123,7 @@ export function DesktopWebLandingPage({
                     </div>
                   )}
 
-                  {/* Sub-view: 5-Persona Simulated Reviews */}
-                  {activeTab === 'personas' && (
+                  {activeTab === "personas" && (
                     <div className="space-y-3.5 animate-fade-in">
                       <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/10">
                         <div className="flex items-center gap-2">
@@ -1140,7 +1134,7 @@ export function DesktopWebLandingPage({
                         </div>
                         <button
                           type="button"
-                          onClick={() => setActiveTab('overview')}
+                          onClick={() => setActiveTab("overview")}
                           className="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
                         >
                           &larr; Back to Overview
@@ -1188,8 +1182,7 @@ export function DesktopWebLandingPage({
                     </div>
                   )}
 
-                  {/* Sub-view: Citation & Literature Integrity Audit */}
-                  {activeTab === 'references' && (
+                  {activeTab === "references" && (
                     <div className="space-y-3.5 animate-fade-in">
                       <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/10">
                         <div className="flex items-center gap-2">
@@ -1200,14 +1193,13 @@ export function DesktopWebLandingPage({
                         </div>
                         <button
                           type="button"
-                          onClick={() => setActiveTab('overview')}
+                          onClick={() => setActiveTab("overview")}
                           className="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
                         >
                           &larr; Back to Overview
                         </button>
                       </div>
 
-                      {/* Retraction Alert Banner */}
                       <div className="p-4 rounded-2xl liquid-glass-card border-l-4 border-l-rose-500 space-y-2 bg-rose-50/40 dark:bg-rose-950/20">
                         <div className="flex items-center justify-between flex-wrap gap-2">
                           <div className="flex items-center gap-2">
@@ -1225,7 +1217,6 @@ export function DesktopWebLandingPage({
                         </p>
                       </div>
 
-                      {/* Verification Stats Grid */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="p-4 rounded-2xl liquid-glass-card space-y-1">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">Crossref DOI Status</span>
@@ -1248,8 +1239,7 @@ export function DesktopWebLandingPage({
                     </div>
                   )}
 
-                  {/* Sub-view: 6 Dimensions breakdown */}
-                  {activeTab === 'dimensions' && (
+                  {activeTab === "dimensions" && (
                     <div className="space-y-3.5 animate-fade-in">
                       <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/10">
                         <h3 className="text-base font-bold text-neutral-900 dark:text-white">
@@ -1257,7 +1247,7 @@ export function DesktopWebLandingPage({
                         </h3>
                         <button
                           type="button"
-                          onClick={() => setActiveTab('overview')}
+                          onClick={() => setActiveTab("overview")}
                           className="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
                         >
                           &larr; Back to Overview
@@ -1287,8 +1277,7 @@ export function DesktopWebLandingPage({
                     </div>
                   )}
 
-                  {/* Sub-view: Priority Action Items */}
-                  {activeTab === 'issues' && (
+                  {activeTab === "issues" && (
                     <div className="space-y-3.5 animate-fade-in">
                       <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/10">
                         <h3 className="text-base font-bold text-neutral-900 dark:text-white">
@@ -1296,7 +1285,7 @@ export function DesktopWebLandingPage({
                         </h3>
                         <button
                           type="button"
-                          onClick={() => setActiveTab('overview')}
+                          onClick={() => setActiveTab("overview")}
                           className="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
                         >
                           &larr; Back to Overview
@@ -1334,8 +1323,7 @@ export function DesktopWebLandingPage({
                     </div>
                   )}
 
-                  {/* Sub-view: Target Journals */}
-                  {activeTab === 'journals' && (
+                  {activeTab === "journals" && (
                     <div className="space-y-3.5 animate-fade-in">
                       <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/10">
                         <h3 className="text-base font-bold text-neutral-900 dark:text-white">
@@ -1343,7 +1331,7 @@ export function DesktopWebLandingPage({
                         </h3>
                         <button
                           type="button"
-                          onClick={() => setActiveTab('overview')}
+                          onClick={() => setActiveTab("overview")}
                           className="text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
                         >
                           &larr; Back to Overview
@@ -1368,7 +1356,6 @@ export function DesktopWebLandingPage({
                       </div>
                     </div>
                   )}
-
                 </div>
               </div>
             </div>
@@ -1401,7 +1388,6 @@ export function DesktopWebLandingPage({
       {/* ------------------------------------------------------------- */}
       <section id="personas" className="py-20 sm:py-28 px-4 sm:px-6 bg-transparent">
         <div className="mx-auto max-w-6xl">
-          {/* Section Header */}
           <div className="text-center max-w-3xl mx-auto mb-16">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-semibold mb-3 border border-blue-500/20">
               <Sparkles className="w-3.5 h-3.5" />
@@ -1415,9 +1401,7 @@ export function DesktopWebLandingPage({
             </p>
           </div>
 
-          {/* Bento Top Row (2 Columns) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            {/* Bento Card 1: Fast & Deep Review */}
             <div className="rounded-3xl liquid-glass-card p-7 sm:p-8 flex flex-col justify-between transition">
               <div>
                 <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400 mb-2 font-medium">
@@ -1431,7 +1415,6 @@ export function DesktopWebLandingPage({
                 </h3>
               </div>
 
-              {/* Progress and Score Mockup */}
               <div className="rounded-2xl border border-black/5 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.03] p-4 text-xs space-y-3 mt-4">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-neutral-900 dark:text-white">Methodological Flaws</span>
@@ -1447,7 +1430,6 @@ export function DesktopWebLandingPage({
               </div>
             </div>
 
-            {/* Bento Card 2: Citation Verification */}
             <div className="rounded-3xl liquid-glass-card p-7 sm:p-8 flex flex-col justify-between transition">
               <div>
                 <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400 mb-2 font-medium">
@@ -1461,7 +1443,6 @@ export function DesktopWebLandingPage({
                 </h3>
               </div>
 
-              {/* Chart & Search Mockup */}
               <div className="rounded-2xl border border-black/5 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.03] p-4 text-xs space-y-3 mt-4">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-full border-4 border-blue-500 border-t-blue-500 border-r-blue-500 border-b-blue-200 dark:border-b-blue-900 border-l-blue-500 flex items-center justify-center font-bold text-sm text-blue-600 dark:text-blue-400">
@@ -1488,7 +1469,7 @@ export function DesktopWebLandingPage({
             </div>
           </div>
 
-          {/* Bento Middle Row (Wide 100% Card) */}
+          {/* Bento Middle Row: 5 Persona Cards */}
           <div className="rounded-3xl liquid-glass-card p-7 sm:p-8 mb-6 transition">
             <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400 mb-2 font-medium">
               <span className="font-mono text-[11px] uppercase tracking-wider text-neutral-600 dark:text-neutral-400 font-semibold">Peer-Review Simulation</span>
@@ -1500,7 +1481,6 @@ export function DesktopWebLandingPage({
               Keep reviews moving 24/7 with expert referee agents.
             </h3>
 
-            {/* 5 Persona Cards in Bento */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 mt-4">
               <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 shadow-xs space-y-2.5 hover:shadow-md transition">
                 <div className="flex items-center gap-2 font-semibold text-xs text-emerald-800 dark:text-emerald-300">
@@ -1573,7 +1553,7 @@ export function DesktopWebLandingPage({
           <div id="tools" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
             <button
               type="button"
-              onClick={() => handleToolClick('reference-checker')}
+              onClick={() => handleToolClick("reference-checker")}
               className="p-4 rounded-2xl liquid-glass-card-interactive flex flex-col justify-between group text-left cursor-pointer"
             >
               <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20 flex items-center justify-center mb-3">
@@ -1590,7 +1570,7 @@ export function DesktopWebLandingPage({
 
             <button
               type="button"
-              onClick={() => handleToolClick('journal-fit')}
+              onClick={() => handleToolClick("journal-fit")}
               className="p-4 rounded-2xl liquid-glass-card-interactive flex flex-col justify-between group text-left cursor-pointer"
             >
               <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 flex items-center justify-center mb-3">
@@ -1607,7 +1587,7 @@ export function DesktopWebLandingPage({
 
             <button
               type="button"
-              onClick={() => handleToolClick('prisma')}
+              onClick={() => handleToolClick("prisma")}
               className="p-4 rounded-2xl liquid-glass-card-interactive flex flex-col justify-between group text-left cursor-pointer"
             >
               <div className="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/20 flex items-center justify-center mb-3">
@@ -1624,7 +1604,7 @@ export function DesktopWebLandingPage({
 
             <button
               type="button"
-              onClick={() => handleToolClick('citation-claim')}
+              onClick={() => handleToolClick("citation-claim")}
               className="p-4 rounded-2xl liquid-glass-card-interactive flex flex-col justify-between group text-left cursor-pointer"
             >
               <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 flex items-center justify-center mb-3">
@@ -1641,7 +1621,7 @@ export function DesktopWebLandingPage({
 
             <button
               type="button"
-              onClick={() => handleToolClick('cover-letter')}
+              onClick={() => handleToolClick("cover-letter")}
               className="p-4 rounded-2xl liquid-glass-card-interactive flex flex-col justify-between group text-left cursor-pointer col-span-2 sm:col-span-1"
             >
               <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20 flex items-center justify-center mb-3">
@@ -1674,7 +1654,6 @@ export function DesktopWebLandingPage({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Standard Card 1: CrossRef Registry */}
             <div className="rounded-3xl liquid-glass-card p-7 flex flex-col justify-between transition">
               <div>
                 <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-lg mb-5 shadow-xs">
@@ -1691,7 +1670,6 @@ export function DesktopWebLandingPage({
               </div>
             </div>
 
-            {/* Standard Card 2: Retraction Watch */}
             <div className="rounded-3xl liquid-glass-card p-7 flex flex-col justify-between transition">
               <div>
                 <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-lg mb-5 shadow-xs">
@@ -1708,7 +1686,6 @@ export function DesktopWebLandingPage({
               </div>
             </div>
 
-            {/* Standard Card 3: EQUATOR & PRISMA */}
             <div className="rounded-3xl liquid-glass-card p-7 flex flex-col justify-between transition">
               <div>
                 <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-lg mb-5 shadow-xs">
@@ -1747,18 +1724,19 @@ export function DesktopWebLandingPage({
           <div className="flex flex-wrap items-center justify-center gap-3.5">
             <button
               type="button"
-              onClick={onLaunchApp}
-              className="px-6 py-2.5 rounded-xl liquid-glass-btn-primary text-white font-semibold text-sm shadow-xs transition active:scale-[0.98] cursor-pointer"
+              onClick={() => handleDownload(selectedPlatform)}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl liquid-glass-btn-primary text-white font-semibold text-sm shadow-xs transition active:scale-[0.98] cursor-pointer"
             >
-              Try ManuView free
+              <Download className="w-4 h-4 text-white" />
+              <span>Download ManuView for {selectedPlatform.label}</span>
             </button>
 
             <button
               type="button"
-              onClick={() => scrollToSection('demo')}
+              onClick={onLaunchApp}
               className="px-5 py-2.5 rounded-xl liquid-glass-btn-secondary text-neutral-700 dark:text-neutral-200 font-medium text-sm transition cursor-pointer"
             >
-              Explore sample preprints
+              Launch Web Workspace
             </button>
           </div>
         </div>
@@ -1770,10 +1748,9 @@ export function DesktopWebLandingPage({
       <footer className="border-t border-black/5 dark:border-white/10 bg-white/60 dark:bg-[#0A0B0E]/80 backdrop-blur-xl text-neutral-600 dark:text-neutral-400 text-xs py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-8 mb-12">
-            {/* Logo & Identity */}
             <div className="col-span-2 sm:col-span-3 md:col-span-1 space-y-3">
               <div className="flex items-center gap-2 text-neutral-900 dark:text-neutral-200 font-semibold text-sm">
-                <div className="flex h-6 w-6 items-center justify-center rounded bg-black dark:bg-white text-white dark:text-black font-serif font-bold text-xs shadow-xs">
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white font-serif font-bold text-xs shadow-xs">
                   M
                 </div>
                 <span className="tracking-tight text-base font-semibold">ManuView</span>
@@ -1788,52 +1765,44 @@ export function DesktopWebLandingPage({
             </div>
 
             <div>
-              <h4 className="font-semibold text-neutral-900 dark:text-neutral-200 mb-3 text-xs">
-                Product
-              </h4>
+              <h4 className="font-semibold text-neutral-900 dark:text-neutral-200 mb-3 text-xs">Product</h4>
               <ul className="space-y-2 text-neutral-600 dark:text-neutral-400">
-                <li><button type="button" onClick={onOpenScan || onLaunchApp} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Pre-Submission Scan</button></li>
-                <li><button type="button" onClick={() => scrollToSection('demo')} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Sample Preprints</button></li>
-                <li><button type="button" onClick={() => { setActiveTab('dimensions'); scrollToSection('demo'); }} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">The 6 Scoring Rubrics</button></li>
-                <li><button type="button" onClick={() => { setActiveTab('personas'); scrollToSection('demo'); }} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">5-Persona Peer Review</button></li>
-                <li><button type="button" onClick={() => handleToolClick('journal-fit')} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Journal Fit Predictor</button></li>
+                <li><button type="button" onClick={onLaunchApp} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Launch App</button></li>
+                <li><button type="button" onClick={() => scrollToSection("demo")} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Interactive Preview</button></li>
+                <li><button type="button" onClick={() => { setActiveTab("dimensions"); scrollToSection("demo"); }} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">The 6 Scoring Rubrics</button></li>
+                <li><button type="button" onClick={() => { setActiveTab("personas"); scrollToSection("demo"); }} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">5-Persona Peer Review</button></li>
+                <li><button type="button" onClick={() => handleToolClick("journal-fit")} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Journal Fit Predictor</button></li>
               </ul>
             </div>
 
             <div>
-              <h4 className="font-semibold text-neutral-900 dark:text-neutral-200 mb-3 text-xs">
-                Research Tools
-              </h4>
+              <h4 className="font-semibold text-neutral-900 dark:text-neutral-200 mb-3 text-xs">Research Tools</h4>
               <ul className="space-y-2 text-neutral-600 dark:text-neutral-400">
-                <li><button type="button" onClick={() => handleToolClick('reference-checker')} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Reference &amp; Retraction Audit</button></li>
-                <li><button type="button" onClick={() => handleToolClick('citation-claim')} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Citation Claim Validator</button></li>
-                <li><button type="button" onClick={() => handleToolClick('prisma')} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">PRISMA 2020 Flow Generator</button></li>
-                <li><button type="button" onClick={() => handleToolClick('cover-letter')} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Cover Letter Generator</button></li>
-                <li><button type="button" onClick={() => handleToolClick('response-builder')} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Rebuttal Response Matrix</button></li>
+                <li><button type="button" onClick={() => handleToolClick("reference-checker")} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Reference &amp; Retraction Audit</button></li>
+                <li><button type="button" onClick={() => handleToolClick("citation-claim")} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Citation Claim Validator</button></li>
+                <li><button type="button" onClick={() => handleToolClick("prisma")} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">PRISMA 2020 Flow Generator</button></li>
+                <li><button type="button" onClick={() => handleToolClick("cover-letter")} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Cover Letter Generator</button></li>
+                <li><button type="button" onClick={() => handleToolClick("response-builder")} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Rebuttal Response Matrix</button></li>
               </ul>
             </div>
 
             <div>
-              <h4 className="font-semibold text-neutral-900 dark:text-neutral-200 mb-3 text-xs">
-                Resources
-              </h4>
+              <h4 className="font-semibold text-neutral-900 dark:text-neutral-200 mb-3 text-xs">Downloads</h4>
               <ul className="space-y-2 text-neutral-600 dark:text-neutral-400">
-                <li><button type="button" onClick={() => scrollToSection('demo')} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Preprint Case Studies</button></li>
-                <li><button type="button" onClick={() => scrollToSection('tools')} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Tool Documentation</button></li>
-                <li><button type="button" onClick={onOpenSettings} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Local Ollama Guide</button></li>
-                <li><button type="button" onClick={() => { setActiveTab('issues'); scrollToSection('demo'); }} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Desk-Rejection Hazards</button></li>
+                <li><button type="button" onClick={() => handleDownload(PLATFORMS[0])} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">macOS Apple Silicon (.dmg)</button></li>
+                <li><button type="button" onClick={() => handleDownload(PLATFORMS[1])} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">macOS Intel (.dmg)</button></li>
+                <li><button type="button" onClick={() => handleDownload(PLATFORMS[2])} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Windows 10 / 11 (.msi)</button></li>
+                <li><button type="button" onClick={() => handleDownload(PLATFORMS[3])} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Linux AppImage (.AppImage)</button></li>
               </ul>
             </div>
 
             <div>
-              <h4 className="font-semibold text-neutral-900 dark:text-neutral-200 mb-3 text-xs">
-                Open Science
-              </h4>
+              <h4 className="font-semibold text-neutral-900 dark:text-neutral-200 mb-3 text-xs">Open Science</h4>
               <ul className="space-y-2 text-neutral-600 dark:text-neutral-400">
                 <li>
                   <button
                     type="button"
-                    onClick={() => openExternalLink("https://github.com/khatiwada-bishal/manuview")}
+                    onClick={() => openExternalLink("https://github.com/khatiwada-bishal/manuview-desktop")}
                     className="hover:text-neutral-900 dark:hover:text-neutral-200 transition flex items-center gap-1.5 cursor-pointer"
                   >
                     GitHub Repository
@@ -1842,7 +1811,7 @@ export function DesktopWebLandingPage({
                 <li>
                   <button
                     type="button"
-                    onClick={() => openExternalLink("https://github.com/khatiwada-bishal/manuview/blob/main/LICENSE")}
+                    onClick={() => openExternalLink("https://github.com/khatiwada-bishal/manuview-desktop/blob/main/LICENSE")}
                     className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer"
                   >
                     MIT License
@@ -1851,10 +1820,10 @@ export function DesktopWebLandingPage({
                 <li>
                   <button
                     type="button"
-                    onClick={() => openExternalLink("https://github.com/khatiwada-bishal/manuview/blob/main/CONTRIBUTING.md")}
+                    onClick={() => openExternalLink("https://github.com/khatiwada-bishal/manuview-desktop/releases")}
                     className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer"
                   >
-                    Contribute Rubrics
+                    Releases &amp; Changelog
                   </button>
                 </li>
               </ul>
