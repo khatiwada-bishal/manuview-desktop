@@ -48,6 +48,8 @@ import {
   exportLatexRebuttalTable,
   exportBibTeX,
 } from "@/lib/export-generator";
+import { DesktopJournalMatchesListView } from "./DesktopJournalMatchesListView";
+import { findMatchingJournals, JournalEntry, MatchedJournalItem } from "@/lib/journals";
 
 export interface DesktopDashboardData {
   paperTitle: string;
@@ -140,6 +142,51 @@ export function DesktopDashboard({
   const dimensions = fullReport?.dimensions || {};
   const issues = fullReport?.priorityIssues || [];
   const journals = fullReport?.journalRecommendations || [];
+
+  // Match journals from catalog to guarantee 3 tiered cards + 10+ list matches
+  const matchingJournalsData = useMemo(() => {
+    return findMatchingJournals(title, typeof summary === "string" ? summary : "", targetJournal);
+  }, [title, summary, targetJournal]);
+
+  const otherJournals = useMemo(() => {
+    return matchingJournalsData.otherMatches || [];
+  }, [matchingJournalsData]);
+
+  const displayJournals = useMemo(() => {
+    if (journals && journals.length >= 3) return journals;
+    return [
+      {
+        tier: "Reach" as const,
+        journalName: matchingJournalsData.reach.name,
+        impactFactor: matchingJournalsData.reach.impactFactor,
+        publisher: matchingJournalsData.reach.publisher,
+        fitScore: 84,
+        scopeRationale: matchingJournalsData.reach.aimsAndScope,
+        rejectionRisks: matchingJournalsData.reach.deskRejectHazards,
+        requiredRevisionsForFit: matchingJournalsData.reach.keyExpectations,
+      },
+      {
+        tier: "Realistic" as const,
+        journalName: matchingJournalsData.realistic.name,
+        impactFactor: matchingJournalsData.realistic.impactFactor,
+        publisher: matchingJournalsData.realistic.publisher,
+        fitScore: 92,
+        scopeRationale: matchingJournalsData.realistic.aimsAndScope,
+        rejectionRisks: matchingJournalsData.realistic.deskRejectHazards,
+        requiredRevisionsForFit: matchingJournalsData.realistic.keyExpectations,
+      },
+      {
+        tier: "Fallback" as const,
+        journalName: matchingJournalsData.fallback.name,
+        impactFactor: matchingJournalsData.fallback.impactFactor,
+        publisher: matchingJournalsData.fallback.publisher,
+        fitScore: 96,
+        scopeRationale: matchingJournalsData.fallback.aimsAndScope,
+        rejectionRisks: matchingJournalsData.fallback.deskRejectHazards,
+        requiredRevisionsForFit: matchingJournalsData.fallback.keyExpectations,
+      },
+    ];
+  }, [journals, matchingJournalsData]);
 
   // Filter issues based on priority filter pill
   const filteredIssues = issues.filter(
@@ -287,6 +334,705 @@ export function DesktopDashboard({
     }
     setIsExportOpen(false);
     window.print();
+  };
+
+  // --- Section 1: The 6 Evaluation Dimensions ---
+  const renderDimensionsSection = () => {
+    const dimEntries = Object.entries(dimensions) as [string, DimensionScore][];
+    if (dimEntries.length === 0) {
+      return (
+        <div className="rounded-3xl liquid-glass-card p-6 flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400">
+          <BarChart3 className="w-5 h-5 text-neutral-400" />
+          <span>Dimensional scoring is calibrated during pre-submission AI evaluation.</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold text-[#0F172A] dark:text-white flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-[#2563EB] dark:text-blue-400" />
+            <span>The 6 Evaluation Dimensions (1–5 Scale)</span>
+          </h2>
+          <span className="text-xs text-[#64748B] dark:text-neutral-400">Calibrated against top-tier standards</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {dimEntries.map(([key, dim]) => (
+            <div
+              key={key}
+              className="rounded-3xl liquid-glass-card liquid-glass-card-interactive p-5 space-y-3.5 flex flex-col justify-between"
+            >
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-[#0F172A] dark:text-white">{dim.label}</span>
+                    {dim.source && (
+                      <span className={`text-[9px] px-1.5 py-0.2 rounded font-semibold border ${
+                        dim.source === "llm"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
+                          : "bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700"
+                      }`}>
+                        {dim.source === "llm" ? "AI" : "Heuristic"}
+                      </span>
+                    )}
+                  </div>
+                  <span className={`px-2.5 py-0.5 rounded-full font-mono text-xs font-extrabold border ${
+                    dim.score >= 4
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
+                      : dim.score === 3
+                      ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
+                      : "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800"
+                  }`}>
+                    {dim.score} / 5
+                  </span>
+                </div>
+                <p className="text-xs text-[#475569] dark:text-neutral-300 leading-relaxed font-medium">
+                  {dim.verdict}
+                </p>
+              </div>
+
+              <div className="space-y-2 pt-2 border-t border-black/[0.06] dark:border-white/[0.08]">
+                {dim.strengths && dim.strengths.length > 0 && (
+                  <div>
+                    <span className="text-[10px] font-bold text-[#166534] dark:text-emerald-400 uppercase tracking-wider block mb-1">
+                      STRENGTHS:
+                    </span>
+                    <ul className="space-y-1 text-xs text-[#334155] dark:text-neutral-300 pl-3 list-disc">
+                      {dim.strengths.map((s, i) => (
+                        <li key={i} className="leading-relaxed">
+                          {s}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {dim.vulnerabilities && dim.vulnerabilities.length > 0 && (
+                  <div>
+                    <span className="text-[10px] font-bold text-[#DC2626] dark:text-rose-400 uppercase tracking-wider block mb-1">
+                      VULNERABILITIES:
+                    </span>
+                    <ul className="space-y-1 text-xs text-[#B91C1C] dark:text-rose-300 pl-3 list-disc">
+                      {dim.vulnerabilities.map((v, i) => (
+                        <li key={i} className="leading-relaxed">
+                          {v}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // --- Section 2: Prioritized Action Plan before Submission ---
+  const renderIssuesSection = () => {
+    const countA = issues.filter((i) => i.priority === "A").length;
+    const countB = issues.filter((i) => i.priority === "B").length;
+    const countC = issues.filter((i) => i.priority === "C").length;
+
+    return (
+      <div className="space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-bold text-[#0F172A] dark:text-white flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-[#DC2626] dark:text-rose-400" />
+              <span>Prioritized Action Plan before Submission</span>
+            </h2>
+            <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
+              Ranked pre-submission hazards and recommended author rebuttal framing
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIssueFilter("all")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                issueFilter === "all"
+                  ? "liquid-glass-tab-active font-bold text-blue-600 dark:text-blue-400"
+                  : "liquid-glass-btn-secondary text-[#475569] dark:text-neutral-300"
+              }`}
+            >
+              All Issues ({issues.length})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIssueFilter("A")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                issueFilter === "A"
+                  ? "bg-rose-600 text-white shadow-xs border border-rose-500"
+                  : "liquid-glass-btn-secondary text-[#DC2626] dark:text-rose-400"
+              }`}
+            >
+              🚨 Priority A ({countA})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIssueFilter("B")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                issueFilter === "B"
+                  ? "bg-amber-600 text-white shadow-xs border border-amber-500"
+                  : "liquid-glass-btn-secondary text-[#D97706] dark:text-amber-400"
+              }`}
+            >
+              ⚠️ Priority B ({countB})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIssueFilter("C")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                issueFilter === "C"
+                  ? "bg-emerald-600 text-white shadow-xs border border-emerald-500"
+                  : "liquid-glass-btn-secondary text-[#16A34A] dark:text-emerald-400"
+              }`}
+            >
+              💡 Priority C ({countC})
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {filteredIssues.length === 0 ? (
+            <div className="rounded-3xl liquid-glass-card p-8 text-center space-y-2">
+              <CheckCircle2 className="w-8 h-8 text-[#16A34A] dark:text-emerald-400 mx-auto" />
+              <h3 className="text-sm font-bold text-[#0F172A] dark:text-white">
+                {issueFilter === "all" ? "No Priority Issues Found" : `No Priority ${issueFilter} Issues Identified`}
+              </h3>
+              <p className="text-xs text-[#64748B] dark:text-neutral-400 max-w-sm mx-auto">
+                {issueFilter === "A"
+                  ? "Zero critical desk-reject blockers identified in this category."
+                  : issueFilter === "B"
+                  ? "Zero major methodological objections flagged in this category."
+                  : issueFilter === "C"
+                  ? "Zero minor presentation or clarity refinements pending."
+                  : "The manuscript cleared automated peer-review integrity heuristics."}
+              </p>
+            </div>
+          ) : (
+            filteredIssues.map((issue) => (
+              <div
+                key={issue.id}
+                className="rounded-3xl liquid-glass-card p-5 sm:p-6 space-y-4"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold border ${
+                        issue.priority === "A"
+                          ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30"
+                          : issue.priority === "B"
+                          ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                          : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                      }`}
+                    >
+                      Priority {issue.priority}
+                    </span>
+                    <span className="text-xs font-bold text-[#475569] dark:text-neutral-300 uppercase tracking-wider">
+                      {issue.category}
+                    </span>
+                    <span className="font-mono text-[10px] text-neutral-400 dark:text-neutral-500">
+                      {issue.id}
+                    </span>
+                    {issue.source && (
+                      <span className={`text-[9px] px-1.5 py-0.2 rounded font-semibold border ${
+                        issue.source === "crossref"
+                          ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800"
+                          : issue.source === "llm"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
+                          : "bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700"
+                      }`}>
+                        {issue.source === "crossref" ? "Registry" : issue.source === "llm" ? "AI" : "Heuristic"}
+                      </span>
+                    )}
+                  </div>
+
+                  <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
+                    {issue.priority === "A" ? "Desk-Reject Hazard" : "Reviewer Objection"}
+                  </span>
+                </div>
+
+                <div>
+                  <h3 className="text-sm sm:text-base font-bold text-[#0F172A] dark:text-white mb-1">
+                    {issue.title}
+                  </h3>
+                  <p className="text-xs text-[#334155] dark:text-neutral-300 leading-relaxed font-light">
+                    {issue.description}
+                  </p>
+                </div>
+
+                {issue.evidenceAnchor && (
+                  <div className="p-2.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.04] border border-[#CBD5E1] dark:border-[#334155] text-xs font-mono text-[#0F172A] dark:text-neutral-200 flex items-center gap-2">
+                    <FileCode className="w-3.5 h-3.5 text-[#2563EB] dark:text-blue-400 shrink-0" />
+                    <span className="font-bold text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-black/[0.04] dark:bg-white/[0.08] text-neutral-500 dark:text-neutral-400">
+                      Anchor
+                    </span>
+                    <span className="truncate">{issue.evidenceAnchor}</span>
+                  </div>
+                )}
+
+                {issue.reviewerQuote && (
+                  <div className="border-l-2 border-neutral-300 dark:border-[#334155] pl-3.5 py-0.5 text-xs italic text-[#0F172A] dark:text-neutral-200 font-serif">
+                    &ldquo;{issue.reviewerQuote}&rdquo;
+                  </div>
+                )}
+
+                {issue.actionableFix && (
+                  <div className="p-3.5 rounded-xl bg-[#F0FDF4] dark:bg-emerald-950/30 border border-[#BBF7D0] dark:border-emerald-800/60 text-xs text-[#166534] dark:text-emerald-300 flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#16A34A] dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold text-[#0F172A] dark:text-white block mb-0.5">
+                        Required Pre-Submission Fix:
+                      </span>
+                      <span className="leading-relaxed">{issue.actionableFix}</span>
+                    </div>
+                  </div>
+                )}
+
+                {issue.rebuttalStrategy && (
+                  <div className="p-3.5 rounded-xl bg-[#EFF6FF] dark:bg-blue-950/30 border border-[#BFDBFE] dark:border-blue-800/60 text-xs text-[#1E40AF] dark:text-blue-300 flex items-start gap-2.5">
+                    <MessageSquare className="w-4 h-4 text-[#2563EB] dark:text-blue-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold text-[#1E3A8A] dark:text-blue-200 block mb-0.5">
+                        Point-by-Point Author Rebuttal Framing (for Journal Response Letter):
+                      </span>
+                      <p className="leading-relaxed font-light whitespace-pre-line text-[#1E40AF] dark:text-blue-300">
+                        {issue.rebuttalStrategy}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // --- Section 3: 5-Persona Peer-Review Simulation (Adversarial Panel) ---
+  const renderPersonasSection = () => {
+    if (personas.length === 0) {
+      return (
+        <div className="rounded-3xl liquid-glass-card p-6 flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400">
+          <Users className="w-5 h-5 text-neutral-400" />
+          <span>Expert reviewer panel simulation is enabled when live AI evaluation is connected.</span>
+        </div>
+      );
+    }
+
+    const active = personas[selectedPersona] || personas[0];
+    const isDevilsAdvocate = active?.persona === "devils_advocate" || selectedPersona === 4;
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+          <div>
+            <h2 className="text-base font-bold text-[#0F172A] dark:text-white flex items-center gap-2">
+              <Users className="w-4 h-4 text-[#2563EB] dark:text-blue-400" />
+              <span>{personas.length}-Persona Peer-Review Simulation (Adversarial Panel)</span>
+            </h2>
+            <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
+              Multi-disciplinary simulated peer review with domain-specific stress tests
+            </p>
+          </div>
+          <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+            Independent domain evaluations
+          </span>
+        </div>
+
+        {/* Persona Switcher Buttons */}
+        <div className="flex flex-wrap items-center gap-2 pb-1">
+          {personas.map((p, idx) => {
+            const isActive = selectedPersona === idx;
+            const isDA = p.persona === "devils_advocate" || idx === 4;
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setSelectedPersona(idx)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-2 border ${
+                  isActive
+                    ? isDA
+                      ? "bg-[#7F1D1D] text-white border-[#7F1D1D] shadow-xs"
+                      : "liquid-glass-tab-active font-bold text-blue-600 dark:text-blue-400"
+                    : isDA
+                    ? "bg-rose-500/10 text-rose-800 dark:text-rose-300 border-rose-500/20 hover:bg-rose-500/20"
+                    : "liquid-glass-btn-secondary text-neutral-700 dark:text-neutral-300"
+                }`}
+              >
+                <span>
+                  {p.persona === "methods_reviewer" ? "🔬" :
+                   p.persona === "domain_expert" ? "🧬" :
+                   p.persona === "journal_editor" ? "📑" :
+                   p.persona === "statistician" ? "📊" :
+                   p.persona === "devils_advocate" ? "⚡" :
+                   (idx === 0 ? "🔬" : idx === 1 ? "🧬" : idx === 2 ? "📑" : idx === 3 ? "📊" : "⚡")}
+                </span>
+                <span>{p.name}</span>
+                {isDA && (
+                  <span className={`text-[9px] uppercase px-1.5 py-0.2 rounded font-extrabold ${
+                    isActive ? "bg-white/20 text-white" : "bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/30"
+                  }`}>
+                    Stress-Test
+                  </span>
+                )}
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
+                    isActive
+                      ? "bg-blue-500/20 text-blue-700 dark:text-blue-300"
+                      : "bg-black/[0.04] dark:bg-white/[0.08] text-neutral-600 dark:text-neutral-300"
+                  }`}
+                >
+                  {p.decisionRecommendation}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Active Persona Card */}
+        {active && (
+          <div className={`rounded-3xl liquid-glass-card p-6 sm:p-8 space-y-6 ${
+            isDevilsAdvocate ? "border-rose-400/40 ring-1 ring-rose-500/30" : ""
+          }`}>
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 pb-5 border-b border-[#E2E8F0] dark:border-[#1F2937]">
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h3 className="text-lg sm:text-xl font-serif font-bold text-[#0F172A] dark:text-white">
+                    {active.name}
+                  </h3>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                    isDevilsAdvocate
+                      ? "bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800"
+                      : "bg-[#FEF3C7] dark:bg-amber-950/40 text-[#92400E] dark:text-amber-300 border-[#FDE68A] dark:border-amber-800"
+                  }`}>
+                    Decision: {active.decisionRecommendation}
+                  </span>
+                  {isDevilsAdvocate && (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-red-100 dark:bg-red-950/50 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800">
+                      ⚡ Hostile Stress-Test / Adversarial Referee
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs font-medium text-[#475569] dark:text-neutral-300">{active.title}</p>
+                <p className="text-xs text-[#64748B] dark:text-neutral-400 flex items-center gap-1.5">
+                  <GraduationCap className="w-3.5 h-3.5" />
+                  <span>{active.affiliation}</span>
+                </p>
+              </div>
+
+              {active.expertise && (
+                <div className="p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#1F2937] text-xs text-[#475569] dark:text-neutral-300 md:max-w-xs">
+                  <span className="font-bold text-[#0F172A] dark:text-white block mb-0.5">Focus:</span>
+                  {active.expertise}
+                </div>
+              )}
+            </div>
+
+            {active.evidenceAnchors && active.evidenceAnchors.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-xs font-bold text-[#475569] dark:text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileCode className="w-3.5 h-3.5 text-[#2563EB] dark:text-blue-400" />
+                  <span>Manuscript Evidence Anchors (Grounding):</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {active.evidenceAnchors.map((anchor, aIdx) => (
+                    <span
+                      key={aIdx}
+                      className="font-mono text-[11px] px-2.5 py-1 rounded-lg bg-[#F8FAFC] dark:bg-[#161F30] border border-[#CBD5E1] dark:border-[#334155] text-[#1E293B] dark:text-neutral-200"
+                    >
+                      {anchor}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="p-4 rounded-xl bg-[#FEF2F2] dark:bg-rose-950/30 border-l-4 border-[#EF4444] dark:border-rose-600 text-xs text-[#991B1B] dark:text-rose-300 flex items-start gap-2.5">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-[#DC2626] dark:text-rose-400" />
+              <div>
+                <span className="font-bold block uppercase tracking-wide text-[10px] text-[#7F1D1D] dark:text-rose-400 mb-0.5">
+                  Key Challenge / Reviewer Objection:
+                </span>
+                {active.keyChallenge}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-xs font-bold text-[#64748B] dark:text-neutral-400 uppercase tracking-wider">
+                Detailed Peer-Review Assessment:
+              </div>
+              <div className="text-xs sm:text-sm text-[#334155] dark:text-neutral-300 leading-relaxed p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#1F2937] font-light whitespace-pre-line">
+                {active.assessment}
+              </div>
+            </div>
+
+            {active.counterArguments && active.counterArguments.length > 0 && (
+              <div className="space-y-2.5">
+                <div className="text-xs font-bold text-[#7C3AED] dark:text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  <span>Adversarial Defenses &amp; Pre-emptive Arguments to Prepare:</span>
+                </div>
+                <div className="space-y-2">
+                  {active.counterArguments.map((arg, cIdx) => (
+                    <div
+                      key={cIdx}
+                      className="p-3 rounded-xl bg-[#F5F3FF] dark:bg-purple-950/30 border border-[#DDD6FE] dark:border-purple-800/50 text-xs text-[#5B21B6] dark:text-purple-300 flex items-start gap-2.5 shadow-2xs"
+                    >
+                      <span className="font-mono text-[#7C3AED] dark:text-purple-400 font-bold text-xs mt-0.5">
+                        [{cIdx + 1}]
+                      </span>
+                      <span className="leading-relaxed">{arg}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {active.mustAddressItems && active.mustAddressItems.length > 0 && (
+              <div className="space-y-2.5 pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937]">
+                <div className="text-xs font-bold text-[#16A34A] dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <CheckSquare className="w-3.5 h-3.5" />
+                  <span>Must-Address Prior to Submission:</span>
+                </div>
+                <div className="space-y-2">
+                  {active.mustAddressItems.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3 rounded-xl bg-[#F0FDF4] dark:bg-emerald-950/30 border border-[#BBF7D0] dark:border-emerald-800/60 text-xs text-[#166534] dark:text-emerald-300 flex items-start gap-2.5 shadow-2xs"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-[#16A34A] dark:text-emerald-400 shrink-0 mt-0.5" />
+                      <span className="leading-relaxed font-medium">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // --- Section 4: Citation & Reference Integrity Audit ---
+  const renderCitationsSection = () => {
+    const cit = fullReport?.citationIntegrity;
+    const totalRef = cit?.totalReferences ?? data.citationAudit.totalCount;
+    const verifiedRef = cit?.verifiedCount ?? data.citationAudit.verifiedCount;
+    const sampledRef = cit?.sampledCount ?? totalRef;
+    const uncheckedRef = cit?.uncheckedCount ?? 0;
+    const unresolvableRef = cit?.unresolvableCount ?? 0;
+    const retractedRef = cit?.retractedCount ?? data.citationAudit.retractedCount;
+    const retAvailable = cit?.retractionCheckAvailable !== false;
+    const selfCitRatio = cit?.selfCitationRatio;
+    const references = cit?.references || [];
+
+    return (
+      <div className="rounded-3xl liquid-glass-card p-6 sm:p-8 space-y-6 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="space-y-1">
+            <h2 className="text-base font-bold text-[#0F172A] dark:text-white flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-[#16A34A] dark:text-emerald-400" />
+              <span>Citation &amp; Reference Integrity Audit</span>
+            </h2>
+            <p className="text-xs text-[#64748B] dark:text-neutral-400">
+              Verified against CrossRef Open API and Retraction Watch database.
+            </p>
+          </div>
+          {cit?.coverageNote && (
+            <span className="text-xs text-[#64748B] dark:text-neutral-400 font-medium">
+              {cit.coverageNote}
+            </span>
+          )}
+        </div>
+
+        {/* 6-Stat Tiles Grid */}
+        <div className={`grid grid-cols-2 ${selfCitRatio !== undefined ? "sm:grid-cols-6" : "sm:grid-cols-5"} gap-3`}>
+          <div className="liquid-glass-card p-3.5 rounded-2xl text-center">
+            <div className="text-xl font-bold font-serif text-[#0F172A] dark:text-white">{totalRef}</div>
+            <div className="text-[11px] text-[#64748B] dark:text-neutral-400 mt-0.5">Total References</div>
+          </div>
+          <div className="liquid-glass-card p-3.5 rounded-2xl text-center">
+            <div className="text-xl font-bold font-serif text-[#16A34A] dark:text-emerald-400">{verifiedRef}</div>
+            <div className="text-[11px] text-[#64748B] dark:text-neutral-400 mt-0.5">
+              {sampledRef < totalRef ? `Verified (in ${sampledRef})` : "Crossref Verified"}
+            </div>
+          </div>
+          <div className="liquid-glass-card p-3.5 rounded-2xl text-center">
+            <div className="text-xl font-bold font-serif text-[#64748B] dark:text-neutral-400">{uncheckedRef}</div>
+            <div className="text-[11px] text-[#64748B] dark:text-neutral-400 mt-0.5">Not Checked</div>
+          </div>
+          <div className="liquid-glass-card p-3.5 rounded-2xl text-center">
+            <div className={`text-xl font-bold font-serif ${unresolvableRef > 0 ? "text-rose-600 dark:text-rose-400" : "text-[#0F172A] dark:text-white"}`}>
+              {unresolvableRef}
+            </div>
+            <div className="text-[11px] text-[#64748B] dark:text-neutral-400 mt-0.5">Unresolvable DOIs</div>
+          </div>
+          <div className="liquid-glass-card p-3.5 rounded-2xl text-center">
+            <div className={`text-xl font-bold font-serif ${!retAvailable ? "text-neutral-400 text-sm pt-1" : retractedRef > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+              {retAvailable ? retractedRef : "Not screened"}
+            </div>
+            <div className="text-[11px] text-[#64748B] dark:text-neutral-400 mt-0.5">Retracted Flagged</div>
+          </div>
+          {selfCitRatio !== undefined && (
+            <div className="liquid-glass-card p-3.5 rounded-2xl text-center">
+              <div className="text-xl font-bold font-serif text-[#0F172A] dark:text-white">{selfCitRatio}%</div>
+              <div className="text-[11px] text-[#64748B] dark:text-neutral-400 mt-0.5">Self-Citation Rate</div>
+            </div>
+          )}
+        </div>
+
+        {/* Bibliography Samples Table */}
+        {references.length > 0 && (
+          <div className="liquid-glass-card rounded-2xl overflow-hidden shadow-xs">
+            <div className="p-3 bg-black/[0.02] dark:bg-white/[0.04] border-b border-black/[0.06] dark:border-white/[0.08] text-[11px] font-semibold text-[#64748B] dark:text-neutral-400 uppercase tracking-wider">
+              Bibliography Samples &amp; Verification Details
+            </div>
+            <div className="divide-y divide-black/[0.06] dark:divide-white/[0.08]">
+              {references.slice(0, 15).map((ref, idx) => (
+                <div key={idx} className="p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+                  <div className="space-y-1 max-w-xl">
+                    <div className="font-medium text-[#0F172A] dark:text-white leading-snug">
+                      {ref.title || ref.raw}
+                    </div>
+                    <div className="text-[11px] text-[#64748B] dark:text-neutral-400 flex items-center gap-2 flex-wrap font-mono">
+                      {ref.doi && <span>DOI: {ref.doi}</span>}
+                      {ref.journal && <span>&bull; {ref.journal}</span>}
+                      {ref.year && <span>&bull; {ref.year}</span>}
+                    </div>
+                    {ref.retractionDetails && (
+                      <div className="text-rose-600 dark:text-rose-400 text-[11px] font-semibold">
+                        {ref.retractionDetails}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="shrink-0">
+                    {ref.isRetracted ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/40">
+                        <AlertTriangle className="w-2.5 h-2.5" />
+                        RETRACTED
+                      </span>
+                    ) : ref.status === "expression_of_concern" ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/40">
+                        <AlertTriangle className="w-2.5 h-2.5" />
+                        EXPRESSION OF CONCERN
+                      </span>
+                    ) : ref.status === "valid" ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40">
+                        <CheckCircle2 className="w-2.5 h-2.5" />
+                        VERIFIED
+                      </span>
+                    ) : ref.status === "unresolvable" ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30">
+                        <Info className="w-2.5 h-2.5" />
+                        UNRESOLVABLE (404)
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-neutral-500/15 text-neutral-600 dark:text-neutral-400 border border-neutral-500/30">
+                        <Info className="w-2.5 h-2.5" />
+                        NOT CHECKED
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // --- Section 5: Target Journal Recommendations & 10+ List View ---
+  const renderJournalsSection = () => {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+          <div>
+            <h2 className="text-base font-bold text-[#0F172A] dark:text-white flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-[#2563EB] dark:text-blue-400" />
+              <span>Target Journal Recommendation Tiers</span>
+            </h2>
+            <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
+              Peer-review calibrated recommendations across Reach, Realistic, and Fallback tiers
+            </p>
+          </div>
+          <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+            Verified authentic indexed journals
+          </span>
+        </div>
+
+        {/* 3 Strategic Recommendation Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {displayJournals.map((j, idx) => (
+            <div
+              key={idx}
+              className="rounded-3xl liquid-glass-card liquid-glass-card-interactive p-5 space-y-3.5 flex flex-col justify-between"
+            >
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs font-extrabold uppercase tracking-wide px-2.5 py-0.5 rounded-full border ${
+                    j.tier === "Reach"
+                      ? "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20"
+                      : j.tier === "Realistic"
+                      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
+                      : "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20"
+                  }`}>
+                    {j.tier} Tier
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20">
+                    Fit: {j.fitScore}%
+                  </span>
+                </div>
+
+                <h3 className="text-base font-bold text-[#0F172A] dark:text-white leading-snug">
+                  {j.journalName}
+                </h3>
+                <p className="text-xs text-[#64748B] dark:text-neutral-400">
+                  Impact Factor: <strong>{j.impactFactor}</strong> &bull; {j.publisher}
+                </p>
+
+                <p className="text-xs text-[#334155] dark:text-neutral-300 leading-relaxed pt-2 border-t border-black/[0.06] dark:border-white/[0.08]">
+                  {j.scopeRationale}
+                </p>
+              </div>
+
+              {j.rejectionRisks && j.rejectionRisks.length > 0 && (
+                <div className="pt-2 border-t border-black/[0.06] dark:border-white/[0.08]">
+                  <span className="text-[10px] font-bold text-[#DC2626] dark:text-rose-400 uppercase tracking-wider block mb-1">
+                    DESK-REJECT RISKS:
+                  </span>
+                  <ul className="space-y-1 text-xs text-[#B91C1C] dark:text-rose-300 pl-3 list-disc">
+                    {j.rejectionRisks.map((risk, rIdx) => (
+                      <li key={rIdx} className="leading-relaxed">
+                        {risk}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Qualified Field & Catalog Matches in List View (10+ journals) */}
+        <DesktopJournalMatchesListView
+          otherJournals={otherJournals}
+          detectedDiscipline={matchingJournalsData.detectedDiscipline}
+        />
+      </div>
+    );
   };
 
   return (
@@ -634,6 +1380,20 @@ export function DesktopDashboard({
                     "This manuscript has undergone rigorous pre-submission peer-review calibration across core methodological, empirical, and bibliographic dimensions against the target journal's editorial standards."}
                 </p>
 
+                {/* Detected Academic Features Pills */}
+                {classification?.detectedFeatures && classification.detectedFeatures.length > 0 && (
+                  <div className="pt-1 flex flex-wrap gap-1.5">
+                    {classification.detectedFeatures.map((feat, idx) => (
+                      <span
+                        key={idx}
+                        className="text-[11px] px-2.5 py-0.5 rounded-full font-medium bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60"
+                      >
+                        &bull; {feat}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 <p className="text-xs sm:text-sm text-[#64748B] dark:text-neutral-400 leading-relaxed">
                   {classification?.customGuidance ||
                     "Review prioritized action items and simulated referee assessments before submitting to your target journal."}
@@ -758,6 +1518,17 @@ export function DesktopDashboard({
                 </div>
               </div>
             )}
+
+            {/* Diagnostic Suite Full Breakdown in Overview */}
+            {isReviewEligible && (
+              <div className="space-y-8 pt-2">
+                {renderDimensionsSection()}
+                {renderIssuesSection()}
+                {renderPersonasSection()}
+                {renderCitationsSection()}
+                {renderJournalsSection()}
+              </div>
+            )}
           </div>
         )}
 
@@ -795,654 +1566,27 @@ export function DesktopDashboard({
         {/* ========================================================= */}
         {/* TAB 2: 5 REVIEWER PERSONAS (ADVERSARIAL PANEL)            */}
         {/* ========================================================= */}
-        {activeView === "personas" && isReviewEligible && (
-          <div className="space-y-6 animate-fade-in">
-            {/* Persona Switcher Buttons */}
-            <div className="flex flex-wrap items-center gap-2 pb-2">
-              {personas.map((p, idx) => {
-                const isActive = selectedPersona === idx;
-                const isDevilsAdvocate = p.persona === "devils_advocate" || idx === 4;
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setSelectedPersona(idx)}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-2 border ${
-                      isActive
-                        ? isDevilsAdvocate
-                          ? "bg-[#7F1D1D] text-white border-[#7F1D1D] shadow-xs"
-                          : "liquid-glass-tab-active font-bold text-blue-600 dark:text-blue-400"
-                        : isDevilsAdvocate
-                        ? "bg-rose-500/10 text-rose-800 dark:text-rose-300 border-rose-500/20 hover:bg-rose-500/20"
-                        : "liquid-glass-btn-secondary text-neutral-700 dark:text-neutral-300"
-                    }`}
-                  >
-                    <span>
-                      {p.persona === "methods_reviewer" ? "🔬" :
-                       p.persona === "domain_expert" ? "🧬" :
-                       p.persona === "journal_editor" ? "📑" :
-                       p.persona === "statistician" ? "📊" :
-                       p.persona === "devils_advocate" ? "⚡" :
-                       (idx === 0 ? "🔬" : idx === 1 ? "🧬" : idx === 2 ? "📑" : idx === 3 ? "📊" : "⚡")}
-                    </span>
-                    <span>{p.name}</span>
-                    {isDevilsAdvocate && (
-                      <span className={`text-[9px] uppercase px-1.5 py-0.2 rounded font-extrabold ${
-                        isActive ? "bg-white/20 text-white" : "bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/30"
-                      }`}>
-                        Stress-Test
-                      </span>
-                    )}
-                    <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
-                        isActive
-                          ? "bg-blue-500/20 text-blue-700 dark:text-blue-300"
-                          : "bg-black/[0.04] dark:bg-white/[0.08] text-neutral-600 dark:text-neutral-300"
-                      }`}
-                    >
-                      {p.decisionRecommendation}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Active Persona Card */}
-            {personas[selectedPersona] && (() => {
-              const active = personas[selectedPersona];
-              const isDevilsAdvocate = active.persona === "devils_advocate";
-              return (
-                <div className={`rounded-3xl liquid-glass-card p-6 sm:p-8 space-y-6 ${
-                  isDevilsAdvocate ? "border-rose-400/40 ring-1 ring-rose-500/30" : ""
-                }`}>
-                  {/* Persona Header */}
-                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 pb-5 border-b border-[#E2E8F0] dark:border-[#1F2937]">
-                    <div className="space-y-1">
-                      <div className="flex flex-wrap items-center gap-2.5">
-                        <h3 className="text-lg sm:text-xl font-serif font-bold text-[#0F172A] dark:text-white">
-                          {active.name}
-                        </h3>
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
-                          isDevilsAdvocate
-                            ? "bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800"
-                            : "bg-[#FEF3C7] dark:bg-amber-950/40 text-[#92400E] dark:text-amber-300 border-[#FDE68A] dark:border-amber-800"
-                        }`}>
-                          Decision: {active.decisionRecommendation}
-                        </span>
-                        {isDevilsAdvocate && (
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-red-100 dark:bg-red-950/50 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800">
-                            ⚡ Hostile Stress-Test / Adversarial Referee
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs font-medium text-[#475569] dark:text-neutral-300">{active.title}</p>
-                      <p className="text-xs text-[#64748B] dark:text-neutral-400 flex items-center gap-1.5">
-                        <GraduationCap className="w-3.5 h-3.5" />
-                        <span>{active.affiliation}</span>
-                      </p>
-                    </div>
-
-                    {active.expertise && (
-                      <div className="p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#1F2937] text-xs text-[#475569] dark:text-neutral-300 md:max-w-xs">
-                        <span className="font-bold text-[#0F172A] dark:text-white block mb-0.5">Focus:</span>
-                        {active.expertise}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Evidence Anchors (Grounding) */}
-                  {active.evidenceAnchors && active.evidenceAnchors.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="text-xs font-bold text-[#475569] dark:text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <FileCode className="w-3.5 h-3.5 text-[#2563EB] dark:text-blue-400" />
-                        <span>Manuscript Evidence Anchors (Grounding):</span>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {active.evidenceAnchors.map((anchor, aIdx) => (
-                          <span
-                            key={aIdx}
-                            className="font-mono text-[11px] px-2.5 py-1 rounded-lg bg-[#F8FAFC] dark:bg-[#161F30] border border-[#CBD5E1] dark:border-[#334155] text-[#1E293B] dark:text-neutral-200"
-                          >
-                            {anchor}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Fatal Reviewer Objection / Key Challenge */}
-                  <div className="p-4 rounded-xl bg-[#FEF2F2] dark:bg-rose-950/30 border-l-4 border-[#EF4444] dark:border-rose-600 text-xs text-[#991B1B] dark:text-rose-300 flex items-start gap-2.5">
-                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-[#DC2626] dark:text-rose-400" />
-                    <div>
-                      <span className="font-bold block uppercase tracking-wide text-[10px] text-[#7F1D1D] dark:text-rose-400 mb-0.5">
-                        Key Challenge / Reviewer Objection:
-                      </span>
-                      {active.keyChallenge}
-                    </div>
-                  </div>
-
-                  {/* Detailed Peer-Review Assessment */}
-                  <div className="space-y-2">
-                    <div className="text-xs font-bold text-[#64748B] dark:text-neutral-400 uppercase tracking-wider">
-                      Detailed Peer-Review Assessment:
-                    </div>
-                    <div className="text-xs sm:text-sm text-[#334155] dark:text-neutral-300 leading-relaxed p-4 rounded-xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#1F2937] font-light whitespace-pre-line">
-                      {active.assessment}
-                    </div>
-                  </div>
-
-                  {/* Adversarial Defenses & Counter-Arguments (if present) */}
-                  {active.counterArguments && active.counterArguments.length > 0 && (
-                    <div className="space-y-2.5">
-                      <div className="text-xs font-bold text-[#7C3AED] dark:text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <ShieldAlert className="w-3.5 h-3.5" />
-                        <span>Adversarial Defenses &amp; Pre-emptive Arguments to Prepare:</span>
-                      </div>
-                      <div className="space-y-2">
-                        {active.counterArguments.map((arg, cIdx) => (
-                          <div
-                            key={cIdx}
-                            className="p-3 rounded-xl bg-[#F5F3FF] dark:bg-purple-950/30 border border-[#DDD6FE] dark:border-purple-800/50 text-xs text-[#5B21B6] dark:text-purple-300 flex items-start gap-2.5 shadow-2xs"
-                          >
-                            <span className="font-mono text-[#7C3AED] dark:text-purple-400 font-bold text-xs mt-0.5">
-                              [{cIdx + 1}]
-                            </span>
-                            <span className="leading-relaxed">{arg}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Major Methodological Critiques */}
-                  {active.majorCritiques && active.majorCritiques.length > 0 && (
-                    <div className="space-y-2.5">
-                      <div className="text-xs font-bold text-[#DC2626] dark:text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <AlertCircle className="w-3.5 h-3.5" />
-                        <span>Major Methodological Vulnerabilities:</span>
-                      </div>
-                      <div className="space-y-2">
-                        {active.majorCritiques.map((critique, idx) => (
-                          <div
-                            key={idx}
-                            className="p-3 rounded-xl bg-white dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#1F2937] text-xs text-[#334155] dark:text-neutral-300 flex items-start gap-2.5 shadow-2xs"
-                          >
-                            <span className="font-mono text-[#DC2626] dark:text-rose-400 font-bold text-xs mt-0.5">
-                              [{idx + 1}]
-                            </span>
-                            <span className="leading-relaxed">{critique}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Missing Experimental Controls & Analyses */}
-                  {active.missingControlsOrAnalyses && active.missingControlsOrAnalyses.length > 0 && (
-                    <div className="space-y-2.5">
-                      <div className="text-xs font-bold text-[#D97706] dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <FlaskConical className="w-3.5 h-3.5" />
-                        <span>Supplementary Analyses &amp; Control Checks:</span>
-                      </div>
-                      <div className="space-y-2">
-                        {active.missingControlsOrAnalyses.map((item, idx) => (
-                          <div
-                            key={idx}
-                            className="p-3 rounded-xl bg-white dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#1F2937] text-xs text-[#334155] dark:text-neutral-300 flex items-start gap-2 shadow-2xs"
-                          >
-                            <span className="text-[#D97706] dark:text-amber-400 font-bold">&bull;</span>
-                            <span className="leading-relaxed">{item}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Mandatory Revisions Checklist */}
-                  {active.mustAddressItems && active.mustAddressItems.length > 0 && (
-                    <div className="space-y-2.5 pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937]">
-                      <div className="text-xs font-bold text-[#16A34A] dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <CheckSquare className="w-3.5 h-3.5" />
-                        <span>Must-Address Prior to Submission:</span>
-                      </div>
-                      <div className="space-y-2">
-                        {active.mustAddressItems.map((item, idx) => (
-                          <div
-                            key={idx}
-                            className="p-3 rounded-xl bg-[#F0FDF4] dark:bg-emerald-950/30 border border-[#BBF7D0] dark:border-emerald-800/60 text-xs text-[#166534] dark:text-emerald-300 flex items-start gap-2.5 shadow-2xs"
-                          >
-                            <CheckCircle2 className="w-4 h-4 text-[#16A34A] dark:text-emerald-400 shrink-0 mt-0.5" />
-                            <span className="leading-relaxed font-medium">{item}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-          </div>
-        )}
+        {activeView === "personas" && isReviewEligible && renderPersonasSection()}
 
         {/* ========================================================= */}
-        {/* TAB 3: 6 SCORING DIMENSIONS                              */}
+        {/* TAB 3: 6 SCORING DIMENSIONS                               */}
         {/* ========================================================= */}
-        {activeView === "dimensions" && isReviewEligible && (
-          <div className="space-y-5 animate-fade-in">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-[#0F172A] dark:text-white flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-[#2563EB] dark:text-blue-400" />
-                <span>The 6 Evaluation Dimensions (1–5 Rubric)</span>
-              </h2>
-              <span className="text-xs text-[#64748B] dark:text-neutral-400">Calibrated against top-tier standards</span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {(Object.entries(dimensions) as [string, DimensionScore][]).map(([key, dim]) => (
-                <div
-                  key={key}
-                  className="rounded-3xl liquid-glass-card liquid-glass-card-interactive p-5 space-y-3.5 flex flex-col justify-between"
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-[#0F172A] dark:text-white">{dim.label}</span>
-                      <span className="px-2.5 py-0.5 rounded-full font-mono text-xs font-extrabold bg-[#EFF6FF] dark:bg-blue-950/50 text-[#1D4ED8] dark:text-blue-400 border border-[#BFDBFE] dark:border-blue-800">
-                        {dim.score} / 5
-                      </span>
-                    </div>
-                    <p className="text-xs text-[#475569] dark:text-neutral-300 leading-relaxed font-medium">
-                      {dim.verdict}
-                    </p>
-                  </div>
-
-                  <div className="space-y-2 pt-2 border-t border-black/[0.06] dark:border-white/[0.08]">
-                    {dim.strengths && dim.strengths.length > 0 && (
-                      <div>
-                        <span className="text-[10px] font-bold text-[#166534] dark:text-emerald-400 uppercase tracking-wider block mb-1">
-                          STRENGTHS:
-                        </span>
-                        <ul className="space-y-1 text-xs text-[#334155] dark:text-neutral-300 pl-3 list-disc">
-                          {dim.strengths.map((s, i) => (
-                            <li key={i} className="leading-relaxed">
-                              {s}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {dim.vulnerabilities && dim.vulnerabilities.length > 0 && (
-                      <div>
-                        <span className="text-[10px] font-bold text-[#DC2626] dark:text-rose-400 uppercase tracking-wider block mb-1">
-                          VULNERABILITIES:
-                        </span>
-                        <ul className="space-y-1 text-xs text-[#B91C1C] dark:text-rose-300 pl-3 list-disc">
-                          {dim.vulnerabilities.map((v, i) => (
-                            <li key={i} className="leading-relaxed">
-                              {v}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {activeView === "dimensions" && isReviewEligible && renderDimensionsSection()}
 
         {/* ========================================================= */}
-        {/* TAB 4: PRIORITY ACTION ITEMS                              */}
+        {/* TAB 4: ACTION PLAN & CRITICAL ISSUES                      */}
         {/* ========================================================= */}
-        {activeView === "issues" && isReviewEligible && (
-          <div className="space-y-5 animate-fade-in">
-            {/* Filter Pills */}
-            {(() => {
-              const countA = issues.filter((i) => i.priority === "A").length;
-              const countB = issues.filter((i) => i.priority === "B").length;
-              const countC = issues.filter((i) => i.priority === "C").length;
-
-              return (
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIssueFilter("all")}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                      issueFilter === "all"
-                        ? "liquid-glass-tab-active font-bold text-blue-600 dark:text-blue-400"
-                        : "liquid-glass-btn-secondary text-[#475569] dark:text-neutral-300"
-                    }`}
-                  >
-                    All Issues ({issues.length})
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIssueFilter("A")}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                      issueFilter === "A"
-                        ? "bg-rose-600 text-white shadow-xs border border-rose-500"
-                        : "liquid-glass-btn-secondary text-[#DC2626] dark:text-rose-400"
-                    }`}
-                  >
-                    🚨 Priority A ({countA})
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIssueFilter("B")}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                      issueFilter === "B"
-                        ? "bg-amber-600 text-white shadow-xs border border-amber-500"
-                        : "liquid-glass-btn-secondary text-[#D97706] dark:text-amber-400"
-                    }`}
-                  >
-                    ⚠️ Priority B ({countB})
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIssueFilter("C")}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                      issueFilter === "C"
-                        ? "bg-emerald-600 text-white shadow-xs border border-emerald-500"
-                        : "liquid-glass-btn-secondary text-[#16A34A] dark:text-emerald-400"
-                    }`}
-                  >
-                    💡 Priority C ({countC})
-                  </button>
-                </div>
-              );
-            })()}
-
-            {/* Issues List */}
-            <div className="space-y-4">
-              {filteredIssues.length === 0 ? (
-                <div className="rounded-3xl liquid-glass-card p-10 text-center space-y-2 animate-fade-in">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
-                  <h3 className="text-sm font-bold text-[#0F172A] dark:text-white">
-                    {issueFilter === "all" ? "No Priority Issues Found" : `No Priority ${issueFilter} Issues Identified`}
-                  </h3>
-                  <p className="text-xs text-[#64748B] dark:text-neutral-400 max-w-sm mx-auto">
-                    {issueFilter === "A"
-                      ? "No catastrophic desk-reject hazards or fatal methodological flaws were detected."
-                      : "No actionable concerns in this priority tier."}
-                  </p>
-                </div>
-              ) : (
-                filteredIssues.map((iss) => (
-                <div
-                  key={iss.id}
-                  className="rounded-3xl liquid-glass-card liquid-glass-card-interactive p-6 space-y-3.5"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-md border ${
-                          iss.priority === "A"
-                            ? "bg-[#FEF2F2] dark:bg-rose-950/50 text-[#991B1B] dark:text-rose-300 border-[#FECACA] dark:border-rose-900"
-                            : iss.priority === "B"
-                            ? "bg-[#FFFBEB] dark:bg-amber-950/50 text-[#92400E] dark:text-amber-300 border-[#FDE68A] dark:border-amber-900"
-                            : "bg-[#F0FDF4] dark:bg-emerald-950/50 text-[#166534] dark:text-emerald-300 border-[#BBF7D0] dark:border-emerald-900"
-                        }`}
-                      >
-                        Priority {iss.priority}: {iss.category}
-                      </span>
-                      <span className="font-mono text-[11px] text-[#64748B] dark:text-neutral-400">{iss.id}</span>
-                    </div>
-
-                    <span className="text-[11px] font-medium text-[#64748B] dark:text-neutral-400">
-                      {iss.priority === "A" ? "Desk-Reject Hazard" : "Reviewer Objection"}
-                    </span>
-                  </div>
-
-                  <h3 className="text-sm sm:text-base font-bold text-[#0F172A] dark:text-white">{iss.title}</h3>
-                  <p className="text-xs text-[#475569] dark:text-neutral-300 leading-relaxed">{iss.description}</p>
-
-                  {/* Typed Evidence Anchor */}
-                  {iss.evidenceAnchor && (
-                    <div className="p-2.5 rounded-lg bg-[#F8FAFC] dark:bg-[#161F30] border border-[#CBD5E1] dark:border-[#334155] text-[11px] font-mono text-[#334155] dark:text-neutral-300 flex items-center gap-2">
-                      <FileCode className="w-3.5 h-3.5 text-[#2563EB] dark:text-blue-400 shrink-0" />
-                      <span className="font-bold text-[#475569] dark:text-neutral-300 uppercase tracking-wider text-[9px] px-1.5 py-0.5 rounded bg-white dark:bg-[#1E293B] border border-[#CBD5E1] dark:border-[#334155]">
-                        Anchor
-                      </span>
-                      <span className="truncate">{iss.evidenceAnchor}</span>
-                    </div>
-                  )}
-
-                  {/* Reviewer Anticipated Reaction */}
-                  {iss.reviewerQuote && (
-                    <div className="p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#161F30] border-l-2 border-[#94A3B8] dark:border-[#475569] text-xs italic text-[#334155] dark:text-neutral-300">
-                      &ldquo;{iss.reviewerQuote}&rdquo;
-                    </div>
-                  )}
-
-                  {/* Required Actionable Fix */}
-                  {iss.actionableFix && (
-                    <div className="p-3.5 rounded-xl bg-[#ECFDF5] dark:bg-emerald-950/30 border-l-4 border-[#10B981] text-xs text-[#065F46] dark:text-emerald-300 flex items-start gap-2.5">
-                      <CheckCircle2 className="w-4 h-4 text-[#10B981] shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-bold block mb-0.5 text-[#047857] dark:text-emerald-400">
-                          Required Pre-Submission Fix:
-                        </span>
-                        {iss.actionableFix}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Author Rebuttal Strategy for Journal Response Letter */}
-                  {iss.rebuttalStrategy && (
-                    <div className="p-3.5 rounded-xl bg-[#EFF6FF] dark:bg-blue-950/30 border-l-4 border-[#3B82F6] text-xs text-[#1E40AF] dark:text-blue-300 flex items-start gap-2.5">
-                      <MessageSquare className="w-4 h-4 text-[#2563EB] dark:text-blue-400 shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-bold block mb-0.5 text-[#1D4ED8] dark:text-blue-400">
-                          Point-by-Point Author Rebuttal Framing (for Journal Response Letter):
-                        </span>
-                        <p className="leading-relaxed whitespace-pre-line text-[#1E3A8A] dark:text-blue-200 font-light">
-                          {iss.rebuttalStrategy}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )))}
-            </div>
-          </div>
-        )}
+        {activeView === "issues" && isReviewEligible && renderIssuesSection()}
 
         {/* ========================================================= */}
         {/* TAB 5: TARGET JOURNAL RECOMMENDATIONS                     */}
         {/* ========================================================= */}
-        {(activeView === "journals" || activeView === "recommendations") && isReviewEligible && (
-          <div className="space-y-5 animate-fade-in">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-[#0F172A] dark:text-white flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-[#2563EB] dark:text-blue-400" />
-                <span>Target Journal Recommendation Tiers</span>
-              </h2>
-              <span className="text-xs text-[#64748B] dark:text-neutral-400">Verified authentic peer-reviewed journals</span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {journals.map((j, idx) => (
-                <div
-                  key={idx}
-                  className="rounded-3xl liquid-glass-card liquid-glass-card-interactive p-5 space-y-3.5 flex flex-col justify-between"
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-extrabold uppercase text-[#2563EB] dark:text-blue-400 tracking-wide">
-                        {j.tier} Match
-                      </span>
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20">
-                        Fit: {j.fitScore}%
-                      </span>
-                    </div>
-
-                    <h3 className="text-base font-bold text-[#0F172A] dark:text-white leading-snug">
-                      {j.journalName}
-                    </h3>
-                    <p className="text-xs text-[#64748B] dark:text-neutral-400">
-                      Impact Factor: <strong>{j.impactFactor}</strong> &bull; {j.publisher}
-                    </p>
-
-                    <p className="text-xs text-[#334155] dark:text-neutral-300 leading-relaxed pt-2 border-t border-black/[0.06] dark:border-white/[0.08]">
-                      {j.scopeRationale}
-                    </p>
-                  </div>
-
-                  {j.rejectionRisks && j.rejectionRisks.length > 0 && (
-                    <div className="pt-2 border-t border-black/[0.06] dark:border-white/[0.08]">
-                      <span className="text-[10px] font-bold text-[#DC2626] dark:text-rose-400 uppercase tracking-wider block mb-1">
-                        DESK-REJECT RISKS:
-                      </span>
-                      <ul className="space-y-1 text-xs text-[#B91C1C] dark:text-rose-300 pl-3 list-disc">
-                        {j.rejectionRisks.map((risk, rIdx) => (
-                          <li key={rIdx} className="leading-relaxed">
-                            {risk}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {activeView === "journals" && isReviewEligible && renderJournalsSection()}
 
         {/* ========================================================= */}
-        {/* CROSSREF CITATIONS VIEW (if opened from old link)         */}
+        {/* TAB 6: CITATION INTEGRITY AUDIT                           */}
         {/* ========================================================= */}
-        {activeView === "citations" && (() => {
-          const cit = fullReport?.citationIntegrity;
-          const totalRef = cit?.totalReferences ?? data.citationAudit.totalCount;
-          const verifiedRef = cit?.verifiedCount ?? data.citationAudit.verifiedCount;
-          const sampledRef = cit?.sampledCount ?? totalRef;
-          const uncheckedRef = cit?.uncheckedCount ?? 0;
-          const unresolvableRef = cit?.unresolvableCount ?? 0;
-          const retractedRef = cit?.retractedCount ?? data.citationAudit.retractedCount;
-          const retAvailable = cit?.retractionCheckAvailable !== false;
-          const selfCitRatio = cit?.selfCitationRatio;
-          const references = cit?.references || [];
-
-          return (
-            <div className="rounded-3xl liquid-glass-card p-6 sm:p-8 space-y-6 animate-fade-in shadow-xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="space-y-1">
-                  <h2 className="text-base font-bold text-[#0F172A] dark:text-white flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-[#16A34A] dark:text-emerald-400" />
-                    <span>Citation &amp; Reference Integrity Audit</span>
-                  </h2>
-                  <p className="text-xs text-[#64748B] dark:text-neutral-400">
-                    Verified against CrossRef Open API and Retraction Watch database.
-                  </p>
-                </div>
-                {cit?.coverageNote && (
-                  <span className="text-xs text-[#64748B] dark:text-neutral-400 font-medium">
-                    {cit.coverageNote}
-                  </span>
-                )}
-              </div>
-
-              {/* 6-Stat Tiles Grid */}
-              <div className={`grid grid-cols-2 ${selfCitRatio !== undefined ? "sm:grid-cols-6" : "sm:grid-cols-5"} gap-3`}>
-                <div className="liquid-glass-card p-3.5 rounded-2xl text-center">
-                  <div className="text-xl font-bold font-serif text-[#0F172A] dark:text-white">{totalRef}</div>
-                  <div className="text-[11px] text-[#64748B] dark:text-neutral-400 mt-0.5">Total References</div>
-                </div>
-                <div className="liquid-glass-card p-3.5 rounded-2xl text-center">
-                  <div className="text-xl font-bold font-serif text-[#16A34A] dark:text-emerald-400">{verifiedRef}</div>
-                  <div className="text-[11px] text-[#64748B] dark:text-neutral-400 mt-0.5">
-                    {sampledRef < totalRef ? `Verified (in ${sampledRef})` : "Crossref Verified"}
-                  </div>
-                </div>
-                <div className="liquid-glass-card p-3.5 rounded-2xl text-center">
-                  <div className="text-xl font-bold font-serif text-[#64748B] dark:text-neutral-400">{uncheckedRef}</div>
-                  <div className="text-[11px] text-[#64748B] dark:text-neutral-400 mt-0.5">Not Checked</div>
-                </div>
-                <div className="liquid-glass-card p-3.5 rounded-2xl text-center">
-                  <div className={`text-xl font-bold font-serif ${unresolvableRef > 0 ? "text-rose-600 dark:text-rose-400" : "text-[#0F172A] dark:text-white"}`}>
-                    {unresolvableRef}
-                  </div>
-                  <div className="text-[11px] text-[#64748B] dark:text-neutral-400 mt-0.5">Unresolvable DOIs</div>
-                </div>
-                <div className="liquid-glass-card p-3.5 rounded-2xl text-center">
-                  <div className={`text-xl font-bold font-serif ${!retAvailable ? "text-neutral-400 text-sm pt-1" : retractedRef > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
-                    {retAvailable ? retractedRef : "Not screened"}
-                  </div>
-                  <div className="text-[11px] text-[#64748B] dark:text-neutral-400 mt-0.5">Retracted Flagged</div>
-                </div>
-                {selfCitRatio !== undefined && (
-                  <div className="liquid-glass-card p-3.5 rounded-2xl text-center">
-                    <div className="text-xl font-bold font-serif text-[#0F172A] dark:text-white">{selfCitRatio}%</div>
-                    <div className="text-[11px] text-[#64748B] dark:text-neutral-400 mt-0.5">Self-Citation Rate</div>
-                  </div>
-                )}
-              </div>
-
-              {/* Bibliography Samples Table */}
-              {references.length > 0 && (
-                <div className="liquid-glass-card rounded-2xl overflow-hidden shadow-xs">
-                  <div className="p-3 bg-black/[0.02] dark:bg-white/[0.04] border-b border-black/[0.06] dark:border-white/[0.08] text-[11px] font-semibold text-[#64748B] dark:text-neutral-400 uppercase tracking-wider">
-                    Bibliography Samples &amp; Verification Details
-                  </div>
-                  <div className="divide-y divide-black/[0.06] dark:divide-white/[0.08]">
-                    {references.slice(0, 15).map((ref, idx) => (
-                      <div key={idx} className="p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
-                        <div className="space-y-1 max-w-xl">
-                          <div className="font-medium text-[#0F172A] dark:text-white leading-snug">
-                            {ref.title || ref.raw}
-                          </div>
-                          <div className="text-[11px] text-[#64748B] dark:text-neutral-400 flex items-center gap-2 flex-wrap font-mono">
-                            {ref.doi && <span>DOI: {ref.doi}</span>}
-                            {ref.journal && <span>&bull; {ref.journal}</span>}
-                            {ref.year && <span>&bull; {ref.year}</span>}
-                          </div>
-                          {ref.retractionDetails && (
-                            <div className="text-rose-600 dark:text-rose-400 text-[11px] font-semibold">
-                              {ref.retractionDetails}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="shrink-0">
-                          {ref.isRetracted ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/40">
-                              <AlertTriangle className="w-2.5 h-2.5" />
-                              RETRACTED
-                            </span>
-                          ) : ref.status === "expression_of_concern" ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/40">
-                              <AlertTriangle className="w-2.5 h-2.5" />
-                              EXPRESSION OF CONCERN
-                            </span>
-                          ) : ref.status === "valid" ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40">
-                              <CheckCircle2 className="w-2.5 h-2.5" />
-                              VERIFIED
-                            </span>
-                          ) : ref.status === "unresolvable" ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30">
-                              <Info className="w-2.5 h-2.5" />
-                              UNRESOLVABLE (404)
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-neutral-500/15 text-neutral-600 dark:text-neutral-400 border border-neutral-500/30">
-                              <Info className="w-2.5 h-2.5" />
-                              NOT CHECKED
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })()}
+        {activeView === "citations" && renderCitationsSection()}
       </div>
 
       {/* Export Toast Notification */}

@@ -50,6 +50,8 @@ import { runManuscriptDiagnostic, runBriefJournalFitAnalysis } from "@/lib/diagn
 import { callLLM, fetchAvailableModels, testLLMConnection } from "@/lib/llm";
 import { PaperItem } from "@/components/DesktopSidebar";
 import { DesktopDashboardData } from "@/components/DesktopDashboard";
+import { findMatchingJournals } from "@/lib/journals";
+import DesktopJournalMatchesListView from "@/components/DesktopJournalMatchesListView";
 
 const SAMPLE_PREPRINT_TITLE = "Single-cell transcriptional profiling of DLL3 activation in neuroendocrine lung carcinoma";
 const SAMPLE_PREPRINT_JOURNAL = "Nature Communications";
@@ -120,6 +122,19 @@ export function DesktopPreSubmissionScanView({
     name: string;
     model: string;
   }>({ name: "AI Engine", model: "Checking status..." });
+
+  const scanMatchingData = React.useMemo(() => {
+    if (!report) return null;
+    return findMatchingJournals(
+      report.title || "",
+      report.summary || "",
+      report.targetJournal || ""
+    );
+  }, [report]);
+
+  const otherScanJournals = React.useMemo(() => {
+    return scanMatchingData?.otherMatches || [];
+  }, [scanMatchingData]);
 
   useEffect(() => {
     checkProviderStatus();
@@ -1484,6 +1499,14 @@ export function DesktopPreSubmissionScanView({
                       </div>
                     </div>
                   ))}
+                </div>
+
+                {/* Qualified Field & Catalog Matches (10+ List View) */}
+                <div className="pt-2">
+                  <DesktopJournalMatchesListView
+                    otherJournals={otherScanJournals}
+                    detectedDiscipline={scanMatchingData?.detectedDiscipline}
+                  />
                 </div>
               </div>
             )}
