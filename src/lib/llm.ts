@@ -183,12 +183,16 @@ export async function callLLM(
         });
       }
 
+      const isJsonRequested = messages.some(
+        (m) => m.content.includes("JSON") || m.content.includes("json") || m.content.includes("schema")
+      ) && !messages.some((m) => m.content.includes("Do NOT return JSON") || m.content.includes("plain text"));
+
       const requestPayload: any = {
         contents,
         generationConfig: {
           temperature: 0.2,
           maxOutputTokens: 8192,
-          responseMimeType: "application/json",
+          ...(isJsonRequested ? { responseMimeType: "application/json" } : {}),
         },
       };
 
@@ -349,18 +353,29 @@ export async function callLLM(
         .filter(m => m.role !== 'system')
         .map(m => ({ role: m.role, content: m.content }));
 
+      const isLongSystem = systemMessage && systemMessage.length > 500;
+
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "x-api-key": apiKey.trim(),
           "anthropic-version": "2023-06-01",
+          "anthropic-beta": "prompt-caching-2024-07-31",
           "anthropic-dangerous-direct-browser-access": "true",
         },
         body: JSON.stringify({
           model: model || "claude-3-5-sonnet-20241022",
           max_tokens: 8192,
-          system: systemMessage,
+          system: isLongSystem
+            ? [
+                {
+                  type: "text",
+                  text: systemMessage,
+                  cache_control: { type: "ephemeral" },
+                },
+              ]
+            : systemMessage || undefined,
           messages: userAssistantMessages,
           temperature: 0.2,
         }),
