@@ -344,11 +344,11 @@ export function DesktopWebLandingPage({
             </svg>
           </button>
 
-          {/* Launch App Primary Button (Blue) */}
+          {/* Launch App Primary Button (Matching Download button size & rounded-lg corner) */}
           <button
             type="button"
             onClick={onLaunchApp}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-semibold shadow-xs transition active:scale-[0.98] cursor-pointer"
+            className="inline-flex items-center justify-center h-8 gap-1.5 px-3.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-xs transition active:scale-[0.98] cursor-pointer"
             title="Launch In-Browser Application"
           >
             <Sparkles className="w-3.5 h-3.5 text-white" />

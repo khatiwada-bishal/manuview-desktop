@@ -385,12 +385,12 @@ export function DesktopHeader({
         {/* Download for OS Split Button (Web Mode Only - exact match with screenshot) */}
         {!isDesktopApp() && (
           <div className="relative inline-flex items-center" ref={downloadDropdownRef}>
-            <div className="inline-flex items-center rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-xs transition-all duration-200 overflow-hidden">
+            <div className="inline-flex items-center h-8 rounded-lg bg-blue-600 hover:bg-blue-500 text-white shadow-xs transition-all duration-200 overflow-hidden">
               <button
                 type="button"
                 data-no-drag
                 onClick={() => triggerPlatformDownload(selectedPlatform)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 font-semibold text-xs cursor-pointer hover:bg-blue-700/40 transition active:scale-[0.98]"
+                className="inline-flex items-center h-full gap-1.5 px-3 font-semibold text-xs cursor-pointer hover:bg-blue-700/40 transition active:scale-[0.98]"
                 title={`Download ManuView for ${selectedPlatform.label}`}
               >
                 <Sparkles className="w-3.5 h-3.5 text-white" />
@@ -404,7 +404,7 @@ export function DesktopHeader({
                   setDownloadDropdownOpen((prev) => !prev);
                 }}
                 aria-label="Other operating system downloads"
-                className="px-2 py-1.5 border-l border-white/20 hover:bg-blue-700/50 cursor-pointer transition flex items-center justify-center"
+                className="h-full px-2 border-l border-white/20 hover:bg-blue-700/50 cursor-pointer transition flex items-center justify-center"
                 title="Choose other operating system (MacOS Intel, Windows, Linux)"
               >
                 <ChevronDown
