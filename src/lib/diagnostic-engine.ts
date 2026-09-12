@@ -206,13 +206,21 @@ function sanitizeAuthorText(text: string): string {
   return text.replace(/<{3,}[^>]+>{3,}/gi, "[delimiter neutralized]");
 }
 
+export interface DiagnosticProgressUpdate {
+  stage: 'parsing' | 'classifying' | 'verifying_references' | 'matching_journals' | 'generating_review' | 'streaming_review' | 'completed';
+  message: string;
+  percent?: number;
+  details?: Record<string, any>;
+}
+
 // -----------------------------------------------------------------------------
 // MAIN DIAGNOSTIC WORKFLOW ENTRYPOINT
 // -----------------------------------------------------------------------------
 export async function runManuscriptDiagnostic(
   manuscript: ParsedManuscript,
   config?: ProviderConfig,
-  targetJournalName?: string
+  targetJournalName?: string,
+  onProgress?: (update: DiagnosticProgressUpdate) => void
 ): Promise<FullReviewReport> {
   // 1. Auto-resolve provider config from localStorage if not explicitly supplied
   let activeConfig = config;
@@ -224,8 +232,18 @@ export async function runManuscriptDiagnostic(
   }
 
   // 2. Pre-Check: Academic Document Classification
+  onProgress?.({
+    stage: 'classifying',
+    message: 'Analyzing document structure & academic eligibility...',
+    percent: 15,
+  });
   const heuristicClassification = manuscript.classification || classifyDocument(manuscript.rawText);
   if (!heuristicClassification.isAcademicManuscript) {
+    onProgress?.({
+      stage: 'completed',
+      message: 'Document classification complete (non-academic document bypassed).',
+      percent: 100,
+    });
     return {
       mode: "full",
       id: generateReportId("rev_"),
@@ -262,8 +280,18 @@ export async function runManuscriptDiagnostic(
   }
 
   // 3. Check if Manuscript is Already Published in Scientific Literature
+  onProgress?.({
+    stage: 'classifying',
+    message: 'Checking permanent scholarly records (DOI / Crossref)...',
+    percent: 25,
+  });
   const publishedDetails = await detectPublishedArticle(manuscript.rawText, manuscript.title);
   if (publishedDetails && publishedDetails.isPublished) {
+    onProgress?.({
+      stage: 'completed',
+      message: 'Document identified as already published.',
+      percent: 100,
+    });
     // Run bibliography check as a valuable reference integrity audit for published papers
     const sampleRefs = manuscript.references.slice(0, 200);
     const verifiedRefs = await batchVerifyReferences(sampleRefs);
@@ -294,12 +322,23 @@ export async function runManuscriptDiagnostic(
 
   // 4. Bibliographic & Citation Integrity Check for Eligible Manuscripts
   const sampleRefs = manuscript.references.slice(0, 200);
+  onProgress?.({
+    stage: 'verifying_references',
+    message: `Auditing ${sampleRefs.length} bibliography references against Crossref & Retraction Watch...`,
+    percent: 40,
+    details: { totalReferences: manuscript.references.length, checkedCount: sampleRefs.length },
+  });
   const verifiedRefs = await batchVerifyReferences(sampleRefs);
   const citationIntegrity = computeCitationIntegrity(verifiedRefs, manuscript.references.length, manuscript.authors);
   const retractedCount = citationIntegrity.retractedCount;
   const unresolvableCount = citationIntegrity.unresolvableCount;
 
   // Extract top cited journals from bibliography to anchor journal matching
+  onProgress?.({
+    stage: 'matching_journals',
+    message: 'Calibrating Reach, Realistic, and Fallback target journal tiers...',
+    percent: 60,
+  });
   const journalCitationCounts = new Map<string, number>();
   for (const ref of verifiedRefs) {
     if (ref?.journal && typeof ref.journal === "string" && ref.journal.trim().length > 2) {
@@ -505,13 +544,37 @@ Please return your analysis as a JSON object matching this schema:
   let parsedLLM: any = null;
   let llmCallError: string | null = null;
 
+  onProgress?.({
+    stage: 'generating_review',
+    message: "Simulating 5-persona peer review panel (Methods, Domain, Statistician, Editor, Devil's Advocate)...",
+    percent: 75,
+  });
+
+  let accumulatedLen = 0;
+  let lastProgressEmit = 0;
+
   try {
     const rawResult = await callLLM(
       [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      activeConfig
+      activeConfig,
+      onProgress
+        ? (_delta, acc) => {
+            accumulatedLen = acc.length;
+            const now = Date.now();
+            if (now - lastProgressEmit > 300) {
+              lastProgressEmit = now;
+              const streamPercent = Math.min(95, 75 + Math.floor(accumulatedLen / 250));
+              onProgress({
+                stage: 'streaming_review',
+                message: `Synthesizing peer critiques and evidence anchors (${Math.round(accumulatedLen / 4)} tokens)...`,
+                percent: streamPercent,
+              });
+            }
+          }
+        : undefined
     );
 
     try {
@@ -756,7 +819,7 @@ Please return your analysis as a JSON object matching this schema:
       ? recsValidation.data
       : domainSynthesis.journalRecommendations;
 
-  return {
+  const report: FullReviewReport = {
     mode: "full",
     id: generateReportId("rev_"),
     createdAt: new Date().toISOString(),
@@ -789,18 +852,35 @@ Please return your analysis as a JSON object matching this schema:
     executionMode,
     llmCallError: llmCallError || undefined,
   };
+
+  onProgress?.({
+    stage: 'completed',
+    message: 'Pre-submission peer review diagnostic complete.',
+    percent: 100,
+  });
+
+  return report;
 }
 
-export async function runBriefJournalFitAnalysis(input: {
-  title: string;
-  abstract: string;
-  keywords?: string[] | string;
-  targetJournal: string;
-  providerConfig?: ProviderConfig;
-}): Promise<BriefJournalFitReport> {
+export async function runBriefJournalFitAnalysis(
+  input: {
+    title: string;
+    abstract: string;
+    keywords?: string[] | string;
+    targetJournal: string;
+    providerConfig?: ProviderConfig;
+  },
+  onProgress?: (update: DiagnosticProgressUpdate) => void
+): Promise<BriefJournalFitReport> {
   const title = input.title?.trim() || "Untitled Manuscript";
   const abstract = input.abstract?.trim() || "";
   const targetJournal = input.targetJournal?.trim() || "Target Journal";
+
+  onProgress?.({
+    stage: 'matching_journals',
+    message: `Calibrating alignment against ${targetJournal}...`,
+    percent: 30,
+  });
 
   // Parse keywords
   let keywords: string[] = [];
@@ -940,6 +1020,12 @@ Respond with ONLY a valid JSON object matching this schema:
   "framingSuggestions": [<string>, <string>]
 }`;
 
+      onProgress?.({
+        stage: 'generating_review',
+        message: 'Evaluating editorial triage scope and methodology fit...',
+        percent: 65,
+      });
+
       const rawResponse = await callLLM(
         [
           {
@@ -951,7 +1037,16 @@ Respond with ONLY a valid JSON object matching this schema:
             content: prompt,
           },
         ],
-        activeConfig
+        activeConfig,
+        onProgress
+          ? (_delta, acc) => {
+              onProgress({
+                stage: 'streaming_review',
+                message: `Synthesizing editorial assessment (${Math.round(acc.length / 4)} tokens)...`,
+                percent: Math.min(95, 65 + Math.floor(acc.length / 100)),
+              });
+            }
+          : undefined
       );
       try {
         parsedLLM = cleanAndRepairJson(rawResponse);
@@ -1108,7 +1203,7 @@ Respond with ONLY a valid JSON object matching this schema:
         },
       };
 
-  return {
+  const report: BriefJournalFitReport = {
     mode: "brief_fit",
     id: generateReportId("fit_"),
     createdAt: new Date().toISOString(),
@@ -1144,6 +1239,14 @@ Respond with ONLY a valid JSON object matching this schema:
         }
       : undefined,
   };
+
+  onProgress?.({
+    stage: 'completed',
+    message: 'Brief journal fit analysis complete.',
+    percent: 100,
+  });
+
+  return report;
 }
 
 /**

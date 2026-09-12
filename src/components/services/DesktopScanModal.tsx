@@ -49,6 +49,7 @@ export function DesktopScanModal({
   const [fileName, setFileName] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState("");
+  const [loadingPercent, setLoadingPercent] = useState<number | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -97,13 +98,8 @@ export function DesktopScanModal({
 
     setLoading(true);
     setError(null);
-
-    let t1: any, t2: any, t3: any, t4: any;
     setLoadingStep("Extracting sections and parsing bibliography...");
-    t1 = setTimeout(() => setLoadingStep("Resolving references against Crossref & Retraction Watch..."), 1500);
-    t2 = setTimeout(() => setLoadingStep("Auditing causal claims against experimental controls..."), 3000);
-    t3 = setTimeout(() => setLoadingStep("Evaluating methodology, sample power, and statistics..."), 4500);
-    t4 = setTimeout(() => setLoadingStep("Simulating 5 peer-reviewer personas (including Devil's Advocate)..."), 6000);
+    setLoadingPercent(10);
 
     try {
       let rawText = "";
@@ -128,7 +124,11 @@ export function DesktopScanModal({
       const fullReport: FullReviewReport = await runManuscriptDiagnostic(
         parsed,
         savedConfig,
-        journal
+        journal,
+        (update) => {
+          setLoadingStep(update.message);
+          if (update.percent !== undefined) setLoadingPercent(update.percent);
+        }
       );
 
       const newId = `paper-${Date.now()}`;
@@ -197,21 +197,14 @@ export function DesktopScanModal({
         },
       };
 
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
       onComplete(newPaper, dashboardData, fullReport);
       onClose();
     } catch (err: any) {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
       setError(err.message || "Diagnostic review failed.");
     } finally {
       setLoading(false);
       setLoadingStep("");
+      setLoadingPercent(undefined);
     }
   };
 
@@ -263,9 +256,17 @@ export function DesktopScanModal({
               <h3 className="font-bold text-sm text-neutral-900 dark:text-white">
                 Running Full Diagnostic Engine...
               </h3>
-              <p className="text-xs text-blue-600 dark:text-blue-400 font-medium animate-pulse">
+              <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
                 {loadingStep}
               </p>
+              {loadingPercent !== undefined && (
+                <div className="w-48 bg-neutral-200 dark:bg-neutral-800 rounded-full h-1.5 overflow-hidden mx-auto mt-2.5">
+                  <div
+                    className="bg-blue-600 dark:bg-blue-400 h-full rounded-full transition-all duration-300"
+                    style={{ width: `${loadingPercent}%` }}
+                  />
+                </div>
+              )}
             </div>
             <p className="text-[11px] text-neutral-400 dark:text-neutral-500 max-w-xs">
               Calibrating against {journal || "target"} editorial standards and cross-checking references.

@@ -104,6 +104,7 @@ export function DesktopPreSubmissionScanView({
   const [fileName, setFileName] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState("");
+  const [loadingPercent, setLoadingPercent] = useState<number | undefined>(undefined);
   const [report, setReport] = useState<ReviewReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedPersona, setSelectedPersona] = useState<number>(0);
@@ -334,8 +335,6 @@ export function DesktopPreSubmissionScanView({
     setError(null);
     setReport(null);
 
-    let t1: any, t2: any, t3: any, t4: any;
-
     try {
       const savedConfig = localStorage.getItem("manuview_provider_config");
       const providerConfig: ProviderConfig | undefined = savedConfig
@@ -343,19 +342,24 @@ export function DesktopPreSubmissionScanView({
         : undefined;
 
       if (isFileScan) {
-        // Full document audit (matching web exactly)
+        // Full document audit
         setLoadingStep("Extracting sections and parsing bibliography...");
-        t1 = setTimeout(() => setLoadingStep("Resolving references against Crossref & Retraction Watch..."), 1200);
-        t2 = setTimeout(() => setLoadingStep("Auditing causal claims against experimental controls..."), 2400);
-        t3 = setTimeout(() => setLoadingStep("Evaluating methodology, sample power, and statistics..."), 3600);
-        t4 = setTimeout(() => setLoadingStep("Simulating 5 peer-reviewer personas (including Devil's Advocate)..."), 4800);
+        setLoadingPercent(10);
 
         const extracted = await extractTextFromFile(file);
         const parsed = parseManuscriptText(extracted, file.name || "manuscript.txt");
         if (manuscriptTitle.trim()) parsed.title = manuscriptTitle.trim();
         if (manuscriptAbstract.trim()) parsed.abstract = manuscriptAbstract.trim();
 
-        const fullReport = await runManuscriptDiagnostic(parsed, providerConfig, targetJournal);
+        const fullReport = await runManuscriptDiagnostic(
+          parsed,
+          providerConfig,
+          targetJournal,
+          (update) => {
+            setLoadingStep(update.message);
+            if (update.percent !== undefined) setLoadingPercent(update.percent);
+          }
+        );
         setReport(fullReport);
 
         // Register paper in articles store if onComplete provided
@@ -433,30 +437,32 @@ export function DesktopPreSubmissionScanView({
           onComplete(newPaper, dashboardData, fullReport);
         }
       } else {
-        // Fast editorial scope validation (matching web exactly)
+        // Fast editorial scope validation
         setLoadingStep("Evaluating manuscript title & abstract scope...");
-        t1 = setTimeout(() => setLoadingStep(`Calibrating against ${targetJournal}'s aims and editorial criteria...`), 1000);
-        t2 = setTimeout(() => setLoadingStep("Auditing keyword resonance and potential desk-reject hazards..."), 2000);
+        setLoadingPercent(20);
 
-        const briefReport = await runBriefJournalFitAnalysis({
-          title: manuscriptTitle,
-          abstract: manuscriptAbstract,
-          keywords: manuscriptKeywords,
-          targetJournal: targetJournal || "Target Journal",
-          providerConfig,
-        });
+        const briefReport = await runBriefJournalFitAnalysis(
+          {
+            title: manuscriptTitle,
+            abstract: manuscriptAbstract,
+            keywords: manuscriptKeywords,
+            targetJournal: targetJournal || "Target Journal",
+            providerConfig,
+          },
+          (update) => {
+            setLoadingStep(update.message);
+            if (update.percent !== undefined) setLoadingPercent(update.percent);
+          }
+        );
         setReport(briefReport);
       }
     } catch (err: any) {
       console.error("Diagnostic scan error:", err);
       setError(err?.message || "Failed to generate diagnostic report. Please verify your AI provider credentials.");
     } finally {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
       setLoading(false);
       setLoadingStep("");
+      setLoadingPercent(undefined);
     }
   };
 
@@ -853,6 +859,7 @@ export function DesktopPreSubmissionScanView({
                   <RefreshCw className="w-4 h-4 animate-spin text-blue-400 shrink-0" />
                   <span key={loadingStep || "analyzing-step"} className="truncate">
                     {loadingStep || "Analyzing Manuscript..."}
+                    {loadingPercent !== undefined ? ` (${loadingPercent}%)` : ""}
                   </span>
                 </span>
               ) : (
@@ -862,6 +869,12 @@ export function DesktopPreSubmissionScanView({
                     {file ? "Run Pre-Submission Diagnostic Scan" : "Validate Target Journal Scope & Fit"}
                   </span>
                 </span>
+              )}
+              {loading && loadingPercent !== undefined && (
+                <div
+                  className="absolute bottom-0 left-0 h-1 bg-blue-500 dark:bg-blue-400 transition-all duration-300"
+                  style={{ width: `${loadingPercent}%` }}
+                />
               )}
             </button>
           </form>
