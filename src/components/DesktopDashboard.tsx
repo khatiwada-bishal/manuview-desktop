@@ -365,11 +365,13 @@ export function DesktopDashboard({
               className="rounded-3xl liquid-glass-card liquid-glass-card-interactive p-5 space-y-3.5 flex flex-col justify-between"
             >
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-[#0F172A] dark:text-white">{dim.label}</span>
+                <div className="flex items-start sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    <span className="text-xs font-bold text-[#0F172A] dark:text-white truncate" title={dim.label}>
+                      {dim.label}
+                    </span>
                     {dim.source && (
-                      <span className={`text-[9px] px-1.5 py-0.2 rounded font-semibold border ${
+                      <span className={`text-[9px] px-1.5 py-0.2 rounded font-semibold shrink-0 border ${
                         dim.source === "llm"
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
                           : "bg-neutral-100 text-neutral-600 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700"
@@ -378,7 +380,7 @@ export function DesktopDashboard({
                       </span>
                     )}
                   </div>
-                  <span className={`px-2.5 py-0.5 rounded-full font-mono text-xs font-extrabold border ${
+                  <span className={`px-2.5 py-0.5 rounded-full font-mono text-xs font-extrabold shrink-0 whitespace-nowrap ml-2 border ${
                     dim.score >= 4
                       ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
                       : dim.score === 3
@@ -1404,10 +1406,10 @@ export function DesktopDashboard({
             {/* CARD 4: Reporting Guideline Compliance Audit (Only for eligible manuscripts) */}
             {isReviewEligible && fullReport?.reportingGuideline && (
               <div className="rounded-3xl liquid-glass-card p-6 sm:p-7 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#E2E8F0] dark:border-[#1F2937]">
-                  <div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E2E8F0] dark:border-[#1F2937]">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <Scale className="w-4 h-4 text-[#2563EB] dark:text-blue-400" />
+                      <Scale className="w-4 h-4 text-[#2563EB] dark:text-blue-400 shrink-0" />
                       <h2 className="text-base font-bold text-[#0F172A] dark:text-white">
                         Reporting Guideline Compliance: {fullReport.reportingGuideline.guidelineName}
                       </h2>
@@ -1429,9 +1431,9 @@ export function DesktopDashboard({
                       )}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-[#64748B] dark:text-neutral-400">Audit Score:</span>
-                    <span className="text-base font-extrabold text-[#2563EB] dark:text-blue-400 bg-[#EFF6FF] dark:bg-blue-950/50 px-2.5 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                    <span className="text-xs font-semibold text-[#64748B] dark:text-neutral-400 whitespace-nowrap">Audit Score:</span>
+                    <span className="text-sm sm:text-base font-extrabold text-[#2563EB] dark:text-blue-400 bg-[#EFF6FF] dark:bg-blue-950/50 px-3 py-1 rounded-full border border-blue-200 dark:border-blue-800 shrink-0 whitespace-nowrap">
                       {fullReport.reportingGuideline.itemSetScope === "core_subset"
                         ? `${fullReport.reportingGuideline.evidencedCount}/${fullReport.reportingGuideline.totalItems} core items evidenced (${fullReport.reportingGuideline.itemSetSize} in full standard; ${fullReport.reportingGuideline.scorePercent}%)`
                         : fullReport.reportingGuideline.evidencedCount !== undefined && fullReport.reportingGuideline.totalItems !== undefined
@@ -1516,17 +1518,6 @@ export function DesktopDashboard({
                     );
                   })()}
                 </div>
-              </div>
-            )}
-
-            {/* Diagnostic Suite Full Breakdown in Overview */}
-            {isReviewEligible && (
-              <div className="space-y-8 pt-2">
-                {renderDimensionsSection()}
-                {renderIssuesSection()}
-                {renderPersonasSection()}
-                {renderCitationsSection()}
-                {renderJournalsSection()}
               </div>
             )}
           </div>

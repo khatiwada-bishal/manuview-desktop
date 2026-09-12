@@ -1107,10 +1107,14 @@ export function DesktopPreSubmissionScanView({
                       className="p-5 rounded-2xl bg-white border border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937] flex flex-col justify-between hover:border-neutral-300 dark:hover:border-[#334155] shadow-2xs transition"
                     >
                       <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-bold text-[#111827] dark:text-white">{dim.label}</span>
+                        <div className="flex items-start sm:items-center justify-between gap-2.5 mb-2">
+                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                            <span className="text-xs font-bold text-[#111827] dark:text-white truncate" title={dim.label}>
+                              {dim.label}
+                            </span>
+                          </div>
                           <span
-                            className={`px-2.5 py-0.5 rounded font-mono text-xs font-bold border ${
+                            className={`px-2.5 py-0.5 rounded font-mono text-xs font-bold shrink-0 whitespace-nowrap ml-2 border ${
                               dim.score >= 4
                                 ? "bg-[#ECFDF5] text-[#065F46] border-[#A7F3D0] dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
                                 : dim.score === 3

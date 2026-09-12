@@ -479,6 +479,21 @@ export function DesktopSidebar({
                               <BookOpen className="w-3 h-3 text-indigo-600 dark:text-indigo-400 shrink-0" />
                               <span className="truncate">Target Journals</span>
                             </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSelectView("citations");
+                              }}
+                              className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-[11px] transition text-left cursor-pointer ${
+                                activeView === "citations"
+                                  ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
+                                  : "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#1E293B]/60 hover:text-neutral-900 dark:hover:text-white"
+                              }`}
+                            >
+                              <CheckCircle2 className="w-3 h-3 text-teal-600 dark:text-teal-400 shrink-0" />
+                              <span className="truncate">Citation Integrity</span>
+                            </button>
                           </div>
                         )}
                       </div>
@@ -814,6 +829,19 @@ export function DesktopSidebar({
                         >
                           <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
                           <span className="truncate">Target Journals</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => onSelectView("citations")}
+                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer ${
+                            activeView === "citations"
+                              ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
+                              : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
+                          }`}
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
+                          <span className="truncate">Citation Integrity Audit</span>
                         </button>
                       </div>
                     )}
