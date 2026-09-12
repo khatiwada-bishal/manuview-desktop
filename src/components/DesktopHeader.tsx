@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTheme } from "@/context/ThemeContext";
+import { isDesktopApp } from "@/lib/desktop";
 
 export interface TabItem {
   id: string;
@@ -39,6 +40,7 @@ interface DesktopHeaderProps {
   onOpenSettings?: () => void;
   onToggleSidebar?: () => void;
   sidebarOpen?: boolean;
+  onGoHome?: () => void;
 }
 
 export function DesktopHeader({
@@ -46,6 +48,7 @@ export function DesktopHeader({
   activeTabId,
   onSelectTab,
   onCloseTab,
+  onGoHome,
 }: DesktopHeaderProps) {
   const { theme, toggleTheme } = useTheme();
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -175,8 +178,23 @@ export function DesktopHeader({
       onMouseDown={handleHeaderMouseDown}
       className="h-[52px] liquid-glass-header flex items-center select-none shrink-0 z-20 cursor-default relative transition-colors duration-150"
     >
-      {/* macOS traffic light spacer (covers window traffic controls, leaves comfortable gap) */}
-      <div data-tauri-drag-region className="w-[84px] h-full shrink-0" />
+      {/* macOS traffic light spacer (covers window traffic controls) or Web Home Button */}
+      {isDesktopApp() ? (
+        <div data-tauri-drag-region className="w-[84px] h-full shrink-0" />
+      ) : (
+        <button
+          type="button"
+          data-no-drag
+          onClick={onGoHome}
+          className="flex items-center gap-2 px-3.5 h-full hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition cursor-pointer text-xs font-semibold text-neutral-800 dark:text-neutral-200 shrink-0 border-r border-black/5 dark:border-white/10"
+          title="Back to Landing Page"
+        >
+          <div className="w-5 h-5 rounded-md bg-blue-600 text-white font-serif font-black text-[10px] flex items-center justify-center shadow-xs">
+            M
+          </div>
+          <span className="hidden sm:inline font-bold">ManuView</span>
+        </button>
+      )}
 
       {/* CENTER: BROWSER-STYLE SCROLLABLE TAB BAR WITH OVERFLOW ARROWS */}
       <div

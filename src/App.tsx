@@ -24,6 +24,8 @@ import { ProviderSettingsModal } from "@/components/ProviderSettingsModal";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { useApiConnection } from "@/lib/useApiConnection";
 import { FullReviewReport } from "@/lib/types";
+import { isDesktopApp } from "@/lib/desktop";
+import { DesktopWebLandingPage } from "@/components/landing/DesktopWebLandingPage";
 import {
   loadSavedProjects,
   saveProject,
@@ -35,8 +37,37 @@ import {
 } from "@/lib/projectStorage";
 
 export default function App() {
+  // Web vs Desktop workspace view state
+  const [viewMode, setViewMode] = useState<"landing" | "app">(() => {
+    if (isDesktopApp()) return "app";
+    try {
+      const saved = sessionStorage.getItem("manuview_web_view_mode");
+      if (saved === "app") return "app";
+    } catch {}
+    return "landing";
+  });
+
+  // Manage body scroll behaviour depending on mode
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("manuview_web_view_mode", viewMode);
+    } catch {}
+    if (viewMode === "landing") {
+      document.body.classList.remove("overflow-hidden", "select-none");
+    } else {
+      if (isDesktopApp()) {
+        document.body.classList.add("overflow-hidden", "select-none");
+      }
+    }
+  }, [viewMode]);
+
   // Purge legacy mock data, synchronize IndexedDB & dismiss splash screen
   useEffect(() => {
+    if (!isDesktopApp()) {
+      const splash = document.getElementById("app-splash");
+      if (splash) splash.remove();
+    }
+
     purgeLegacyDummyData();
     const startTime = Date.now();
 
@@ -414,6 +445,34 @@ export default function App() {
     );
   };
 
+  // Render Web Landing Page in browser mode (or when navigated to landing)
+  if (viewMode === "landing") {
+    return (
+      <ThemeProvider>
+        <DesktopWebLandingPage
+          onLaunchApp={() => setViewMode("app")}
+          onOpenScan={() => {
+            setViewMode("app");
+            setIsScanOpen(true);
+          }}
+          onOpenService={(serviceId) => {
+            setViewMode("app");
+            handleOpenService(serviceId);
+          }}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          isConnected={isConnected}
+          isApiLoading={isApiLoading}
+          modelName={modelName}
+          latencyMs={latencyMs}
+        />
+        <ProviderSettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+        />
+      </ThemeProvider>
+    );
+  }
+
   return (
     <ThemeProvider>
       <div className="h-screen w-screen flex flex-col liquid-glass-canvas text-[#111827] dark:text-[#F8FAFC] overflow-hidden select-none font-sans relative">
@@ -431,6 +490,7 @@ export default function App() {
           onOpenSettings={() => setIsSettingsOpen(true)}
           onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
           sidebarOpen={sidebarOpen}
+          onGoHome={() => setViewMode("landing")}
         />
 
         {/* Main Layout: Sidebar + Active View */}
@@ -452,6 +512,7 @@ export default function App() {
             onOpenSettings={() => setIsSettingsOpen(true)}
             onSelectService={handleOpenService}
             onDeletePaper={(paper) => setPaperToDelete(paper)}
+            onGoHome={() => setViewMode("landing")}
           />
 
           {/* View Content */}

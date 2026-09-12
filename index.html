@@ -7,7 +7,7 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ManuView Desktop</title>
+    <title>ManuView - AI Pre-Submission Peer Review & Research Suite</title>
     <style>
       html, body {
         background-color: #FFFFFF !important;
@@ -24,7 +24,7 @@
         background-color: #FFFFFF !important;
         background: #FFFFFF !important;
         overflow: hidden;
-        display: flex;
+        display: none;
         align-items: center;
         justify-content: center;
         transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);
@@ -39,6 +39,9 @@
       }
     </style>
     <script>
+      // Capability check: detect if running in native Tauri desktop container
+      window.__IS_DESKTOP__ = Boolean(window.__TAURI_INTERNALS__ || window.__TAURI__);
+
       // Every time the application is opened, default loading is in light mode
       try {
         const sessionTheme = sessionStorage.getItem('manuview_theme_mode');
@@ -55,10 +58,10 @@
       }
     </script>
   </head>
-  <body class="bg-[#FFFFFF] text-[#111827] dark:bg-[#080B11] dark:text-[#F8FAFC] antialiased overflow-hidden select-none">
-    <!-- App Startup Video Intro Screen (Full-Screen Video with Audio) -->
+  <body class="bg-[#FFFFFF] text-[#111827] dark:bg-[#080B11] dark:text-[#F8FAFC] antialiased">
+    <!-- App Startup Video Intro Screen: Mounted strictly in native desktop Tauri app -->
     <div id="app-splash">
-      <video id="intro-video" autoplay playsinline preload="auto" poster="/intro-poster.png">
+      <video id="intro-video" playsinline preload="auto" poster="/intro-poster.png">
         <source src="/intro-app.mov" type="video/quicktime" />
         <source src="/intro.mp4" type="video/mp4" />
       </video>
@@ -66,15 +69,27 @@
     </div>
     <script>
       (function() {
+        if (!window.__IS_DESKTOP__) {
+          // Web application mode: completely eliminate startup intro video splash screen
+          var splash = document.getElementById('app-splash');
+          if (splash) splash.remove();
+          return;
+        }
+
+        // Native Desktop mode: display and activate intro video
+        var splash = document.getElementById('app-splash');
+        if (splash) splash.style.display = 'flex';
+        document.body.classList.add('overflow-hidden', 'select-none');
+
         const vid = document.getElementById('intro-video');
         const skip = document.getElementById('intro-skip');
         if (vid) {
+          vid.autoplay = true;
           vid.muted = false;
           vid.volume = 1.0;
           const playPromise = vid.play();
           if (playPromise !== undefined) {
             playPromise.catch(function() {
-              // If system restricts initial unmuted autoplay, start muted & unmute on user gesture
               vid.muted = true;
               vid.play().catch(function() {});
               const unmute = function() {
