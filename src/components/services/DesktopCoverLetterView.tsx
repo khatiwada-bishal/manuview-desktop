@@ -303,8 +303,8 @@ IMPORTANT OUTPUT INSTRUCTIONS:
               </div>
             </div>
 
-            {/* Formal Clean Academic Letter Document */}
-            <div className="p-8 sm:p-12 rounded-3xl bg-white dark:bg-[#0D121F] border border-black/10 dark:border-white/10 shadow-lg text-neutral-800 dark:text-neutral-100 font-serif leading-relaxed text-sm sm:text-base selection:bg-blue-500/20 max-w-4xl mx-auto space-y-5">
+            {/* Formal Clean Academic Letter Document (Width matches form card) */}
+            <div className="w-full p-6 sm:p-10 rounded-3xl bg-white dark:bg-[#0D121F] border border-black/10 dark:border-white/10 shadow-lg text-neutral-800 dark:text-neutral-100 font-serif leading-relaxed text-sm sm:text-base selection:bg-blue-500/20 space-y-5">
               {/* Document Header Bar */}
               <div className="flex items-center justify-between pb-4 border-b border-black/[0.08] dark:border-white/[0.1] text-xs font-sans">
                 <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400 font-medium">
@@ -313,8 +313,8 @@ IMPORTANT OUTPUT INSTRUCTIONS:
                   <span className="text-neutral-300 dark:text-neutral-600">&bull;</span>
                   <span>Submission Cover Letter</span>
                 </div>
-                <div className="text-[11px] font-mono text-neutral-400">
-                  {new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(new Date())}
+                <div className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  Ready for Submission
                 </div>
               </div>
 
