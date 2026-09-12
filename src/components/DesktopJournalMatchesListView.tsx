@@ -44,43 +44,43 @@ export function DesktopJournalMatchesListView({
       className={`rounded-3xl liquid-glass-card overflow-hidden transition shadow-2xs ${className}`}
     >
       {/* Header bar */}
-      <div className="p-5 sm:p-6 border-b border-[#E2E8F0] dark:border-[#1F2937] flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-black/[0.01] dark:bg-white/[0.02]">
-        <div>
+      <div className="p-5 sm:p-6 border-b border-[#E2E8F0] dark:border-[#1F2937] flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-black/[0.01] dark:bg-white/[0.02]">
+        <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-[#2563EB] dark:text-blue-400 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-[#2563EB] dark:text-blue-400 flex items-center justify-center shrink-0">
               <BookOpen className="w-4 h-4" />
             </div>
             <h3 className="text-sm sm:text-base font-bold text-[#0F172A] dark:text-white">
               Qualified Field &amp; Disciplinary Catalog Matches
             </h3>
-            <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+            <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0">
               {otherJournals.length} Alternative Venues
             </span>
           </div>
-          <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-1.5 leading-relaxed">
+          <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-1 leading-relaxed max-w-2xl">
             Peer-reviewed target journals calibrated against manuscript scope, methodological rigor, and citation benchmarks.
             Displaying qualified alternatives beyond the primary Reach, Realistic, and Fallback tiers.
           </p>
         </div>
 
-        {/* Filter / Search Controls */}
-        <div className="flex flex-wrap items-center gap-2.5 self-start lg:self-auto">
+        {/* Filter / Search Controls toolbar */}
+        <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap">
           {detectedDiscipline && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-white dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] text-neutral-700 dark:text-neutral-300 shadow-2xs">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] text-neutral-700 dark:text-neutral-300 shadow-2xs shrink-0 whitespace-nowrap">
               <span className="text-neutral-400 text-[10px] uppercase tracking-wider">Field:</span>
               <span className="text-[#2563EB] dark:text-blue-400 font-bold">{detectedDiscipline}</span>
             </span>
           )}
 
           {/* Quick Search */}
-          <div className="relative">
+          <div className="relative shrink-0">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Filter journals..."
-              className="pl-8 pr-3 py-1 text-xs rounded-xl bg-white dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-blue-500 w-36 sm:w-44 transition"
+              className="pl-8 pr-3 py-1.5 text-xs rounded-xl bg-white dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-blue-500 w-36 sm:w-44 transition"
             />
           </div>
 
@@ -88,7 +88,7 @@ export function DesktopJournalMatchesListView({
           <select
             value={filterAccess}
             onChange={(e) => setFilterAccess(e.target.value)}
-            className="px-2.5 py-1 text-xs rounded-xl bg-white dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+            className="px-3 py-1.5 text-xs rounded-xl bg-white dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer shrink-0 font-medium"
           >
             <option value="all">All Access</option>
             <option value="gold">Gold OA</option>
