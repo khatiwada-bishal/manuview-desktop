@@ -125,10 +125,15 @@ export function DesktopPreSubmissionScanView({
 
   const scanMatchingData = React.useMemo(() => {
     if (!report) return null;
+    const citedJournals =
+      "citationIntegrity" in report && report.citationIntegrity
+        ? (report.citationIntegrity.references || []).map((r) => r.journal || "").filter(Boolean)
+        : [];
     return findMatchingJournals(
       report.title || "",
       report.summary || "",
-      report.targetJournal || ""
+      report.targetJournal || "",
+      citedJournals
     );
   }, [report]);
 
@@ -1483,9 +1488,16 @@ export function DesktopPreSubmissionScanView({
                           >
                             {rec.tier} Tier
                           </span>
-                          <span className="text-xs font-mono font-bold text-neutral-500 dark:text-neutral-400">
-                            IF: {rec.impactFactor}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            {rec.fitScore !== undefined && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
+                                Fit: {rec.fitScore}%
+                              </span>
+                            )}
+                            <span className="text-xs font-mono font-bold text-neutral-500 dark:text-neutral-400">
+                              IF: {rec.impactFactor}
+                            </span>
+                          </div>
                         </div>
 
                         <h4 className="text-sm font-bold text-[#111827] dark:text-white mb-0.5">{rec.journalName}</h4>

@@ -299,7 +299,21 @@ export async function runManuscriptDiagnostic(
   const retractedCount = citationIntegrity.retractedCount;
   const unresolvableCount = citationIntegrity.unresolvableCount;
 
-  const journalMatches = findMatchingJournals(manuscript.title, manuscript.abstract, targetJournalName);
+  // Extract top cited journals from bibliography to anchor journal matching
+  const journalCitationCounts = new Map<string, number>();
+  for (const ref of verifiedRefs) {
+    if (ref?.journal && typeof ref.journal === "string" && ref.journal.trim().length > 2) {
+      const jName = ref.journal.trim();
+      journalCitationCounts.set(jName, (journalCitationCounts.get(jName) || 0) + 1);
+    }
+  }
+  const topCitedJournals = Array.from(journalCitationCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([jName, count]) => `${jName} (${count} citation${count > 1 ? "s" : ""})`);
+  const citedJournalNamesOnly = Array.from(journalCitationCounts.keys());
+
+  const journalMatches = findMatchingJournals(manuscript.title, manuscript.abstract, targetJournalName, citedJournalNamesOnly);
   const detectedDiscipline = journalMatches.detectedDiscipline || "Scholarly Research";
 
   const boundaryDelimiter = Math.random().toString(36).substring(2, 10);
@@ -332,7 +346,12 @@ CRITICAL ANTI-HALLUCINATION & STRICT GROUNDING MANDATE:
    - Every priority issue MUST have a "rebuttalStrategy" detailing the point-by-point author defense and revision roadmap for the formal journal response letter.
 6. REPORTING GUIDELINES COMPLIANCE AUDIT:
    Evaluate the manuscript against the applicable international reporting standard (STROBE for observational/customs data, CONSORT for clinical trials, PRISMA for reviews, ARRIVE for preclinical models, or Econometric/OR guidelines). Provide guidelineName, standardType, scorePercent (0-100), compliantItems, and missingOrPartialItems. CRITICAL: compliantItems and missingOrPartialItems MUST contain complete, descriptive evaluation sentences detailing specific checklist requirements. NEVER output bare section names like 'Title', 'Abstract', 'Methods', or 'Results'.
-7. TARGET JOURNALS: Recommend 3 genuine, authentic peer-reviewed journals strictly in the manuscript's specific domain (Reach, Realistic, Fallback). Provide realistic impact factors and authentic scope rationales based on this paper's findings.
+7. TARGET JOURNALS & STRATEGIC TIERING:
+   Recommend exactly 3 genuine, authentic peer-reviewed journals strictly in the manuscript's specific sub-discipline, calibrated as:
+   - "Reach": An aspirational, premier venue (+30% to +100% higher impact/selectivity than the realistic benchmark) requiring the manuscript's strongest claims and addressing key experimental or methodological limitations. In "requiredRevisionsForFit", specify the exact high-impact upgrades needed (e.g. larger validation cohort, orthogonal mechanistic proof).
+   - "Realistic": The target-calibrated peer benchmark. If the author specified a Target Journal, assess that journal directly or a direct peer-equivalent journal with matching scope and empirical standards. In "scopeRationale", explain why the manuscript's current scale fits this journal's readership.
+   - "Fallback": A reliable, indexed specialty journal in the EXACT SAME field with a higher acceptance rate (35-55%) or rapid turnaround. CRITICAL: Do NOT recommend generic multidisciplinary megajournals (e.g. PLOS ONE, Scientific Reports, IEEE Access, Frontiers, MDPI) unless the manuscript itself is truly multidisciplinary. Recommend an authentic specialty journal that values sound methodology and open data in this exact field.
+   - Every recommendation MUST include: realistic current impactFactor (number or realistic string), publisher, calibrated fitScore (0-100), authentic scopeRationale, rejectionRisks (2-3 items), and requiredRevisionsForFit (2-3 items).
 8. Return your output ONLY as valid JSON matching the requested schema. CRITICAL: Do NOT include unescaped double quotes inside string values (always escape internal quotes as \"). Do NOT include trailing commas before } or ].`;
 
   // Dynamically budget manuscript body context based on provider context limits
@@ -396,6 +415,12 @@ Verified References: ${citationIntegrity.verifiedCount} (of ${citationIntegrity.
 Unresolvable DOIs: ${citationIntegrity.unresolvableCount}
 Retracted References Flagged: ${citationIntegrity.retractedCount}
 Coverage Note: ${citationIntegrity.coverageNote}
+
+[AUTHOR'S STATED TARGET JOURNAL & BENCHMARK]
+${targetJournalName ? `Target Journal: "${targetJournalName}" (Calibrate your Realistic tier to this target or direct peer-equivalent journals, Reach to higher-impact venues in this field, and Fallback to accessible specialty journals)` : "No target journal declared by author — calibrate Realistic tier directly from the manuscript's empirical scale and the cited literature below."}
+
+[TOP CITED JOURNALS IN BIBLIOGRAPHY (Scholarly Discourse Community)]
+${topCitedJournals.length > 0 ? topCitedJournals.join("\n") : "Extracting from raw references"}
 
 Please return your analysis as a JSON object matching this schema:
 {
@@ -1150,7 +1175,14 @@ export function synthesizeGroundedAcademicReview(
   // 1. Discipline & Journal Scope Resolution
   const cleanTitle = manuscript.title?.trim() || "Untitled Research Investigation";
   const targetJournal = targetJournalName?.trim() || "Target Journal";
-  const catalogMatches = findMatchingJournals(cleanTitle, manuscript.abstract || "", targetJournal);
+  const citedNames = (manuscript.references || [])
+    .slice(0, 50)
+    .map((r) => {
+      const match = r.match(/\b([A-Z][A-Za-z\s&]{3,35})\b/);
+      return match ? match[1] : "";
+    })
+    .filter(Boolean);
+  const catalogMatches = findMatchingJournals(cleanTitle, manuscript.abstract || "", targetJournal, citedNames);
   const discipline = detectedDiscipline || catalogMatches.detectedDiscipline || "Scholarly Research";
 
   // 2. Extract Core Findings / Thesis Statement from Abstract
@@ -1899,10 +1931,14 @@ export function synthesizeGroundedAcademicReview(
     },
   ];
 
-  // 9. Dynamic Journal Recommendations
+  // 9. Dynamic Target-Centric Journal Recommendations
   const reachJournal = catalogMatches.reach;
   const realisticJournal = catalogMatches.realistic;
   const fallbackJournal = catalogMatches.fallback;
+
+  const isTargetMatched = Boolean(
+    targetJournalName && realisticJournal.name.toLowerCase().includes(targetJournalName.trim().toLowerCase())
+  );
 
   const rawRecs: JournalRecommendation[] = [
     {
@@ -1910,8 +1946,8 @@ export function synthesizeGroundedAcademicReview(
       journalName: reachJournal.name,
       impactFactor: reachJournal.impactFactor,
       publisher: reachJournal.publisher,
-      fitScore: Math.min(95, Math.max(0, dynamicScore - 3)),
-      scopeRationale: `Premier high-impact venue for transformative research in ${discipline}. Highly aligned if novel contributions are emphasized.`,
+      fitScore: Math.min(92, Math.max(70, Math.round((catalogMatches.reachFitScore * 0.6) + (dynamicScore * 0.4)))),
+      scopeRationale: `Aspirational high-prestige venue in ${discipline}. Requires addressing primary methodological vulnerabilities and substantiating broader transformative implications.`,
       rejectionRisks: reachJournal.deskRejectHazards,
       requiredRevisionsForFit: reachJournal.keyExpectations,
     },
@@ -1920,8 +1956,10 @@ export function synthesizeGroundedAcademicReview(
       journalName: realisticJournal.name,
       impactFactor: realisticJournal.impactFactor,
       publisher: realisticJournal.publisher,
-      fitScore: Math.min(94, Math.max(0, dynamicScore)),
-      scopeRationale: `Strong domain authority and balanced acceptance alignment for empirical studies in ${discipline}.`,
+      fitScore: Math.min(96, Math.max(78, Math.round((catalogMatches.realisticFitScore * 0.6) + (dynamicScore * 0.4)))),
+      scopeRationale: isTargetMatched
+        ? `Direct target journal match. Evaluated for thematic alignment, empirical scale, and contemporary standards in ${discipline}.`
+        : `Strong domain authority and balanced acceptance criteria for empirical research in ${discipline}.`,
       rejectionRisks: realisticJournal.deskRejectHazards,
       requiredRevisionsForFit: realisticJournal.keyExpectations,
     },
@@ -1930,8 +1968,8 @@ export function synthesizeGroundedAcademicReview(
       journalName: fallbackJournal.name,
       impactFactor: fallbackJournal.impactFactor,
       publisher: fallbackJournal.publisher,
-      fitScore: Math.min(90, Math.max(0, dynamicScore + 5)),
-      scopeRationale: `Reliable publication venue emphasizing sound scientific execution, reproducibility, and open data in ${discipline}.`,
+      fitScore: Math.min(94, Math.max(76, Math.round((catalogMatches.fallbackFitScore * 0.6) + (dynamicScore * 0.4)))),
+      scopeRationale: `Accessible, sound-science publication venue in ${discipline} prioritizing rigorous methodology and transparent reporting over speculative novelty.`,
       rejectionRisks: fallbackJournal.deskRejectHazards,
       requiredRevisionsForFit: fallbackJournal.keyExpectations,
     },

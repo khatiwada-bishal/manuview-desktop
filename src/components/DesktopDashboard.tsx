@@ -143,10 +143,16 @@ export function DesktopDashboard({
   const issues = fullReport?.priorityIssues || [];
   const journals = fullReport?.journalRecommendations || [];
 
+  // Extract cited journals from full report if available
+  const citedJournals = useMemo(() => {
+    const refs = fullReport?.citationIntegrity?.references || [];
+    return refs.map((r) => r.journal || "").filter(Boolean);
+  }, [fullReport]);
+
   // Match journals from catalog to guarantee 3 tiered cards + 10+ list matches
   const matchingJournalsData = useMemo(() => {
-    return findMatchingJournals(title, typeof summary === "string" ? summary : "", targetJournal);
-  }, [title, summary, targetJournal]);
+    return findMatchingJournals(title, typeof summary === "string" ? summary : "", targetJournal, citedJournals);
+  }, [title, summary, targetJournal, citedJournals]);
 
   const otherJournals = useMemo(() => {
     return matchingJournalsData.otherMatches || [];
@@ -160,7 +166,7 @@ export function DesktopDashboard({
         journalName: matchingJournalsData.reach.name,
         impactFactor: matchingJournalsData.reach.impactFactor,
         publisher: matchingJournalsData.reach.publisher,
-        fitScore: 84,
+        fitScore: matchingJournalsData.reachFitScore,
         scopeRationale: matchingJournalsData.reach.aimsAndScope,
         rejectionRisks: matchingJournalsData.reach.deskRejectHazards,
         requiredRevisionsForFit: matchingJournalsData.reach.keyExpectations,
@@ -170,7 +176,7 @@ export function DesktopDashboard({
         journalName: matchingJournalsData.realistic.name,
         impactFactor: matchingJournalsData.realistic.impactFactor,
         publisher: matchingJournalsData.realistic.publisher,
-        fitScore: 92,
+        fitScore: matchingJournalsData.realisticFitScore,
         scopeRationale: matchingJournalsData.realistic.aimsAndScope,
         rejectionRisks: matchingJournalsData.realistic.deskRejectHazards,
         requiredRevisionsForFit: matchingJournalsData.realistic.keyExpectations,
@@ -180,7 +186,7 @@ export function DesktopDashboard({
         journalName: matchingJournalsData.fallback.name,
         impactFactor: matchingJournalsData.fallback.impactFactor,
         publisher: matchingJournalsData.fallback.publisher,
-        fitScore: 96,
+        fitScore: matchingJournalsData.fallbackFitScore,
         scopeRationale: matchingJournalsData.fallback.aimsAndScope,
         rejectionRisks: matchingJournalsData.fallback.deskRejectHazards,
         requiredRevisionsForFit: matchingJournalsData.fallback.keyExpectations,
