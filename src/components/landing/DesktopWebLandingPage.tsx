@@ -287,9 +287,11 @@ export function DesktopWebLandingPage({
           className="flex items-center gap-2.5 min-w-0 text-left hover:opacity-85 transition cursor-pointer"
           title="Back to Top"
         >
-          <div className="w-7 h-7 rounded-lg bg-[#0F172A] dark:bg-white text-white dark:text-[#0F172A] flex items-center justify-center font-serif font-bold text-xs shadow-xs shrink-0">
-            M
-          </div>
+          <img
+            src="/icon.svg"
+            alt="ManuView Logo"
+            className="w-7 h-7 rounded-lg shadow-xs shrink-0 select-none"
+          />
           <div className="truncate min-w-0">
             <div className="font-bold text-xs sm:text-sm text-[#0F172A] dark:text-white tracking-tight leading-tight">
               ManuView Desktop
@@ -821,12 +823,14 @@ export function DesktopWebLandingPage({
                   <div className="space-y-4">
                     <div className="flex items-center justify-between p-2 rounded-xl liquid-glass-card">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-7 h-7 rounded-lg bg-blue-600 text-white font-serif font-bold text-xs flex items-center justify-center shrink-0">
-                          M
-                        </div>
+                        <img
+                          src="/icon.svg"
+                          alt="ManuView Logo"
+                          className="w-7 h-7 rounded-lg shadow-xs shrink-0 select-none"
+                        />
                         <div className="truncate">
-                          <div className="font-bold text-xs text-neutral-900 dark:text-white">ManuView Suite</div>
-                          <div className="text-[10px] text-neutral-400 dark:text-neutral-500">Research &amp; Review</div>
+                          <div className="font-bold text-xs text-neutral-900 dark:text-white tracking-tight">ManuView Desktop</div>
+                          <div className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">Research &amp; Review Suite</div>
                         </div>
                       </div>
                       <button type="button" className="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 text-neutral-400 dark:text-neutral-500 transition">
@@ -1754,14 +1758,23 @@ export function DesktopWebLandingPage({
       {/* 6. COMPREHENSIVE FOOTER                                       */}
       {/* ------------------------------------------------------------- */}
       <footer className="border-t border-black/5 dark:border-white/10 bg-white/60 dark:bg-[#0A0B0E]/80 backdrop-blur-xl text-neutral-600 dark:text-neutral-400 text-xs py-14">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-8 mb-12">
             <div className="col-span-2 sm:col-span-3 md:col-span-1 space-y-3">
-              <div className="flex items-center gap-2 text-neutral-900 dark:text-neutral-200 font-semibold text-sm">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white font-serif font-bold text-xs shadow-xs">
-                  M
+              <div className="flex items-center gap-2.5 min-w-0">
+                <img
+                  src="/icon.svg"
+                  alt="ManuView Logo"
+                  className="w-7 h-7 rounded-lg shadow-xs shrink-0 select-none"
+                />
+                <div className="truncate min-w-0">
+                  <div className="font-bold text-xs sm:text-sm text-[#0F172A] dark:text-white tracking-tight leading-tight">
+                    ManuView Desktop
+                  </div>
+                  <div className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium leading-tight">
+                    Research &amp; Review Suite
+                  </div>
                 </div>
-                <span className="tracking-tight text-base font-semibold">ManuView</span>
               </div>
               <p className="text-neutral-500 dark:text-neutral-400 leading-relaxed text-xs">
                 Open-source pre-submission scientific peer-review diagnostics. Free and open to every researcher worldwide.
