@@ -1,4 +1,5 @@
 import type { FullReviewReport, BriefJournalFitReport, ReviewReport } from "./types";
+import { saveFileDesktop } from "./desktop";
 
 function escapeHtml(str: string | number | undefined | null): string {
   if (str === undefined || str === null) return "";
@@ -17,44 +18,46 @@ function sanitizeFilename(title: string): string {
     .slice(0, 45);
 }
 
-function triggerDownload(content: string, filename: string, mimeType: string) {
-  if (typeof window === "undefined") return;
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+async function triggerDownload(
+  content: string,
+  filename: string,
+  _mimeType: string,
+  filters?: { name: string; extensions: string[] }[]
+): Promise<{ success: boolean; filePath?: string }> {
+  return await saveFileDesktop(content, filename, filters);
 }
 
 /**
  * Generates and triggers download of a 100% self-contained, standalone
  * interactive HTML report that opens in any browser offline.
  */
-export function exportInteractiveHtmlReport(report: ReviewReport) {
+export async function exportInteractiveHtmlReport(report: ReviewReport) {
   const isFullReport = !("fitScore" in report);
   const filename = `ManuView_Interactive_Report_${sanitizeFilename(report.title)}.html`;
   const htmlContent = isFullReport
     ? generateFullReportHtml(report as FullReviewReport)
     : generateBriefReportHtml(report as BriefJournalFitReport);
 
-  triggerDownload(htmlContent, filename, "text/html;charset=utf-8");
+  return await triggerDownload(htmlContent, filename, "text/html;charset=utf-8", [
+    { name: "HTML Webpage", extensions: ["html", "htm"] },
+    { name: "All Files", extensions: ["*"] },
+  ]);
 }
 
 /**
  * Generates and triggers download of a native-compatible Microsoft Word document (.doc/.docx).
  */
-export function exportWordDocReport(report: ReviewReport) {
+export async function exportWordDocReport(report: ReviewReport) {
   const isFullReport = !("fitScore" in report);
   const filename = `ManuView_Diagnostic_Report_${sanitizeFilename(report.title)}.doc`;
   const wordContent = isFullReport
     ? generateFullReportWord(report as FullReviewReport)
     : generateBriefReportWord(report as BriefJournalFitReport);
 
-  triggerDownload(wordContent, filename, "application/msword;charset=utf-8");
+  return await triggerDownload(wordContent, filename, "application/msword;charset=utf-8", [
+    { name: "Microsoft Word Document", extensions: ["doc", "docx"] },
+    { name: "All Files", extensions: ["*"] },
+  ]);
 }
 
 function escapeLatex(text?: string | null): string {
@@ -138,12 +141,15 @@ ${rows}
 /**
  * Triggers download of LaTeX Rebuttal Table (.tex)
  */
-export function exportLatexRebuttalTable(report: ReviewReport) {
+export async function exportLatexRebuttalTable(report: ReviewReport) {
   const isFullReport = !("fitScore" in report);
-  if (!isFullReport) return;
+  if (!isFullReport) return { success: false };
   const filename = `ManuView_Rebuttal_Matrix_${sanitizeFilename(report.title)}.tex`;
   const latexContent = generateLatexRebuttal(report as FullReviewReport);
-  triggerDownload(latexContent, filename, "application/x-latex;charset=utf-8");
+  return await triggerDownload(latexContent, filename, "application/x-latex;charset=utf-8", [
+    { name: "LaTeX Source Document", extensions: ["tex"] },
+    { name: "All Files", extensions: ["*"] },
+  ]);
 }
 
 /**
@@ -190,10 +196,13 @@ export function generateBibTeX(report: ReviewReport): string {
 /**
  * Triggers download of BibTeX file (.bib)
  */
-export function exportBibTeX(report: ReviewReport) {
+export async function exportBibTeX(report: ReviewReport) {
   const filename = `ManuView_Bibliography_${sanitizeFilename(report.title)}.bib`;
   const bibtexContent = generateBibTeX(report);
-  triggerDownload(bibtexContent, filename, "application/x-bibtex;charset=utf-8");
+  return await triggerDownload(bibtexContent, filename, "application/x-bibtex;charset=utf-8", [
+    { name: "BibTeX Bibliography", extensions: ["bib"] },
+    { name: "All Files", extensions: ["*"] },
+  ]);
 }
 
 // -----------------------------------------------------------------------------
