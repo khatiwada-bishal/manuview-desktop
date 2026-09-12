@@ -70,6 +70,8 @@ export async function openExternalLink(url: string): Promise<void> {
   }
 }
 
+let isSavingDesktop = false;
+
 /**
  * Saves a file using the native desktop file save dialog if in Tauri,
  * or standard browser anchor download if in web preview.
@@ -79,7 +81,13 @@ export async function saveFileDesktop(
   defaultFilename: string,
   filters?: { name: string; extensions: string[] }[]
 ): Promise<{ success: boolean; filePath?: string; error?: string }> {
+  // Prevent concurrent save operations
+  if (isSavingDesktop) {
+    return { success: false, error: "Save operation already in progress" };
+  }
+
   if (isDesktopApp()) {
+    isSavingDesktop = true;
     try {
       const { save } = await import("@tauri-apps/plugin-dialog");
       const filePath = await save({
@@ -109,24 +117,36 @@ export async function saveFileDesktop(
         await writeTextFile(filePath, content);
         return { success: true, filePath };
       } catch (fsErr) {
-        console.warn("plugin-fs writeTextFile failed:", fsErr);
+        console.error("plugin-fs writeTextFile failed:", fsErr);
       }
+
+      return { success: false, error: "Failed to write file to selected path" };
     } catch (err) {
-      console.error("Native save dialog failed, falling back to browser download:", err);
+      console.error("Native save dialog error:", err);
+      return { success: false, error: String(err) };
+    } finally {
+      isSavingDesktop = false;
     }
   }
 
-  // Fallback for web preview mode (and browser environments)
+  // Web preview mode (only executed in standard browser, never in desktop app)
   if (typeof window !== "undefined") {
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = defaultFilename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    try {
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = defaultFilename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      return { success: true, filePath: defaultFilename };
+    } catch (blobErr) {
+      console.error("Browser blob download failed:", blobErr);
+      return { success: false, error: String(blobErr) };
+    }
   }
-  return { success: true, filePath: defaultFilename };
+
+  return { success: false, error: "No window context" };
 }
