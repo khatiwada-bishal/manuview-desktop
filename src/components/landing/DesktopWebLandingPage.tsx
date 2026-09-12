@@ -208,6 +208,8 @@ export function DesktopWebLandingPage({
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformOption>(PLATFORMS[0]);
   const [downloadDropdownOpen, setDownloadDropdownOpen] = useState(false);
   const downloadDropdownRef = useRef<HTMLDivElement>(null);
+  const [navDownloadDropdownOpen, setNavDownloadDropdownOpen] = useState(false);
+  const navDownloadDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const detected = detectPlatform();
@@ -216,7 +218,7 @@ export function DesktopWebLandingPage({
     setSelectedPlatform(matched);
   }, []);
 
-  // Close dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (
@@ -224,6 +226,12 @@ export function DesktopWebLandingPage({
         !downloadDropdownRef.current.contains(e.target as Node)
       ) {
         setDownloadDropdownOpen(false);
+      }
+      if (
+        navDownloadDropdownRef.current &&
+        !navDownloadDropdownRef.current.contains(e.target as Node)
+      ) {
+        setNavDownloadDropdownOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -276,74 +284,182 @@ export function DesktopWebLandingPage({
       {/* ------------------------------------------------------------- */}
       {/* 0. STICKY TOP NAVBAR / HEADER (Exact match with screenshot)    */}
       {/* ------------------------------------------------------------- */}
-      <header className="sticky top-0 z-50 w-full border-b border-black/[0.06] dark:border-white/[0.08] bg-white/80 dark:bg-[#080B11]/85 backdrop-blur-xl transition-colors duration-200">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
-          {/* Brand Identity: Circular Blue 'M' Badge + ManuView */}
+      {/* ------------------------------------------------------------- */}
+      {/* 0. STICKY TOP NAVBAR / HEADER (Full width, matches app top bar)*/}
+      {/* ------------------------------------------------------------- */}
+      <header className="sticky top-0 z-50 w-full h-[52px] border-b border-black/[0.06] dark:border-white/[0.08] bg-white/85 dark:bg-[#080B11]/85 backdrop-blur-xl liquid-glass-header flex items-center justify-between px-3 sm:px-4 select-none transition-colors duration-150">
+        {/* Brand Identity: Black 'M' square badge + ManuView Desktop + Subtitle */}
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="flex items-center gap-2.5 min-w-0 text-left hover:opacity-85 transition cursor-pointer"
+          title="Back to Top"
+        >
+          <div className="w-7 h-7 rounded-lg bg-[#0F172A] dark:bg-white text-white dark:text-[#0F172A] flex items-center justify-center font-serif font-bold text-xs shadow-xs shrink-0">
+            M
+          </div>
+          <div className="truncate min-w-0">
+            <div className="font-bold text-xs sm:text-sm text-[#0F172A] dark:text-white tracking-tight leading-tight">
+              ManuView Desktop
+            </div>
+            <div className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium leading-tight">
+              Research &amp; Review Suite
+            </div>
+          </div>
+        </button>
+
+        {/* Right Action Controls: Dark/Light Mode, GitHub Link, Download Button, Launch App Button */}
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          {/* Dark / Light Mode Toggle Button */}
           <button
             type="button"
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="flex items-center gap-2 text-neutral-900 dark:text-neutral-100 font-bold tracking-tight group cursor-pointer"
+            onClick={(e) => toggleTheme(e)}
+            title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            aria-label="Toggle theme mode"
+            className="w-8 h-8 flex items-center justify-center rounded-lg border border-black/10 dark:border-white/15 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors duration-300 cursor-pointer active:scale-95 group relative overflow-hidden"
           >
-            <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-blue-600 text-white font-serif font-bold text-xs sm:text-sm shadow-xs group-hover:scale-105 transition-transform duration-200">
-              M
+            <div className="relative w-4 h-4 flex items-center justify-center pointer-events-none">
+              <Sun
+                className={`w-3.5 h-3.5 text-amber-400 absolute transition-all duration-700 ease-[cubic-bezier(0.4,0,0.15,1)] transform ${
+                  theme === "dark"
+                    ? "rotate-0 scale-100 opacity-100"
+                    : "rotate-90 scale-0 opacity-0"
+                } group-hover:rotate-45`}
+              />
+              <Moon
+                className={`w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400 absolute transition-all duration-700 ease-[cubic-bezier(0.4,0,0.15,1)] transform ${
+                  theme === "dark"
+                    ? "-rotate-90 scale-0 opacity-0"
+                    : "rotate-0 scale-100 opacity-100"
+                } group-hover:-rotate-12`}
+              />
             </div>
-            <span className="font-bold text-base sm:text-lg tracking-tight text-neutral-900 dark:text-white">
-              Manu<span className="text-blue-600 dark:text-blue-400">View</span>
-            </span>
           </button>
 
-          {/* Right Action Controls: Dark/Light Mode, GitHub Link, Launch App Button */}
-          <div className="flex items-center gap-2 sm:gap-2.5">
-            {/* Dark / Light Mode Toggle Button with Wave Transition */}
-            <button
-              type="button"
-              onClick={(e) => toggleTheme(e)}
-              title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
-              aria-label="Toggle theme mode"
-              className="w-8 h-8 flex items-center justify-center rounded-lg border border-black/10 dark:border-white/15 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors duration-300 cursor-pointer active:scale-95 group relative overflow-hidden"
-            >
-              <div className="relative w-4 h-4 flex items-center justify-center pointer-events-none">
-                <Sun
-                  className={`w-3.5 h-3.5 text-amber-400 absolute transition-all duration-700 ease-[cubic-bezier(0.4,0,0.15,1)] transform ${
-                    theme === "dark"
-                      ? "rotate-0 scale-100 opacity-100"
-                      : "rotate-90 scale-0 opacity-0"
-                  } group-hover:rotate-45`}
+          {/* GitHub Link Button */}
+          <button
+            type="button"
+            onClick={() =>
+              openExternalLink("https://github.com/khatiwada-bishal/manuview-desktop")
+            }
+            className="w-8 h-8 flex items-center justify-center rounded-lg border border-black/10 dark:border-white/15 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition cursor-pointer"
+            title="View on GitHub"
+          >
+            <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+            </svg>
+          </button>
+
+          {/* Download for OS Split Button (Matching Web App Header) */}
+          <div className="relative inline-flex items-center" ref={navDownloadDropdownRef}>
+            <div className="inline-flex items-center rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-xs transition-all duration-200 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => handleDownload(selectedPlatform)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 font-semibold text-xs cursor-pointer hover:bg-blue-700/40 transition active:scale-[0.98]"
+                title={`Download ManuView for ${selectedPlatform.label}`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-white" />
+                <span className="hidden sm:inline">Download for {selectedPlatform.label}</span>
+                <span className="sm:hidden">Download</span>
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setNavDownloadDropdownOpen((prev) => !prev);
+                }}
+                aria-label="Other operating system downloads"
+                className="px-2 py-1.5 border-l border-white/20 hover:bg-blue-700/50 cursor-pointer transition flex items-center justify-center"
+                title="Choose other operating system (MacOS Intel, Windows, Linux)"
+              >
+                <ChevronDown
+                  className={`w-3.5 h-3.5 text-white transition-transform duration-200 ${
+                    navDownloadDropdownOpen ? "rotate-180" : ""
+                  }`}
                 />
-                <Moon
-                  className={`w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400 absolute transition-all duration-700 ease-[cubic-bezier(0.4,0,0.15,1)] transform ${
-                    theme === "dark"
-                      ? "-rotate-90 scale-0 opacity-0"
-                      : "rotate-0 scale-100 opacity-100"
-                  } group-hover:-rotate-12`}
-                />
+              </button>
+            </div>
+
+            {/* Dropdown Menu for Other Operating Systems */}
+            {navDownloadDropdownOpen && (
+              <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl liquid-glass-modal bg-white dark:bg-[#0f172a] p-2 shadow-2xl border border-black/10 dark:border-white/10 z-50 animate-fade-in backdrop-blur-2xl">
+                <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-neutral-400 border-b border-black/5 dark:border-white/10 flex items-center justify-between">
+                  <span>Operating Systems</span>
+                  <span className="font-mono text-[9px] text-emerald-600 dark:text-emerald-400">
+                    Desktop v0.1.0
+                  </span>
+                </div>
+                <div className="space-y-1 mt-1.5">
+                  {PLATFORMS.map((plat) => {
+                    const isCurrentSelected = plat.id === selectedPlatform.id;
+                    const isDetected = plat.id === detectedPlatformId;
+                    return (
+                      <button
+                        key={plat.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedPlatform(plat);
+                          setNavDownloadDropdownOpen(false);
+                          handleDownload(plat);
+                        }}
+                        className={`w-full text-left p-2 rounded-xl transition flex items-center justify-between group cursor-pointer ${
+                          isCurrentSelected
+                            ? "bg-blue-500/10 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 font-semibold"
+                            : "hover:bg-black/5 dark:hover:bg-white/10 text-neutral-800 dark:text-neutral-200"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div
+                            className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                              plat.id.startsWith("mac")
+                                ? "bg-neutral-100 dark:bg-white/10 text-neutral-800 dark:text-white"
+                                : plat.id === "windows"
+                                ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                                : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                            }`}
+                          >
+                            {plat.id.startsWith("mac") ? (
+                              <AppleIcon className="w-3.5 h-3.5 fill-current" />
+                            ) : plat.id === "windows" ? (
+                              <WindowsIcon className="w-3.5 h-3.5 fill-current" />
+                            ) : (
+                              <LinuxIcon className="w-3.5 h-3.5 fill-current" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-semibold truncate flex items-center gap-1">
+                              <span>{plat.label}</span>
+                              {isDetected && (
+                                <span className="text-[8px] px-1 py-0.2 rounded font-normal bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                  Detected
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">
+                              {plat.sublabel}
+                            </div>
+                          </div>
+                        </div>
+                        <Download className="w-3 h-3 text-neutral-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 shrink-0 ml-1.5" />
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </button>
-
-            {/* GitHub Link Button */}
-            <button
-              type="button"
-              onClick={() =>
-                openExternalLink("https://github.com/khatiwada-bishal/manuview-desktop")
-              }
-              className="w-8 h-8 flex items-center justify-center rounded-lg border border-black/10 dark:border-white/15 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition cursor-pointer"
-              title="View on GitHub"
-            >
-              <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
-              </svg>
-            </button>
-
-            {/* Launch App Primary Button */}
-            <button
-              type="button"
-              onClick={onLaunchApp}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-semibold shadow-xs transition active:scale-[0.98] cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-white" />
-              <span>Launch App</span>
-            </button>
+            )}
           </div>
+
+          {/* Launch App Button */}
+          <button
+            type="button"
+            onClick={onLaunchApp}
+            className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-1.5 rounded-xl border border-black/10 dark:border-white/15 bg-black/[0.04] dark:bg-white/[0.08] hover:bg-black/[0.08] dark:hover:bg-white/[0.14] text-neutral-900 dark:text-white text-xs font-semibold shadow-xs transition active:scale-[0.98] cursor-pointer"
+            title="Launch In-Browser Application"
+          >
+            <span>Launch App</span>
+            <ArrowRight className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400" />
+          </button>
         </div>
       </header>
 
