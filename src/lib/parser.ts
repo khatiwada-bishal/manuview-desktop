@@ -1,6 +1,6 @@
 import JSZip from "jszip";
 import * as mammoth from "mammoth";
-import { ParsedManuscript, DocumentClassification, DocumentCategory } from "./types";
+import { ParsedManuscript, DocumentClassification, DocumentCategory, SectionProvenance } from "./types";
 import { extractReferencesFromText } from "./utils";
 
 /**
@@ -149,6 +149,7 @@ export async function extractTextFromFile(file: File): Promise<string> {
   return await file.text();
 }
 
+
 export function classifyDocument(rawText: string, filename?: string): DocumentClassification {
   const clean = rawText.trim();
   const wordCount = clean.split(/\s+/).filter(Boolean).length;
@@ -156,25 +157,43 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
   const ext = filename ? filename.split('.').pop()?.toLowerCase() : '';
 
   // =========================================================================
-  // 1. Very short or unstructured text
+  // 1. Very short, fragmented, or list-dominated text (Shopping lists, To-Do, Notes)
   // =========================================================================
-  const isShortOrFragment = wordCount < 45;
-  const shoppingListKeywords = ['buy', 'milk', 'eggs', 'bread', 'apples', 'groceries', 'store', 'tomorrow', 'meeting', 'reminder'];
+  const rawLines = clean.split('\n').map(l => l.trim()).filter(Boolean);
+  const isShortOrFragment = wordCount < 50;
+  
+  const shoppingListKeywords = [
+    'buy', 'milk', 'eggs', 'bread', 'apples', 'groceries', 'store', 'tomorrow', 
+    'meeting', 'reminder', 'supermarket', 'todo', 'to-do', 'shopping', 'ingredient', 
+    'ingredients', 'recipe', 'chicken', 'potatoes', 'cheese', 'coffee', 'bananas', 
+    'hardware', 'screws', 'inventory', 'supplies', 'pack'
+  ];
   const matchedShopping = shoppingListKeywords.filter(k => lower.includes(k)).length;
 
-  if (matchedShopping >= 3 || (isShortOrFragment && !/(?:doi:\s*10\.|p\s*[<=]\s*0\.\d+|abstract)/i.test(clean))) {
+  const isBulletOrNumbered = (line: string) => /^[-*•–—\d+\.)\]]/.test(line);
+  const bulletLines = rawLines.filter(isBulletOrNumbered);
+  const shortLines = rawLines.filter(l => l.split(/\s+/).length <= 7);
+  const isListDominated = rawLines.length >= 4 && (
+    bulletLines.length / rawLines.length > 0.55 || 
+    shortLines.length / rawLines.length > 0.70
+  );
+  const hasAcademicStructure = /(?:abstract|introduction|materials and methods|methodology|results|discussion|conclusion|references\s*:|doi:\s*10\.)/i.test(clean);
+
+  if ((matchedShopping >= 2 && !hasAcademicStructure) || 
+      (isListDominated && !hasAcademicStructure) || 
+      (isShortOrFragment && !/(?:doi:\s*10\.|p\s*[<=]\s*0\.\d+|abstract)/i.test(clean))) {
     return {
       category: 'random_unstructured',
       categoryLabel: 'Unstructured / Random Text',
       isAcademicManuscript: false,
       confidence: 0.96,
       detectedFeatures: [
-        `Word count is very low (${wordCount} words)`,
+        isListDominated ? 'Bulleted / itemized list structure detected' : `Word count is very low (${wordCount} words)`,
         'No scholarly structure (Title, Abstract, Methods, Results, or References)',
         'Informal or fragmented phrasing'
       ],
       salutation: 'Attention: Unstructured or Non-Academic Text Detected',
-      advisoryMessage: 'The submitted content consists of unstructured text, casual notes, or brief fragments rather than a scholarly manuscript. Academic peer review requires a coherent research narrative: a title, research context (abstract/introduction), formal methodology, empirical findings, and references.',
+      advisoryMessage: 'The submitted content consists of unstructured text, shopping/to-do lists, casual notes, or brief fragments rather than a scholarly manuscript. Academic peer review requires a coherent research narrative: a title, research context (abstract/introduction), formal methodology, empirical findings, and references.',
       customGuidance: "To see how ManuView evaluates a genuine research paper, click 'Load Sample Preprint' above or upload a complete .docx or .pdf manuscript with Title, Abstract, Methods, and References."
     };
   }
@@ -184,9 +203,16 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
   // Evaluated BEFORE academic papers so academic CVs (which list publications and universities)
   // are never misclassified as journal manuscripts!
   // =========================================================================
-  const resumeHeadingRegex = /(?:\bcurriculum\s+vitae\b|\bresume\b|work\s+experience|professional\s+experience|employment\s+history|education\s*(?::|\n)|technical\s+skills|certifications\s*(?::|\n)|honors\s*(&|and)\s*awards|references\s+available\s+upon\s+request)/i;
-  const contactPatternRegex = /(?:email\s*:|phone\s*:|linkedin\.com\/|github\.com\/|\bgpa\s*:\s*\d)/i;
-  const isResume = resumeHeadingRegex.test(clean) && (contactPatternRegex.test(clean) || lower.includes('curriculum vitae') || lower.includes('resume') || /curriculum\s+vitae/i.test(clean));
+  const resumeHeadingRegex = /(?:\bcurriculum\s+vitae\b|\bresume\b|work\s+experience|professional\s+experience|employment\s+history|education\s*(?::|\n)|technical\s+skills|skills\s*&?\s*expertise|certifications\s*(?::|\n)|honors\s*(&|and)\s*awards|teaching\s+experience|references\s+available\s+upon\s+request)/i;
+  const contactPatternRegex = /(?:email\s*:|phone\s*:|linkedin\.com\/|github\.com\/|\bgpa\s*:\s*\d|\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b)/i;
+  
+  const cvHeadingMatches = (clean.match(/(?:\bcurriculum\s+vitae\b|\bresume\b|work\s+experience|professional\s+experience|employment\s+history|education\s*(?::|\n)|technical\s+skills|skills\s*&?\s*expertise|teaching\s+experience|honors\s*(&|and)\s*awards|grants\s+and\s+fellowships)/gi) || []).length;
+
+  const isResume = 
+    lower.includes('curriculum vitae') || 
+    /^\s*resume\s*$/im.test(clean) ||
+    (cvHeadingMatches >= 2 && contactPatternRegex.test(clean)) ||
+    (resumeHeadingRegex.test(clean) && contactPatternRegex.test(clean) && !hasAcademicStructure);
 
   if (isResume) {
     return {
@@ -444,6 +470,14 @@ export function parseManuscriptText(rawText: string, filename?: string): ParsedM
 
   // 4. Robust Academic Section Extraction
   const sections: ParsedManuscript["sections"] = {};
+  const sectionProvenance: SectionProvenance = {
+    methodsInferred: false,
+    resultsInferred: false,
+    methodsMissing: false,
+    resultsMissing: false,
+    introductionInferred: false,
+    discussionInferred: false,
+  };
 
   // Normalize text for segmenting
   const introRegex =
@@ -483,9 +517,8 @@ export function parseManuscriptText(rawText: string, filename?: string): ParsedM
   }
 
   // Fallback intelligent structural segmenter if explicit headings are absent or missing
-  // This guarantees that the LLM is NEVER starved of core methodology or results!
+  // This guarantees that the LLM is NEVER starved of core methodology or results, but explicitly tags provenance!
   // ONLY run for confirmed academic manuscripts to avoid carving CVs/resumes/code into fake methods.
-  const totalLen = rawText.length;
   if (classification.isAcademicManuscript && (!sections.methods || !sections.results)) {
     // Remove references block to isolate actual manuscript body
     const bodyText = rawText.replace(/(?:References|Bibliography)[\s\S]*$/i, "").trim();
@@ -494,23 +527,34 @@ export function parseManuscriptText(rawText: string, filename?: string): ParsedM
     if (bodyLen > 1000) {
       if (!sections.introduction) {
         sections.introduction = bodyText.slice(0, Math.floor(bodyLen * 0.22)).slice(0, 15000);
+        sectionProvenance.introductionInferred = true;
       }
       if (!sections.methods) {
         sections.methods = bodyText
           .slice(Math.floor(bodyLen * 0.20), Math.floor(bodyLen * 0.55))
           .slice(0, 25000);
+        sectionProvenance.methodsInferred = true;
       }
       if (!sections.results) {
         sections.results = bodyText
           .slice(Math.floor(bodyLen * 0.50), Math.floor(bodyLen * 0.82))
           .slice(0, 25000);
+        sectionProvenance.resultsInferred = true;
       }
       if (!sections.discussion) {
         sections.discussion = bodyText
           .slice(Math.floor(bodyLen * 0.80))
           .slice(0, 15000);
+        sectionProvenance.discussionInferred = true;
       }
     }
+  }
+
+  if (!sections.methods) {
+    sectionProvenance.methodsMissing = true;
+  }
+  if (!sections.results) {
+    sectionProvenance.resultsMissing = true;
   }
 
   // 5. Extract Empirical Cues from Document
@@ -600,12 +644,28 @@ export function parseManuscriptText(rawText: string, filename?: string): ParsedM
   if (lines.length > 1) {
     const authorLineCandidate = lines[1];
     if (
-      authorLineCandidate.length > 5 &&
-      authorLineCandidate.length < 120 &&
+      authorLineCandidate.length > 3 &&
+      authorLineCandidate.length < 160 &&
       !skipHeaderRegex.test(authorLineCandidate) &&
-      !/(?:abstract|introduction|doi|keywords)/i.test(authorLineCandidate)
+      !/(?:abstract|introduction|doi|keywords|http|university|institute|department)/i.test(authorLineCandidate)
     ) {
-      authors.push(authorLineCandidate);
+      const rawTokens = authorLineCandidate
+        .replace(/\band\b/gi, ",")
+        .replace(/&/g, ",")
+        .split(/[,;]/);
+
+      for (const token of rawTokens) {
+        const cleaned = token
+          .replace(/[0-9*†‡§]+/g, "")
+          .replace(/\b(?:ph\.?d|m\.?d|dr|prof)\b/gi, "")
+          .trim();
+        if (cleaned.length >= 2 && cleaned.split(/\s+/).length <= 4) {
+          authors.push(cleaned);
+        }
+      }
+      if (authors.length === 0 && authorLineCandidate.length < 80) {
+        authors.push(authorLineCandidate.trim());
+      }
     }
   }
 
@@ -621,6 +681,7 @@ export function parseManuscriptText(rawText: string, filename?: string): ParsedM
     authors,
     wordCount,
     sections,
+    sectionProvenance,
     rawText,
     references,
     classification,

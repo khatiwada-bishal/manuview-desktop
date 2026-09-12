@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { Layers, Download, CheckCircle2, AlertCircle } from "lucide-react";
+import { Layers, Download, CheckCircle2, AlertCircle, RefreshCw, FileSpreadsheet } from "lucide-react";
+import { saveFileDesktop } from "@/lib/desktop";
 
 export function DesktopPrismaView() {
   const [dbIdentified, setDbIdentified] = useState(1420);
@@ -32,17 +33,45 @@ export function DesktopPrismaView() {
   const hasMathDiscrepancy =
     screeningDiff !== 0 || soughtDiff !== 0 || assessedDiff !== 0 || includedDiff !== 0;
 
-  const handleDownloadSVG = () => {
+  const handleAutoReconcile = () => {
+    const expScr = totalIdentified - Number(duplicatesRemoved);
+    setScreened(expScr);
+    const expSought = expScr - Number(screenExcluded);
+    setSought(expSought);
+    const expAssessed = expSought - Number(notRetrieved);
+    setAssessed(expAssessed);
+    const expIncluded = expAssessed - Number(excludedEligibility);
+    setIncluded(expIncluded);
+  };
+
+  const handleDownloadSVG = async () => {
     const svgElement = document.getElementById("desktop-prisma-svg");
     if (!svgElement) return;
     const svgData = new XMLSerializer().serializeToString(svgElement);
-    const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "PRISMA_2020_flow_diagram.svg";
-    link.click();
-    URL.revokeObjectURL(url);
+    await saveFileDesktop(svgData, "PRISMA_2020_flow_diagram.svg", [
+      { name: "SVG Vector Image", extensions: ["svg"] },
+      { name: "All Files", extensions: ["*"] },
+    ]);
+  };
+
+  const handleDownloadCSV = async () => {
+    const csvContent = `PRISMA 2020 Flow Diagram Phase,Count,Notes
+Database Identification,${dbIdentified},"Records identified from databases"
+Register Identification,${registersIdentified},"Records identified from registers"
+Total Identified,${totalIdentified},"Sum of databases and registers"
+Duplicates Removed,${duplicatesRemoved},"Duplicate records removed before screening"
+Records Screened,${screened},"Records screened for eligibility"
+Records Excluded,${screenExcluded},"Excluded based on title/abstract screening"
+Reports Sought for Retrieval,${sought},"Full-text reports sought for retrieval"
+Reports Not Retrieved,${notRetrieved},"Full-text reports not retrievable"
+Reports Assessed for Eligibility,${assessed},"Full-text reports assessed"
+Reports Excluded (Eligibility),${excludedEligibility},"Excluded with specific reasons"
+Studies Included in Review,${included},"Final included synthesis studies"
+`;
+    await saveFileDesktop(csvContent, "PRISMA_2020_summary.csv", [
+      { name: "CSV Spreadsheet", extensions: ["csv"] },
+      { name: "All Files", extensions: ["*"] },
+    ]);
   };
 
   return (
@@ -59,28 +88,48 @@ export function DesktopPrismaView() {
               Systematic Review Flow Diagram Generator
             </h1>
             <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 max-w-2xl">
-              Calibrate your study identification, screening, and eligibility numbers. Reconciles stage arithmetic automatically and exports publication-ready vector SVGs.
+              Calibrate your study identification, screening, and eligibility numbers. Reconciles stage arithmetic automatically and exports publication-ready vector SVGs and CSV matrices.
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleDownloadSVG}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl liquid-glass-btn-primary text-white text-xs font-semibold tracking-wide transition cursor-pointer shadow-xs shrink-0 self-start sm:self-auto"
-          >
-            <Download className="w-4 h-4" />
-            <span>Export SVG Vector</span>
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={handleDownloadCSV}
+              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl liquid-glass-btn-secondary text-xs font-semibold tracking-wide transition cursor-pointer"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Export CSV</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadSVG}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl liquid-glass-btn-primary text-white text-xs font-semibold tracking-wide transition cursor-pointer shadow-xs"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Export SVG Vector</span>
+            </button>
+          </div>
         </div>
 
         {/* Arithmetic Status Banner */}
         {hasMathDiscrepancy ? (
-          <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-900 dark:text-amber-300 text-xs backdrop-blur-xs">
-            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-            <div>
-              <span className="font-bold">Arithmetic Discrepancy Detected: </span>
-              Your input counts do not reconcile between identification and screening stages. Check exclusions to ensure numbers balance.
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-900 dark:text-amber-300 text-xs backdrop-blur-xs">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold">Arithmetic Discrepancy Detected: </span>
+                Your input counts do not reconcile between identification and screening stages. Check exclusions to ensure numbers balance.
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={handleAutoReconcile}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs shrink-0 self-start sm:self-auto transition cursor-pointer"
+            >
+              <RefreshCw className="w-3 h-3" />
+              <span>Auto-Reconcile</span>
+            </button>
           </div>
         ) : (
           <div className="flex items-center gap-2 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-800 dark:text-emerald-300 text-xs backdrop-blur-xs">

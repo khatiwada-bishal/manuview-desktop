@@ -12,6 +12,7 @@ export interface DimensionScore {
   verdict: string;
   strengths: string[];
   vulnerabilities: string[];
+  source?: 'llm' | 'heuristic';
 }
 
 export type PriorityLevel = 'A' | 'B' | 'C';
@@ -27,6 +28,7 @@ export interface PriorityIssue {
   reviewerQuote: string; // How a reviewer or editor would formulate this critique
   actionableFix: string; // Specific concrete step to resolve before submission
   rebuttalStrategy?: string; // Point-by-point author rebuttal framing for journal response letter
+  source?: 'llm' | 'heuristic' | 'crossref';
 }
 
 export interface ReviewerPersonaFeedback {
@@ -44,28 +46,40 @@ export interface ReviewerPersonaFeedback {
   mustAddressItems: string[];
   evidenceAnchors?: string[];
   counterArguments?: string[];
+  source?: 'llm' | 'heuristic';
 }
+
+export type ReferenceStatus = 'valid' | 'retracted' | 'expression_of_concern' | 'unresolvable' | 'unchecked';
 
 export interface ReferenceVerification {
   raw: string;
   doi?: string;
   title?: string;
   authors?: string[];
+  familyNames?: string[];
+  matchConfidence?: number;
   year?: number;
   journal?: string;
-  status: 'valid' | 'retracted' | 'unresolvable' | 'expression_of_concern';
+  status: ReferenceStatus;
   isRetracted: boolean;
   retractionDetails?: string;
   crossrefUrl?: string;
+  resolutionMethod?: 'doi' | 'bibliographic_search' | 'unresolved';
 }
 
 export interface CitationIntegritySummary {
   totalReferences: number;
+  sampledCount: number;
+  checkedCount: number;
+  coverageNote: string;
   verifiedCount: number;
-  unresolvableCount: number; // Potential AI hallucination
+  unresolvableCount: number; // Potential AI hallucination (confirmed 404)
+  uncheckedCount: number; // References without DOI or lookup offline/rate-limited
   retractedCount: number;
-  selfCitationRatio: number;
-  recencyProfile: {
+  expressionOfConcernCount?: number;
+  retractionCheckAvailable: boolean; // false if Crossref/network failed or offline
+  selfCitationRatio?: number; // Omitted if authors cannot be matched or checkedCount < 10
+  recencyProfile?: {
     last5YearsPercent: number;
     olderThan5YearsPercent: number;
   };
@@ -109,6 +123,15 @@ export interface ManuscriptSection {
   content: string;
 }
 
+export interface SectionProvenance {
+  methodsInferred?: boolean;
+  resultsInferred?: boolean;
+  methodsMissing?: boolean;
+  resultsMissing?: boolean;
+  introductionInferred?: boolean;
+  discussionInferred?: boolean;
+}
+
 export interface ParsedManuscript {
   title: string;
   abstract: string;
@@ -121,6 +144,7 @@ export interface ParsedManuscript {
     discussion?: string;
     conclusion?: string;
   };
+  sectionProvenance?: SectionProvenance;
   rawText: string;
   references: string[];
   classification?: DocumentClassification;
@@ -135,12 +159,34 @@ export interface ParsedManuscript {
   };
 }
 
+export interface ReportingGuidelineItem {
+  itemNumber: number;
+  name: string;
+  section: string;
+  description?: string;
+  status: 'evidenced' | 'partial' | 'absent';
+  evidenceExcerpt?: string;
+  evidenceSection?: string;
+  evidenceOffset?: number;
+  recommendation?: string;
+}
+
 export interface ReportingGuidelineCheck {
   guidelineName: string; // e.g. STROBE, CONSORT, PRISMA, ARRIVE, Econometric Rigor
   standardType: string; // e.g. "Observational / Customs Microdata", "Randomized Controlled Trial", "Nonlinear Model"
   scorePercent: number; // 0 - 100
+  totalItems?: number;
+  evidencedCount?: number;
+  partialCount?: number;
+  absentCount?: number;
+  itemSetScope?: 'full' | 'core_subset';
+  itemSetSize?: number;
+  standardVersion?: string;
+  standardUrl?: string;
+  items?: ReportingGuidelineItem[];
   compliantItems: string[];
   missingOrPartialItems: string[];
+  additionalReviewerObservations?: string[];
 }
 
 export interface PublishedArticleDetails {
@@ -175,6 +221,8 @@ export interface FullReviewReport {
   journalRecommendations: JournalRecommendation[];
   citationIntegrity: CitationIntegritySummary;
   reportingGuideline?: ReportingGuidelineCheck;
+  executionMode?: 'llm_synthesized' | 'partial_llm' | 'heuristic_offline';
+  llmCallError?: string;
 }
 
 export interface BriefJournalFitReport {
@@ -185,15 +233,23 @@ export interface BriefJournalFitReport {
   abstract: string;
   keywords: string[];
   targetJournal: string;
-  fitScore: number; // 0 to 100
-  verdict: 'Strong Editorial Fit' | 'Moderate Scope Match' | 'Scope Mismatch / High Desk-Reject Hazard';
-  verdictColor: 'green' | 'amber' | 'red';
+  fitScore?: number; // 0 to 100 (omitted when not assessed)
+  verdict:
+    | 'Strong Editorial Fit'
+    | 'Moderate Scope Match'
+    | 'Scope Mismatch / High Desk-Reject Hazard'
+    | 'Not Assessed — journal profile unavailable';
+  verdictColor: 'green' | 'amber' | 'red' | 'grey';
+  scopeAssessment: {
+    method: 'curated_catalog' | 'openalex_profile' | 'llm_only' | 'unavailable';
+    reason?: string;
+  };
   summary: string;
   dimensions: {
-    domainMatch: { score: number; feedback: string };
-    noveltySignificance: { score: number; feedback: string };
-    readershipAlignment: { score: number; feedback: string };
-    keywordRelevance: { score: number; feedback: string };
+    domainMatch: { score?: number; feedback: string };
+    noveltySignificance: { score?: number; feedback: string };
+    readershipAlignment: { score?: number; feedback: string };
+    keywordRelevance: { score?: number; feedback: string };
   };
   keyHighlights: string[];
   deskRejectHazards: string[];
@@ -205,6 +261,12 @@ export interface BriefJournalFitReport {
     tier: 'Reach' | 'Realistic' | 'Safe Fallback';
     matchReason: string;
   }[];
+  openAlexMetrics?: {
+    twoYearMeanCitedness?: number;
+    hIndex?: number;
+    matchedConcepts?: string[];
+    sourceId?: string;
+  };
 }
 
 export type ReviewReport = FullReviewReport | BriefJournalFitReport;

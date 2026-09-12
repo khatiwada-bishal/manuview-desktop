@@ -32,7 +32,7 @@ async function triggerDownload(
  * interactive HTML report that opens in any browser offline.
  */
 export async function exportInteractiveHtmlReport(report: ReviewReport) {
-  const isFullReport = !("fitScore" in report);
+  const isFullReport = report.mode === "full" || !("fitScore" in report);
   const filename = `ManuView_Interactive_Report_${sanitizeFilename(report.title)}.html`;
   const htmlContent = isFullReport
     ? generateFullReportHtml(report as FullReviewReport)
@@ -48,7 +48,7 @@ export async function exportInteractiveHtmlReport(report: ReviewReport) {
  * Generates and triggers download of a native-compatible Microsoft Word document (.doc/.docx).
  */
 export async function exportWordDocReport(report: ReviewReport) {
-  const isFullReport = !("fitScore" in report);
+  const isFullReport = report.mode === "full" || !("fitScore" in report);
   const filename = `ManuView_Diagnostic_Report_${sanitizeFilename(report.title)}.doc`;
   const wordContent = isFullReport
     ? generateFullReportWord(report as FullReviewReport)
@@ -64,8 +64,8 @@ function escapeLatex(text?: string | null): string {
   if (!text) return "";
   return String(text)
     .replace(/\\/g, "\\textbackslash{}")
-    .replace(/[{}]/g, "\\$0")
-    .replace(/[#$%&_~^]/g, "\\$0");
+    .replace(/[{}]/g, "\\$&")
+    .replace(/[#$%&_~^]/g, "\\$&");
 }
 
 /**
@@ -142,7 +142,7 @@ ${rows}
  * Triggers download of LaTeX Rebuttal Table (.tex)
  */
 export async function exportLatexRebuttalTable(report: ReviewReport) {
-  const isFullReport = !("fitScore" in report);
+  const isFullReport = report.mode === "full" || !("fitScore" in report);
   if (!isFullReport) return { success: false };
   const filename = `ManuView_Rebuttal_Matrix_${sanitizeFilename(report.title)}.tex`;
   const latexContent = generateLatexRebuttal(report as FullReviewReport);
@@ -156,7 +156,7 @@ export async function exportLatexRebuttalTable(report: ReviewReport) {
  * Generates a clean BibTeX (.bib) file containing all verified references with valid DOIs
  */
 export function generateBibTeX(report: ReviewReport): string {
-  const isFullReport = !("fitScore" in report);
+  const isFullReport = report.mode === "full";
   if (!isFullReport) return "";
   const full = report as FullReviewReport;
   const references = full.citationIntegrity?.references || [];
@@ -174,20 +174,27 @@ export function generateBibTeX(report: ReviewReport): string {
   references.forEach((ref, index) => {
     const firstAuthor = (ref.authors && ref.authors[0]) 
       ? ref.authors[0].split(/\s+/).pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") 
-      : "author";
-    const year = ref.year || "2024";
-    const key = `${firstAuthor}${year}_ref${index + 1}`;
+      : "ref";
+    const yearStr = ref.year ? String(ref.year) : "";
+    const key = `${firstAuthor || "ref"}${yearStr ? `_${yearStr}` : ""}_${index + 1}`;
 
-    const authorList = (ref.authors && ref.authors.length > 0)
-      ? ref.authors.join(" and ")
-      : "Contributing Authors";
-
-    bibtex += `@article{${key},
-  title     = {${(ref.title || ref.raw || "Cited Work").replace(/[{}]/g, "")}},
-  author    = {${authorList}},
-  journal   = {${ref.journal || "Scholarly Literature"}},
-  year      = {${year}}${ref.doi ? `,\n  doi       = {${ref.doi}},\n  url       = {https://doi.org/${ref.doi}}` : ""}
-}\n\n`;
+    const lines: string[] = [];
+    lines.push(`@article{${key},`);
+    lines.push(`  title     = {${(ref.title || ref.raw || "Cited Work").replace(/[{}]/g, "")}},`);
+    if (ref.authors && ref.authors.length > 0) {
+      lines.push(`  author    = {${ref.authors.join(" and ")}},`);
+    }
+    if (ref.journal) {
+      lines.push(`  journal   = {${ref.journal}},`);
+    }
+    if (ref.year) {
+      lines.push(`  year      = {${ref.year}},`);
+    }
+    if (ref.doi) {
+      lines.push(`  doi       = {${ref.doi}},`);
+      lines.push(`  url       = {https://doi.org/${ref.doi}}`);
+    }
+    bibtex += lines.join("\n") + "\n}\n\n";
   });
 
   return bibtex;
@@ -208,24 +215,25 @@ export async function exportBibTeX(report: ReviewReport) {
 // -----------------------------------------------------------------------------
 // 1. FULL REPORT - STANDALONE INTERACTIVE HTML GENERATOR
 // -----------------------------------------------------------------------------
-function generateFullReportHtml(r: FullReviewReport): string {
+export function generateFullReportHtml(r: FullReviewReport): string {
   const title = escapeHtml(r.title);
   const targetJournal = escapeHtml(r.targetJournal || "General High Impact Journal");
-  const overallScore =
+  const hasNumericScore = typeof r.overallScore === "number";
+  const scoreLabel =
     r.isEligibleForReview === false
       ? r.ineligibilityReason === "already_published"
         ? "PUB"
         : "N/A"
-      : r.overallScore || 70;
+      : hasNumericScore
+      ? `${r.overallScore}`
+      : "Not Assessed";
   const dateStr = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
-
-  const personasJson = JSON.stringify(r.reviewerPersonas || []);
-  const issuesJson = JSON.stringify(r.priorityIssues || []);
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ManuView Report: ${title}</title>
   <style>
@@ -470,10 +478,17 @@ function generateFullReportHtml(r: FullReviewReport): string {
       <h1>${title}</h1>
       <p style="color: var(--text-muted); font-size: 13px;">Generated on ${dateStr} • Peer-Review Calibrated Pre-Submission Diagnostic</p>
 
-      <div class="score-banner">
+      ${r.executionMode === "heuristic_offline" ? `
+      <div style="background-color: #FEF3C7; border: 1px solid #F59E0B; padding: 12px 16px; border-radius: 8px; margin-top: 16px; color: #92400E; font-size: 13px;">
+        <strong>Notice:</strong> AI review unavailable — connect a provider for the reviewer panel and dimension scoring. The checks below are deterministic.
+        ${r.llmCallError ? `<div style="font-family: monospace; font-size: 11px; margin-top: 4px; color: #B45309;">Provider error: ${escapeHtml(r.llmCallError)}</div>` : ""}
+      </div>
+      ` : ""}
+
+      <div class="score-banner" style="${!hasNumericScore ? "background: #1E293B;" : ""}">
         <div class="score-meter">
-          <span class="score-number">${overallScore}</span>
-          <span class="score-label">/ 100 Overall Acceptance Potential</span>
+          <span class="score-number" style="${!hasNumericScore ? "font-size: 26px; color: #94A3B8;" : ""}">${scoreLabel}</span>
+          <span class="score-label">${hasNumericScore ? "/ 100 Overall Acceptance Potential" : (r.executionMode === "heuristic_offline" ? "AI scoring offline" : "Acceptance potential bypassed")}</span>
         </div>
         <button class="btn-print" onclick="window.print()">
           <span>🖨️ Print / Save as PDF</span>
@@ -484,8 +499,12 @@ function generateFullReportHtml(r: FullReviewReport): string {
     <!-- Interactive Navigation Tabs -->
     <div class="tabs-nav">
       <button class="tab-btn active" onclick="switchTab('overview')">Executive Overview</button>
-      <button class="tab-btn" onclick="switchTab('reviewers')">${(r.reviewerPersonas || []).length || 5} Reviewer Personas</button>
+      ${(r.reviewerPersonas && r.reviewerPersonas.length > 0) ? `
+      <button class="tab-btn" onclick="switchTab('reviewers')">${r.reviewerPersonas.length} Reviewer Personas</button>
+      ` : ""}
+      ${r.dimensions ? `
       <button class="tab-btn" onclick="switchTab('dimensions')">6 Scoring Dimensions</button>
+      ` : ""}
       <button class="tab-btn" onclick="switchTab('issues')">Priority Action Items (${(r.priorityIssues || []).length})</button>
       <button class="tab-btn" onclick="switchTab('journals')">Target Journals</button>
     </div>
@@ -510,10 +529,14 @@ function generateFullReportHtml(r: FullReviewReport): string {
         <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
           <div class="card-title" style="margin-bottom: 0;">Reporting Guideline Compliance: ${escapeHtml(r.reportingGuideline.guidelineName)}</div>
           <span style="font-size: 13px; font-weight: 700; color: ${r.reportingGuideline.scorePercent >= 80 ? "#10B981" : r.reportingGuideline.scorePercent >= 60 ? "#F59E0B" : "#EF4444"};">
-            ${r.reportingGuideline.scorePercent}% Compliant
+            ${r.reportingGuideline.itemSetScope === "core_subset"
+              ? `${r.reportingGuideline.evidencedCount}/${r.reportingGuideline.totalItems} core items evidenced (${r.reportingGuideline.itemSetSize} in full standard; ${r.reportingGuideline.scorePercent}%)`
+              : r.reportingGuideline.evidencedCount !== undefined && r.reportingGuideline.totalItems !== undefined
+              ? `${r.reportingGuideline.evidencedCount}/${r.reportingGuideline.totalItems} Items (${r.reportingGuideline.scorePercent}%)`
+              : `${r.reportingGuideline.scorePercent}% Compliant`}
           </span>
         </div>
-        <p style="font-size: 12px; color: #64748B; margin-bottom: 12px;">Standardized reporting checklist audit based on international peer-review expectations.</p>
+        <p style="font-size: 12px; color: #64748B; margin-bottom: 12px;">Standard: ${escapeHtml(r.reportingGuideline.standardType)}${r.reportingGuideline.standardUrl ? ` &bull; <a href="${escapeHtml(r.reportingGuideline.standardUrl)}" target="_blank" style="color: #2563EB;">Official Standard</a>` : ""}</p>
 
         ${(r.reportingGuideline.compliantItems && r.reportingGuideline.compliantItems.length > 0) ? `
           <div style="font-size: 11px; font-weight: 700; color: #166534; margin-bottom: 4px;">COMPLIANT ELEMENTS:</div>
@@ -532,6 +555,7 @@ function generateFullReportHtml(r: FullReviewReport): string {
       ` : ""}
     </div>
 
+    ${(r.reviewerPersonas && r.reviewerPersonas.length > 0) ? `
     <!-- Tab 2: Reviewer Personas -->
     <div id="tab-reviewers" class="tab-content">
       <div class="card">
@@ -593,7 +617,9 @@ function generateFullReportHtml(r: FullReviewReport): string {
         `).join("")}
       </div>
     </div>
+    ` : ""}
 
+    ${r.dimensions ? `
     <!-- Tab 3: Dimensions -->
     <div id="tab-dimensions" class="tab-content">
       <div class="dimension-grid">
@@ -601,7 +627,7 @@ function generateFullReportHtml(r: FullReviewReport): string {
           <div class="dimension-card">
             <div class="dim-header">
               <strong style="font-size: 14px;">${escapeHtml(dim.label)}</strong>
-              <span class="dim-score">${dim.score} / 5</span>
+              <span class="dim-score">${escapeHtml(String(dim.score))} / 5</span>
             </div>
             <div class="dim-verdict">${escapeHtml(dim.verdict)}</div>
             ${(dim.strengths && dim.strengths.length > 0) ? `
@@ -620,30 +646,34 @@ function generateFullReportHtml(r: FullReviewReport): string {
         `).join("")}
       </div>
     </div>
+    ` : ""}
 
     <!-- Tab 4: Priority Issues -->
     <div id="tab-issues" class="tab-content">
       <div class="filter-pills">
-        <button class="filter-btn active" onclick="filterIssues('all')">All Issues</button>
-        <button class="filter-btn" onclick="filterIssues('A')">🚨 Priority A (Desk-Reject Risk)</button>
-        <button class="filter-btn" onclick="filterIssues('B')">⚠️ Priority B (Major Technical)</button>
-        <button class="filter-btn" onclick="filterIssues('C')">💡 Priority C (Presentation)</button>
+        <button class="filter-btn active" onclick="filterIssues('all', this)">All Issues</button>
+        <button class="filter-btn" onclick="filterIssues('A', this)">🚨 Priority A (Desk-Reject Risk)</button>
+        <button class="filter-btn" onclick="filterIssues('B', this)">⚠️ Priority B (Major Technical)</button>
+        <button class="filter-btn" onclick="filterIssues('C', this)">💡 Priority C (Presentation)</button>
       </div>
 
       <div id="issues-container">
-        ${(r.priorityIssues || []).map(iss => `
-          <div class="issue-item" data-priority="${iss.priority}">
+        ${(r.priorityIssues || []).map(iss => {
+          const priority = (iss.priority || "B").toUpperCase();
+          const priorityClass = priority.toLowerCase();
+          return `
+          <div class="issue-item" data-priority="${escapeHtml(priority)}">
             <div class="issue-header">
-              <span class="badge-${iss.priority.toLowerCase()}">Priority ${iss.priority}: ${escapeHtml(iss.category)}</span>
-              <span style="font-size: 11px; color: var(--text-muted); font-mono;">${iss.id}</span>
+              <span class="badge-${priorityClass}">Priority ${escapeHtml(priority)}: ${escapeHtml(iss.category || "General")}</span>
+              <span style="font-size: 11px; color: var(--text-muted); font-mono;">${escapeHtml(iss.id || "")}</span>
             </div>
-            <h4 style="font-size: 15px; margin: 6px 0;">${escapeHtml(iss.title)}</h4>
+            <h4 style="font-size: 15px; margin: 6px 0;">${escapeHtml(iss.title || "")}</h4>
             ${iss.evidenceAnchor ? `
               <div style="font-family: monospace; font-size: 11px; background: #F1F5F9; color: #475569; padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 6px;">
                 Anchor: ${escapeHtml(iss.evidenceAnchor)}
               </div>
             ` : ""}
-            <p style="font-size: 13px; color: #334155;">${escapeHtml(iss.description)}</p>
+            <p style="font-size: 13px; color: #334155;">${escapeHtml(iss.description || "")}</p>
             ${iss.reviewerQuote ? `<div class="quote-box">Reviewer Anticipated Reaction: ${escapeHtml(iss.reviewerQuote)}</div>` : ""}
             ${iss.actionableFix ? `<div class="fix-box"><strong>Actionable Fix:</strong> ${escapeHtml(iss.actionableFix)}</div>` : ""}
             ${iss.rebuttalStrategy ? `
@@ -652,7 +682,7 @@ function generateFullReportHtml(r: FullReviewReport): string {
               </div>
             ` : ""}
           </div>
-        `).join("")}
+        `;}).join("")}
       </div>
     </div>
 
@@ -661,10 +691,10 @@ function generateFullReportHtml(r: FullReviewReport): string {
       <div class="journal-grid">
         ${(r.journalRecommendations || []).map(j => `
           <div class="journal-card">
-            <div class="journal-tier">${escapeHtml(j.tier)} Match (Fit: ${j.fitScore}%)</div>
-            <div class="journal-name">${escapeHtml(j.journalName)}</div>
-            <div class="journal-meta">Impact Factor: ${j.impactFactor} • ${escapeHtml(j.publisher)}</div>
-            <p style="font-size: 13px; color: #334155; margin-bottom: 12px;">${escapeHtml(j.scopeRationale)}</p>
+            <div class="journal-tier">${escapeHtml(j.tier || "Standard")} Match (Fit: ${escapeHtml(String(j.fitScore ?? ""))}%)</div>
+            <div class="journal-name">${escapeHtml(j.journalName || "")}</div>
+            <div class="journal-meta">Impact Factor: ${escapeHtml(String(j.impactFactor ?? "N/A"))} • ${escapeHtml(j.publisher || "")}</div>
+            <p style="font-size: 13px; color: #334155; margin-bottom: 12px;">${escapeHtml(j.scopeRationale || "")}</p>
             ${(j.rejectionRisks && j.rejectionRisks.length > 0) ? `
               <div style="font-size: 11px; font-weight: 700; color: #991B1B; margin-top: 8px;">DESK-REJECT RISKS:</div>
               <ul style="font-size: 12px; padding-left: 18px; color: #991B1B; margin-top: 4px;">
@@ -678,25 +708,28 @@ function generateFullReportHtml(r: FullReviewReport): string {
   </div>
 
   <script>
-    function switchTab(tabId) {
+    function switchTab(tabId, btn) {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      event.target.classList.add('active');
+      const activeBtn = btn || (window.event && window.event.target);
+      if (activeBtn) activeBtn.classList.add('active');
       const el = document.getElementById('tab-' + tabId);
       if (el) el.classList.add('active');
     }
 
-    function switchPersona(idx) {
+    function switchPersona(idx, btn) {
       document.querySelectorAll('.persona-pill').forEach(p => p.classList.remove('active'));
       document.querySelectorAll('.persona-panel').forEach(p => p.classList.remove('active'));
-      event.target.classList.add('active');
+      const activeBtn = btn || (window.event && window.event.target);
+      if (activeBtn) activeBtn.classList.add('active');
       const panel = document.getElementById('persona-panel-' + idx);
       if (panel) panel.classList.add('active');
     }
 
-    function filterIssues(level) {
+    function filterIssues(level, btn) {
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-      event.target.classList.add('active');
+      const activeBtn = btn || (window.event && window.event.target);
+      if (activeBtn) activeBtn.classList.add('active');
       document.querySelectorAll('.issue-item').forEach(item => {
         if (level === 'all' || item.getAttribute('data-priority') === level) {
           item.style.display = 'block';
@@ -716,13 +749,16 @@ function generateFullReportHtml(r: FullReviewReport): string {
 function generateBriefReportHtml(r: BriefJournalFitReport): string {
   const title = escapeHtml(r.title);
   const targetJournal = escapeHtml(r.targetJournal);
-  const fitScore = r.fitScore || 75;
   const dateStr = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  const scoreBanner = r.fitScore !== undefined
+    ? `<div style="font-size: 28px; font-weight: 800;">${r.fitScore}% Match — ${escapeHtml(r.verdict)}</div>`
+    : `<div style="font-size: 22px; font-weight: 800; color: #475569;">${escapeHtml(r.verdict)}</div>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ManuView Scope Fit Report: ${title}</title>
   <style>
@@ -759,7 +795,7 @@ function generateBriefReportHtml(r: BriefJournalFitReport): string {
       <h1>${title}</h1>
       <p style="font-size: 13px; color: #64748B;">Target Journal: <strong>${targetJournal}</strong> • Generated on ${dateStr}</p>
       <div style="background: #F1F5F9; border-radius: 10px; padding: 16px; margin-top: 16px;">
-        <div style="font-size: 28px; font-weight: 800;">${fitScore}% Match — ${escapeHtml(r.verdict)}</div>
+        ${scoreBanner}
         <p style="font-size: 14px; color: #334155; margin-top: 8px;">${escapeHtml(r.summary)}</p>
       </div>
     </div>
@@ -795,10 +831,15 @@ function generateBriefReportHtml(r: BriefJournalFitReport): string {
 // -----------------------------------------------------------------------------
 // 3. FULL REPORT - MICROSOFT WORD (.DOC/.DOCX) EXPORT GENERATOR
 // -----------------------------------------------------------------------------
-function generateFullReportWord(r: FullReviewReport): string {
+export function generateFullReportWord(r: FullReviewReport): string {
   const title = escapeHtml(r.title);
   const targetJournal = escapeHtml(r.targetJournal || "General High Impact Journal");
-  const overallScore = r.overallScore || 70;
+  const hasNumericScore = typeof r.overallScore === "number";
+  const scoreLabel = r.isEligibleForReview === false
+    ? (r.ineligibilityReason === "already_published" ? "Status: Already Published Article" : "Status: Ineligible (Non-Article)")
+    : hasNumericScore
+    ? `Overall Potential Score: ${r.overallScore} / 100`
+    : (r.executionMode === "heuristic_offline" ? "Overall Potential Score: Not Assessed (AI provider offline)" : "Overall Potential Score: Not Assessed");
   const dateStr = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 
   return `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -846,11 +887,20 @@ function generateFullReportWord(r: FullReviewReport): string {
   <h1>${title}</h1>
   <p style="font-size: 10pt; color: #64748B;">Target Journal: <strong>${targetJournal}</strong> | Evaluation Date: ${dateStr}</p>
   
+  ${r.executionMode === "heuristic_offline" ? `
+  <div class="callout" style="background-color: #FEF3C7; border-left: 4pt solid #F59E0B; margin-bottom: 12pt;">
+    <p style="font-size: 11pt; font-weight: bold; margin: 0; color: #92400E;">Notice: AI Review Unavailable</p>
+    <p style="font-size: 10pt; margin-top: 4pt; margin-bottom: 0; color: #92400E;">Connect an AI provider to enable reviewer personas and dimensional scoring. Deterministic checks (citations, guidelines, structure) are reported below.</p>
+    ${r.llmCallError ? `<p style="font-family: monospace; font-size: 9pt; margin-top: 4pt; color: #B45309;">Provider error: ${escapeHtml(r.llmCallError)}</p>` : ""}
+  </div>
+  ` : ""}
+
   <div class="callout" style="background-color: #EFF6FF; border-left: 4pt solid #2563EB;">
-    <p style="font-size: 16pt; font-weight: bold; margin: 0; color: #1E40AF;">${r.isEligibleForReview === false ? (r.ineligibilityReason === "already_published" ? "Status: Already Published Article" : "Status: Ineligible (Non-Article)") : `Overall Potential Score: ${overallScore} / 100`}</p>
+    <p style="font-size: 16pt; font-weight: bold; margin: 0; color: #1E40AF;">${scoreLabel}</p>
     <p style="font-size: 10pt; margin-top: 4pt; margin-bottom: 0;">${escapeHtml(r.summary)}</p>
   </div>
 
+  ${r.dimensions ? `
   <h2>1. 6-Dimension Scholarly Scoring Rubric</h2>
   <table>
     <tr>
@@ -870,9 +920,11 @@ function generateFullReportWord(r: FullReviewReport): string {
       </tr>
     `).join("")}
   </table>
+  ` : ""}
 
-  <h2>2. Simulated ${(r.reviewerPersonas || []).length || 5}-Persona Peer Review (Adversarial Panel)</h2>
-  ${(r.reviewerPersonas || []).map(p => `
+  ${(r.reviewerPersonas && r.reviewerPersonas.length > 0) ? `
+  <h2>2. Simulated ${r.reviewerPersonas.length}-Persona Peer Review (Adversarial Panel)</h2>
+  ${r.reviewerPersonas.map(p => `
     <h3>${p.persona === "devils_advocate" ? "⚡ [Adversarial Stress-Test] " : ""}${escapeHtml(p.name)} — ${escapeHtml(p.roleDescription)}</h3>
     <p style="font-size: 9.5pt; color: #64748B; margin-bottom: 4pt;">${escapeHtml(p.title)} • ${escapeHtml(p.affiliation)}</p>
     <p><strong>Recommendation:</strong> ${escapeHtml(p.decisionRecommendation)} | <strong>Key Challenge:</strong> ${escapeHtml(p.keyChallenge)}</p>
@@ -898,6 +950,7 @@ function generateFullReportWord(r: FullReviewReport): string {
       </ul>
     ` : ""}
   `).join("")}
+  ` : ""}
 
   <h2>3. Actionable Priority Issues & Rebuttal Strategies</h2>
   <table>
@@ -907,21 +960,24 @@ function generateFullReportWord(r: FullReviewReport): string {
       <th style="width: 33%;">Issue Description</th>
       <th style="width: 33%;">Actionable Fix & Author Rebuttal Strategy</th>
     </tr>
-    ${(r.priorityIssues || []).map(iss => `
+    ${(r.priorityIssues || []).map(iss => {
+      const priority = (iss.priority || "B").toUpperCase();
+      const priorityClass = priority.toLowerCase();
+      return `
       <tr>
-        <td class="badge-${iss.priority.toLowerCase()}">Priority ${iss.priority}</td>
+        <td class="badge-${priorityClass}">Priority ${escapeHtml(priority)}</td>
         <td>
-          <strong>${escapeHtml(iss.title)}</strong><br>
-          <span style="font-size: 9pt; color: #64748B;">${escapeHtml(iss.category)}</span>
+          <strong>${escapeHtml(iss.title || "")}</strong><br>
+          <span style="font-size: 9pt; color: #64748B;">${escapeHtml(iss.category || "")}</span>
           ${iss.evidenceAnchor ? `<br><code style="font-size: 8pt; color: #475569;">${escapeHtml(iss.evidenceAnchor)}</code>` : ""}
         </td>
-        <td>${escapeHtml(iss.description)}</td>
+        <td>${escapeHtml(iss.description || "")}</td>
         <td>
-          <div><strong>Fix:</strong> ${escapeHtml(iss.actionableFix)}</div>
+          <div><strong>Fix:</strong> ${escapeHtml(iss.actionableFix || "")}</div>
           ${iss.rebuttalStrategy ? `<div style="margin-top: 4pt; color: #5B21B6; font-size: 9pt;"><strong>Rebuttal Framing:</strong> ${escapeHtml(iss.rebuttalStrategy)}</div>` : ""}
         </td>
       </tr>
-    `).join("")}
+    `;}).join("")}
   </table>
 
   <h2>4. Target Journal Recommendations</h2>
@@ -948,7 +1004,11 @@ function generateFullReportWord(r: FullReviewReport): string {
   ${r.reportingGuideline ? `
   <h2>5. Reporting Guideline Compliance Audit (${escapeHtml(r.reportingGuideline.guidelineName)})</h2>
   <div class="callout" style="background-color: #F8FAFC; border-left: 4pt solid ${r.reportingGuideline.scorePercent >= 80 ? "#10B981" : r.reportingGuideline.scorePercent >= 60 ? "#D97706" : "#DC2626"};">
-    <p style="font-weight: bold; margin: 0; font-size: 11pt;">Compliance Score: ${r.reportingGuideline.scorePercent}%</p>
+    <p style="font-weight: bold; margin: 0; font-size: 11pt;">Compliance Score: ${r.reportingGuideline.itemSetScope === "core_subset"
+      ? `${r.reportingGuideline.evidencedCount}/${r.reportingGuideline.totalItems} core items evidenced (${r.reportingGuideline.itemSetSize} in full standard; ${r.reportingGuideline.scorePercent}%)`
+      : r.reportingGuideline.evidencedCount !== undefined && r.reportingGuideline.totalItems !== undefined
+      ? `${r.reportingGuideline.evidencedCount}/${r.reportingGuideline.totalItems} Items (${r.reportingGuideline.scorePercent}%)`
+      : `${r.reportingGuideline.scorePercent}%`}</p>
     ${(r.reportingGuideline.compliantItems && r.reportingGuideline.compliantItems.length > 0) ? `
       <p style="color: #166534; font-size: 9.5pt; margin-top: 6pt; margin-bottom: 2pt;"><strong>Compliant Items:</strong></p>
       <ul style="color: #166534; font-size: 9.5pt;">
@@ -973,8 +1033,10 @@ function generateFullReportWord(r: FullReviewReport): string {
 function generateBriefReportWord(r: BriefJournalFitReport): string {
   const title = escapeHtml(r.title);
   const targetJournal = escapeHtml(r.targetJournal);
-  const fitScore = r.fitScore || 75;
   const dateStr = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  const scoreBanner = r.fitScore !== undefined
+    ? `<p style="font-size: 14pt; font-weight: bold; margin: 0;">Scope Match: ${r.fitScore}% — ${escapeHtml(r.verdict)}</p>`
+    : `<p style="font-size: 14pt; font-weight: bold; margin: 0; color: #475569;">${escapeHtml(r.verdict)}</p>`;
 
   return `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
 <head>
@@ -993,7 +1055,7 @@ function generateBriefReportWord(r: BriefJournalFitReport): string {
   <h1>${title}</h1>
   <p>Target Journal: <strong>${targetJournal}</strong> | Date: ${dateStr}</p>
   <div style="background-color: #EFF6FF; border-left: 4pt solid #2563EB; padding: 10pt; margin: 10pt 0;">
-    <p style="font-size: 14pt; font-weight: bold; margin: 0;">Scope Match: ${fitScore}% — ${escapeHtml(r.verdict)}</p>
+    ${scoreBanner}
     <p style="margin-top: 4pt; margin-bottom: 0;">${escapeHtml(r.summary)}</p>
   </div>
   <h2>Scope Strengths Supporting Submission</h2>
