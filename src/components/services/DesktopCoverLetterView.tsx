@@ -15,6 +15,65 @@ import JournalCombobox from "@/components/JournalCombobox";
 import { callLLM } from "@/lib/llm";
 import { ProviderConfig } from "@/lib/types";
 
+export function formatCoverLetterText(raw: string, targetJournal: string, title: string): string {
+  let cleaned = (raw || "").trim();
+
+  // 1. Strip markdown code fences if wrapped
+  if (cleaned.startsWith("```")) {
+    cleaned = cleaned.replace(/^```(?:json|markdown|text)?\s*\n?/, "").replace(/\n?```\s*$/, "").trim();
+  }
+
+  // 2. Detect and extract JSON object if the model output raw JSON
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (typeof parsed === "object" && parsed !== null) {
+        const recipient = (parsed.recipient || parsed.to || `Senior Editor-in-Chief, ${targetJournal}`).trim();
+        const subject = (parsed.subject || `Submission of manuscript: ${title}`).trim();
+        const body = (parsed.body || parsed.letter || parsed.coverLetter || parsed.content || "").trim();
+
+        if (body) {
+          const dateStr = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(new Date());
+          
+          let headerBlock = `${dateStr}\n\nTo:\n${recipient}`;
+          if (!recipient.toLowerCase().includes(targetJournal.toLowerCase())) {
+            headerBlock += `\n${targetJournal}`;
+          }
+          headerBlock += `\n\nSubject: ${subject}\n\n`;
+
+          if (body.toLowerCase().startsWith("dear ")) {
+            return `${headerBlock}${body}`;
+          } else if (body.toLowerCase().includes("subject:")) {
+            return body;
+          } else {
+            return `${headerBlock}${body}`;
+          }
+        }
+      }
+    } catch {
+      // Regex fallback if JSON has unescaped quotes/newlines
+      const bodyMatch = cleaned.match(/"body"\s*:\s*"([\s\S]*?)(?:"\s*,\s*"|"\s*\})/);
+      const recipientMatch = cleaned.match(/"recipient"\s*:\s*"([\s\S]*?)"/);
+      const subjectMatch = cleaned.match(/"subject"\s*:\s*"([\s\S]*?)"/);
+
+      if (bodyMatch && bodyMatch[1]) {
+        const extractedBody = bodyMatch[1].replace(/\\n/g, "\n").replace(/\\"/g, '"').trim();
+        const recipient = recipientMatch ? recipientMatch[1].replace(/\\"/g, '"').trim() : `Senior Editor-in-Chief, ${targetJournal}`;
+        const subject = subjectMatch ? subjectMatch[1].replace(/\\"/g, '"').trim() : `Submission of manuscript: ${title}`;
+        const dateStr = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(new Date());
+
+        return `${dateStr}\n\nTo:\n${recipient}\n\nSubject: ${subject}\n\n${extractedBody}`;
+      }
+    }
+  }
+
+  // 3. If raw text starts with leftover JSON braces or quotes, strip them
+  cleaned = cleaned.replace(/^\{[\r\n\s]*/, "").replace(/[\r\n\s]*\}$/, "").trim();
+
+  return cleaned;
+}
+
 export function DesktopCoverLetterView() {
   const [title, setTitle] = useState("");
   const [targetJournal, setTargetJournal] = useState("");
@@ -71,7 +130,13 @@ LETTER COMPOSITION REQUIREMENTS:
 4. Detail exactly why the paper is of direct relevance and broad interest to "${targetJournal}"'s readership.
 5. Standard mandatory editorial confirmations: confirming originality, that the work has not been published or simultaneously submitted elsewhere, adherence to ethical guidelines/approvals, and that all co-authors have approved the submission.
 6. Clear sign-off with placeholders: [Corresponding Author Name, Ph.D.], [Academic Title & Department], [Affiliated University / Research Institution], [Official Institutional Email], [ORCID ID].
-7. Tone: Rigorous, articulate, respectful, and free of superficial marketing superlatives.`;
+7. Tone: Rigorous, articulate, respectful, and free of superficial marketing superlatives.
+
+IMPORTANT OUTPUT INSTRUCTIONS:
+- Return ONLY the clean, final, submission-ready formal cover letter as plain text.
+- Do NOT return JSON.
+- Do NOT wrap in markdown code blocks.
+- Do NOT include conversational greetings before or after the letter.`;
 
       const savedConfig = localStorage.getItem("manuview_provider_config");
       const providerConfig: ProviderConfig | undefined = savedConfig
@@ -79,7 +144,8 @@ LETTER COMPOSITION REQUIREMENTS:
         : undefined;
 
       const generated = await callLLM([{ role: "user", content: prompt }], providerConfig);
-      setLetter(generated);
+      const cleanFormatted = formatCoverLetterText(generated, targetJournal, title);
+      setLetter(cleanFormatted);
     } catch (err: any) {
       setError(err.message || "Failed to generate cover letter.");
     } finally {
@@ -141,7 +207,12 @@ LETTER COMPOSITION REQUIREMENTS:
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative z-30">
             <div className="space-y-1 relative z-30">
               <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Target Journal</label>
-              <JournalCombobox value={targetJournal} onChange={setTargetJournal} placeholder="Select or type target journal..." />
+              <JournalCombobox
+                value={targetJournal}
+                onChange={setTargetJournal}
+                placeholder="Select or type target journal..."
+                inputClassName="h-[42px] w-full pl-9 pr-16 py-2.5 rounded-xl liquid-glass-input text-xs sm:text-sm focus:outline-none"
+              />
             </div>
             <div className="space-y-1">
               <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Manuscript Title</label>
@@ -150,7 +221,7 @@ LETTER COMPOSITION REQUIREMENTS:
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Single-cell transcriptional profiling of..."
-                className="w-full px-3.5 py-2.5 rounded-xl liquid-glass-input text-xs sm:text-sm focus:outline-none"
+                className="h-[42px] w-full px-3.5 py-2.5 rounded-xl liquid-glass-input text-xs sm:text-sm focus:outline-none"
               />
             </div>
           </div>
@@ -232,8 +303,87 @@ LETTER COMPOSITION REQUIREMENTS:
               </div>
             </div>
 
-            <div className="p-8 rounded-3xl liquid-glass-card font-serif text-sm leading-relaxed text-neutral-800 dark:text-neutral-200 whitespace-pre-wrap">
-              {letter}
+            {/* Formal Clean Academic Letter Document */}
+            <div className="p-8 sm:p-12 rounded-3xl bg-white dark:bg-[#0D121F] border border-black/10 dark:border-white/10 shadow-lg text-neutral-800 dark:text-neutral-100 font-serif leading-relaxed text-sm sm:text-base selection:bg-blue-500/20 max-w-4xl mx-auto space-y-5">
+              {/* Document Header Bar */}
+              <div className="flex items-center justify-between pb-4 border-b border-black/[0.08] dark:border-white/[0.1] text-xs font-sans">
+                <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400 font-medium">
+                  <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span className="font-semibold text-neutral-900 dark:text-white">{targetJournal}</span>
+                  <span className="text-neutral-300 dark:text-neutral-600">&bull;</span>
+                  <span>Submission Cover Letter</span>
+                </div>
+                <div className="text-[11px] font-mono text-neutral-400">
+                  {new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(new Date())}
+                </div>
+              </div>
+
+              {/* Rendered Letter Paragraphs */}
+              <div className="space-y-4">
+                {letter.split(/\n\s*\n/).map((paragraph, idx) => {
+                  const trimmed = paragraph.trim();
+                  if (!trimmed) return null;
+
+                  // Date header
+                  if (idx === 0 && (trimmed.match(/^[A-Z][a-z]+ \d{1,2}, \d{4}$/) || trimmed.startsWith("Date:"))) {
+                    return (
+                      <div key={idx} className="text-xs font-sans text-neutral-500 dark:text-neutral-400 font-medium pb-1">
+                        {trimmed}
+                      </div>
+                    );
+                  }
+
+                  // Recipient block
+                  if (trimmed.startsWith("To:\n") || (trimmed.toLowerCase().includes("editor") && !trimmed.toLowerCase().startsWith("dear"))) {
+                    return (
+                      <div key={idx} className="text-xs sm:text-sm font-sans font-medium text-neutral-700 dark:text-neutral-300 pb-1 leading-relaxed">
+                        {trimmed.split("\n").map((line, lIdx) => (
+                          <div key={lIdx}>{line}</div>
+                        ))}
+                      </div>
+                    );
+                  }
+
+                  // Subject line Callout
+                  if (trimmed.toLowerCase().startsWith("subject:") || trimmed.toLowerCase().startsWith("re:")) {
+                    return (
+                      <div key={idx} className="p-3.5 my-2 rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/5 dark:border-white/10 font-sans font-semibold text-xs sm:text-sm text-neutral-900 dark:text-white">
+                        {trimmed}
+                      </div>
+                    );
+                  }
+
+                  // Formal Sign-off and Author Placeholders
+                  if (trimmed.includes("[Corresponding Author Name") || trimmed.includes("Sincerely,") || trimmed.startsWith("Sincerely")) {
+                    return (
+                      <div key={idx} className="pt-4 font-sans text-xs sm:text-sm leading-normal space-y-1">
+                        {trimmed.split("\n").map((line, lIdx) => {
+                          const isPlaceholder = line.trim().startsWith("[") && line.trim().endsWith("]");
+                          return (
+                            <div
+                              key={lIdx}
+                              className={
+                                isPlaceholder
+                                  ? "text-blue-600 dark:text-blue-400 font-mono text-xs font-normal"
+                                  : "font-semibold text-neutral-800 dark:text-neutral-200"
+                              }
+                            >
+                              {line}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  }
+
+                  // Regular letter paragraph
+                  return (
+                    <p key={idx} className="text-[14px] sm:text-[15px] leading-relaxed sm:leading-7 text-neutral-800 dark:text-neutral-200 text-justify">
+                      {trimmed}
+                    </p>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
