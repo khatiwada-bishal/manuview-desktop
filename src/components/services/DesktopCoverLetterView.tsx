@@ -143,7 +143,14 @@ IMPORTANT OUTPUT INSTRUCTIONS:
         ? JSON.parse(savedConfig)
         : undefined;
 
-      const generated = await callLLM([{ role: "user", content: prompt }], providerConfig);
+      setLetter("");
+      const generated = await callLLM(
+        [{ role: "user", content: prompt }],
+        providerConfig,
+        (_delta, acc) => {
+          setLetter(acc);
+        }
+      );
       const cleanFormatted = formatCoverLetterText(generated, targetJournal, title);
       setLetter(cleanFormatted);
     } catch (err: any) {
@@ -264,7 +271,7 @@ IMPORTANT OUTPUT INSTRUCTIONS:
               {loading ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Calibrating with Editorial Standards...</span>
+                  <span>{letter ? "Streaming Editorial Letter..." : "Calibrating with Editorial Standards..."}</span>
                 </>
               ) : (
                 <>
@@ -313,9 +320,16 @@ IMPORTANT OUTPUT INSTRUCTIONS:
                   <span className="text-neutral-300 dark:text-neutral-600">&bull;</span>
                   <span>Submission Cover Letter</span>
                 </div>
-                <div className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                  Ready for Submission
-                </div>
+                {loading ? (
+                  <div className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />
+                    Streaming Live
+                  </div>
+                ) : (
+                  <div className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    Ready for Submission
+                  </div>
+                )}
               </div>
 
               {/* Rendered Letter Paragraphs */}

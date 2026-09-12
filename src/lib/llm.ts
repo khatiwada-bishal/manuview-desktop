@@ -98,9 +98,105 @@ export function getServerConfigStatus(): {
 
 const LLM_TIMEOUT_MS = 90_000;
 
+async function readStream(
+  response: Response,
+  onChunk: (delta: string, accumulated: string) => void,
+  extractDelta: (line: string) => string | null
+): Promise<string> {
+  if (!response.body) {
+    throw new Error("Response body is null, cannot stream.");
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let accumulated = "";
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        const delta = extractDelta(trimmed);
+        if (delta) {
+          accumulated += delta;
+          onChunk(delta, accumulated);
+        }
+      }
+    }
+
+    if (buffer.trim()) {
+      const delta = extractDelta(buffer.trim());
+      if (delta) {
+        accumulated += delta;
+        onChunk(delta, accumulated);
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return accumulated;
+}
+
+function extractGeminiDelta(line: string): string | null {
+  if (!line.startsWith("data:")) return null;
+  const jsonStr = line.replace(/^data:\s*/, "");
+  if (!jsonStr || jsonStr === "[DONE]") return null;
+  try {
+    const data = JSON.parse(jsonStr);
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
+  } catch {
+    return null;
+  }
+}
+
+function extractOpenAIDelta(line: string): string | null {
+  if (!line.startsWith("data:")) return null;
+  const payload = line.replace(/^data:\s*/, "");
+  if (!payload || payload === "[DONE]") return null;
+  try {
+    const data = JSON.parse(payload);
+    return data.choices?.[0]?.delta?.content || null;
+  } catch {
+    return null;
+  }
+}
+
+function extractAnthropicDelta(line: string): string | null {
+  if (!line.startsWith("data:")) return null;
+  const payload = line.replace(/^data:\s*/, "");
+  if (!payload || payload === "[DONE]") return null;
+  try {
+    const data = JSON.parse(payload);
+    if (data.type === "content_block_delta" && data.delta?.type === "text_delta") {
+      return data.delta.text || null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function extractOllamaDelta(line: string): string | null {
+  if (!line.startsWith("{")) return null;
+  try {
+    const data = JSON.parse(line);
+    return data.message?.content || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function callLLM(
   messages: LLMMessage[],
-  config?: ProviderConfig
+  config?: ProviderConfig,
+  onChunk?: (delta: string, accumulated: string) => void
 ): Promise<string> {
   // 1. Resolve Provider and Credentials
   const resolvedConfig = config || getSavedClientConfig();
@@ -161,7 +257,8 @@ export async function callLLM(
     const geminiModel = model || "gemini-1.5-flash";
     const cleanModel = encodeURIComponent(geminiModel.trim());
     const cleanKey = encodeURIComponent(apiKey.trim());
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${cleanKey}`;
+    const action = onChunk ? "streamGenerateContent?alt=sse&key=" : "generateContent?key=";
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:${action}${cleanKey}`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
     try {
@@ -236,6 +333,13 @@ export async function callLLM(
         console.error("Gemini API error:", response.status, safeErr);
         throw new Error(`Gemini API error (${response.status}): ${safeErr}`);
       }
+
+      if (onChunk) {
+        const text = await readStream(response, onChunk, extractGeminiDelta);
+        if (text) return text;
+        throw new Error("Gemini stream returned empty content.");
+      }
+
       const data = await response.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (text) return text;
@@ -287,7 +391,7 @@ export async function callLLM(
       const requestPayload: any = {
         model: chosenModel,
         messages: formattedMessages,
-        stream: false,
+        stream: Boolean(onChunk),
       };
 
       if (isReasoningModel) {
@@ -325,6 +429,13 @@ export async function callLLM(
         console.error(`${provider} API error:`, response.status, safeErr);
         throw new Error(`${provider.toUpperCase()} API error (${response.status}): ${safeErr}`);
       }
+
+      if (onChunk) {
+        const content = await readStream(response, onChunk, extractOpenAIDelta);
+        if (content) return content;
+        throw new Error(`${provider.toUpperCase()} stream returned empty content.`);
+      }
+
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content;
       if (content) return content;
@@ -367,6 +478,7 @@ export async function callLLM(
         body: JSON.stringify({
           model: model || "claude-3-5-sonnet-20241022",
           max_tokens: 8192,
+          stream: Boolean(onChunk),
           system: isLongSystem
             ? [
                 {
@@ -394,6 +506,13 @@ export async function callLLM(
         console.error("Anthropic API error:", response.status, safeErr);
         throw new Error(`Anthropic API error (${response.status}): ${safeErr}`);
       }
+
+      if (onChunk) {
+        const text = await readStream(response, onChunk, extractAnthropicDelta);
+        if (text) return text;
+        throw new Error("Anthropic stream returned empty content.");
+      }
+
       const data = await response.json();
       const text = data.content?.[0]?.text;
       if (text) return text;
@@ -427,7 +546,7 @@ export async function callLLM(
       const requestPayload: any = {
         model: model || getEnv('OLLAMA_MODEL') || "llama3.3",
         messages,
-        stream: false,
+        stream: Boolean(onChunk),
         options: {
           temperature: 0.2,
           num_predict: 8192,
@@ -446,6 +565,10 @@ export async function callLLM(
       });
 
       if (response.ok) {
+        if (onChunk) {
+          const content = await readStream(response, onChunk, extractOllamaDelta);
+          return content;
+        }
         const data = await response.json();
         return data.message?.content || "";
       }
