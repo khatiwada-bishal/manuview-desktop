@@ -23,6 +23,7 @@ import {
   AlertTriangle,
   Info,
 } from "lucide-react";
+import { isDesktopApp } from "@/lib/desktop";
 
 export type DesktopActiveView =
   | "overview"
@@ -230,34 +231,36 @@ export function DesktopSidebar({
             : "opacity-0 pointer-events-none z-10"
         } ${isTransitioning ? "overflow-hidden" : "overflow-visible"}`}
       >
-        {/* LOGO: Hover reveals expand icon */}
-        <div className="p-3 border-b border-[#E5E7EB]/70 dark:border-[#1E293B] flex justify-center">
-          <div className="relative group flex justify-center">
-            <button
-              type="button"
-              onClick={onToggleCollapse}
-              title="Expand sidebar"
-              className="w-10 h-10 rounded-xl bg-white dark:bg-[#161F30] border border-[#E5E7EB] dark:border-[#1E293B] hover:border-neutral-300 dark:hover:border-neutral-700 shadow-xs flex items-center justify-center transition cursor-pointer relative overflow-hidden"
-            >
-              {/* Official ManuView Icon */}
-              <img
-                src="/icon.svg"
-                alt="ManuView Logo"
-                className="w-8 h-8 rounded-lg shadow-xs transition-all duration-150 group-hover:opacity-0 group-hover:scale-75 select-none"
-              />
-              {/* Expand sidebar icon on hover */}
-              <div className="absolute inset-0 flex items-center justify-center text-[#0F172A] dark:text-white opacity-0 group-hover:opacity-100 transition-all duration-150 group-hover:scale-100">
-                <PanelLeft className="w-4 h-4" />
-              </div>
-            </button>
+        {/* LOGO: Hover reveals expand icon (Desktop only, in web mode it is rendered in DesktopHeader) */}
+        {isDesktopApp() && (
+          <div className="p-3 border-b border-[#E5E7EB]/70 dark:border-[#1E293B] flex justify-center">
+            <div className="relative group flex justify-center">
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                title="Expand sidebar"
+                className="w-10 h-10 rounded-xl bg-white dark:bg-[#161F30] border border-[#E5E7EB] dark:border-[#1E293B] hover:border-neutral-300 dark:hover:border-neutral-700 shadow-xs flex items-center justify-center transition cursor-pointer relative overflow-hidden"
+              >
+                {/* Official ManuView Icon */}
+                <img
+                  src="/icon.svg"
+                  alt="ManuView Logo"
+                  className="w-8 h-8 rounded-lg shadow-xs transition-all duration-150 group-hover:opacity-0 group-hover:scale-75 select-none"
+                />
+                {/* Expand sidebar icon on hover */}
+                <div className="absolute inset-0 flex items-center justify-center text-[#0F172A] dark:text-white opacity-0 group-hover:opacity-100 transition-all duration-150 group-hover:scale-100">
+                  <PanelLeft className="w-4 h-4" />
+                </div>
+              </button>
 
-            {/* Tooltip outside overflow-hidden button */}
-            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1 bg-[#111827] text-white text-xs font-medium rounded-md shadow-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
-              Expand sidebar
-              <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#111827]" />
+              {/* Tooltip outside overflow-hidden button */}
+              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1 bg-[#111827] text-white text-xs font-medium rounded-md shadow-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
+                Expand sidebar
+                <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#111827]" />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* ICONS BENEATH LOGO (overflow-visible so tooltips and submenus fly out cleanly) */}
         <div className="flex-1 overflow-visible px-2 py-3 space-y-3">
@@ -574,39 +577,41 @@ export function DesktopSidebar({
             : "opacity-0 pointer-events-none z-10"
         } overflow-hidden`}
       >
-      {/* 1. COMPANY HEADER: Logo + Title + Collapse Button */}
-      <div className="p-3 border-b border-black/[0.06] dark:border-white/[0.08]">
-        <div className="flex items-center justify-between p-2 rounded-xl liquid-glass-card shadow-xs">
-          <div
-            onClick={onGoHome}
-            className={`flex items-center gap-2.5 min-w-0 ${onGoHome ? "cursor-pointer hover:opacity-85 transition" : ""}`}
-            title={onGoHome ? "Back to Landing Page" : undefined}
-          >
-            <img
-              src="/icon.svg"
-              alt="ManuView Logo"
-              className="w-7 h-7 rounded-lg shadow-xs shrink-0 select-none"
-            />
-            <div className="truncate min-w-0">
-              <div className="font-bold text-xs text-[#0F172A] dark:text-white tracking-tight">
-                ManuView Desktop
-              </div>
-              <div className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">
-                Research & Review Suite
+      {/* 1. COMPANY HEADER: Logo + Title + Collapse Button (Desktop only: web mode shows this in DesktopHeader) */}
+      {isDesktopApp() && (
+        <div className="p-3 border-b border-black/[0.06] dark:border-white/[0.08]">
+          <div className="flex items-center justify-between p-2 rounded-xl liquid-glass-card shadow-xs">
+            <div
+              onClick={onGoHome}
+              className={`flex items-center gap-2.5 min-w-0 ${onGoHome ? "cursor-pointer hover:opacity-85 transition" : ""}`}
+              title={onGoHome ? "Back to Landing Page" : undefined}
+            >
+              <img
+                src="/icon.svg"
+                alt="ManuView Logo"
+                className="w-7 h-7 rounded-lg shadow-xs shrink-0 select-none"
+              />
+              <div className="truncate min-w-0">
+                <div className="font-bold text-xs text-[#0F172A] dark:text-white tracking-tight">
+                  ManuView Desktop
+                </div>
+                <div className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">
+                  Research & Review Suite
+                </div>
               </div>
             </div>
+            {/* Collapse sidebar icon replacing the gear icon */}
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              title="Collapse sidebar"
+              className="p-1.5 rounded-lg hover:bg-black/[0.05] dark:hover:bg-white/[0.1] text-neutral-400 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition cursor-pointer"
+            >
+              <PanelLeft className="w-4 h-4" />
+            </button>
           </div>
-          {/* Collapse sidebar icon replacing the gear icon */}
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            title="Collapse sidebar"
-            className="p-1.5 rounded-lg hover:bg-black/[0.05] dark:hover:bg-white/[0.1] text-neutral-400 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition cursor-pointer"
-          >
-            <PanelLeft className="w-4 h-4" />
-          </button>
         </div>
-      </div>
+      )}
 
       {/* SCROLLABLE MAIN CONTENT */}
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-4 [scrollbar-width:thin]">
