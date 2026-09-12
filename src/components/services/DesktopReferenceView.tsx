@@ -14,7 +14,7 @@ import {
   Bookmark,
   Download,
 } from "lucide-react";
-import { ReferenceVerification } from "@/lib/types";
+import { ReferenceVerification, FullReviewReport } from "@/lib/types";
 import { batchVerifyReferences } from "@/lib/crossref";
 import { extractReferencesFromText } from "@/lib/utils";
 import { exportBibTeX } from "@/lib/export-generator";
@@ -189,11 +189,42 @@ export function DesktopReferenceView() {
                 </h3>
                 <button
                   type="button"
-                  onClick={() => {
-                    exportBibTeX({
+                  onClick={async () => {
+                    await exportBibTeX({
+                      mode: "full",
+                      id: "bib-export",
+                      createdAt: new Date().toISOString(),
                       title: "Audited_Bibliography",
-                      citationIntegrity: { references: results.verified }
-                    } as any);
+                      targetJournal: "Target Journal",
+                      overallScore: 80,
+                      summary: "Audited Bibliography",
+                      citationIntegrity: {
+                        totalReferences: results.total,
+                        sampledCount: results.total,
+                        checkedCount: results.verified.length,
+                        coverageNote: "Live Crossref verification",
+                        verifiedCount: results.verified.filter((v) => v.status === "valid").length,
+                        unresolvableCount: results.unresolvableCount,
+                        uncheckedCount: 0,
+                        retractedCount: results.retractedCount,
+                        retractionCheckAvailable: true,
+                        references: results.verified,
+                      },
+                      priorityIssues: [],
+                      reviewerPersonas: [],
+                      journalRecommendations: [],
+                      dimensions: {} as any,
+                      classification: {
+                        category: "academic_manuscript",
+                        categoryLabel: "Academic Manuscript",
+                        isAcademicManuscript: true,
+                        confidence: 1,
+                        detectedFeatures: [],
+                        salutation: "",
+                        advisoryMessage: "",
+                        customGuidance: "",
+                      },
+                    } as FullReviewReport);
                   }}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold liquid-glass-btn-secondary transition cursor-pointer"
                 >
@@ -217,27 +248,39 @@ export function DesktopReferenceView() {
                         key={idx}
                         className={
                           ref.isRetracted
-                            ? "bg-red-50/60 dark:bg-rose-950/20"
+                            ? "bg-rose-500/10"
+                            : ref.status === "expression_of_concern"
+                            ? "bg-amber-500/10"
                             : ref.status === "unresolvable"
-                            ? "bg-amber-50/40 dark:bg-amber-950/10"
-                            : "hover:bg-neutral-50/70 dark:hover:bg-[#161F30]"
+                            ? "bg-amber-500/5"
+                            : "hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors"
                         }
                       >
                         <td className="px-4 py-3 whitespace-nowrap">
                           {ref.isRetracted ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 border border-red-300 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/40">
                               <AlertTriangle className="w-2.5 h-2.5" />
                               RETRACTED
                             </span>
+                          ) : ref.status === "expression_of_concern" ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/40">
+                              <AlertTriangle className="w-2.5 h-2.5" />
+                              EXPRESSION OF CONCERN
+                            </span>
                           ) : ref.status === "valid" ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40">
                               <CheckCircle2 className="w-2.5 h-2.5" />
                               VERIFIED
                             </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800">
+                          ) : ref.status === "unresolvable" ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30">
                               <Info className="w-2.5 h-2.5" />
-                              UNRESOLVABLE
+                              UNRESOLVABLE (404)
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-neutral-500/15 text-neutral-600 dark:text-neutral-400 border border-neutral-500/30">
+                              <Info className="w-2.5 h-2.5" />
+                              NOT CHECKED (NO DOI)
                             </span>
                           )}
                         </td>
@@ -248,6 +291,11 @@ export function DesktopReferenceView() {
                           {ref.authors && ref.authors.length > 0 && (
                             <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
                               {ref.authors.join(", ")}
+                            </div>
+                          )}
+                          {ref.retractionDetails && (
+                            <div className="text-rose-600 dark:text-rose-400 text-[11px] font-semibold mt-1">
+                              {ref.retractionDetails}
                             </div>
                           )}
                         </td>

@@ -390,9 +390,14 @@ export const NEPAL_EWASTE_PROJECT: SavedProject = {
     ],
     citationIntegrity: {
       totalReferences: 52,
+      sampledCount: 52,
+      checkedCount: 52,
+      coverageNote: "Sampled 52 of 52 references for DOI and Retraction Watch screening.",
       verifiedCount: 52,
       unresolvableCount: 0,
+      uncheckedCount: 0,
       retractedCount: 0,
+      retractionCheckAvailable: true,
       selfCitationRatio: 3.8,
       recencyProfile: {
         last5YearsPercent: 68,

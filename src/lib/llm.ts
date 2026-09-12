@@ -9,8 +9,11 @@ export function getEnv(key: string): string {
   try {
     const g = (typeof window !== "undefined" ? window : globalThis) as any;
     if (g?.process?.env?.[key]) return String(g.process.env[key]).trim();
-    if (typeof import.meta !== "undefined" && (import.meta as any)?.env) {
-      const meta = (import.meta as any).env;
+    let meta: any = undefined;
+    try {
+      meta = new Function("try { return import.meta.env; } catch (e) { return undefined; }")();
+    } catch {}
+    if (meta) {
       if (meta[key]) return String(meta[key]).trim();
       if (meta[`VITE_${key}`]) return String(meta[`VITE_${key}`]).trim();
     }
@@ -27,52 +30,73 @@ function getSavedClientConfig(): ProviderConfig | undefined {
   return undefined;
 }
 
+/**
+ * Sanitizes sensitive credentials (API keys, authorization tokens) from error strings (REQ-SEC-01)
+ */
+export function sanitizeErrorMessage(msg: string): string {
+  if (!msg) return "";
+  return msg
+    .replace(/key=[a-zA-Z0-9_\-]+/gi, "key=[REDACTED]")
+    .replace(/Bearer\s+[a-zA-Z0-9_\-\.]+/gi, "Bearer [REDACTED]")
+    .replace(/sk-[a-zA-Z0-9_\-]{20,}/gi, "sk-[REDACTED]")
+    .replace(/AIza[a-zA-Z0-9_\-]{30,}/gi, "AIza[REDACTED]")
+    .replace(/gsk_[a-zA-Z0-9_\-]{20,}/gi, "gsk_[REDACTED]");
+}
+
 export function getServerConfigStatus(): {
   hasServerKey: boolean;
+  hasClientKey?: boolean;
   activeProvider: LLMProvider | 'none';
   availableProviders: string[];
   baseUrl?: string;
   model?: string;
 } {
   const saved = getSavedClientConfig();
-  if (saved && saved.apiKey) {
+  const serverProviders: string[] = [];
+  let serverActiveProvider: LLMProvider | 'none' = 'none';
+
+  if (getEnv('OPENAI_API_KEY')) {
+    serverProviders.push('openai');
+    if (serverActiveProvider === 'none') serverActiveProvider = 'openai';
+  }
+  if (getEnv('GEMINI_API_KEY') || getEnv('GOOGLE_API_KEY')) {
+    serverProviders.push('gemini');
+    if (serverActiveProvider === 'none') serverActiveProvider = 'gemini';
+  }
+  if (getEnv('GROQ_API_KEY')) {
+    serverProviders.push('groq');
+    if (serverActiveProvider === 'none') serverActiveProvider = 'groq';
+  }
+  if (getEnv('ANTHROPIC_API_KEY')) {
+    serverProviders.push('anthropic');
+    if (serverActiveProvider === 'none') serverActiveProvider = 'anthropic';
+  }
+
+  const hasServerKey = serverProviders.length > 0;
+  const hasClientKey = Boolean(saved && saved.apiKey);
+
+  if (hasClientKey && saved) {
     return {
-      hasServerKey: true,
+      hasServerKey,
+      hasClientKey: true,
       activeProvider: saved.provider,
-      availableProviders: [saved.provider],
+      availableProviders: Array.from(new Set([saved.provider, ...serverProviders])),
       baseUrl: saved.baseUrl,
       model: saved.model,
     };
   }
 
-  const providers: string[] = [];
-  let activeProvider: LLMProvider | 'none' = 'none';
-
-  if (getEnv('OPENAI_API_KEY')) {
-    providers.push('openai');
-    if (activeProvider === 'none') activeProvider = 'openai';
-  }
-  if (getEnv('GEMINI_API_KEY') || getEnv('GOOGLE_API_KEY')) {
-    providers.push('gemini');
-    if (activeProvider === 'none') activeProvider = 'gemini';
-  }
-  if (getEnv('GROQ_API_KEY')) {
-    providers.push('groq');
-    if (activeProvider === 'none') activeProvider = 'groq';
-  }
-  if (getEnv('ANTHROPIC_API_KEY')) {
-    providers.push('anthropic');
-    if (activeProvider === 'none') activeProvider = 'anthropic';
-  }
-
   return {
-    hasServerKey: providers.length > 0,
-    activeProvider,
-    availableProviders: providers,
+    hasServerKey,
+    hasClientKey: false,
+    activeProvider: serverActiveProvider,
+    availableProviders: serverProviders,
     baseUrl: getEnv('OPENAI_BASE_URL') || undefined,
     model: getEnv('OPENAI_MODEL') || getEnv('GEMINI_MODEL') || getEnv('GROQ_MODEL') || undefined,
   };
 }
+
+const LLM_TIMEOUT_MS = 90_000;
 
 export async function callLLM(
   messages: LLMMessage[],
@@ -138,6 +162,8 @@ export async function callLLM(
     const cleanModel = encodeURIComponent(geminiModel.trim());
     const cleanKey = encodeURIComponent(apiKey.trim());
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${cleanKey}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
     try {
       const systemMessage = messages.find(m => m.role === 'system')?.content;
       const nonSystemMessages = messages.filter(m => m.role !== 'system');
@@ -176,6 +202,7 @@ export async function callLLM(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestPayload),
+        signal: controller.signal,
       });
 
       // Fallback: If systemInstruction or responseMimeType is rejected on legacy models with 400, retry merged
@@ -189,6 +216,7 @@ export async function callLLM(
             contents: [{ role: "user", parts: [{ text: mergedText }] }],
             generationConfig: { temperature: 0.2, maxOutputTokens: 8192 },
           }),
+          signal: controller.signal,
         });
       }
 
@@ -198,18 +226,25 @@ export async function callLLM(
           const errJson = await response.json();
           errText = errJson.error?.message || errText;
         } catch {
-          errText = await response.text() || errText;
+          errText = (await response.text()) || errText;
         }
-        console.error("Gemini API error:", response.status, errText);
-        throw new Error(`Gemini API error (${response.status}): ${errText}`);
+        const safeErr = sanitizeErrorMessage(errText);
+        console.error("Gemini API error:", response.status, safeErr);
+        throw new Error(`Gemini API error (${response.status}): ${safeErr}`);
       }
       const data = await response.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (text) return text;
       throw new Error("Gemini returned empty candidate response.");
     } catch (err: any) {
-      console.error("Gemini call failed:", err.message);
-      throw new Error(`Google Gemini call failed: ${err.message}`);
+      if (err.name === 'AbortError') {
+        throw new Error(`Google Gemini call timed out after ${LLM_TIMEOUT_MS / 1000}s`);
+      }
+      const safeMsg = sanitizeErrorMessage(err.message);
+      console.error("Gemini call failed:", safeMsg);
+      throw new Error(`Google Gemini call failed: ${safeMsg}`);
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
@@ -232,27 +267,47 @@ export async function callLLM(
       }
     }
     const chosenModel = model || getEnv('OPENAI_MODEL') || (provider === "groq" ? "llama-3.3-70b-versatile" : "gpt-4o-mini");
+    const isReasoningModel = /^o[13](?:-|$)/i.test(chosenModel);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
 
     try {
-        const requestPayload: any = {
-          model: chosenModel,
-          messages,
-          temperature: 0.2,
-          max_tokens: 8192,
-          stream: false,
-        };
-        if (provider === "groq") {
-          requestPayload.response_format = { type: "json_object" };
+      const formattedMessages = messages.map(m => {
+        if (isReasoningModel && m.role === 'system') {
+          return { role: 'developer', content: m.content };
         }
+        return m;
+      });
 
-        const response = await fetch(endpoint, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${apiKey.trim()}`,
-          },
-          body: JSON.stringify(requestPayload),
-        });
+      const requestPayload: any = {
+        model: chosenModel,
+        messages: formattedMessages,
+        stream: false,
+      };
+
+      if (isReasoningModel) {
+        requestPayload.max_completion_tokens = 8192;
+        // Reasoning models reject temperature parameter
+      } else {
+        requestPayload.temperature = 0.2;
+        requestPayload.max_tokens = 8192;
+      }
+
+      const isJsonRequested = messages.some((m) => /json/i.test(m.content));
+      if (provider === "groq" || (provider === "openai" && isJsonRequested && !isReasoningModel)) {
+        requestPayload.response_format = { type: "json_object" };
+      }
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey.trim()}`,
+        },
+        body: JSON.stringify(requestPayload),
+        signal: controller.signal,
+      });
 
       if (!response.ok) {
         let errMessage = `HTTP ${response.status}`;
@@ -260,18 +315,25 @@ export async function callLLM(
           const errJson = await response.json();
           errMessage = errJson.error?.message || errJson.message || errMessage;
         } catch {
-          errMessage = await response.text() || errMessage;
+          errMessage = (await response.text()) || errMessage;
         }
-        console.error(`${provider} API error:`, response.status, errMessage);
-        throw new Error(`${provider.toUpperCase()} API error (${response.status}): ${errMessage}`);
+        const safeErr = sanitizeErrorMessage(errMessage);
+        console.error(`${provider} API error:`, response.status, safeErr);
+        throw new Error(`${provider.toUpperCase()} API error (${response.status}): ${safeErr}`);
       }
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content;
       if (content) return content;
       throw new Error(`${provider.toUpperCase()} returned empty completion response.`);
     } catch (err: any) {
-      console.error(`${provider} call failed:`, err.message);
-      throw new Error(`${provider.toUpperCase()} call failed: ${err.message}`);
+      if (err.name === 'AbortError') {
+        throw new Error(`${provider.toUpperCase()} call timed out after ${LLM_TIMEOUT_MS / 1000}s`);
+      }
+      const safeMsg = sanitizeErrorMessage(err.message);
+      console.error(`${provider} call failed:`, safeMsg);
+      throw new Error(`${provider.toUpperCase()} call failed: ${safeMsg}`);
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
@@ -279,6 +341,8 @@ export async function callLLM(
   // 3. Anthropic Claude API
   // -----------------------------------------------------------
   if (provider === "anthropic" && apiKey) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
     try {
       const systemMessage = messages.find(m => m.role === 'system')?.content || "";
       const userAssistantMessages = messages
@@ -300,6 +364,7 @@ export async function callLLM(
           messages: userAssistantMessages,
           temperature: 0.2,
         }),
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -308,18 +373,25 @@ export async function callLLM(
           const errJson = await response.json();
           errMessage = errJson.error?.message || errMessage;
         } catch {
-          errMessage = await response.text() || errMessage;
+          errMessage = (await response.text()) || errMessage;
         }
-        console.error("Anthropic API error:", response.status, errMessage);
-        throw new Error(`Anthropic API error (${response.status}): ${errMessage}`);
+        const safeErr = sanitizeErrorMessage(errMessage);
+        console.error("Anthropic API error:", response.status, safeErr);
+        throw new Error(`Anthropic API error (${response.status}): ${safeErr}`);
       }
       const data = await response.json();
       const text = data.content?.[0]?.text;
       if (text) return text;
       throw new Error("Anthropic returned empty message response.");
     } catch (err: any) {
-      console.error("Anthropic call failed:", err.message);
-      throw new Error(`Anthropic call failed: ${err.message}`);
+      if (err.name === 'AbortError') {
+        throw new Error(`Anthropic call timed out after ${LLM_TIMEOUT_MS / 1000}s`);
+      }
+      const safeMsg = sanitizeErrorMessage(err.message);
+      console.error("Anthropic call failed:", safeMsg);
+      throw new Error(`Anthropic call failed: ${safeMsg}`);
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
@@ -327,6 +399,8 @@ export async function callLLM(
   // 4. Local Ollama (100% Offline & Free)
   // -----------------------------------------------------------
   if (provider === "ollama") {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
     try {
       let cleanBase = (baseUrl || "http://localhost:11434").trim();
       if (!cleanBase.startsWith("http://") && !cleanBase.startsWith("https://")) {
@@ -334,15 +408,26 @@ export async function callLLM(
       }
       cleanBase = cleanBase.replace(/\/+$/, "");
 
+      const isJsonRequested = messages.some((m) => /json/i.test(m.content));
+      const requestPayload: any = {
+        model: model || getEnv('OLLAMA_MODEL') || "llama3.3",
+        messages,
+        stream: false,
+        options: {
+          temperature: 0.2,
+          num_predict: 8192,
+          num_ctx: 16384,
+        },
+      };
+      if (isJsonRequested) {
+        requestPayload.format = "json";
+      }
+
       const response = await fetch(`${cleanBase}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: model || getEnv('OLLAMA_MODEL') || "llama3.3",
-          messages,
-          stream: false,
-          options: { temperature: 0.2, num_predict: 8192 },
-        }),
+        body: JSON.stringify(requestPayload),
+        signal: controller.signal,
       });
 
       if (response.ok) {
@@ -351,129 +436,19 @@ export async function callLLM(
       }
       throw new Error(`Ollama service returned HTTP ${response.status}`);
     } catch (err: any) {
-      throw new Error(`Local Ollama service unreachable at ${baseUrl}: ${err.message}`);
+      if (err.name === 'AbortError') {
+        throw new Error(`Local Ollama service call timed out after ${LLM_TIMEOUT_MS / 1000}s`);
+      }
+      const safeMsg = sanitizeErrorMessage(err.message);
+      throw new Error(`Local Ollama service unreachable at ${baseUrl}: ${safeMsg}`);
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
   throw new Error(`Unable to complete AI evaluation. Provider ${provider} is not configured.`);
 }
 
-// Deterministic offline fallback diagnostic when no LLM is connected
-function generateOfflineReview(messages: LLMMessage[]): string {
-  const userPrompt = messages.find(m => m.role === 'user')?.content || "";
-  
-  return JSON.stringify({
-    overallScore: 68,
-    summary: "The manuscript addresses an impactful problem with sound preliminary results. However, several causal claims lack sufficient mechanistic control experiments, and statistical reporting omits multiplicity corrections.",
-    dimensions: {
-      originality: {
-        score: 4,
-        label: "Originality & Novelty",
-        verdict: "Strong conceptual advance; differentiates effectively from existing baselines.",
-        strengths: ["Novel perspective on core mechanism", "Addresses an acknowledged literature bottleneck"],
-        vulnerabilities: ["Incremental comparison with the most recent 2024 literature is brief"]
-      },
-      broad_interest: {
-        score: 3,
-        label: "Importance & Broad Interest",
-        verdict: "High relevance within the specialized subfield; broader general interest needs stronger framing.",
-        strengths: ["Clear practical application", "Good clinical/theoretical motivation"],
-        vulnerabilities: ["Implications for adjacent fields are understated in abstract"]
-      },
-      claims_vs_evidence: {
-        score: 2,
-        label: "Strength of Claims vs. Evidence",
-        verdict: "Overstatement hazard detected: Correlative observations are described using definitive causal verbs.",
-        strengths: ["Clear primary measurement assays"],
-        vulnerabilities: ["Headline claim uses 'demonstrates' where only correlation was observed", "Missing rescue/ablation control condition"]
-      },
-      methodology: {
-        score: 3,
-        label: "Methodological & Statistical Soundness",
-        verdict: "Sound design but sample size power calculation and multiple testing corrections are not documented.",
-        strengths: ["Standardized protocol referenced", "Replicates reported"],
-        vulnerabilities: ["No explicit power analysis justifying sample size", "Multiplicity correction omitted for post-hoc tests"]
-      },
-      clarity: {
-        score: 4,
-        label: "Clarity & Presentation",
-        verdict: "Well-structured narrative with clear section transitions.",
-        strengths: ["Abstract follows Problem-Gap-Approach-Result sequence", "Logical progression of figures"],
-        vulnerabilities: ["Some technical abbreviations undefined on first use"]
-      },
-      prior_work: {
-        score: 3,
-        label: "Prior Work & Reference Integrity",
-        verdict: "Good foundational coverage, but self-citation ratio is slightly elevated and recent preprints are unaddressed.",
-        strengths: ["Classic landmark literature properly cited"],
-        vulnerabilities: ["Self-citation ratio approaches 22%", "Missing 2 key peer publications from 2023-2024"]
-      }
-    },
-    priorityIssues: [
-      {
-        id: "p1",
-        priority: "A",
-        title: "Causal Language Without Orthogonal Mechanistic Control",
-        category: "Causal Claims",
-        description: "The discussion asserts that factor X drives phenotype Y, but the evidence presented relies solely on correlational association without genetic rescue or inhibitory perturbation.",
-        reviewerQuote: "'The authors claim in lines 145-148 that X causes Y. Without a targeted knockdown or rescue experiment, this conclusion is premature and unsupported.'",
-        actionableFix: "Soften wording in the Abstract and Discussion from 'X proves/causes Y' to 'X is strongly associated with Y under tested conditions', or include the negative control data."
-      },
-      {
-        id: "p2",
-        priority: "A",
-        title: "Missing Multiple Testing Correction (FDR / Bonferroni)",
-        category: "Statistics",
-        description: "Multiple parallel pairwise comparisons are reported with unadjusted p-values (< 0.05), creating an unaddressed false positive hazard.",
-        reviewerQuote: "'Given that 18 distinct metrics were tested across 3 cohorts, how did the authors control the family-wise error rate?'",
-        actionableFix: "Apply Benjamini-Hochberg False Discovery Rate (FDR) or Bonferroni adjustments and report adjusted q-values in Table 2."
-      },
-      {
-        id: "p3",
-        priority: "B",
-        title: "Underpowered Sample Size Rationale",
-        category: "Methodology",
-        description: "Cohort size (n=8 per arm) lacks explicit statistical power calculations.",
-        reviewerQuote: "'The sample size is small for a heterogeneous biological model. Please provide power calculations or acknowledge power limitations in the Discussion.'",
-        actionableFix: "Add a paragraph in the Methods detailing the effect size assumed for the power calculation, or explicitly bound the generalizability."
-      }
-    ],
-    reviewerPersonas: [
-      {
-        persona: "methods_reviewer",
-        name: "Dr. A. Vance (Methods Reviewer)",
-        roleDescription: "Experimental Rigor & Protocol Reproducibility",
-        keyChallenge: "Missing reagents batch numbers and code repo commit hash.",
-        assessment: "The core protocol is sound, but full independent replication would be blocked by missing version numbers for computational analysis scripts.",
-        mustAddressItems: ["Specify software version and seed values for stochastic models", "Include positive control bands in Figure 2B"]
-      },
-      {
-        persona: "domain_expert",
-        name: "Prof. K. Thorne (Domain Specialist)",
-        roleDescription: "Novelty & Subfield Significance",
-        keyChallenge: "How does this advance past the 2024 Chen et al. publication?",
-        assessment: "The findings are credible, but the introduction does not explicitly contrast this mechanism against Chen et al. (2024), which reached a similar conclusion in vitro.",
-        mustAddressItems: ["Add a dedicated paragraph contrasting findings with Chen et al.", "Clarify why the in vivo model yields different kinetics"]
-      },
-      {
-        persona: "journal_editor",
-        name: "Senior Editor (General Readership)",
-        roleDescription: "Broad Impact & Desk-Rejection Triage",
-        keyChallenge: "Abstract is too technical for general cross-disciplinary readers.",
-        assessment: "This manuscript will struggle at top multidisciplinary journals (Nature/Science) unless the opening and closing sentences explicitly frame the broad biological significance.",
-        mustAddressItems: ["Rewrite opening sentence to avoid subfield jargon", "Clarify translational relevance in final abstract sentence"]
-      },
-      {
-        persona: "statistician",
-        name: "Dr. M. Sorkin (Biostatistician)",
-        roleDescription: "Statistical Validity & Data Distributions",
-        keyChallenge: "Parametric t-test used on small sample size without normality test.",
-        assessment: "Using standard t-tests on n=6 without assessing normal distribution is a frequent desk-rejection flag.",
-        mustAddressItems: ["Perform Shapiro-Wilk normality test or use non-parametric Mann-Whitney U test", "Define error bars as SD vs SEM in all figure captions"]
-      }
-    ]
-  });
-}
 
 
 export const CURATED_MODELS: Record<LLMProvider, AvailableModel[]> = {
@@ -992,7 +967,7 @@ export async function testLLMConnection(
           model: geminiModel,
           latencyMs,
           message: `Gemini API returned error ${response.status}`,
-          error: errMessage,
+          error: sanitizeErrorMessage(errMessage),
           availableModels,
           details: { statusCode: response.status },
         };
@@ -1064,7 +1039,7 @@ export async function testLLMConnection(
           model: chosenModel,
           latencyMs,
           message: `${provider.toUpperCase()} connection failed (${response.status})`,
-          error: errMessage,
+          error: sanitizeErrorMessage(errMessage),
           availableModels,
           details: { endpoint, statusCode: response.status },
         };
@@ -1124,7 +1099,7 @@ export async function testLLMConnection(
           model: chosenModel,
           latencyMs,
           message: `Anthropic API returned error ${response.status}`,
-          error: errMessage,
+          error: sanitizeErrorMessage(errMessage),
           availableModels,
           details: { statusCode: response.status },
         };
@@ -1183,7 +1158,7 @@ export async function testLLMConnection(
           model: model || "llama3.3",
           latencyMs,
           message: `Ollama service returned status ${response.status}`,
-          error: `Ollama at ${cleanBase} responded with status ${response.status}`,
+          error: sanitizeErrorMessage(`Ollama at ${cleanBase} responded with status ${response.status}`),
           availableModels,
         };
       }
@@ -1210,7 +1185,7 @@ export async function testLLMConnection(
       message: isTimeout ? `Connection timed out after ${timeoutMs / 1000}s` : `Connection failed`,
       error: isTimeout
         ? `Request timed out. Ensure the endpoint and network are reachable.`
-        : err.message || "Network error: Unable to reach the API server.",
+        : sanitizeErrorMessage(err.message || "Network error: Unable to reach the API server."),
       availableModels: CURATED_MODELS[provider] || CURATED_MODELS.gemini,
     };
   }

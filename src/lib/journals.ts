@@ -1,14 +1,25 @@
+export type Discipline =
+  | 'Oncology'
+  | 'Biomedicine'
+  | 'Computer Science'
+  | 'Clinical'
+  | 'Neuroscience'
+  | 'Operations Research & Management'
+  | 'Environmental Science & Sustainability'
+  | 'Multidisciplinary';
+
 export interface JournalEntry {
   name: string;
   publisher: string;
   impactFactor: number;
-  discipline: 'Oncology' | 'Biomedicine' | 'Computer Science' | 'Clinical' | 'Neuroscience' | 'Operations Research & Management' | 'Multidisciplinary';
+  discipline: Discipline;
   acceptanceRate: string;
   reviewSpeed: string;
   openAccess: 'Hybrid' | 'Gold OA' | 'Subscription';
   aimsAndScope: string;
   deskRejectHazards: string[];
   keyExpectations: string[];
+  isCrossDisciplinary?: boolean;
 }
 
 export const JOURNAL_CATALOG: JournalEntry[] = [
@@ -709,21 +720,156 @@ export const JOURNAL_CATALOG: JournalEntry[] = [
       "Numerical validation across multiple item instances and regulatory scenarios",
       "Clear decision-support applicability for modern automated supply chains"
     ]
+  },
+
+  // ==========================================
+  // ENVIRONMENTAL SCIENCE & SUSTAINABILITY
+  // ==========================================
+  {
+    name: "Nature Climate Change",
+    publisher: "Springer Nature",
+    impactFactor: 29.6,
+    discipline: "Environmental Science & Sustainability",
+    acceptanceRate: "8-10%",
+    reviewSpeed: "5-7 weeks to first decision",
+    openAccess: "Hybrid",
+    aimsAndScope: "Dedicated to publishing the most significant and cutting-edge research on the nature, underlying causes, and impacts of global climate change and its implications for the economy, policy, and the world at large.",
+    deskRejectHazards: [
+      "Local observational case study without global conceptual or mechanistic implications",
+      "Insufficient climate model ensemble resolution or unquantified projection uncertainty",
+      "Policy assertions disconnected from empirical carbon flux or socioeconomic modeling data"
+    ],
+    keyExpectations: [
+      "Rigorous climate attribution or systemic ecological impact quantification",
+      "Interdisciplinary resonance spanning physical, ecological, or socioeconomic dimensions",
+      "Complete documentation of climate data sources, code pipelines, and scenario bounds"
+    ]
+  },
+  {
+    name: "Nature Sustainability",
+    publisher: "Springer Nature",
+    impactFactor: 25.7,
+    discipline: "Environmental Science & Sustainability",
+    acceptanceRate: "7-9%",
+    reviewSpeed: "4-6 weeks to first decision",
+    openAccess: "Hybrid",
+    aimsAndScope: "Publishes significant research about sustainability, from natural sciences, social sciences, and engineering, addressing environmental degradation, sustainable development, and planetary boundaries.",
+    deskRejectHazards: [
+      "Technological assessments ignoring life-cycle environmental feedback or resource constraints",
+      "Narrow disciplinary scope failing to address systemic sustainability trade-offs",
+      "Unverified assumptions regarding adoption scale or policy implementation"
+    ],
+    keyExpectations: [
+      "Integrative framework bridging environmental boundaries and human well-being",
+      "Holistic life cycle impact assessment (LCA) and resource footprint analysis",
+      "Robust sensitivity analysis across policy and behavioral adoption trajectories"
+    ]
+  },
+  {
+    name: "Environmental Science & Technology",
+    publisher: "ACS Publications",
+    impactFactor: 10.8,
+    discipline: "Environmental Science & Sustainability",
+    acceptanceRate: "18-22%",
+    reviewSpeed: "4-6 weeks to first decision",
+    openAccess: "Hybrid",
+    aimsAndScope: "An authoritative source of information for professionals in a wide range of environmental disciplines, publishing rigorous, high-impact research on complex environmental phenomena.",
+    deskRejectHazards: [
+      "Incomplete analytical characterization of chemical/environmental pathways",
+      "Missing QA/QC controls, field blanks, or spike-recovery validation",
+      "Lack of mechanistic environmental fate or transport modeling"
+    ],
+    keyExpectations: [
+      "Exemplary analytical chemistry and environmental data quality assurance",
+      "Clear delineation of biogeochemical mechanisms or pollutant mitigation efficiency",
+      "Full deposition of raw spectroscopic, chromatographic, or environmental measurement data"
+    ]
+  },
+  {
+    name: "Journal of Cleaner Production",
+    publisher: "Elsevier",
+    impactFactor: 9.7,
+    discipline: "Environmental Science & Sustainability",
+    acceptanceRate: "20-25%",
+    reviewSpeed: "6-8 weeks to first decision",
+    openAccess: "Hybrid",
+    aimsAndScope: "Focuses on cleaner production, environmental, and sustainability research and practice, facilitating the transition toward sustainable societies.",
+    deskRejectHazards: [
+      "Generic sustainability claims without quantitative life-cycle metrics (e.g. ISO 14040/44)",
+      "Failure to model circular economy material flows with empirical baseline comparison",
+      "Superficial discussion of technological or economic feasibility"
+    ],
+    keyExpectations: [
+      "Quantitative life-cycle assessment (LCA) or material flow analysis (MFA)",
+      "Explicit technological and environmental trade-off evaluation",
+      "Actionable recommendations for industrial or environmental policy adoption"
+    ]
+  },
+  {
+    name: "Environmental Research Letters",
+    publisher: "IOP Publishing",
+    impactFactor: 5.8,
+    discipline: "Environmental Science & Sustainability",
+    acceptanceRate: "25-30%",
+    reviewSpeed: "4-6 weeks to first decision",
+    openAccess: "Gold OA",
+    aimsAndScope: "An open access journal covering environmental science, providing a forum for rapid publication of high-impact research across the full environmental science agenda.",
+    deskRejectHazards: [
+      "Excessive length exceeding letters format without succinct focus",
+      "Uncalibrated remote sensing or spatial extrapolations without ground-truth validation",
+      "Failure to address uncertainty intervals in ecological or emission estimates"
+    ],
+    keyExpectations: [
+      "Concise, high-impact presentation of urgent environmental findings",
+      "Defensible spatial-temporal validation with quantified uncertainty bounds",
+      "Open access data and reproducible analysis code"
+    ]
+  },
+  {
+    name: "Science of The Total Environment",
+    publisher: "Elsevier",
+    impactFactor: 8.2,
+    discipline: "Environmental Science & Sustainability",
+    acceptanceRate: "24-28%",
+    reviewSpeed: "5-7 weeks to first decision",
+    openAccess: "Hybrid",
+    aimsAndScope: "International journal for scientific research into the total environment, which interfaces the atmosphere, lithosphere, hydrosphere, biosphere, and anthroposphere.",
+    deskRejectHazards: [
+      "Routine monitoring data without novel environmental or geochemical insights",
+      "Single-location field sampling without temporal or regional replication",
+      "Omission of multivariate statistical significance and co-variate control"
+    ],
+    keyExpectations: [
+      "Comprehensive multi-compartment environmental assessment",
+      "Rigorous spatial and temporal sampling replication with robust statistics",
+      "Clear explanation of environmental implications for ecosystems or public health"
+    ]
   }
 ];
 
 /**
  * Intelligent domain classifier to detect manuscript discipline
  */
-function detectDiscipline(title: string, abstract: string, targetJournal?: string): JournalEntry['discipline'] {
+export function detectDiscipline(title: string, abstract: string, targetJournal?: string): JournalEntry['discipline'] {
   const text = `${title} ${abstract} ${targetJournal || ''}`.toLowerCase();
 
-  // Operations Research, Supply Chain & Environmental Management
+  // Environmental Science & Sustainability
+  const envTerms = [
+    'climate change', 'sustainability', 'carbon footprint', 'greenhouse gas', 'biodiversity',
+    'ecosystem', 'deforestation', 'renewable energy', 'life cycle assessment', 'lifecycle assessment',
+    'environmental policy', 'water quality', 'ecological', 'conservation', 'carbon sequestration',
+    'microplastics', 'pollution', 'sustainable development', 'planetary boundaries', 'circular economy',
+    'carbon emissions', 'emissions reduction', 'air quality', 'soil degradation', 'environmental science'
+  ];
+  const envScore = envTerms.filter(t => text.includes(t)).length;
+
+  // Operations Research, Supply Chain & Industrial Engineering
   const orTerms = [
-    'supply chain', 'e-waste', 'carbon tax', 'cap-and-trade', 'inventory model', 'reverse logistics',
-    'green investment', 'remanufacturing', 'operations research', 'opsearch', 'eoq', 'holding cost',
-    'decision variable', 'nonlinear optimization', 'sensitivity analysis', 'replenishment',
-    'carbon policy', 'refurbishment', 'circular economy', 'production planning', 'remodeling', 'emissions'
+    'supply chain', 'inventory model', 'reverse logistics', 'remanufacturing',
+    'operations research', 'opsearch', 'eoq', 'holding cost', 'decision variable',
+    'nonlinear optimization', 'sensitivity analysis', 'replenishment', 'refurbishment',
+    'production planning', 'queueing', 'stochastic programming', 'vehicle routing',
+    'facility location', 'integer programming', 'linear programming'
   ];
   const orScore = orTerms.filter(t => text.includes(t)).length;
 
@@ -731,7 +877,7 @@ function detectDiscipline(title: string, abstract: string, targetJournal?: strin
   const csTerms = [
     'neural network', 'deep learning', 'transformer', 'machine learning', 'computer vision',
     'segmentation', 'benchmark', 'classifier', 'algorithm', 'loss function', 'gpu',
-    'reinforcement learning', 'llm', 'natural language', 'backbone', 'convolutional', 'tpami', 'ieee'
+    'reinforcement learning', 'llm', 'natural language', 'backbone', 'convolutional', 'tpami', 'ieee trans'
   ];
   const csScore = csTerms.filter(t => text.includes(t)).length;
 
@@ -766,18 +912,20 @@ function detectDiscipline(title: string, abstract: string, targetJournal?: strin
   const bioScore = bioTerms.filter(t => text.includes(t)).length;
 
   // Evaluate scores with priority weighting
+  // Require at least 2 distinct domain terms or weighted score > 2.5 to avoid false positives on single incidental words
   const scores = [
-    { discipline: 'Operations Research & Management' as const, score: orScore * 2.2 },
-    { discipline: 'Computer Science' as const, score: csScore * 2.0 },
-    { discipline: 'Oncology' as const, score: oncoScore * 2.2 },
-    { discipline: 'Neuroscience' as const, score: neuroScore * 2.0 },
-    { discipline: 'Clinical' as const, score: clinScore * 1.8 },
-    { discipline: 'Biomedicine' as const, score: bioScore * 1.2 }
+    { discipline: 'Environmental Science & Sustainability' as const, score: envScore >= 2 ? envScore * 2.2 : 0 },
+    { discipline: 'Operations Research & Management' as const, score: orScore >= 2 ? orScore * 2.2 : 0 },
+    { discipline: 'Computer Science' as const, score: csScore >= 2 ? csScore * 2.0 : 0 },
+    { discipline: 'Oncology' as const, score: oncoScore >= 2 ? oncoScore * 2.2 : 0 },
+    { discipline: 'Neuroscience' as const, score: neuroScore >= 2 ? neuroScore * 2.0 : 0 },
+    { discipline: 'Clinical' as const, score: clinScore >= 2 ? clinScore * 1.8 : 0 },
+    { discipline: 'Biomedicine' as const, score: bioScore >= 2 ? bioScore * 1.2 : 0 }
   ];
 
   scores.sort((a, b) => b.score - a.score);
 
-  if (scores[0].score > 1) {
+  if (scores[0].score > 2.5) {
     return scores[0].discipline;
   }
 
@@ -789,6 +937,16 @@ function detectDiscipline(title: string, abstract: string, targetJournal?: strin
  * Strictly filters within the manuscript's detected domain, guarantees zero discipline crossover,
  * and benchmarks tiers relative to the study's scope.
  */
+export function parseAcceptanceRate(rateStr: string): number {
+  if (!rateStr) return 0;
+  const m = rateStr.match(/(\d+(?:\.\d+)?)(?:\s*-\s*(\d+(?:\.\d+)?))?\s*%/);
+  if (!m) return 0;
+  if (m[2]) {
+    return (parseFloat(m[1]) + parseFloat(m[2])) / 2;
+  }
+  return parseFloat(m[1]);
+}
+
 export function findMatchingJournals(
   title: string,
   abstract: string,
@@ -799,10 +957,11 @@ export function findMatchingJournals(
   fallback: JournalEntry;
   detectedDiscipline: JournalEntry['discipline'];
   allMatches: { journal: JournalEntry; matchScore: number }[];
+  crossDisciplinary?: JournalEntry[];
 } {
   const discipline = detectDiscipline(title, abstract, targetJournal);
 
-  // Filter catalog strictly to matching discipline PLUS relevant multidisciplinary options
+  // Filter catalog strictly to matching discipline
   const domainJournals = JOURNAL_CATALOG.filter(j => j.discipline === discipline);
   const multiJournals = JOURNAL_CATALOG.filter(j => j.discipline === 'Multidisciplinary');
 
@@ -814,35 +973,60 @@ export function findMatchingJournals(
   let fallback: JournalEntry;
 
   if (domainJournals.length >= 3) {
+    // Reach: highest in-discipline impact factor
     reach = domainJournals[0];
-    realistic = domainJournals[1];
-    fallback = domainJournals[domainJournals.length - 1];
+
+    // Fallback: in-discipline journal with the highest acceptance rate (most accessible)
+    const nonReach = domainJournals.slice(1);
+    const sortedByAR = [...nonReach].sort((a, b) => {
+      const arDiff = parseAcceptanceRate(b.acceptanceRate) - parseAcceptanceRate(a.acceptanceRate);
+      if (arDiff !== 0) return arDiff;
+      return a.impactFactor - b.impactFactor;
+    });
+    fallback = sortedByAR[0];
+
+    // Realistic: in-discipline journal nearest the median acceptance rate among remaining
+    const remaining = domainJournals.filter(j => j.name !== reach.name && j.name !== fallback.name);
+    const domainARs = domainJournals.map(j => parseAcceptanceRate(j.acceptanceRate)).sort((a, b) => a - b);
+    const medianAR = domainARs[Math.floor(domainARs.length / 2)];
+
+    remaining.sort((a, b) => {
+      const distA = Math.abs(parseAcceptanceRate(a.acceptanceRate) - medianAR);
+      const distB = Math.abs(parseAcceptanceRate(b.acceptanceRate) - medianAR);
+      if (distA !== distB) return distA - distB;
+      return b.impactFactor - a.impactFactor;
+    });
+    realistic = remaining[0] || nonReach[0];
   } else if (domainJournals.length === 2) {
     reach = domainJournals[0];
+    fallback = domainJournals[1];
     realistic = domainJournals[1];
-    fallback = multiJournals.find(j => j.name === "PLOS ONE") || domainJournals[1];
   } else if (domainJournals.length === 1) {
-    reach = multiJournals.find(j => j.name === "Nature") || domainJournals[0];
+    reach = domainJournals[0];
     realistic = domainJournals[0];
-    fallback = multiJournals.find(j => j.name === "PLOS ONE") || domainJournals[0];
+    fallback = domainJournals[0];
   } else {
-    // Pure multidisciplinary
-    reach = multiJournals.find(j => j.name === "Nature") || multiJournals[0];
-    realistic = multiJournals.find(j => j.name === "Nature Communications") || multiJournals[1];
-    fallback = multiJournals.find(j => j.name === "PLOS ONE") || multiJournals[multiJournals.length - 1];
+    reach = multiJournals[0];
+    realistic = multiJournals[2] || multiJournals[1];
+    fallback = multiJournals[multiJournals.length - 1];
   }
 
-  // If user specified an existing journal in targetJournal, verify it doesn't collide
-  const allScored = [...domainJournals, ...multiJournals].map(j => ({
-    journal: j,
-    matchScore: j.discipline === discipline ? 90 : 75
-  }));
+  // Cross-disciplinary journals (clearly marked, never disguised as in-discipline)
+  const crossDisciplinary = discipline !== 'Multidisciplinary'
+    ? multiJournals.map(j => ({ ...j, isCrossDisciplinary: true }))
+    : [];
+
+  const allScored = [
+    ...domainJournals.map(j => ({ journal: j, matchScore: 90 })),
+    ...crossDisciplinary.map(j => ({ journal: j, matchScore: 75 })),
+  ];
 
   return {
     reach,
     realistic,
     fallback,
     detectedDiscipline: discipline,
-    allMatches: allScored
+    allMatches: allScored,
+    crossDisciplinary: crossDisciplinary.length > 0 ? crossDisciplinary : undefined,
   };
 }

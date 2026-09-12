@@ -41,6 +41,7 @@ import {
   PriorityIssue,
   DimensionScore,
 } from "@/lib/types";
+import { isSubstantiveReviewerObservation } from "@/lib/utils";
 import {
   exportInteractiveHtmlReport,
   exportWordDocReport,
@@ -197,9 +198,14 @@ export function DesktopDashboard({
       journalRecommendations: journals,
       citationIntegrity: fullReport?.citationIntegrity || {
         totalReferences: data.citationAudit?.totalCount ?? 0,
+        sampledCount: data.citationAudit?.totalCount ?? 0,
+        checkedCount: data.citationAudit?.verifiedCount ?? 0,
+        coverageNote: "Automated bibliographic screening.",
         verifiedCount: data.citationAudit?.verifiedCount ?? 0,
         unresolvableCount: 0,
+        uncheckedCount: 0,
         retractedCount: data.citationAudit?.retractedCount ?? 0,
+        retractionCheckAvailable: true,
         selfCitationRatio: 0.05,
         recencyProfile: {
           last5YearsPercent: 75,
@@ -435,6 +441,24 @@ export function DesktopDashboard({
                 </p>
               </div>
 
+              {/* Heuristic Offline Degradation Notice */}
+              {fullReport?.executionMode === "heuristic_offline" && (
+                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-900 dark:text-amber-200 flex items-start gap-3 text-xs leading-relaxed animate-fade-in">
+                  <span className="text-base select-none">⚡</span>
+                  <div>
+                    <div className="font-semibold text-xs uppercase tracking-wider text-amber-800 dark:text-amber-300 mb-0.5">
+                      Deterministic Heuristic Calibration Active
+                    </div>
+                    <div>
+                      {fullReport.llmCallError ? (
+                        <span className="font-medium text-rose-600 dark:text-rose-400">Notice: {fullReport.llmCallError}. </span>
+                      ) : null}
+                      Diagnostics were generated using deterministic structural heuristics, Crossref registry checks, and disciplinary catalog calibrations. To enable live deep LLM critiques and multi-persona adversarial debates, connect an AI provider in <strong>AI Settings</strong>.
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Acceptance Potential Banner OR Ineligibility Banner */}
               {isAlreadyPublished ? (
                 <div className="p-5 rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 dark:from-emerald-950/30 dark:via-teal-950/30 dark:to-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 shadow-2xs space-y-3.5">
@@ -630,12 +654,29 @@ export function DesktopDashboard({
                     </div>
                     <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
                       Standard: {fullReport.reportingGuideline.standardType}
+                      {fullReport.reportingGuideline.standardUrl && (
+                        <>
+                          {" "}&bull;{" "}
+                          <a
+                            href={fullReport.reportingGuideline.standardUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="underline hover:text-blue-600 dark:hover:text-blue-300 text-neutral-600 dark:text-neutral-400"
+                          >
+                            Official Checklist &amp; Guidelines &rarr;
+                          </a>
+                        </>
+                      )}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-[#64748B] dark:text-neutral-400">Audit Score:</span>
                     <span className="text-base font-extrabold text-[#2563EB] dark:text-blue-400 bg-[#EFF6FF] dark:bg-blue-950/50 px-2.5 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
-                      {fullReport.reportingGuideline.scorePercent}%
+                      {fullReport.reportingGuideline.itemSetScope === "core_subset"
+                        ? `${fullReport.reportingGuideline.evidencedCount}/${fullReport.reportingGuideline.totalItems} core items evidenced (${fullReport.reportingGuideline.itemSetSize} in full standard; ${fullReport.reportingGuideline.scorePercent}%)`
+                        : fullReport.reportingGuideline.evidencedCount !== undefined && fullReport.reportingGuideline.totalItems !== undefined
+                        ? `${fullReport.reportingGuideline.evidencedCount}/${fullReport.reportingGuideline.totalItems} Evidenced (${fullReport.reportingGuideline.scorePercent}%)`
+                        : `${fullReport.reportingGuideline.scorePercent}%`}
                     </span>
                   </div>
                 </div>
@@ -645,13 +686,24 @@ export function DesktopDashboard({
                     <span className="text-xs font-bold text-[#166534] dark:text-emerald-300 uppercase tracking-wider block">
                       Compliant Checklist Items:
                     </span>
-                    <ul className="space-y-1.5 text-xs text-[#166534] dark:text-emerald-300">
-                      {fullReport.reportingGuideline.compliantItems.map((item, idx) => (
-                        <li key={idx} className="flex items-start gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#16A34A] dark:text-emerald-400" />
-                          <span>{item}</span>
-                        </li>
-                      ))}
+                    <ul className="space-y-2 text-xs text-[#166534] dark:text-emerald-300">
+                      {fullReport.reportingGuideline.compliantItems.map((item, idx) => {
+                        const [heading, ...rest] = item.split(" — ");
+                        const excerpt = rest.join(" — ");
+                        return (
+                          <li key={idx} className="flex items-start gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#16A34A] dark:text-emerald-400" />
+                            <div className="space-y-0.5">
+                              <span className="font-semibold">{heading}</span>
+                              {excerpt && (
+                                <p className="text-[11px] text-emerald-800/80 dark:text-emerald-300/80 italic pl-2 border-l-2 border-emerald-300 dark:border-emerald-700">
+                                  {excerpt}
+                                </p>
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
 
@@ -659,15 +711,50 @@ export function DesktopDashboard({
                     <span className="text-xs font-bold text-[#92400E] dark:text-amber-300 uppercase tracking-wider block">
                       Missing or Partial Reporting Items:
                     </span>
-                    <ul className="space-y-1.5 text-xs text-[#92400E] dark:text-amber-300">
-                      {fullReport.reportingGuideline.missingOrPartialItems.map((item, idx) => (
-                        <li key={idx} className="flex items-start gap-1.5">
-                          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#D97706] dark:text-amber-400" />
-                          <span>{item}</span>
-                        </li>
-                      ))}
+                    <ul className="space-y-2 text-xs text-[#92400E] dark:text-amber-300">
+                      {fullReport.reportingGuideline.missingOrPartialItems.map((item, idx) => {
+                        const [heading, ...rest] = item.split(" — ");
+                        const recommendation = rest.join(" — ");
+                        return (
+                          <li key={idx} className="flex items-start gap-1.5">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#D97706] dark:text-amber-400" />
+                            <div className="space-y-0.5">
+                              <span className="font-semibold">{heading}</span>
+                              {recommendation && (
+                                <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 pl-2 border-l-2 border-amber-300 dark:border-amber-700">
+                                  {recommendation}
+                                </p>
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
+
+                  {(() => {
+                    const substantiveObservations = (
+                      fullReport.reportingGuideline.additionalReviewerObservations || []
+                    ).filter(isSubstantiveReviewerObservation);
+
+                    if (substantiveObservations.length === 0) return null;
+
+                    return (
+                      <div className="p-4 rounded-xl bg-black/[0.02] dark:bg-white/[0.04] border border-[#E2E8F0] dark:border-[#334155] space-y-2 text-xs md:col-span-2">
+                        <span className="font-semibold text-[#475569] dark:text-neutral-300 uppercase tracking-wider text-[10px] block">
+                          Additional Reviewer Observations:
+                        </span>
+                        <ul className="space-y-1 text-[#334155] dark:text-neutral-300">
+                          {substantiveObservations.map((obs, idx) => (
+                            <li key={idx} className="flex items-start gap-1.5">
+                              <span className="text-gray-400">&bull;</span>
+                              <span>{obs}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             )}
@@ -1011,59 +1098,80 @@ export function DesktopDashboard({
         {activeView === "issues" && isReviewEligible && (
           <div className="space-y-5 animate-fade-in">
             {/* Filter Pills */}
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIssueFilter("all")}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                  issueFilter === "all"
-                    ? "liquid-glass-tab-active font-bold text-blue-600 dark:text-blue-400"
-                    : "liquid-glass-btn-secondary text-[#475569] dark:text-neutral-300"
-                }`}
-              >
-                All Issues ({issues.length})
-              </button>
+            {(() => {
+              const countA = issues.filter((i) => i.priority === "A").length;
+              const countB = issues.filter((i) => i.priority === "B").length;
+              const countC = issues.filter((i) => i.priority === "C").length;
 
-              <button
-                type="button"
-                onClick={() => setIssueFilter("A")}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                  issueFilter === "A"
-                    ? "bg-rose-600 text-white shadow-xs border border-rose-500"
-                    : "liquid-glass-btn-secondary text-[#DC2626] dark:text-rose-400"
-                }`}
-              >
-                🚨 Priority A (Desk-Reject Risk)
-              </button>
+              return (
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIssueFilter("all")}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                      issueFilter === "all"
+                        ? "liquid-glass-tab-active font-bold text-blue-600 dark:text-blue-400"
+                        : "liquid-glass-btn-secondary text-[#475569] dark:text-neutral-300"
+                    }`}
+                  >
+                    All Issues ({issues.length})
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => setIssueFilter("B")}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                  issueFilter === "B"
-                    ? "bg-amber-600 text-white shadow-xs border border-amber-500"
-                    : "liquid-glass-btn-secondary text-[#D97706] dark:text-amber-400"
-                }`}
-              >
-                ⚠️ Priority B (Major Technical)
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => setIssueFilter("A")}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                      issueFilter === "A"
+                        ? "bg-rose-600 text-white shadow-xs border border-rose-500"
+                        : "liquid-glass-btn-secondary text-[#DC2626] dark:text-rose-400"
+                    }`}
+                  >
+                    🚨 Priority A ({countA})
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => setIssueFilter("C")}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                  issueFilter === "C"
-                    ? "bg-emerald-600 text-white shadow-xs border border-emerald-500"
-                    : "liquid-glass-btn-secondary text-[#16A34A] dark:text-emerald-400"
-                }`}
-              >
-                💡 Priority C (Presentation)
-              </button>
-            </div>
+                  <button
+                    type="button"
+                    onClick={() => setIssueFilter("B")}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                      issueFilter === "B"
+                        ? "bg-amber-600 text-white shadow-xs border border-amber-500"
+                        : "liquid-glass-btn-secondary text-[#D97706] dark:text-amber-400"
+                    }`}
+                  >
+                    ⚠️ Priority B ({countB})
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIssueFilter("C")}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                      issueFilter === "C"
+                        ? "bg-emerald-600 text-white shadow-xs border border-emerald-500"
+                        : "liquid-glass-btn-secondary text-[#16A34A] dark:text-emerald-400"
+                    }`}
+                  >
+                    💡 Priority C ({countC})
+                  </button>
+                </div>
+              );
+            })()}
 
             {/* Issues List */}
             <div className="space-y-4">
-              {filteredIssues.map((iss) => (
+              {filteredIssues.length === 0 ? (
+                <div className="rounded-3xl liquid-glass-card p-10 text-center space-y-2 animate-fade-in">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
+                  <h3 className="text-sm font-bold text-[#0F172A] dark:text-white">
+                    {issueFilter === "all" ? "No Priority Issues Found" : `No Priority ${issueFilter} Issues Identified`}
+                  </h3>
+                  <p className="text-xs text-[#64748B] dark:text-neutral-400 max-w-sm mx-auto">
+                    {issueFilter === "A"
+                      ? "No catastrophic desk-reject hazards or fatal methodological flaws were detected."
+                      : "No actionable concerns in this priority tier."}
+                  </p>
+                </div>
+              ) : (
+                filteredIssues.map((iss) => (
                 <div
                   key={iss.id}
                   className="rounded-3xl liquid-glass-card liquid-glass-card-interactive p-6 space-y-3.5"
@@ -1138,7 +1246,7 @@ export function DesktopDashboard({
                     </div>
                   )}
                 </div>
-              ))}
+              )))}
             </div>
           </div>
         )}
@@ -1207,38 +1315,134 @@ export function DesktopDashboard({
         {/* ========================================================= */}
         {/* CROSSREF CITATIONS VIEW (if opened from old link)         */}
         {/* ========================================================= */}
-        {activeView === "citations" && (
-          <div className="rounded-3xl liquid-glass-card p-6 sm:p-8 space-y-5 animate-fade-in shadow-xs">
-            <h2 className="text-base font-bold text-[#0F172A] dark:text-white flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-[#16A34A] dark:text-emerald-400" />
-              <span>Reference Integrity &amp; Retraction Verification</span>
-            </h2>
-            <p className="text-xs text-[#64748B] dark:text-neutral-400">
-              Verified against CrossRef Open API and Retraction Watch database.
-            </p>
+        {activeView === "citations" && (() => {
+          const cit = fullReport?.citationIntegrity;
+          const totalRef = cit?.totalReferences ?? data.citationAudit.totalCount;
+          const verifiedRef = cit?.verifiedCount ?? data.citationAudit.verifiedCount;
+          const sampledRef = cit?.sampledCount ?? totalRef;
+          const uncheckedRef = cit?.uncheckedCount ?? 0;
+          const unresolvableRef = cit?.unresolvableCount ?? 0;
+          const retractedRef = cit?.retractedCount ?? data.citationAudit.retractedCount;
+          const retAvailable = cit?.retractionCheckAvailable !== false;
+          const selfCitRatio = cit?.selfCitationRatio;
+          const references = cit?.references || [];
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="liquid-glass-card p-4 rounded-2xl">
-                <span className="text-xs text-[#64748B] dark:text-neutral-400 font-medium">Total References</span>
-                <p className="text-2xl font-bold text-[#0F172A] dark:text-white mt-1">
-                  {fullReport?.citationIntegrity?.totalReferences || data.citationAudit.totalCount}
-                </p>
+          return (
+            <div className="rounded-3xl liquid-glass-card p-6 sm:p-8 space-y-6 animate-fade-in shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="space-y-1">
+                  <h2 className="text-base font-bold text-[#0F172A] dark:text-white flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-[#16A34A] dark:text-emerald-400" />
+                    <span>Citation &amp; Reference Integrity Audit</span>
+                  </h2>
+                  <p className="text-xs text-[#64748B] dark:text-neutral-400">
+                    Verified against CrossRef Open API and Retraction Watch database.
+                  </p>
+                </div>
+                {cit?.coverageNote && (
+                  <span className="text-xs text-[#64748B] dark:text-neutral-400 font-medium">
+                    {cit.coverageNote}
+                  </span>
+                )}
               </div>
-              <div className="liquid-glass-card p-4 rounded-2xl">
-                <span className="text-xs text-[#166534] dark:text-emerald-400 font-medium">CrossRef Verified</span>
-                <p className="text-2xl font-bold text-[#16A34A] dark:text-emerald-400 mt-1">
-                  {fullReport?.citationIntegrity?.verifiedCount || data.citationAudit.verifiedCount}
-                </p>
+
+              {/* 6-Stat Tiles Grid */}
+              <div className={`grid grid-cols-2 ${selfCitRatio !== undefined ? "sm:grid-cols-6" : "sm:grid-cols-5"} gap-3`}>
+                <div className="liquid-glass-card p-3.5 rounded-2xl text-center">
+                  <div className="text-xl font-bold font-serif text-[#0F172A] dark:text-white">{totalRef}</div>
+                  <div className="text-[11px] text-[#64748B] dark:text-neutral-400 mt-0.5">Total References</div>
+                </div>
+                <div className="liquid-glass-card p-3.5 rounded-2xl text-center">
+                  <div className="text-xl font-bold font-serif text-[#16A34A] dark:text-emerald-400">{verifiedRef}</div>
+                  <div className="text-[11px] text-[#64748B] dark:text-neutral-400 mt-0.5">
+                    {sampledRef < totalRef ? `Verified (in ${sampledRef})` : "Crossref Verified"}
+                  </div>
+                </div>
+                <div className="liquid-glass-card p-3.5 rounded-2xl text-center">
+                  <div className="text-xl font-bold font-serif text-[#64748B] dark:text-neutral-400">{uncheckedRef}</div>
+                  <div className="text-[11px] text-[#64748B] dark:text-neutral-400 mt-0.5">Not Checked</div>
+                </div>
+                <div className="liquid-glass-card p-3.5 rounded-2xl text-center">
+                  <div className={`text-xl font-bold font-serif ${unresolvableRef > 0 ? "text-rose-600 dark:text-rose-400" : "text-[#0F172A] dark:text-white"}`}>
+                    {unresolvableRef}
+                  </div>
+                  <div className="text-[11px] text-[#64748B] dark:text-neutral-400 mt-0.5">Unresolvable DOIs</div>
+                </div>
+                <div className="liquid-glass-card p-3.5 rounded-2xl text-center">
+                  <div className={`text-xl font-bold font-serif ${!retAvailable ? "text-neutral-400 text-sm pt-1" : retractedRef > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                    {retAvailable ? retractedRef : "Not screened"}
+                  </div>
+                  <div className="text-[11px] text-[#64748B] dark:text-neutral-400 mt-0.5">Retracted Flagged</div>
+                </div>
+                {selfCitRatio !== undefined && (
+                  <div className="liquid-glass-card p-3.5 rounded-2xl text-center">
+                    <div className="text-xl font-bold font-serif text-[#0F172A] dark:text-white">{selfCitRatio}%</div>
+                    <div className="text-[11px] text-[#64748B] dark:text-neutral-400 mt-0.5">Self-Citation Rate</div>
+                  </div>
+                )}
               </div>
-              <div className="liquid-glass-card p-4 rounded-2xl">
-                <span className="text-xs text-[#64748B] dark:text-neutral-400 font-medium">Retraction Flags</span>
-                <p className="text-2xl font-bold text-[#16A34A] dark:text-emerald-400 mt-1">
-                  {fullReport?.citationIntegrity?.retractedCount || data.citationAudit.retractedCount}
-                </p>
-              </div>
+
+              {/* Bibliography Samples Table */}
+              {references.length > 0 && (
+                <div className="liquid-glass-card rounded-2xl overflow-hidden shadow-xs">
+                  <div className="p-3 bg-black/[0.02] dark:bg-white/[0.04] border-b border-black/[0.06] dark:border-white/[0.08] text-[11px] font-semibold text-[#64748B] dark:text-neutral-400 uppercase tracking-wider">
+                    Bibliography Samples &amp; Verification Details
+                  </div>
+                  <div className="divide-y divide-black/[0.06] dark:divide-white/[0.08]">
+                    {references.slice(0, 15).map((ref, idx) => (
+                      <div key={idx} className="p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+                        <div className="space-y-1 max-w-xl">
+                          <div className="font-medium text-[#0F172A] dark:text-white leading-snug">
+                            {ref.title || ref.raw}
+                          </div>
+                          <div className="text-[11px] text-[#64748B] dark:text-neutral-400 flex items-center gap-2 flex-wrap font-mono">
+                            {ref.doi && <span>DOI: {ref.doi}</span>}
+                            {ref.journal && <span>&bull; {ref.journal}</span>}
+                            {ref.year && <span>&bull; {ref.year}</span>}
+                          </div>
+                          {ref.retractionDetails && (
+                            <div className="text-rose-600 dark:text-rose-400 text-[11px] font-semibold">
+                              {ref.retractionDetails}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="shrink-0">
+                          {ref.isRetracted ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/40">
+                              <AlertTriangle className="w-2.5 h-2.5" />
+                              RETRACTED
+                            </span>
+                          ) : ref.status === "expression_of_concern" ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/40">
+                              <AlertTriangle className="w-2.5 h-2.5" />
+                              EXPRESSION OF CONCERN
+                            </span>
+                          ) : ref.status === "valid" ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40">
+                              <CheckCircle2 className="w-2.5 h-2.5" />
+                              VERIFIED
+                            </span>
+                          ) : ref.status === "unresolvable" ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30">
+                              <Info className="w-2.5 h-2.5" />
+                              UNRESOLVABLE (404)
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-neutral-500/15 text-neutral-600 dark:text-neutral-400 border border-neutral-500/30">
+                              <Info className="w-2.5 h-2.5" />
+                              NOT CHECKED
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* Export Toast Notification */}
