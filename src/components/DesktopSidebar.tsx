@@ -237,13 +237,13 @@ export function DesktopSidebar({
                 type="button"
                 onClick={onToggleCollapse}
                 title="Expand sidebar"
-                className="w-10 h-10 rounded-xl bg-white dark:bg-[#161F30] border border-[#E5E7EB] dark:border-[#1E293B] hover:border-neutral-300 dark:hover:border-neutral-700 shadow-xs flex items-center justify-center transition cursor-pointer relative overflow-hidden"
+                className="w-9 h-9 rounded-xl bg-white dark:bg-[#161F30] border border-[#E5E7EB] dark:border-[#1E293B] hover:border-neutral-300 dark:hover:border-neutral-700 shadow-xs flex items-center justify-center transition cursor-pointer relative overflow-hidden"
               >
                 {/* Official ManuView Icon */}
                 <img
                   src="/icon.svg"
                   alt="ManuView Logo"
-                  className="w-8 h-8 rounded-lg shadow-xs transition-all duration-150 group-hover:opacity-0 group-hover:scale-75 select-none"
+                  className="w-7 h-7 rounded-lg shadow-xs transition-all duration-150 group-hover:opacity-0 group-hover:scale-75 select-none"
                 />
                 {/* Expand sidebar icon on hover */}
                 <div className="absolute inset-0 flex items-center justify-center text-[#0F172A] dark:text-white opacity-0 group-hover:opacity-100 transition-all duration-150 group-hover:scale-100">
