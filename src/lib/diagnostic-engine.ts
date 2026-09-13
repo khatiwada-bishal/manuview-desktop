@@ -568,18 +568,22 @@ CRITICAL ANTI-HALLUCINATION & STRICT GROUNDING MANDATE:
 1. STRICTLY CONFINED TO THIS DOCUMENT: You MUST review ONLY the exact scientific discipline, methodology, datasets, empirical findings, and claims present in the provided manuscript text.
 2. ABSOLUTELY NO CANNED CONTENT: Critiques must focus exclusively on the theories, domains, techniques, and terminology explicitly introduced in the manuscript text. Avoid injecting external research domains, buzzwords, or off-topic methodologies that do not appear in the author's submission.
 3. VERBATIM & CONTENT-DRIVEN CRITIQUES: Every single critique, strength, vulnerability, and reviewer objection MUST cite specific variables, equations, sample sizes (n), p-values, datasets, algorithms, or paragraphs directly from the uploaded text.
-4. TAILORED 5-PERSONA ADVERSARIAL REVIEW PANEL:
-   You MUST provide EXACTLY 5 reviewer personas in the "reviewerPersonas" array, one for EACH of the following 5 distinct roles (NONE may be omitted):
-   - "methods_reviewer": Lead expert in the core methodology/model of THIS paper. Critiques experimental protocols, mathematical proofs, algorithm convergence, or econometric specification.
-   - "domain_expert": Renowned researcher in this paper's exact subfield. Evaluates domain novelty, mechanistic plausibility, and theoretical grounding.
-   - "journal_editor": Senior handling/executive editor from top-tier journals in this exact field. Evaluates editorial triage, broad significance, and desk-rejection risk.
-   - "statistician": Senior quantitative methods / biostatistics / numerical referee. Audits sample power, variance reporting, multiplicity corrections, and data availability.
-   - "devils_advocate": Hostile stress-test / adversarial referee targeting:
-     * Unruled-out rival hypotheses & alternative explanations
-     * Causal overclaims vs descriptive/correlative reality
-     * The clinical or operational "So What?" hurdle
-     * Boundary conditions and out-of-distribution failure modes
-   Each persona MUST have: persona ("methods_reviewer" | "domain_expert" | "journal_editor" | "statistician" | "devils_advocate"), name, title, affiliation, expertise, roleDescription, decisionRecommendation ("Major Revision" | "Reject / Resubmit" | "Desk Reject" | "Minor Revision"), keyChallenge, assessment (2-3 detailed paragraphs citing the text), majorCritiques (array of 3-5 specific critiques), missingControlsOrAnalyses (array of 2-3 items), mustAddressItems (array of 3 items), evidenceAnchors (array of 2-3 typed text/equation anchors: text: §X "...", equation: Eq. Y, absence: §Z ...), and counterArguments (array of 2-3 hostile counter-arguments or defensive points).
+4. JOURNAL-CALIBRATED 5-PERSONA ADVERSARIAL REVIEW PANEL (BLINDED SCHOLARLY TRACKS):
+   The review panel represents the TARGET JOURNAL's editorial board and reviewer pool evaluating this submission.
+   CRITICAL ANONYMITY MANDATE: Scholarly peer review is strictly BLINDED. NEVER invent or output personal human names (e.g. "Dr. Sarah Johnson", "Dr. John Doe"). Instead, "name" MUST strictly be the formal anonymous reviewer track:
+   - "Reviewer 1: Lead Handling Editor"
+   - "Reviewer 2: Target Domain Specialist"
+   - "Reviewer 3: Research Methodology Referee"
+   - "Reviewer 4: Statistical & Quantitative Auditor"
+   - "Reviewer 5: Adversarial Translation Referee"
+
+   The 5 distinct roles MUST be distributed as follows (NONE may be omitted):
+   - "journal_editor" (name: "Reviewer 1: Lead Handling Editor"): Senior handling/executive editor representing the TARGET JOURNAL's editorial office. Evaluates editorial triage, aims & scope compliance, readership alignment, and desk-rejection risk for the target journal. If the manuscript is out-of-scope for the target journal, this editor MUST recommend "Desk Reject".
+   - "domain_expert" (name: "Reviewer 2: Target Domain Specialist"): Leading researcher in the TARGET JOURNAL's subject discipline. Evaluates whether the submission delivers novel scientific contributions, mechanistic depth, or theoretical value to the target journal's readership.
+   - "methods_reviewer" (name: "Reviewer 3: Research Methodology Referee"): Lead specialist in the paper's actual methodology/empirical models (e.g. experimental protocols, surveys, structural equation modeling, algorithmic convergence, or econometrics). Critiques methodological validity, data collection protocols, and reproducibility.
+   - "statistician" (name: "Reviewer 4: Statistical & Quantitative Auditor"): Senior quantitative methods / applied biostatistics referee. Audits sample power, variance reporting, collinearity (VIF), multiplicity corrections, and data availability.
+   - "devils_advocate" (name: "Reviewer 5: Adversarial Translation Referee"): Adversarial stress-test referee challenging cross-disciplinary utility, translational relevance to the target journal's audience, unruled-out rival hypotheses, and causal overclaims.
+   Each persona MUST have: persona ("journal_editor" | "domain_expert" | "methods_reviewer" | "statistician" | "devils_advocate"), name (MUST be the anonymous reviewer track e.g. "Reviewer 1: Lead Handling Editor"), title (formal academic title, e.g. "Senior Handling Editor — Cardiovascular & Physiological Science"), affiliation (e.g. "Editorial Advisory Board, [Target Journal]"), expertise (specific areas of expertise, e.g. "Aims & scope compliance, clinical translation, and editorial triage"), roleDescription, decisionRecommendation ("Major Revision" | "Reject / Resubmit" | "Desk Reject" | "Minor Revision"), keyChallenge, assessment (2-3 detailed paragraphs citing the text), majorCritiques (array of 3-5 specific critiques), missingControlsOrAnalyses (array of 2-3 items), mustAddressItems (array of 3 items), evidenceAnchors (array of 2-3 typed text/equation anchors: text: §X "...", equation: Eq. Y, absence: §Z ...), and counterArguments (array of 2-3 hostile counter-arguments or defensive points).
 5. TYPED EVIDENCE ANCHORS & REBUTTAL STRATEGIES:
    - Every priority issue MUST have a typed "evidenceAnchor": text: §X "<quote up to 25 words>", equation: Eq. Y, or absence: §Z lacks ...
    - Every priority issue MUST have a "rebuttalStrategy" detailing the point-by-point author defense and revision roadmap for the formal journal response letter.
@@ -696,8 +700,14 @@ Submitting this paper to ${targetJournalName} represents an extreme cross-field 
 You MUST strictly reflect this reality:
 1. Overall acceptance score (overallScore) MUST NOT exceed 28 (reflecting realistic desk-reject hazard).
 2. Priority Issues MUST include a Priority A issue with category "Scope/Fit" explicitly flagging this field mismatch and advising submission to a ${detectedDiscipline} venue.
-3. Realistic and Fallback journal recommendations MUST be anchored in ${detectedDiscipline}, NOT in ${targetDiscipline}.`
-    : targetJournalName ? `Calibrate your Realistic tier to "${targetJournalName}" or direct peer-equivalent journals in this field, Reach to higher-impact venues in this field, and Fallback to accessible specialty journals.` : ""
+3. Realistic and Fallback journal recommendations MUST be anchored in ${detectedDiscipline}, NOT in ${targetDiscipline}.
+4. Reviewer Personas MUST represent the TARGET JOURNAL's editorial board (${targetJournalName} / ${targetDiscipline}):
+   - "journal_editor" ("Reviewer 1: Lead Handling Editor"): Evaluates from ${targetJournalName}'s perspective and MUST recommend "Desk Reject" due to complete scope mismatch.
+   - "domain_expert" ("Reviewer 2: Target Domain Specialist"): Represents ${targetDiscipline} and must evaluate from the target field's perspective, highlighting the total absence of contributions to ${targetDiscipline}.
+   - "methods_reviewer" ("Reviewer 3: Research Methodology Referee"): Evaluates the manuscript's empirical methodology.
+   - "statistician" ("Reviewer 4: Statistical & Quantitative Auditor"): Audits sample power, variance reporting, and statistical validity.
+   - "devils_advocate" ("Reviewer 5: Adversarial Translation Referee"): Adversarially challenges why readers and subscribers of ${targetJournalName} would read an out-of-scope paper.`
+    : targetJournalName ? `Calibrate your Realistic tier to "${targetJournalName}" or direct peer-equivalent journals in this field, Reach to higher-impact venues in this field, and Fallback to accessible specialty journals. Reviewer Personas should represent the editorial board and reviewer pool of "${targetJournalName}".` : ""
 }
 
 [TOP CITED JOURNALS IN BIBLIOGRAPHY (Scholarly Discourse Community)]
@@ -1295,12 +1305,20 @@ export async function runManuscriptDiagnostic(
 
   // Reviewer Personas (Zero personas in heuristic_offline mode - REQ-EN-06)
   const CANONICAL_PERSONA_ROLES: ReviewerPersonaFeedback["persona"][] = [
-    "methods_reviewer",
-    "domain_expert",
     "journal_editor",
+    "domain_expert",
+    "methods_reviewer",
     "statistician",
     "devils_advocate",
   ];
+
+  const CANONICAL_ANONYMOUS_TRACKS: Record<ReviewerPersonaFeedback["persona"], string> = {
+    journal_editor: "Reviewer 1: Lead Handling Editor",
+    domain_expert: "Reviewer 2: Target Domain Specialist",
+    methods_reviewer: "Reviewer 3: Research Methodology Referee",
+    statistician: "Reviewer 4: Statistical & Quantitative Auditor",
+    devils_advocate: "Reviewer 5: Adversarial Translation Referee",
+  };
 
   let finalPersonas: ReviewerPersonaFeedback[] = [];
   if (executionMode !== "heuristic_offline") {
@@ -1339,23 +1357,41 @@ export async function runManuscriptDiagnostic(
         }
       }
 
-      // Sort canonically: methods -> domain -> editor -> statistician -> devils_advocate
+      // Sort canonically: editor -> domain -> methods -> statistician -> devils_advocate
       assembledPersonas.sort((a, b) => {
         const idxA = CANONICAL_PERSONA_ROLES.indexOf(a.persona);
         const idxB = CANONICAL_PERSONA_ROLES.indexOf(b.persona);
         return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
       });
 
-      // Guarantee exactly 5 personas
-      finalPersonas = assembledPersonas.slice(0, 5);
+      // Guarantee exactly 5 personas and enforce anonymous academic reviewer tracks
+      finalPersonas = assembledPersonas.slice(0, 5).map((p) => ({
+        ...p,
+        name: CANONICAL_ANONYMOUS_TRACKS[p.persona] || p.name,
+      }));
     } else {
       finalPersonas = domainSynthesis.personas.map((p) => ({
         ...p,
+        name: CANONICAL_ANONYMOUS_TRACKS[p.persona] || p.name,
         source: "heuristic" as const,
         evidenceAnchors: Array.isArray(p.evidenceAnchors)
           ? p.evidenceAnchors.map((a) => groundEvidenceAnchor(a, manuscript.rawText, manuscript.sections))
           : [],
       }));
+    }
+
+    // If severe disciplinary scope mismatch, ensure Handling Editor mandates Desk Reject
+    if (journalMatches.targetJournalEvaluation?.isDisciplinaryMismatch) {
+      finalPersonas = finalPersonas.map((p) => {
+        if (p.persona === "journal_editor") {
+          return {
+            ...p,
+            decisionRecommendation: "Desk Reject" as const,
+            keyChallenge: p.keyChallenge || `Disciplinary scope mismatch: Submission falls outside the published aims and scope of ${targetJournalName}.`,
+          };
+        }
+        return p;
+      });
     }
   }
 
@@ -2644,16 +2680,150 @@ export function synthesizeGroundedAcademicReview(
     });
   }
 
-  // 8. Dynamic 5-Persona Peer Review Panel Tailored to Discipline
-  const matchedProfile = resolveDisciplineProfile(discipline);
+  // 8. Dynamic 5-Persona Peer Review Panel Tailored to Target Journal and Manuscript Methodology
+  const paperProfile = resolveDisciplineProfile(discipline);
+  const targetProfile = targetDiscipline ? resolveDisciplineProfile(targetDiscipline) : paperProfile;
+
+  let editorPersona: ReviewerPersonaFeedback;
+  let domainPersona: ReviewerPersonaFeedback;
+
+  if (isScopeMismatch && targetDiscipline) {
+    editorPersona = {
+      persona: "journal_editor",
+      name: "Reviewer 1: Lead Handling Editor",
+      title: `Senior Handling Editor in ${targetDiscipline} (${targetJournal})`,
+      affiliation: `Editorial Advisory Board, ${targetJournal}`,
+      expertise: `Target journal scope triage, editorial policy compliance, and readership alignment in ${targetDiscipline}`,
+      roleDescription: "Target Journal Scope Triage & Editorial Policy",
+      decisionRecommendation: "Desk Reject",
+      keyChallenge: `Severe disciplinary scope mismatch: "${targetJournal}" publishes exclusively in ${targetDiscipline}, whereas this manuscript investigates ${discipline}.`,
+      assessment: `As Handling Editor for ${targetJournal}, I have evaluated this submission during initial editorial triage. The manuscript "${cleanTitle}" investigates research questions grounded in ${discipline}. However, ${targetJournal} exclusively publishes research advancing knowledge and practice in ${targetDiscipline}. The submitted work contains no theoretical, empirical, or translational contributions aligned with our journal's published aims and scope. Submitting this manuscript here faces an immediate administrative desk rejection without external review. The authors are strongly advised to redirect this submission to a domain-appropriate venue in ${discipline}.`,
+      majorCritiques: [
+        `Immediate redirect required: Submission falls entirely outside the published aims and scope of ${targetJournal} (${targetDiscipline}).`,
+        `Lack of readership alignment: Subscribers and researchers of ${targetJournal} expect studies advancing ${targetDiscipline}, not ${discipline}.`,
+        `Reframe if cross-disciplinary: If the manuscript was intended as an interdisciplinary application, the core research questions must be fundamentally restructured to address problems in ${targetDiscipline}.`,
+      ],
+      missingControlsOrAnalyses: [
+        `Absence of core domain-specific methodologies, models, or outcomes pertinent to ${targetDiscipline}.`,
+      ],
+      mustAddressItems: [
+        `Redirect submission to a suitable journal in ${discipline} (such as ${catalogMatches.realistic?.name || "a journal in your field"}).`,
+        `Ensure all cover letters explicitly articulate how future submissions meet target journal aims and scope.`,
+      ],
+      evidenceAnchors: [
+        `text: §1 "${cleanTitle.slice(0, 60)}..."`,
+      ],
+      counterArguments: [
+        `Demonstrate direct methodological or conceptual utility for readers of ${targetJournal} before considering submission.`,
+      ],
+      source: "heuristic",
+    };
+
+    domainPersona = {
+      persona: "domain_expert",
+      name: "Reviewer 2: Target Domain Specialist",
+      title: `Senior Research Referee in ${targetDiscipline}`,
+      affiliation: `Department of ${targetDiscipline} Sciences`,
+      expertise: targetProfile.domain.expertise,
+      roleDescription: `Domain Novelty & ${targetDiscipline} Relevance`,
+      decisionRecommendation: "Reject / Resubmit",
+      keyChallenge: `Disciplinary relevance to ${targetDiscipline}: the manuscript lacks subject-matter grounding in the target journal's field.`,
+      assessment: `From the perspective of a domain researcher in ${targetDiscipline}, this manuscript does not present findings relevant to our field. While the empirical findings regarding "${cleanTitle}" may be of interest to scholars in ${discipline}, the study lacks mechanistic, theoretical, or empirical grounding relevant to ${targetDiscipline}. Without substantial revision establishing direct relevance to ${targetDiscipline}, this paper cannot be recommended for review in ${targetJournal}.`,
+      majorCritiques: [
+        `The research problem is situated in ${discipline} rather than ${targetDiscipline}.`,
+        `The literature review omits foundational domain frameworks required for publication in ${targetJournal}.`,
+        `No actionable insights or domain discoveries are provided for specialists in ${targetDiscipline}.`,
+      ],
+      missingControlsOrAnalyses: [
+        `Benchmarking against standard frameworks and outcome metrics in ${targetDiscipline}.`,
+      ],
+      mustAddressItems: [
+        `Integrate domain-specific literature and theoretical constructs relevant to ${targetDiscipline} if targeting this venue.`,
+      ],
+      evidenceAnchors: [
+        abstractCore
+          ? `text: §Abstract "${abstractCore.slice(0, 75)}"`
+          : 'text: §Introduction "research problem formulation"',
+      ],
+      counterArguments: [
+        `Position the work with explicit boundary conditions and direct applications for ${targetDiscipline}.`,
+      ],
+      source: "heuristic",
+    };
+  } else {
+    editorPersona = {
+      persona: "journal_editor",
+      name: "Reviewer 1: Lead Handling Editor",
+      title: targetProfile.editor.title,
+      affiliation: `Editorial Advisory Board, ${targetJournal || `Leading Journals in ${targetDiscipline || discipline}`}`,
+      expertise: targetProfile.editor.expertise,
+      roleDescription: "Editorial Scope Triage, Readership Scope & Desk-Rejection Hazard Audit",
+      decisionRecommendation: "Minor Revision",
+      keyChallenge: `Ensuring narrative appeal and scope alignment for the readership of ${targetJournal || discipline}.`,
+      assessment: `From an editorial triage standpoint, this manuscript demonstrates sound scholarly structure. The word count (${manuscript.wordCount.toLocaleString()} words) is suitable for full-length research submissions. To avoid reviewer friction, the authors should ensure that the abstract and opening paragraphs immediately communicate the broad significance of the work to ${targetJournal || discipline}'s readership.`,
+      majorCritiques: [
+        `Ensure the title and abstract concisely convey the primary advance for ${targetJournal || discipline}.`,
+        "Verify formatting guidelines, word count bounds, and reference style for the target journal.",
+      ],
+      missingControlsOrAnalyses: [
+        "A concise summary table or decision matrix synthesizing key takeaways for readers.",
+      ],
+      mustAddressItems: [
+        "Audit reference list for complete DOI links and verify zero retracted citations.",
+        "Highlight practical and theoretical significance in the opening paragraphs.",
+      ],
+      evidenceAnchors: [
+        `text: §1 "${cleanTitle.slice(0, 60)}..."`,
+      ],
+      counterArguments: [
+        `Demonstrate cross-subfield relevance to appeal to general subscribers of ${targetJournal || discipline}.`,
+      ],
+      source: "heuristic",
+    };
+
+    domainPersona = {
+      persona: "domain_expert",
+      name: "Reviewer 2: Target Domain Specialist",
+      title: targetProfile.domain.title,
+      affiliation: targetProfile.domain.affiliation,
+      expertise: targetProfile.domain.expertise,
+      roleDescription: "Domain Realism, Novelty & Subfield Significance",
+      decisionRecommendation: "Minor Revision",
+      keyChallenge: `Positioning of novel contributions relative to recent literature in ${targetDiscipline || discipline}.`,
+      assessment: `The conceptual scope of "${cleanTitle}" addresses important contemporary questions within ${targetDiscipline || discipline}. The narrative contextualizes the problem clearly. To maximize impact, the authors should clearly demarcate what is conceptually novel versus what confirms existing literature, particularly against 2023–2025 domain benchmarks.`,
+      majorCritiques: [
+        "Delineate novel contributions clearly in the Introduction and Discussion.",
+        `Benchmark conclusions against recent 2023–2025 publications in ${targetDiscipline || discipline}.`,
+        "Translate analytical findings into actionable recommendations for domain practitioners.",
+      ],
+      missingControlsOrAnalyses: [
+        "Comparative benchmarking against established standard approaches in the literature.",
+      ],
+      mustAddressItems: [
+        "Refine abstract to emphasize quantitative insights over descriptive summaries.",
+        "Expand Discussion to integrate findings into current subfield debates.",
+      ],
+      evidenceAnchors: [
+        abstractCore
+          ? `text: §Abstract "${abstractCore.slice(0, 75)}"`
+          : 'text: §Introduction "research problem formulation"',
+      ],
+      counterArguments: [
+        "Position the manuscript's advance around its unique empirical context and comprehensive evaluation.",
+      ],
+      source: "heuristic",
+    };
+  }
 
   const personas: ReviewerPersonaFeedback[] = [
+    editorPersona,
+    domainPersona,
     {
       persona: "methods_reviewer",
-      name: matchedProfile.methods.name,
-      title: matchedProfile.methods.title,
-      affiliation: matchedProfile.methods.affiliation,
-      expertise: matchedProfile.methods.expertise,
+      name: "Reviewer 3: Research Methodology Referee",
+      title: paperProfile.methods.title,
+      affiliation: paperProfile.methods.affiliation,
+      expertise: paperProfile.methods.expertise,
       roleDescription: "Methodological Soundness, Control Protocols & Experimental Rigor",
       decisionRecommendation: "Minor Revision",
       keyChallenge: `Verification of methodological controls and reproducibility for "${cleanTitle.slice(0, 50)}..."`,
@@ -2682,72 +2852,14 @@ export function synthesizeGroundedAcademicReview(
       counterArguments: [
         "The authors can defend methodological rigor by demonstrating that baseline findings remain stable under sensitivity re-estimation.",
       ],
-    },
-    {
-      persona: "domain_expert",
-      name: matchedProfile.domain.name,
-      title: matchedProfile.domain.title,
-      affiliation: matchedProfile.domain.affiliation,
-      expertise: matchedProfile.domain.expertise,
-      roleDescription: "Domain Realism, Novelty & Subfield Significance",
-      decisionRecommendation: "Minor Revision",
-      keyChallenge: `Positioning of novel contributions relative to recent literature in ${discipline}.`,
-      assessment: `The conceptual scope of "${cleanTitle}" addresses important contemporary questions within ${discipline}. The narrative contextualizes the problem clearly. To maximize impact, the authors should clearly demarcate what is conceptually novel versus what confirms existing literature, particularly against 2023–2025 domain benchmarks.`,
-      majorCritiques: [
-        "Delineate novel contributions clearly in the Introduction and Discussion.",
-        `Benchmark conclusions against recent 2023–2025 publications in ${discipline}.`,
-        "Translate analytical findings into actionable recommendations for domain practitioners.",
-      ],
-      missingControlsOrAnalyses: [
-        "Comparative benchmarking against established standard approaches in the literature.",
-      ],
-      mustAddressItems: [
-        "Refine abstract to emphasize quantitative insights over descriptive summaries.",
-        "Expand Discussion to integrate findings into current subfield debates.",
-      ],
-      evidenceAnchors: [
-        abstractCore
-          ? `text: §Abstract "${abstractCore.slice(0, 75)}"`
-          : 'text: §Introduction "research problem formulation"',
-      ],
-      counterArguments: [
-        "Position the manuscript's advance around its unique empirical context and comprehensive evaluation.",
-      ],
-    },
-    {
-      persona: "journal_editor",
-      name: matchedProfile.editor.name,
-      title: matchedProfile.editor.title,
-      affiliation: matchedProfile.editor.affiliation,
-      expertise: matchedProfile.editor.expertise,
-      roleDescription: "Editorial Triage, Readership Scope & Desk-Rejection Hazard Audit",
-      decisionRecommendation: "Minor Revision",
-      keyChallenge: `Ensuring narrative appeal and scope alignment for the readership of ${targetJournal}.`,
-      assessment: `From an editorial triage standpoint, this manuscript demonstrates sound scholarly structure. The word count (${manuscript.wordCount.toLocaleString()} words) is suitable for full-length research submissions. To avoid reviewer friction, the authors should ensure that the abstract and opening paragraphs immediately communicate the broad significance of the work to ${targetJournal}'s readership.`,
-      majorCritiques: [
-        `Ensure the title and abstract concisely convey the primary advance for ${targetJournal}.`,
-        "Verify formatting guidelines, word count bounds, and reference style for the target journal.",
-      ],
-      missingControlsOrAnalyses: [
-        "A concise summary table or decision matrix synthesizing key takeaways for readers.",
-      ],
-      mustAddressItems: [
-        "Audit reference list for complete DOI links and verify zero retracted citations.",
-        "Highlight practical and theoretical significance in the opening paragraphs.",
-      ],
-      evidenceAnchors: [
-        `text: §1 "${cleanTitle.slice(0, 60)}..."`,
-      ],
-      counterArguments: [
-        `Demonstrate cross-subfield relevance to appeal to general subscribers of ${targetJournal}.`,
-      ],
+      source: "heuristic",
     },
     {
       persona: "statistician",
-      name: matchedProfile.statistician.name,
-      title: matchedProfile.statistician.title,
-      affiliation: matchedProfile.statistician.affiliation,
-      expertise: matchedProfile.statistician.expertise,
+      name: "Reviewer 4: Statistical & Quantitative Auditor",
+      title: paperProfile.statistician.title,
+      affiliation: paperProfile.statistician.affiliation,
+      expertise: paperProfile.statistician.expertise,
       roleDescription: "Statistical Rigor, Variance Reporting & Numerical Verification",
       decisionRecommendation: "Minor Revision",
       keyChallenge: "Explicit variance reporting, confidence intervals, and statistical power justification.",
@@ -2776,22 +2888,37 @@ export function synthesizeGroundedAcademicReview(
       counterArguments: [
         "Authors can supply post-hoc power calculations confirming that the sample size provides adequate power for observed effect sizes.",
       ],
+      source: "heuristic",
     },
     {
       persona: "devils_advocate",
-      name: matchedProfile.devilsAdvocate.name,
-      title: matchedProfile.devilsAdvocate.title,
-      affiliation: matchedProfile.devilsAdvocate.affiliation,
-      expertise: matchedProfile.devilsAdvocate.expertise,
+      name: "Reviewer 5: Adversarial Translation Referee",
+      title: isScopeMismatch
+        ? `Senior Critical Auditor & Cross-Field Translation Specialist`
+        : paperProfile.devilsAdvocate.title,
+      affiliation: paperProfile.devilsAdvocate.affiliation,
+      expertise: isScopeMismatch
+        ? `Cross-disciplinary translation, readership justification, and unmeasured confounding in ${targetDiscipline || discipline}`
+        : paperProfile.devilsAdvocate.expertise,
       roleDescription: "Adversarial Stress-Test, Boundary Violations & Rival Hypotheses",
-      decisionRecommendation: "Major Revision",
-      keyChallenge: `Unruled-out rival hypotheses, observational selection bias, and the practical "So What?" test for "${cleanTitle.slice(0, 50)}...".`,
-      assessment: `As the designated devil's advocate referee, my role is to challenge whether the reported findings could be explained by unmeasured confounding, model misspecification, or observational selection artifacts. First, could an unmeasured third variable account for the observed relationships? Second, without explicit sensitivity bounds, how robust are these conclusions to perturbations in data filtering? Third, the "So What?" test: does the magnitude of the reported effect justify real-world policy or operational changes, or does it merely achieve nominal statistical significance?`,
-      majorCritiques: [
-        "Rival explanations: Unmeasured confounding or selection bias cannot be ruled out without sensitivity bounds.",
-        "Boundary conditions: The authors must define under what conditions these findings would fail to generalize.",
-        "The 'So What?' practical hurdle: Substantiate that effect sizes represent meaningful practical differences, not merely p < 0.05 thresholds.",
-      ],
+      decisionRecommendation: isScopeMismatch ? "Desk Reject" : "Major Revision",
+      keyChallenge: isScopeMismatch
+        ? `Readership and translation hurdle: Why should subscribers and researchers in ${targetDiscipline || "the target field"} read work focused in ${discipline}?`
+        : `Unruled-out rival hypotheses, observational selection bias, and the practical "So What?" test for "${cleanTitle.slice(0, 50)}...".`,
+      assessment: isScopeMismatch
+        ? `As the critical translation referee, my primary objection is disciplinary utility and audience alignment. ${targetJournal} is not an archive for ${discipline}. Even if the empirical calculations in "${cleanTitle}" are methodologically sound, there is no evidence that these findings translate into actionable knowledge for practitioners in ${targetDiscipline || "this journal"}. Without direct mechanistic or applied bridges to ${targetDiscipline || "the target field"}, this manuscript cannot justify consuming page budget in this venue.`
+        : `As the designated devil's advocate referee, my role is to challenge whether the reported findings could be explained by unmeasured confounding, model misspecification, or observational selection artifacts. First, could an unmeasured third variable account for the observed relationships? Second, without explicit sensitivity bounds, how robust are these conclusions to perturbations in data filtering? Third, the "So What?" test: does the magnitude of the reported effect justify real-world policy or operational changes, or does it merely achieve nominal statistical significance?`,
+      majorCritiques: isScopeMismatch
+        ? [
+            `Audience disconnection: Readers of ${targetJournal} will find no direct relevance to their ongoing research priorities in ${targetDiscipline}.`,
+            `Lack of translation bridge: The manuscript fails to demonstrate how findings in ${discipline} can be adapted or utilized in ${targetDiscipline}.`,
+            `Submission retargeting: The authors should submit to an established journal in ${discipline} where the work will reach its intended audience.`,
+          ]
+        : [
+            "Rival explanations: Unmeasured confounding or selection bias cannot be ruled out without sensitivity bounds.",
+            "Boundary conditions: The authors must define under what conditions these findings would fail to generalize.",
+            "The 'So What?' practical hurdle: Substantiate that effect sizes represent meaningful practical differences, not merely p < 0.05 thresholds.",
+          ],
       missingControlsOrAnalyses: [
         "Falsification test, placebo check, or unmeasured confounding sensitivity analysis (e.g. E-value).",
         "Subgroup perturbation evaluating stability across distinct operational or temporal subsets.",
@@ -2809,6 +2936,7 @@ export function synthesizeGroundedAcademicReview(
       counterArguments: [
         "The authors can defend the findings by demonstrating that the observed effect size is sufficiently large that an unmeasured confounder would need an implausibly strong association to explain it away.",
       ],
+      source: "heuristic",
     },
   ];
 

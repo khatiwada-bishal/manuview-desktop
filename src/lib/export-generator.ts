@@ -579,7 +579,7 @@ export function generateFullReportHtml(r: FullReviewReport): string {
         <div class="persona-selector" id="persona-buttons">
           ${(r.reviewerPersonas || []).map((p, idx) => `
             <button class="persona-pill ${idx === 0 ? "active" : ""}" onclick="switchPersona(${idx})">
-              ${p.persona === "devils_advocate" ? "⚡ " : ""}${escapeHtml(p.name)} (${escapeHtml(p.roleDescription)})
+              ${p.persona === "devils_advocate" ? "⚡ " : ""}${escapeHtml(p.name)}
             </button>
           `).join("")}
         </div>
@@ -591,7 +591,13 @@ export function generateFullReportHtml(r: FullReviewReport): string {
               ${p.persona === "devils_advocate" ? `<span style="font-size: 11px; font-weight: 700; color: #E11D48; background: #FFF1F2; border: 1px solid #FECDD3; border-radius: 4px; padding: 2px 6px;">⚡ Hostile Stress-Test / Adversarial Referee</span>` : ""}
             </div>
             <h3 style="font-size: 18px; margin-bottom: 4px;">${escapeHtml(p.name)}</h3>
-            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">${escapeHtml(p.title)} • ${escapeHtml(p.affiliation)}</p>
+            <p style="font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 2px;">${escapeHtml(p.title)}</p>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">${escapeHtml(p.affiliation)}</p>
+            ${p.expertise ? `
+              <div style="background: #F1F5F9; border: 1px solid #E2E8F0; padding: 8px 12px; border-radius: 6px; font-size: 12px; color: #334155; margin-bottom: 12px;">
+                <strong>Area of Expertise & Scope:</strong> ${escapeHtml(p.expertise)}
+              </div>
+            ` : ""}
             
             <div style="background: #FEF2F2; border-left: 3px solid #EF4444; padding: 10px 14px; border-radius: 6px; font-size: 13px; color: #991B1B; margin-bottom: 14px;">
               <strong>Key Challenge:</strong> ${escapeHtml(p.keyChallenge)}
@@ -960,8 +966,9 @@ export function generateFullReportWord(r: FullReviewReport): string {
   ${(r.reviewerPersonas && r.reviewerPersonas.length > 0) ? `
   <h2>2. Simulated ${r.reviewerPersonas.length}-Persona Peer Review (Adversarial Panel)</h2>
   ${r.reviewerPersonas.map(p => `
-    <h3>${p.persona === "devils_advocate" ? "⚡ [Adversarial Stress-Test] " : ""}${escapeHtml(p.name)} — ${escapeHtml(p.roleDescription)}</h3>
-    <p style="font-size: 9.5pt; color: #64748B; margin-bottom: 4pt;">${escapeHtml(p.title)} • ${escapeHtml(p.affiliation)}</p>
+    <h3>${p.persona === "devils_advocate" ? "⚡ [Adversarial Stress-Test] " : ""}${escapeHtml(p.name)}</h3>
+    <p style="font-size: 9.5pt; color: #475569; margin-bottom: 3pt;"><strong>${escapeHtml(p.title)}</strong> • ${escapeHtml(p.affiliation)}</p>
+    ${p.expertise ? `<p style="font-size: 9pt; color: #64748B; margin-bottom: 6pt;"><em>Area of Expertise & Scope:</em> ${escapeHtml(p.expertise)}</p>` : ""}
     <p><strong>Recommendation:</strong> ${escapeHtml(p.decisionRecommendation)} | <strong>Key Challenge:</strong> ${escapeHtml(p.keyChallenge)}</p>
     <p>${escapeHtml(p.assessment)}</p>
     ${(p.evidenceAnchors && p.evidenceAnchors.length > 0) ? `

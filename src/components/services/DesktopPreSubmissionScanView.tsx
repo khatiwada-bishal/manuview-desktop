@@ -1239,15 +1239,27 @@ export function DesktopPreSubmissionScanView({
                         }`}
                       >
                         <span>
-                          {p.persona === "methods_reviewer"
-                            ? "🔬"
+                          {p.persona === "journal_editor"
+                            ? "📑"
                             : p.persona === "domain_expert"
                             ? "🧬"
-                            : p.persona === "journal_editor"
-                            ? "📑"
-                            : "📊"}
+                            : p.persona === "methods_reviewer"
+                            ? "🔬"
+                            : p.persona === "statistician"
+                            ? "📊"
+                            : "⚡"}
                         </span>
-                        <span>{p.name.split(" ")[0]} {p.name.split(" ")[1]}</span>
+                        <span>
+                          {p.persona === "journal_editor"
+                            ? "Reviewer 1 (Editor)"
+                            : p.persona === "domain_expert"
+                            ? "Reviewer 2 (Domain)"
+                            : p.persona === "methods_reviewer"
+                            ? "Reviewer 3 (Methods)"
+                            : p.persona === "statistician"
+                            ? "Reviewer 4 (Stats)"
+                            : "Reviewer 5 (Adversary)"}
+                        </span>
                         {p.decisionRecommendation && (
                           <span
                             className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${
@@ -1269,12 +1281,25 @@ export function DesktopPreSubmissionScanView({
                 {report.reviewerPersonas[selectedPersona] && (() => {
                   const active = report.reviewerPersonas[selectedPersona];
                   const isReject = active.decisionRecommendation?.includes("Reject");
+                  const fallbackRoleName =
+                    active.persona === "journal_editor"
+                      ? "Reviewer 1: Lead Handling Editor"
+                      : active.persona === "domain_expert"
+                      ? "Reviewer 2: Target Domain Specialist"
+                      : active.persona === "methods_reviewer"
+                      ? "Reviewer 3: Research Methodology Referee"
+                      : active.persona === "statistician"
+                      ? "Reviewer 4: Statistical & Quantitative Auditor"
+                      : "Reviewer 5: Adversarial Translation Referee";
+
                   return (
                     <div className="p-6 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937] space-y-5 animate-fade-in shadow-2xs">
                       <div className="flex flex-col md:flex-row md:items-start justify-between gap-3 pb-4 border-b border-[#E5E7EB] dark:border-[#1F2937]">
                         <div className="space-y-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <h4 className="text-base font-bold text-[#111827] dark:text-white">{active.name}</h4>
+                            <h4 className="text-base font-bold text-[#111827] dark:text-white">
+                              {active.name?.startsWith("Reviewer") ? active.name : fallbackRoleName}
+                            </h4>
                             {active.decisionRecommendation && (
                               <span
                                 className={`text-xs font-semibold px-2.5 py-0.5 rounded-md border ${
@@ -1287,7 +1312,7 @@ export function DesktopPreSubmissionScanView({
                               </span>
                             )}
                           </div>
-                          <div className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">{active.title}</div>
+                          <div className="text-xs text-neutral-700 dark:text-neutral-300 font-semibold">{active.title}</div>
                           {active.affiliation && (
                             <div className="text-xs text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
                               <GraduationCap className="w-3.5 h-3.5 text-neutral-400" />
@@ -1297,8 +1322,8 @@ export function DesktopPreSubmissionScanView({
                         </div>
 
                         {active.expertise && (
-                          <div className="p-3 rounded-xl bg-white border border-[#E5E7EB] dark:bg-[#161F30] dark:border-[#334155] text-xs text-neutral-600 dark:text-neutral-400 md:max-w-xs shadow-2xs">
-                            <span className="font-semibold text-neutral-800 dark:text-neutral-200 block mb-0.5">Focus:</span>
+                          <div className="p-3 rounded-xl bg-white border border-[#E5E7EB] dark:bg-[#161F30] dark:border-[#334155] text-xs text-neutral-600 dark:text-neutral-400 md:max-w-sm shadow-2xs">
+                            <span className="font-semibold text-neutral-800 dark:text-neutral-200 block mb-0.5">Area of Expertise & Scope:</span>
                             {active.expertise}
                           </div>
                         )}
