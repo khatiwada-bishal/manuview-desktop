@@ -360,30 +360,20 @@ export function DesktopSidebar({
                           }}
                           className={`group/item w-full flex items-center justify-between p-2 rounded-lg text-xs text-left transition cursor-pointer ${
                             isSelected && activeView === "overview"
-                              ? isDeskReject
-                                ? "bg-rose-500/15 dark:bg-rose-950/50 font-semibold text-rose-900 dark:text-rose-100 border border-rose-500/40 shadow-2xs"
-                                : "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
+                              ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
                               : isSelected
-                              ? isDeskReject
-                                ? "bg-rose-500/10 dark:bg-rose-950/30 font-medium text-rose-800 dark:text-rose-200 border border-rose-500/30"
-                                : "bg-[#F3F4F6] dark:bg-[#161F30] font-medium text-[#111827] dark:text-white"
-                              : isDeskReject
-                              ? "bg-rose-500/5 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300 hover:bg-rose-500/10 dark:hover:bg-rose-950/40 border border-rose-500/20"
+                              ? "bg-[#F3F4F6] dark:bg-[#161F30] font-medium text-[#111827] dark:text-white"
                               : "hover:bg-neutral-50 dark:hover:bg-[#1E293B]/50 text-neutral-700 dark:text-neutral-300"
                           }`}
                         >
                           <div className="flex items-center gap-2 min-w-0 pr-2">
-                            {isDeskReject ? (
-                              <ShieldAlert className="w-3.5 h-3.5 shrink-0 text-rose-600 dark:text-rose-400" />
-                            ) : (
-                              <FileText
-                                className={`w-3.5 h-3.5 shrink-0 ${
-                                  isSelected ? "text-blue-600 dark:text-blue-400" : "text-neutral-400 dark:text-neutral-500"
-                                }`}
-                              />
-                            )}
+                            <FileText
+                              className={`w-3.5 h-3.5 shrink-0 ${
+                                isSelected ? "text-blue-600 dark:text-blue-400" : "text-neutral-400 dark:text-neutral-500"
+                              }`}
+                            />
                             <div className="truncate">
-                              <div className={`truncate font-medium text-xs ${isDeskReject ? "text-rose-950 dark:text-rose-200 font-semibold" : "text-[#111827] dark:text-neutral-100"}`}>
+                              <div className="truncate font-medium text-xs text-[#111827] dark:text-neutral-100">
                                 {paper.shortName}
                               </div>
                               <div className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate">
@@ -393,8 +383,8 @@ export function DesktopSidebar({
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
                             {isDeskReject ? (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
-                                REJECT
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20">
+                                Rejected
                               </span>
                             ) : paper.isEligibleForReview === false ? (
                               paper.ineligibilityReason === "already_published" ? (
@@ -427,15 +417,10 @@ export function DesktopSidebar({
                           </div>
                         </div>
 
-                        {/* Status notification when selected for ineligible or desk reject papers */}
-                        {isSelected && (paper.isEligibleForReview === false || isDeskReject) && (
+                        {/* Status notification when selected for ineligible papers */}
+                        {isSelected && paper.isEligibleForReview === false && !isDeskReject && (
                           <div className="pl-3 pr-1 py-1 space-y-0.5">
-                            {isDeskReject ? (
-                              <div className="flex items-center gap-1.5 text-[10px] text-rose-700 dark:text-rose-300 font-semibold bg-rose-50/80 dark:bg-rose-950/50 px-2 py-1 rounded border border-rose-300/60 dark:border-rose-800/60">
-                                <ShieldAlert className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0" />
-                                <span className="truncate">Editorial Desk Reject</span>
-                              </div>
-                            ) : paper.ineligibilityReason === "already_published" ? (
+                            {paper.ineligibilityReason === "already_published" ? (
                               <div className="flex items-center gap-1.5 text-[10px] text-emerald-700 dark:text-emerald-400 font-medium bg-emerald-50/70 dark:bg-emerald-950/40 px-2 py-1 rounded border border-emerald-200/50 dark:border-emerald-800/50">
                                 <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
                                 <span className="truncate">Already Published</span>
@@ -760,36 +745,26 @@ export function DesktopSidebar({
                       }}
                       className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer ${
                         isSelected && activeView === "overview"
-                          ? isDeskReject
-                            ? "bg-rose-500/15 dark:bg-rose-950/40 font-semibold text-rose-900 dark:text-rose-100 border border-rose-500/30 shadow-2xs"
-                            : "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
+                          ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
                           : isSelected
-                          ? isDeskReject
-                            ? "bg-rose-500/10 dark:bg-rose-950/30 font-medium text-rose-800 dark:text-rose-200 border border-rose-500/25"
-                            : "bg-blue-600/10 dark:bg-blue-500/20 font-medium text-blue-700 dark:text-blue-300 border border-blue-500/20"
-                          : isDeskReject
-                          ? "text-rose-700 dark:text-rose-300 bg-rose-500/5 dark:bg-rose-950/20 hover:bg-rose-500/10 dark:hover:bg-rose-950/30 border border-rose-500/20"
+                          ? "bg-blue-600/10 dark:bg-blue-500/20 font-medium text-blue-700 dark:text-blue-300 border border-blue-500/20"
                           : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white border border-transparent"
                       }`}
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
-                        {isDeskReject ? (
-                          <ShieldAlert className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
-                        ) : (
-                          <FileText
-                            className={`w-4 h-4 shrink-0 ${
-                              isSelected ? "text-blue-600 dark:text-blue-400" : "text-neutral-500 dark:text-neutral-400"
-                            }`}
-                          />
-                        )}
-                        <span className={`truncate ${isDeskReject ? "text-rose-950 dark:text-rose-200 font-semibold" : ""}`}>
+                        <FileText
+                          className={`w-4 h-4 shrink-0 ${
+                            isSelected ? "text-blue-600 dark:text-blue-400" : "text-neutral-500 dark:text-neutral-400"
+                          }`}
+                        />
+                        <span className="truncate">
                           {paper.shortName}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {isDeskReject ? (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30">
-                            REJECT
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20">
+                            Rejected
                           </span>
                         ) : paper.isEligibleForReview === false ? (
                           paper.ineligibilityReason === "already_published" ? (
@@ -822,15 +797,10 @@ export function DesktopSidebar({
                       </div>
                     </div>
 
-                    {/* Status notification when selected for ineligible or desk reject papers */}
-                    {isSelected && (paper.isEligibleForReview === false || isDeskReject) && (
+                    {/* Status notification when selected for ineligible papers */}
+                    {isSelected && paper.isEligibleForReview === false && !isDeskReject && (
                       <div className="pl-4 pr-2 py-1 space-y-0.5">
-                        {isDeskReject ? (
-                          <div className="flex items-center gap-1.5 text-[11px] text-rose-700 dark:text-rose-300 font-semibold bg-rose-500/10 px-2 py-1.5 rounded-lg border border-rose-500/25">
-                            <ShieldAlert className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
-                            <span className="truncate">Editorial Desk Reject</span>
-                          </div>
-                        ) : paper.ineligibilityReason === "already_published" ? (
+                        {paper.ineligibilityReason === "already_published" ? (
                           <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400 font-medium bg-emerald-500/10 px-2 py-1.5 rounded-lg border border-emerald-500/20">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                             <span className="truncate">Already Published</span>
