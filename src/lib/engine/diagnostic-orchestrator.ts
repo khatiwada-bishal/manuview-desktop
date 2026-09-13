@@ -59,6 +59,7 @@ import {
   buildCatalogJournalRecommendations,
   buildScopeMismatchIssue,
   evaluateManuscriptScopeTriage,
+  evaluateManuscriptScopeTriageWithLLM,
 } from "./scope-triage-journals";
 import { fetchLiveJournalScope, JournalScopeProfile } from "../journal-scope-service";
 import { calculateDeterministicDimensions } from "./scoring-dimensions";
@@ -736,12 +737,21 @@ export async function runManuscriptDiagnostic(
   }
 
   // Step 2.5: Early Scope Triage & Target Journal Scope Screening
-  const earlyScopeTriage = evaluateManuscriptScopeTriage(
+  const earlyScopeTriage = await evaluateManuscriptScopeTriageWithLLM(
     manuscript.title,
     manuscript.abstract,
     targetJournalName,
+    activeConfig,
+    liveJournalScope,
     undefined,
-    liveJournalScope
+    manuscript.rawText?.slice(0, 3000),
+    (msg) => {
+      onProgress?.({
+        stage: "matching_journals",
+        message: msg,
+        percent: 22,
+      });
+    }
   );
   const detectedDiscipline = earlyScopeTriage.detectedDiscipline;
   const isTargetScopeMismatch = earlyScopeTriage.isTargetScopeMismatch;

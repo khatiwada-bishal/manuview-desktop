@@ -6,8 +6,10 @@ import {
   inferJournalDiscipline,
   isDisciplineMatch,
 } from "../journals";
-import { EditorialTriageOutcome, JournalRecommendation, PriorityIssue } from "../types";
+import { EditorialTriageOutcome, JournalRecommendation, PriorityIssue, ProviderConfig } from "../types";
 import { JournalScopeProfile } from "../journal-scope-service";
+import { callLLMForJson } from "./shared-utils";
+import { LLMMessage, getSavedClientConfig } from "../llm";
 
 /**
  * Extracts salient domain topics and keywords from manuscript title and abstract.
@@ -158,6 +160,187 @@ export function evaluateManuscriptScopeTriage(
     editorialTriage,
     journalMatches,
   };
+}
+
+/**
+ * Evaluates the manuscript's substantive scope against the designated target journal
+ * using the configured LLM API (BYOK) for nuanced editorial triage.
+ *
+ * This explicitly handles Multidisciplinary journals (e.g., Nature, Science, PNAS, PLOS ONE),
+ * where "Multidisciplinary" does NOT mean every paper is compatible:
+ * - High-impact multidisciplinary venues require broad cross-disciplinary interest and transformative breakthroughs.
+ * - Specialized, routine, or incremental studies are desk rejected despite the journal being multidisciplinary.
+ * - If the LLM API is unavailable, it falls back to heuristic triage.
+ */
+export async function evaluateManuscriptScopeTriageWithLLM(
+  title: string,
+  abstract: string,
+  targetJournalName?: string,
+  providerConfig?: ProviderConfig,
+  liveJournalScope?: JournalScopeProfile | null,
+  keywords?: string,
+  sampleSnippet?: string,
+  onProgress?: (message: string) => void
+): Promise<ScopeTriageResult> {
+  // 1. Baseline heuristic analysis
+  const baseResult = evaluateManuscriptScopeTriage(
+    title,
+    abstract,
+    targetJournalName,
+    undefined,
+    liveJournalScope
+  );
+
+  if (!targetJournalName || !targetJournalName.trim()) {
+    return baseResult;
+  }
+
+  const resolvedConfig = providerConfig || getSavedClientConfig();
+  const hasKey = Boolean(resolvedConfig?.apiKey || resolvedConfig?.provider === "ollama");
+
+  if (!hasKey) {
+    // If no LLM credentials configured, return heuristic result
+    return baseResult;
+  }
+
+  onProgress?.(`Consulting AI Handling Editor on aims & scope for "${targetJournalName}"...`);
+
+  try {
+    const cleanJournalName = liveJournalScope?.officialName || targetJournalName;
+    const publisher = liveJournalScope?.publisher || "Academic Publisher";
+    const discipline = liveJournalScope?.primaryDiscipline || baseResult.detectedDiscipline;
+    const scopeSummary = liveJournalScope?.summaryScope || liveJournalScope?.aimsAndScope || "Scholarly journal";
+    const concepts = liveJournalScope?.keyConcepts?.join(", ") || discipline;
+    const impact = liveJournalScope?.impactMetric ? `Impact: ${liveJournalScope.impactMetric}` : "";
+
+    const systemPrompt = `You are the Senior Handling Editor and Scope Triage Chair for the academic journal "${cleanJournalName}".
+Your task is preliminary editorial screening (triage) before peer review to determine if this manuscript should be DESK REJECTED at the editorial office or if it is SUITABLE FOR EXTERNAL REVIEW.
+
+CRITICAL EDITORIAL SCOPE POLICIES:
+1. Multidisciplinary & Broad Journals (CRITICAL RULE):
+   - A journal being "Multidisciplinary" (e.g., Nature, Science, PNAS, Nature Communications, PLOS ONE, Scientific Reports, Cell Reports) does NOT automatically make every paper compatible.
+   - Elite general-interest journals (e.g. Nature, Science, PNAS) ONLY accept work of extraordinary, transformative general scientific significance commanding readership across multiple scientific fields. Routine, narrow, specialized, single-locality, or incremental disciplinary studies (e.g., standard case reports, localized surveys, narrow engineering optimization, incremental laboratory assays) MUST BE DESK REJECTED for lack of broad general interest, even if the methodology is sound.
+   - Broad open-access multidisciplinary journals (e.g. PLOS ONE, Scientific Reports) focus on technical execution and data soundness, but still reject papers that lack primary empirical data, are purely speculative hypotheses/essays, or fail publication criteria.
+2. Domain-Specific Journals:
+   - Specialized journals (e.g. Nature Medicine, IEEE TPAMI, Journal of Financial Economics, Cancer Discovery) require direct relevance to their specific domain. A paper whose core methodology or findings do not address the journal's domain MUST BE DESK REJECTED.
+3. Decisive Triage:
+   - If the manuscript does not genuinely match the journal's remit or standard of general/field significance, you must issue an immediate "Desk Reject".
+   - If the manuscript has clear scope compatibility and appropriate breadth, approve it as "Suitable for Review".
+
+You must respond with a strict JSON object following this exact schema:
+{
+  "isScopeMatch": boolean,
+  "decision": "Desk Reject" | "Suitable for Review",
+  "deskRejectReason": "scope_mismatch" | "lacks_broad_multidisciplinary_interest" | "insufficient_general_significance" | "format_ineligible" | "none",
+  "detectedDiscipline": "e.g. Operations Research & Management",
+  "editorialSummary": "Professional 2-3 sentence editorial justification explaining the decision to the author.",
+  "scopeContrast": {
+    "journalRemit": "1-2 sentences on this journal's actual scope and readership criteria.",
+    "manuscriptFocus": "1-2 sentences on this paper's substantive research topic.",
+    "mismatchExplanation": "Detailed explanation of why the paper's scope or level of generality conflicts with the journal.",
+    "suggestedVenues": ["3-4 specific journals that are a better thematic match"]
+  }
+}`;
+
+    const userPrompt = `TARGET JOURNAL:
+- Name: ${cleanJournalName}
+- Publisher: ${publisher}
+- Primary Field: ${discipline}
+- Aims & Scope Summary: ${scopeSummary}
+- Key Topics / Concepts: ${concepts}
+${impact ? `- Metrics: ${impact}` : ""}
+
+MANUSCRIPT DETAILS:
+- Title: ${title}
+- Abstract: ${abstract}
+${keywords ? `- Keywords: ${keywords}` : ""}
+${sampleSnippet ? `- Excerpt:\n${sampleSnippet.slice(0, 2000)}` : ""}
+
+Please evaluate scope compatibility and return valid JSON.`;
+
+    const messages: LLMMessage[] = [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ];
+
+    const llmRes = await callLLMForJson<{
+      isScopeMatch: boolean;
+      decision: "Desk Reject" | "Suitable for Review";
+      deskRejectReason?: string;
+      detectedDiscipline?: string;
+      editorialSummary: string;
+      scopeContrast?: {
+        journalRemit?: string;
+        manuscriptFocus?: string;
+        mismatchExplanation?: string;
+        suggestedVenues?: string[];
+      };
+    }>(messages, resolvedConfig);
+
+    if (llmRes && typeof llmRes.isScopeMatch === "boolean") {
+      const isTargetScopeMismatch = !llmRes.isScopeMatch;
+      const detectedDiscipline = llmRes.detectedDiscipline || baseResult.detectedDiscipline;
+      const manuscriptTopics = extractManuscriptTopics(title, abstract);
+
+      const editorialTriage: EditorialTriageOutcome = isTargetScopeMismatch
+        ? {
+            outcome: "desk_reject",
+            sentToPeerReview: false,
+            deskRejectReason: (llmRes.deskRejectReason as any) || "scope_mismatch",
+            handlingEditorDecision: "Desk Reject",
+            summary:
+              llmRes.editorialSummary ||
+              `Desk rejected at editorial triage: "${cleanJournalName}" scope mismatch. Out-of-scope manuscripts do not proceed to peer review.`,
+            scopeComparison: {
+              manuscriptDiscipline: detectedDiscipline,
+              manuscriptTopics,
+              journalName: cleanJournalName,
+              journalDiscipline: discipline,
+              journalPublisher: publisher,
+              journalScopeSummary: scopeSummary,
+              journalKeyConcepts: liveJournalScope?.keyConcepts || [discipline],
+              mismatchExplanation:
+                llmRes.scopeContrast?.mismatchExplanation ||
+                llmRes.editorialSummary ||
+                `The manuscript's core research focus (${detectedDiscipline}) does not meet the editorial remit or breadth requirements of ${cleanJournalName}.`,
+              isScopeMatch: false,
+              suggestedVenues:
+                llmRes.scopeContrast?.suggestedVenues && llmRes.scopeContrast.suggestedVenues.length > 0
+                  ? llmRes.scopeContrast.suggestedVenues
+                  : [baseResult.journalMatches.realistic.name, baseResult.journalMatches.reach.name, baseResult.journalMatches.fallback.name],
+            },
+          }
+        : {
+            outcome: "sent_for_review",
+            sentToPeerReview: true,
+            summary:
+              llmRes.editorialSummary ||
+              `Cleared editorial triage: aims & scope aligned with "${cleanJournalName}". Advanced to peer-review panel.`,
+            scopeComparison: {
+              manuscriptDiscipline: detectedDiscipline,
+              manuscriptTopics,
+              journalName: cleanJournalName,
+              journalDiscipline: discipline,
+              journalPublisher: publisher,
+              journalScopeSummary: scopeSummary,
+              journalKeyConcepts: liveJournalScope?.keyConcepts || [discipline],
+              isScopeMatch: true,
+            },
+          };
+
+      return {
+        detectedDiscipline,
+        isTargetScopeMismatch,
+        editorialTriage,
+        journalMatches: baseResult.journalMatches,
+      };
+    }
+  } catch (err) {
+    console.warn("LLM scope triage check failed, falling back to heuristic evaluation:", err);
+  }
+
+  // Fallback to base result
+  return baseResult;
 }
 
 /**
