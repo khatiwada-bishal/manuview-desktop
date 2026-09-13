@@ -788,9 +788,8 @@ export function DesktopSidebar({
               }))}
             </div>
           </div>
-        </div>
 
-        {/* 3. SERVICES LIST (Below Articles) */}
+        {/* 2. SERVICES LIST (Below Articles) */}
         <div className="pt-2 border-t border-black/[0.04] dark:border-white/[0.06]">
           <div className="flex items-center justify-between px-2 mb-1.5">
             <button
@@ -845,8 +844,8 @@ export function DesktopSidebar({
           )}
         </div>
 
-        {/* AI DISCLAIMER & USAGE PILL (Positioned in designated sidebar zone above footer) */}
-        <div className="px-3 pb-2 pt-1 border-t border-black/[0.04] dark:border-white/[0.04]">
+        {/* 3. AI DISCLAIMER & USAGE PILL (Positioned in designated sidebar zone above footer) */}
+        <div className="pb-2 pt-1 border-t border-black/[0.04] dark:border-white/[0.04]">
           <div ref={disclaimerRef} className="relative group">
             <button
               type="button"
@@ -917,8 +916,9 @@ export function DesktopSidebar({
             </div>
           </div>
         </div>
+      </div>
 
-        {/* FOOTER: App Version (left) + Model Pill & Settings (right) */}
+      {/* FOOTER: App Version (left) + Model Pill & Settings (right) */}
       <div className="p-3 border-t border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between">
         <span className="font-semibold text-neutral-400 dark:text-neutral-500 text-[11px] pl-1 select-none">
           v0.1.0
