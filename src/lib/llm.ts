@@ -21,12 +21,14 @@ export function getEnv(key: string): string {
   return "";
 }
 
-function getSavedClientConfig(): ProviderConfig | undefined {
+export function getSavedClientConfig(): ProviderConfig | undefined {
   if (typeof window === "undefined") return undefined;
   try {
     const raw = localStorage.getItem("manuview_provider_config");
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch (err: any) {
+    console.debug("Failed to read saved client config:", err?.message);
+  }
   return undefined;
 }
 
