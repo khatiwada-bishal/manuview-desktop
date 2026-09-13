@@ -47,8 +47,12 @@ export default function App() {
     return "landing";
   });
 
-  // Manage body scroll behaviour depending on mode
+  // Manage body scroll behaviour depending on mode and ensure desktop app stays in app mode
   useEffect(() => {
+    if (isDesktopApp() && viewMode !== "app") {
+      setViewMode("app");
+      return;
+    }
     try {
       sessionStorage.setItem("manuview_web_view_mode", viewMode);
     } catch {}
@@ -502,7 +506,7 @@ export default function App() {
           onOpenSettings={() => setIsSettingsOpen(true)}
           onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
           sidebarOpen={sidebarOpen}
-          onGoHome={() => setViewMode("landing")}
+          onGoHome={!isDesktopApp() ? () => setViewMode("landing") : undefined}
         />
 
         {/* Main Layout: Sidebar + Active View */}
@@ -524,7 +528,7 @@ export default function App() {
             onOpenSettings={() => setIsSettingsOpen(true)}
             onSelectService={handleOpenService}
             onDeletePaper={(paper) => setPaperToDelete(paper)}
-            onGoHome={() => setViewMode("landing")}
+            onGoHome={!isDesktopApp() ? () => setViewMode("landing") : undefined}
           />
 
           {/* View Content */}
