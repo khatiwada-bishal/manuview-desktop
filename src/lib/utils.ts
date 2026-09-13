@@ -44,43 +44,63 @@ export function extractDOIs(text: string): string[] {
 }
 
 export function extractReferencesFromText(text: string): string[] {
-  // Locate "References", "Bibliography", or "Literature Cited"
-  // Pick the last heading occurrence that has sufficient text following it (avoids TOC rows in PDFs)
-  const refHeadingRegex = /(?:\n|^)(?:References|Bibliography|Literature Cited|Works Cited)\s*(?:\n|:|$)/gi;
-  const matches = Array.from(text.matchAll(refHeadingRegex));
+  if (!text || typeof text !== "string") return [];
+  const trimmed = text.trim();
+  if (!trimmed) return [];
+
+  // 1. Locate "References", "Bibliography", "Literature Cited", "Works Cited", "Reference List"
+  // Handles markdown: ## References, **References**, 10. References, etc.
+  const refHeadingRegex = /(?:^|\n)[ \t]*(?:#{1,6}\s*|\*{1,2}|(?:\d+|[IVXLCDM]+)\.?[ \t]*)?(?:References|Bibliography|Literature Cited|Works Cited|Reference List)(?:\s*(?:and Notes|& Notes))?[ \t]*(?:\*{1,2})?[ \t]*(?::|\n|\r\n|$)/gi;
+  const matches = Array.from(trimmed.matchAll(refHeadingRegex));
 
   let matchIndex = -1;
+  let matchLength = 0;
   for (let i = matches.length - 1; i >= 0; i--) {
     const idx = matches[i].index;
-    if (typeof idx === "number" && text.length - idx >= 50) {
+    if (typeof idx === "number" && trimmed.length - idx >= 20) {
       matchIndex = idx;
+      matchLength = matches[i][0].length;
       break;
     }
   }
 
-  if (matchIndex === -1) {
-    // If no heading, check for bracketed references [1], [2] or author-year citations
-    const lines = text.split("\n").map((l) => l.trim()).filter((l) => l.length > 20);
-    const numberedRefs = lines.filter((l) =>
-      /^(?:\[\d+\]|\d{1,3}\.\s+[A-Z]|\([A-Za-z]+,\s*\d{4}\))/.test(l)
-    );
-    if (numberedRefs.length >= 3) return numberedRefs;
+  let refSection = trimmed;
+  if (matchIndex !== -1) {
+    refSection = trimmed.slice(matchIndex + matchLength);
+    // If an appendix, acknowledgements, or declarations heading appears after references, slice before it
+    const trailingSectionRegex = /(?:^|\n)[ \t]*(?:#{1,6}\s*|\*{1,2}|(?:\d+|[IVXLCDM]+)\.?[ \t]*)?(?:Appendix|Appendices|Acknowledgments|Acknowledgements|Declarations|Supplementary (?:Material|Data|Information|Files))[ \t]*(?:\*{1,2})?[ \t]*(?::|\n|\r\n|$)/i;
+    const trailingMatch = refSection.match(trailingSectionRegex);
+    if (trailingMatch && typeof trailingMatch.index === "number" && trailingMatch.index > 50) {
+      refSection = refSection.slice(0, trailingMatch.index);
+    }
+  }
+
+  // 2. Parse individual reference items from refSection
+  const rawLines = refSection
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0 && !/^(?:References|Bibliography|Literature Cited|Works Cited|Reference List)\b/i.test(l));
+
+  if (rawLines.length === 0) {
     return [];
   }
 
-  const refSection = text.slice(matchIndex);
-  const lines = refSection
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.length > 25 && !/^(?:References|Bibliography|Literature Cited|Works Cited)\b/i.test(l));
+  // Pattern identifying the start of a distinct reference entry
+  const refStartPattern = /^(?:\[\d{1,4}\]|\(\d{1,4}\)|\d{1,4}[\.\)]\s+|[-*•]\s+(?:\[\d{1,4}\]|\d{1,4}\.)|(?:https?:\/\/)?doi\.org\/|doi:\s*|10\.\d{4,9}\/|[A-Z][a-zA-Z'\-À-ÿ]+,\s+[A-Z]|[A-Z][a-zA-Z'\-À-ÿ]+\s+(?:et\s+al\.?|[A-Z]\.))/;
 
-  // Group multi-line entries
   const refs: string[] = [];
   let currentRef = "";
 
-  for (const line of lines) {
-    if (/^(?:\[\d+\]|\d{1,3}\.\s+[A-Z]|\([A-Za-z]+,\s*\d{4}\)|[A-Z][a-z]+,\s*[A-Z])/.test(line)) {
-      if (currentRef) refs.push(currentRef);
+  for (const line of rawLines) {
+    // Ignore standalone page numbers or headers
+    if (/^(?:page\s+\d+|\d+\s+of\s+\d+|\d+)$/i.test(line)) {
+      continue;
+    }
+
+    if (refStartPattern.test(line)) {
+      if (currentRef.trim().length >= 15) {
+        refs.push(currentRef.trim());
+      }
       currentRef = line;
     } else {
       if (currentRef) {
@@ -90,9 +110,40 @@ export function extractReferencesFromText(text: string): string[] {
       }
     }
   }
-  if (currentRef) refs.push(currentRef);
+  if (currentRef.trim().length >= 15) {
+    refs.push(currentRef.trim());
+  }
 
-  // Return parsed references, or empty array if none parsed (never slice arbitrary body lines)
+  // 3. Fallback: if no pattern-matched references found
+  if (refs.length === 0) {
+    // Try paragraph-based splitting (separated by blank lines)
+    const paragraphs = refSection
+      .split(/\n\s*\n+/)
+      .map((p) => p.replace(/\s+/g, " ").trim())
+      .filter((p) => p.length >= 25);
+
+    const validParas = paragraphs.filter((p) => 
+      /\b(19\d\d|20\d\d)\b/.test(p) ||
+      /\b10\.\d{4,9}\//.test(p) ||
+      /\b(?:doi|journal|vol|pp|press|university|springer|elsevier|ieee|wiley|nature|science)\b/i.test(p)
+    );
+
+    if (validParas.length > 0) {
+      return validParas;
+    }
+
+    // Try standalone DOIs
+    const doiMatches = refSection.match(/\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)\b/g);
+    if (doiMatches && doiMatches.length > 0) {
+      return Array.from(new Set(doiMatches.map((d) => d.replace(/[.,;)\]]+$/, ""))));
+    }
+
+    // If input itself is a single citation
+    if (trimmed.length >= 25 && (/\b(19\d\d|20\d\d)\b/.test(trimmed) || /\b10\.\d{4,9}\//.test(trimmed))) {
+      return [trimmed.replace(/\s+/g, " ")];
+    }
+  }
+
   return refs;
 }
 

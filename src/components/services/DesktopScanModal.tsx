@@ -184,9 +184,9 @@ export function DesktopScanModal({
           detail: p.majorCritiques?.join(" ") || p.assessment || "",
         })) || [],
         citationAudit: {
-          verifiedCount: fullReport.citationIntegrity?.verifiedCount || 10,
-          totalCount: fullReport.citationIntegrity?.totalReferences || 10,
-          retractedCount: fullReport.citationIntegrity?.retractedCount || 0,
+          verifiedCount: fullReport.citationIntegrity?.verifiedCount ?? 0,
+          totalCount: fullReport.citationIntegrity?.totalReferences ?? 0,
+          retractedCount: fullReport.citationIntegrity?.retractedCount ?? 0,
           notes: fullReport.citationIntegrity?.references?.length
             ? `Verified ${fullReport.citationIntegrity.verifiedCount} DOIs via CrossRef Open API.`
             : undefined,
