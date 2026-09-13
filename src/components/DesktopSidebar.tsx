@@ -262,21 +262,6 @@ export function DesktopSidebar({
 
         {/* ICONS BENEATH LOGO (overflow-visible so tooltips and submenus fly out cleanly) */}
         <div className="flex-1 overflow-visible px-2 py-3 space-y-3">
-          {/* Search Icon */}
-          <div className="relative group flex justify-center">
-            <button
-              type="button"
-              onClick={onOpenSearch}
-              className="w-9 h-9 rounded-xl flex items-center justify-center bg-white dark:bg-[#161F30] border border-[#E5E7EB] dark:border-[#1E293B] hover:border-neutral-300 dark:hover:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 transition shadow-2xs cursor-pointer"
-            >
-              <Search className="w-4 h-4" />
-            </button>
-            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1 bg-[#111827] text-white text-xs font-medium rounded-md shadow-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
-              Search articles (⌘K)
-              <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#111827]" />
-            </div>
-          </div>
-
           {/* Articles Icon with Right-side Submenu */}
           <div className="relative group flex justify-center">
             <button
@@ -615,24 +600,7 @@ export function DesktopSidebar({
 
       {/* SCROLLABLE MAIN CONTENT */}
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-4 [scrollbar-width:thin]">
-        {/* 1. SEARCH BAR */}
-        <div className="pt-1">
-          <button
-            type="button"
-            onClick={onOpenSearch}
-            className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs text-neutral-500 dark:text-neutral-400 liquid-glass-input hover:text-neutral-900 dark:hover:text-white transition shadow-2xs cursor-pointer group"
-          >
-            <div className="flex items-center gap-2">
-              <Search className="w-3.5 h-3.5 text-neutral-400 dark:text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-200 transition" />
-              <span className="text-xs">Search articles...</span>
-            </div>
-            <kbd className="text-[10px] font-mono text-neutral-400 dark:text-neutral-400 bg-black/[0.05] dark:bg-white/[0.08] border border-black/[0.06] dark:border-white/[0.1] rounded px-1.5 py-0.5 shadow-2xs">
-              ⌘K
-            </kbd>
-          </button>
-        </div>
-
-        {/* 2. ARTICLES LIST */}
+        {/* 1. ARTICLES LIST */}
         <div>
           <div className="flex items-center justify-between px-2 mb-1.5">
             <span className="text-[11px] font-bold text-[#9CA3AF] dark:text-neutral-400 uppercase tracking-wider">
@@ -852,31 +820,23 @@ export function DesktopSidebar({
                     key={service.id}
                     type="button"
                     onClick={service.action}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs transition text-left cursor-pointer group ${
+                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer text-left ${
                       isItemActive
-                        ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white shadow-2xs"
-                        : "hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white text-neutral-700 dark:text-neutral-300"
+                        ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
+                        : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white border border-transparent"
                     }`}
                   >
-                    <div
-                      className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${
-                        isItemActive
-                          ? "bg-blue-600 text-white shadow-xs"
-                          : service.color
-                      }`}
-                    >
-                      <Icon className="w-3 h-3" />
-                    </div>
-                    <div className="truncate min-w-0">
-                      <div
-                        className={`text-xs truncate ${
+                    <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
+                      <Icon
+                        className={`w-4 h-4 shrink-0 ${
                           isItemActive
-                            ? "font-semibold text-[#111827] dark:text-white"
-                            : "font-medium text-neutral-800 dark:text-neutral-200 group-hover:text-black dark:group-hover:text-white"
+                            ? "text-blue-600 dark:text-blue-400"
+                            : "text-neutral-500 dark:text-neutral-400"
                         }`}
-                      >
+                      />
+                      <span className="truncate font-medium">
                         {service.name}
-                      </div>
+                      </span>
                     </div>
                   </button>
                 );

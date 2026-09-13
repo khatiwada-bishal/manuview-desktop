@@ -401,7 +401,7 @@ export function DesktopScanModal({
                   setCompatibilityMatch(null);
                 }}
                 showScopeBadge={false}
-                placeholder="Type at least 3 letters to search journals..."
+                placeholder="Search or select a journal..."
               />
             </div>
 

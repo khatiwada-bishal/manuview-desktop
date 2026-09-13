@@ -186,7 +186,7 @@ export function DesktopNewReviewModal({
             <JournalCombobox
               value={journal}
               onChange={setJournal}
-              placeholder="Type at least 3 letters to search journals..."
+              placeholder="Search or select a journal..."
             />
           </div>
 
