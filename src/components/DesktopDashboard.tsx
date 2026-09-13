@@ -658,94 +658,130 @@ export function DesktopDashboard({
           </span>
         </div>
 
-        {/* Persona Switcher Buttons */}
-        <div className="flex flex-wrap items-center gap-2 pb-1">
+        {/* Persona Switcher Tabs */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 pt-1 border-b border-[#E2E8F0] dark:border-[#1F2937]">
           {personas.map((p, idx) => {
             const isActive = selectedPersona === idx;
             const isDA = p.persona === "devils_advocate" || idx === 4;
+            const isReject = p.decisionRecommendation?.includes("Reject");
+            const isAccept = p.decisionRecommendation?.includes("Accept");
+            const shortLabel =
+              p.persona === "journal_editor" || idx === 0
+                ? "Reviewer 1 (Editor)"
+                : p.persona === "domain_expert" || idx === 1
+                ? "Reviewer 2 (Domain)"
+                : p.persona === "methods_reviewer" || idx === 2
+                ? "Reviewer 3 (Methods)"
+                : p.persona === "statistician" || idx === 3
+                ? "Reviewer 4 (Stats)"
+                : "Reviewer 5 (Adversary)";
+            const icon =
+              p.persona === "journal_editor" || idx === 0
+                ? "📑"
+                : p.persona === "domain_expert" || idx === 1
+                ? "🧬"
+                : p.persona === "methods_reviewer" || idx === 2
+                ? "🔬"
+                : p.persona === "statistician" || idx === 3
+                ? "📊"
+                : "⚡";
+
             return (
               <button
                 key={idx}
                 type="button"
                 onClick={() => setSelectedPersona(idx)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-2 border ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer flex items-center gap-2 border ${
                   isActive
-                    ? isDA
-                      ? "bg-[#7F1D1D] text-white border-[#7F1D1D] shadow-xs"
-                      : "liquid-glass-tab-active font-bold text-blue-600 dark:text-blue-400"
+                    ? "bg-[#0F172A] dark:bg-blue-600 text-white border-[#0F172A] dark:border-blue-600 shadow-xs"
                     : isDA
                     ? "bg-rose-500/10 text-rose-800 dark:text-rose-300 border-rose-500/20 hover:bg-rose-500/20"
-                    : "liquid-glass-btn-secondary text-neutral-700 dark:text-neutral-300"
+                    : "liquid-glass-btn-secondary text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#1E293B]"
                 }`}
               >
-                <span>
-                  {p.persona === "methods_reviewer" ? "🔬" :
-                   p.persona === "domain_expert" ? "🧬" :
-                   p.persona === "journal_editor" ? "📑" :
-                   p.persona === "statistician" ? "📊" :
-                   p.persona === "devils_advocate" ? "⚡" :
-                   (idx === 0 ? "🔬" : idx === 1 ? "🧬" : idx === 2 ? "📑" : idx === 3 ? "📊" : "⚡")}
-                </span>
-                <span>{p.name}</span>
-                {isDA && (
-                  <span className={`text-[9px] uppercase px-1.5 py-0.2 rounded font-extrabold ${
-                    isActive ? "bg-white/20 text-white" : "bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/30"
-                  }`}>
+                <span>{icon}</span>
+                <span>{shortLabel}</span>
+                {isDA && !isActive && (
+                  <span className="text-[9px] uppercase px-1.5 py-0.2 rounded font-extrabold bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/30">
                     Stress-Test
                   </span>
                 )}
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
-                    isActive
-                      ? "bg-blue-500/20 text-blue-700 dark:text-blue-300"
-                      : "bg-black/[0.04] dark:bg-white/[0.08] text-neutral-600 dark:text-neutral-300"
-                  }`}
-                >
-                  {p.decisionRecommendation}
-                </span>
+                {p.decisionRecommendation && (
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded font-bold border ${
+                      isActive
+                        ? "bg-white/20 text-white border-white/30"
+                        : isReject
+                        ? "bg-red-50 text-[#991B1B] border-red-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800"
+                        : isAccept
+                        ? "bg-emerald-50 text-[#065F46] border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
+                        : "bg-amber-50 text-[#92400E] border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
+                    }`}
+                  >
+                    {p.decisionRecommendation}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
 
         {/* Active Persona Card */}
-        {active && (
-          <div className={`rounded-3xl liquid-glass-card p-6 sm:p-8 space-y-6 ${
-            isDevilsAdvocate ? "border-rose-400/40 ring-1 ring-rose-500/30" : ""
-          }`}>
-            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 pb-5 border-b border-[#E2E8F0] dark:border-[#1F2937]">
-              <div className="space-y-1">
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <h3 className="text-lg sm:text-xl font-serif font-bold text-[#0F172A] dark:text-white">
-                    {active.name}
-                  </h3>
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
-                    isDevilsAdvocate
-                      ? "bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800"
-                      : "bg-[#FEF3C7] dark:bg-amber-950/40 text-[#92400E] dark:text-amber-300 border-[#FDE68A] dark:border-amber-800"
-                  }`}>
-                    Decision: {active.decisionRecommendation}
-                  </span>
-                  {isDevilsAdvocate && (
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-red-100 dark:bg-red-950/50 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800">
-                      ⚡ Hostile Stress-Test / Adversarial Referee
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs font-medium text-[#475569] dark:text-neutral-300">{active.title}</p>
-                <p className="text-xs text-[#64748B] dark:text-neutral-400 flex items-center gap-1.5">
-                  <GraduationCap className="w-3.5 h-3.5" />
-                  <span>{active.affiliation}</span>
-                </p>
-              </div>
+        {active && (() => {
+          const isReject = active.decisionRecommendation?.includes("Reject");
+          const isAccept = active.decisionRecommendation?.includes("Accept");
+          const fallbackRoleName =
+            active.persona === "journal_editor"
+              ? "Reviewer 1: Lead Handling Editor"
+              : active.persona === "domain_expert"
+              ? "Reviewer 2: Target Domain Specialist"
+              : active.persona === "methods_reviewer"
+              ? "Reviewer 3: Research Methodology Referee"
+              : active.persona === "statistician"
+              ? "Reviewer 4: Statistical & Quantitative Auditor"
+              : "Reviewer 5: Adversarial Translation Referee";
 
-              {active.expertise && (
-                <div className="p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#1F2937] text-xs text-[#475569] dark:text-neutral-300 md:max-w-xs">
-                  <span className="font-bold text-[#0F172A] dark:text-white block mb-0.5">Focus:</span>
-                  {active.expertise}
+          return (
+            <div className={`rounded-3xl liquid-glass-card p-6 sm:p-8 space-y-6 ${
+              isDevilsAdvocate ? "border-rose-400/40 ring-1 ring-rose-500/30" : ""
+            }`}>
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 pb-5 border-b border-[#E2E8F0] dark:border-[#1F2937]">
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <h3 className="text-lg sm:text-xl font-serif font-bold text-[#0F172A] dark:text-white">
+                      {active.name?.startsWith("Reviewer") ? active.name : fallbackRoleName}
+                    </h3>
+                    {active.decisionRecommendation && (
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                        isReject
+                          ? "bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800"
+                          : isAccept
+                          ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                          : "bg-[#FEF3C7] dark:bg-amber-950/40 text-[#92400E] dark:text-amber-300 border-[#FDE68A] dark:border-amber-800"
+                      }`}>
+                        Decision: {active.decisionRecommendation}
+                      </span>
+                    )}
+                    {isDevilsAdvocate && (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-red-100 dark:bg-red-950/50 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800">
+                        ⚡ Hostile Stress-Test / Adversarial Referee
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs font-medium text-[#475569] dark:text-neutral-300">{active.title}</p>
+                  <p className="text-xs text-[#64748B] dark:text-neutral-400 flex items-center gap-1.5">
+                    <GraduationCap className="w-3.5 h-3.5 text-neutral-400" />
+                    <span>{active.affiliation}</span>
+                  </p>
                 </div>
-              )}
-            </div>
+
+                {active.expertise && (
+                  <div className="p-3.5 rounded-xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] text-xs text-[#475569] dark:text-neutral-300 md:max-w-sm shadow-2xs">
+                    <span className="font-bold text-[#0F172A] dark:text-white block mb-0.5">Area of Expertise & Scope:</span>
+                    {active.expertise}
+                  </div>
+                )}
+              </div>
 
             {active.evidenceAnchors && active.evidenceAnchors.length > 0 && (
               <div className="space-y-2">
@@ -827,7 +863,8 @@ export function DesktopDashboard({
               </div>
             )}
           </div>
-        )}
+          );
+        })()}
       </div>
     );
   };
