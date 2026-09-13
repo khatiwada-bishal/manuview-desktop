@@ -31,6 +31,8 @@ import {
   Printer,
   Globe,
   Plus,
+  Search,
+  X,
 } from "lucide-react";
 import {
   FullReviewReport,
@@ -130,6 +132,19 @@ export function DesktopPreSubmissionScanView({
     name: providerName || "AI Engine",
     model: rawModelId || modelName || "Checking status...",
   }), [providerName, rawModelId, modelName]);
+
+  const [modelSearchQuery, setModelSearchQuery] = useState("");
+
+  const filteredModels = React.useMemo(() => {
+    if (!modelSearchQuery.trim()) return availableModels;
+    const q = modelSearchQuery.toLowerCase();
+    return availableModels.filter(
+      (m) =>
+        m.id.toLowerCase().includes(q) ||
+        (m.description && m.description.toLowerCase().includes(q)) ||
+        (m.tag && m.tag.toLowerCase().includes(q))
+    );
+  }, [availableModels, modelSearchQuery]);
 
   const scanMatchingData = React.useMemo(() => {
     if (!report) return null;
@@ -450,15 +465,41 @@ export function DesktopPreSubmissionScanView({
                   </button>
 
                   {modelDropdownOpen && (
-                    <div className="absolute left-0 mt-1.5 w-72 rounded-2xl bg-white dark:bg-[#161F30] border border-[#E5E7EB] dark:border-[#334155] shadow-xl p-2.5 z-40 animate-fade-in text-xs">
+                    <div className="absolute left-0 mt-1.5 w-[480px] max-w-[92vw] rounded-2xl bg-white dark:bg-[#161F30] border border-[#E5E7EB] dark:border-[#334155] shadow-2xl p-3 z-50 animate-fade-in text-xs">
                       <div className="px-2 py-1.5 text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 border-b border-[#E5E7EB] dark:border-[#334155] uppercase tracking-wider flex items-center justify-between">
                         <span>Select Available Model</span>
                         <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
                           {availableModels.length} models
                         </span>
                       </div>
-                      <div className="max-h-56 overflow-y-auto py-1 space-y-1 [scrollbar-width:thin]">
-                        {availableModels.map((m) => {
+
+                      {/* Search Bar */}
+                      {availableModels.length > 5 && (
+                        <div className="pt-2.5 pb-1 px-0.5">
+                          <div className="relative flex items-center">
+                            <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 pointer-events-none" />
+                            <input
+                              type="text"
+                              value={modelSearchQuery}
+                              onChange={(e) => setModelSearchQuery(e.target.value)}
+                              placeholder="Search models (e.g. flash, pro, 3.1)..."
+                              className="w-full pl-8 pr-7 py-1.5 rounded-lg text-xs bg-neutral-50 dark:bg-[#1E293B] border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                            {modelSearchQuery && (
+                              <button
+                                type="button"
+                                onClick={() => setModelSearchQuery("")}
+                                className="absolute right-2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 cursor-pointer"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="max-h-72 overflow-y-auto py-1 space-y-1 [scrollbar-width:thin]">
+                        {filteredModels.map((m) => {
                           const isCur = activeProviderInfo.model === m.id;
                           return (
                             <button
@@ -467,29 +508,44 @@ export function DesktopPreSubmissionScanView({
                               onClick={() => {
                                 handleSelectModel(m.id);
                                 setModelDropdownOpen(false);
+                                setModelSearchQuery("");
                               }}
-                              className={`w-full text-left px-2.5 py-2 rounded-xl transition flex items-start justify-between gap-2 ${
+                              className={`w-full text-left px-3 py-2 rounded-xl transition flex items-start justify-between gap-3 ${
                                 isCur
                                   ? "bg-neutral-100 dark:bg-[#1E293B] text-[#111827] dark:text-white font-semibold border border-neutral-300 dark:border-neutral-600"
-                                  : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-[#1E293B]/50"
+                                  : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-[#1E293B]/60"
                               }`}
                             >
                               <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="font-mono text-xs truncate">{m.id}</span>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-mono text-xs font-semibold text-[#0F172A] dark:text-neutral-100">
+                                    {m.id}
+                                  </span>
                                   {m.tag && (
-                                    <span className="text-[9px] px-1.5 py-0.2 rounded font-medium bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                    <span className="text-[10px] px-2 py-0.5 rounded-md font-medium bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                                       {m.tag}
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate mt-0.5">{m.description}</div>
+                                {m.description && (
+                                  <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-relaxed">
+                                    {m.description}
+                                  </div>
+                                )}
                               </div>
-                              {isCur && <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />}
+                              {isCur && (
+                                <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                              )}
                             </button>
                           );
                         })}
+                        {filteredModels.length === 0 && (
+                          <div className="py-6 text-center text-xs text-neutral-400">
+                            No models found matching &ldquo;{modelSearchQuery}&rdquo;
+                          </div>
+                        )}
                       </div>
+
                       <div className="pt-2 border-t border-[#E5E7EB] dark:border-[#334155] flex items-center justify-between px-1">
                         <button
                           type="button"
@@ -497,7 +553,7 @@ export function DesktopPreSubmissionScanView({
                             setModelDropdownOpen(false);
                             if (onOpenSettings) onOpenSettings();
                           }}
-                          className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-semibold"
+                          className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-semibold cursor-pointer"
                         >
                           AI Settings &amp; Custom Keys &rarr;
                         </button>
