@@ -13,6 +13,7 @@ import {
   PriorityIssue,
   ReportingGuidelineCheck,
   ScoreDimension,
+  isScoreDimension,
   ReferenceVerification,
 } from "./types";
 import { callLLM, sanitizeAuthorText, sanitizeErrorMessage, getSavedClientConfig } from "./llm";
@@ -31,6 +32,12 @@ import {
   validateJournalRecommendations,
 } from "./schemas";
 import { isSubstantiveReviewerObservation } from "./utils";
+
+export function getErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  return String(err);
+}
 
 // -----------------------------------------------------------------------------
 // CONSTANTS & CONFIGURATION LIMITS
@@ -60,8 +67,8 @@ export interface RawDimensionScore {
   score?: number | string;
   label?: string;
   verdict?: string;
-  strengths?: (string | unknown)[];
-  vulnerabilities?: (string | unknown)[];
+  strengths?: unknown[];
+  vulnerabilities?: unknown[];
 }
 
 export interface RawPriorityIssue {
@@ -87,11 +94,11 @@ export interface RawReviewerPersona {
   decisionRecommendation?: ReviewerPersonaFeedback["decisionRecommendation"] | string;
   keyChallenge?: string;
   assessment?: string;
-  majorCritiques?: (string | unknown)[];
-  missingControlsOrAnalyses?: (string | unknown)[];
-  mustAddressItems?: (string | unknown)[];
-  evidenceAnchors?: (string | unknown)[];
-  counterArguments?: (string | unknown)[];
+  majorCritiques?: unknown[];
+  missingControlsOrAnalyses?: unknown[];
+  mustAddressItems?: unknown[];
+  evidenceAnchors?: unknown[];
+  counterArguments?: unknown[];
 }
 
 export interface RawJournalRecommendation {
@@ -177,7 +184,7 @@ export function normalizeJournalName(rawName: string): string {
   // Disambiguated single-word expansions
   norm = norm
     .replace(/\bNatl\b\.?/gi, "National")
-    .replace(/\bNat\b\.(?!\s*Acad)/gi, "Nature")
+    .replace(/\bNat\b\.?(?!\s*Acad)/gi, "Nature")
     .replace(/\bJ\b\.(?=\s|[A-Z]|$)/gi, "Journal")
     .replace(/\bInt\b\.?/gi, "International")
     .replace(/\bAm\b\.?/gi, "American")
@@ -219,8 +226,8 @@ function generateReportId(prefix = "rev_"): string {
         return `${prefix}${hex}`;
       }
     }
-  } catch (err: any) {
-    console.debug("Cryptographic UUID generation failed, using fallback:", err?.message);
+  } catch (err: unknown) {
+    console.debug("Cryptographic UUID generation failed, using fallback:", getErrorMessage(err));
   }
   return `${prefix}${Math.random().toString(36).substring(2, 10)}`;
 }
@@ -424,6 +431,7 @@ export function computeCitationIntegrity(
   }
 
   // Calculate evidenced self-citation ratio if author names are present (REQ-CIT-02)
+  let selfCitationPercent: number | undefined = undefined;
   let selfCitationRatio: number | undefined = undefined;
   let selfCitationNote: string | undefined = undefined;
 
@@ -510,8 +518,9 @@ export function computeCitationIntegrity(
         }
       }
 
-      selfCitationRatio = Math.round((selfCount / checkedCount) * 1000) / 10;
-      selfCitationNote = `Calculated across ${checkedCount} verified references against ${parsedManuscriptAuthors.length} author(s).`;
+      selfCitationPercent = Math.round((selfCount / checkedCount) * 1000) / 10;
+      selfCitationRatio = selfCitationPercent;
+      selfCitationNote = `Calculated across ${checkedCount} verified references against ${parsedManuscriptAuthors.length} author(s) (${selfCitationPercent}% self-citation rate).`;
     }
   }
 
@@ -526,6 +535,7 @@ export function computeCitationIntegrity(
     retractedCount,
     expressionOfConcernCount,
     retractionCheckAvailable,
+    selfCitationPercent,
     selfCitationRatio,
     selfCitationNote,
     recencyProfile,
@@ -537,7 +547,7 @@ export interface DiagnosticProgressUpdate {
   stage: 'parsing' | 'classifying' | 'verifying_references' | 'matching_journals' | 'generating_review' | 'streaming_review' | 'completed';
   message: string;
   percent?: number;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }
 
 // -----------------------------------------------------------------------------
@@ -943,8 +953,8 @@ export async function runManuscriptDiagnostic(
 
       try {
         parsedLLM = cleanAndRepairJson(rawResult);
-      } catch (parseErr: any) {
-        console.warn("JSON repair could not parse initial LLM output:", parseErr?.message);
+      } catch (parseErr: unknown) {
+        console.warn("JSON repair could not parse initial LLM output:", getErrorMessage(parseErr));
 
         // Automated Micro-Repair Loop: If we received substantive response that failed initial parsing,
         // trigger a fast targeted recovery call to repair the JSON syntax before falling back to offline heuristics.
@@ -973,17 +983,17 @@ export async function runManuscriptDiagnostic(
 
             const repairedRaw = await callLLM(repairPrompt, activeConfig);
             parsedLLM = cleanAndRepairJson(repairedRaw);
-            console.log("Micro-repair loop successfully restored valid JSON review structure.");
-          } catch (repairErr: any) {
-            console.warn("Micro-repair loop also failed:", repairErr?.message);
+            console.debug("Micro-repair loop successfully restored valid JSON review structure.");
+          } catch (repairErr: unknown) {
+            console.warn("Micro-repair loop also failed:", getErrorMessage(repairErr));
             llmCallError = "AI response was received but could not be parsed as valid JSON.";
           }
         } else {
           llmCallError = "AI response was received but could not be parsed as valid JSON.";
         }
       }
-    } catch (err: any) {
-      const safeError = sanitizeErrorMessage(err?.message || "AI provider call failed or is not connected.");
+    } catch (err: unknown) {
+      const safeError = sanitizeErrorMessage(getErrorMessage(err) || "AI provider call failed or is not connected.");
       console.warn("LLM review generation warning, using document-grounded offline heuristics:", safeError);
       llmCallError = safeError;
     }
@@ -1092,18 +1102,23 @@ export async function runManuscriptDiagnostic(
   if (executionMode !== "heuristic_offline") {
     const dims: Partial<Record<ScoreDimension, DimensionScore>> = {};
     if (dimValidation.isValid && dimValidation.data) {
-      for (const [key, dim] of Object.entries(dimValidation.data) as [ScoreDimension, DimensionScore][]) {
-        dims[key] = {
-          ...dim,
-          source: "llm",
-        };
+      for (const [key, dim] of Object.entries(dimValidation.data)) {
+        if (isScoreDimension(key)) {
+          dims[key] = {
+            ...dim,
+            score: typeof dim.score === "number" ? dim.score : 3,
+            source: "llm",
+          };
+        }
       }
     } else {
-      for (const [key, dim] of Object.entries(domainSynthesis.dimensions) as [ScoreDimension, DimensionScore][]) {
-        dims[key] = {
-          ...dim,
-          source: "heuristic",
-        };
+      for (const [key, dim] of Object.entries(domainSynthesis.dimensions)) {
+        if (isScoreDimension(key)) {
+          dims[key] = {
+            ...dim,
+            source: "heuristic",
+          };
+        }
       }
     }
 
@@ -1396,10 +1411,10 @@ export async function runBriefJournalFitAnalysis(
           reason: "Not found in registry",
         };
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       scopeAssessment = {
         method: "unavailable",
-        reason: err?.message || "Registry query failed",
+        reason: getErrorMessage(err) || "Registry query failed",
       };
     }
   }
@@ -1516,8 +1531,8 @@ Respond with ONLY a valid JSON object matching this schema:
       );
       try {
         parsedLLM = cleanAndRepairJson(rawResponse);
-      } catch (parseErr: any) {
-        console.warn("Brief fit JSON parse error:", parseErr?.message);
+      } catch (parseErr: unknown) {
+        console.warn("Brief fit JSON parse error:", getErrorMessage(parseErr));
         if (rawResponse && rawResponse.trim().length > 100) {
           try {
             const repairPrompt = [
@@ -1532,13 +1547,13 @@ Respond with ONLY a valid JSON object matching this schema:
             ];
             const repairedRaw = await callLLM(repairPrompt, activeConfig);
             parsedLLM = cleanAndRepairJson(repairedRaw);
-          } catch (repairErr: any) {
-            console.debug("Brief fit micro-repair fallback failed:", repairErr?.message);
+          } catch (repairErr: unknown) {
+            console.debug("Brief fit micro-repair fallback failed:", getErrorMessage(repairErr));
           }
         }
       }
-    } catch (err: any) {
-      console.warn("LLM brief fit evaluation failed or timed out, falling back to catalog heuristics:", sanitizeErrorMessage(err?.message || String(err)));
+    } catch (err: unknown) {
+      console.warn("LLM brief fit evaluation failed or timed out, falling back to catalog heuristics:", sanitizeErrorMessage(getErrorMessage(err)));
     }
   }
 
@@ -1999,11 +2014,14 @@ export const DISCIPLINE_ALIAS_MAP: Record<string, string> = {
   "Finance": "Operations Research & Management",
   "Business": "Operations Research & Management",
   "Economics, Finance & Business": "Operations Research & Management",
-  "Engineering & Applied Sciences": "Computer Science",
-  "Physical Sciences & Mathematics": "Computer Science",
 };
 
 export function resolveDisciplineProfile(discipline: string): PersonaProfile {
+  if (!discipline || !discipline.trim()) {
+    return getDefaultDisciplineProfile(discipline || "Scholarly Research");
+  }
+
+  // 1. Direct exact match
   if (DISCIPLINE_HEURISTIC_PROFILES[discipline]) {
     return DISCIPLINE_HEURISTIC_PROFILES[discipline];
   }
@@ -2011,17 +2029,43 @@ export function resolveDisciplineProfile(discipline: string): PersonaProfile {
   if (directAlias && DISCIPLINE_HEURISTIC_PROFILES[directAlias]) {
     return DISCIPLINE_HEURISTIC_PROFILES[directAlias];
   }
+
   const normalized = discipline.toLowerCase().trim();
+
+  // 2. Case-insensitive exact match on profile keys
   for (const [key, profile] of Object.entries(DISCIPLINE_HEURISTIC_PROFILES)) {
-    if (key.toLowerCase() === normalized || normalized.includes(key.toLowerCase()) || key.toLowerCase().includes(normalized)) {
+    if (key.toLowerCase() === normalized) {
       return profile;
     }
   }
+
+  // 3. Case-insensitive exact match on alias keys
   for (const [aliasKey, targetKey] of Object.entries(DISCIPLINE_ALIAS_MAP)) {
-    if (normalized.includes(aliasKey.toLowerCase())) {
-      return DISCIPLINE_HEURISTIC_PROFILES[targetKey] || getDefaultDisciplineProfile(discipline);
+    if (aliasKey.toLowerCase() === normalized) {
+      if (DISCIPLINE_HEURISTIC_PROFILES[targetKey]) {
+        return DISCIPLINE_HEURISTIC_PROFILES[targetKey];
+      }
     }
   }
+
+  // 4. Word-boundary regex matching against profile and alias keys, ordered by key length descending
+  const profileCandidates: [string, PersonaProfile][] = Object.entries(DISCIPLINE_HEURISTIC_PROFILES);
+  const aliasCandidates: [string, PersonaProfile][] = Object.entries(DISCIPLINE_ALIAS_MAP)
+    .map(([aliasKey, targetKey]) => [aliasKey, DISCIPLINE_HEURISTIC_PROFILES[targetKey]] as [string, PersonaProfile])
+    .filter((entry): entry is [string, PersonaProfile] => Boolean(entry[1]));
+
+  const allCandidates = [...profileCandidates, ...aliasCandidates].sort(
+    (a, b) => b[0].length - a[0].length
+  );
+
+  for (const [candidateKey, profile] of allCandidates) {
+    const escaped = escapeRegex(candidateKey);
+    const wordPattern = new RegExp(`\\b${escaped}\\b`, "i");
+    if (wordPattern.test(discipline)) {
+      return profile;
+    }
+  }
+
   return getDefaultDisciplineProfile(discipline);
 }
 
@@ -2092,7 +2136,7 @@ export function synthesizeGroundedAcademicReview(
         )
       ) || sentences[0];
     if (findingSentence) {
-      abstractCore = findingSentence.replace(/^["']|["']$/g, "").trim();
+      abstractCore = findingSentence.replace(/^["'“”«»‘’]+|["'“”«»‘’]+$/g, "").trim();
       if (!abstractCore.endsWith(".")) abstractCore += ".";
     }
   }

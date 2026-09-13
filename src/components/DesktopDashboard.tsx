@@ -842,7 +842,7 @@ export function DesktopDashboard({
     const unresolvableRef = cit?.unresolvableCount ?? 0;
     const retractedRef = cit?.retractedCount ?? data.citationAudit.retractedCount;
     const retAvailable = cit?.retractionCheckAvailable !== false;
-    const selfCitRatio = cit?.selfCitationRatio;
+    const selfCitRatio = cit?.selfCitationPercent ?? cit?.selfCitationRatio;
     const references = cit?.references || [];
 
     return (
