@@ -728,7 +728,7 @@ export function auditReportingGuidelines(
 ): ReportingGuidelineCheck {
   const fullText = manuscript.rawText || "";
   const abstract = manuscript.abstract || "";
-  const methods = manuscript.sections.methods || "";
+  const methods = manuscript.sections?.methods || "";
 
   // 1. Select appropriate guideline based on document cues and discipline
   let guidelineItems: GuidelineDefinitionItem[] = STROBE_ITEMS;
