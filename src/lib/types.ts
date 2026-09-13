@@ -79,6 +79,7 @@ export interface CitationIntegritySummary {
   expressionOfConcernCount?: number;
   retractionCheckAvailable: boolean; // false if Crossref/network failed or offline
   selfCitationRatio?: number; // Omitted if authors cannot be matched or checkedCount < 10
+  selfCitationNote?: string; // Transparent explanation when ratio is omitted or calculated
   recencyProfile?: {
     last5YearsPercent: number;
     olderThan5YearsPercent: number;
