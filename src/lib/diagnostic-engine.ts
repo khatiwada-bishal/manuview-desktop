@@ -16,6 +16,10 @@ import {
   isScoreDimension,
   ReferenceVerification,
   EditorialTriageOutcome,
+  DeterministicComplianceAudit,
+  ComplianceAuditItem,
+  PanelConsensus,
+  TargetJournalEvaluation,
 } from "./types";
 import { callLLM, sanitizeAuthorText, sanitizeErrorMessage, getSavedClientConfig, LLMMessage } from "./llm";
 export { sanitizeAuthorText, sanitizeErrorMessage };
@@ -675,7 +679,9 @@ CRITICAL ANTI-HALLUCINATION & STRICT GROUNDING MANDATE:
    - "methods_reviewer" (name: "Reviewer 3: Research Methodology Referee"): Lead specialist in the paper's actual methodology/empirical models (e.g. experimental protocols, surveys, structural equation modeling, algorithmic convergence, or econometrics). Critiques methodological validity, data collection protocols, and reproducibility.
    - "statistician" (name: "Reviewer 4: Statistical & Quantitative Auditor"): Senior quantitative methods / applied biostatistics referee. Audits sample power, variance reporting, collinearity (VIF), multiplicity corrections, and data availability.
    - "devils_advocate" (name: "Reviewer 5: Adversarial Translation Referee"): Adversarial stress-test referee challenging cross-disciplinary utility, translational relevance to the target journal's audience, unruled-out rival hypotheses, and causal overclaims.
-   Each persona MUST have: persona ("journal_editor" | "domain_expert" | "methods_reviewer" | "statistician" | "devils_advocate"), name (MUST be the anonymous reviewer track e.g. "Reviewer 1: Lead Handling Editor"), title (formal academic title, e.g. "Senior Handling Editor — Cardiovascular & Physiological Science"), affiliation (e.g. "Editorial Advisory Board, [Target Journal]"), expertise (specific areas of expertise, e.g. "Aims & scope compliance, clinical translation, and editorial triage"), roleDescription, decisionRecommendation ("Major Revision" | "Reject / Resubmit" | "Desk Reject" | "Minor Revision"), keyChallenge, assessment (2-3 detailed paragraphs citing the text), majorCritiques (array of 3-5 specific critiques), missingControlsOrAnalyses (array of 2-3 items), mustAddressItems (array of 3 items), evidenceAnchors (array of 2-3 typed text/equation anchors: text: §X "...", equation: Eq. Y, absence: §Z ...), and counterArguments (array of 2-3 hostile counter-arguments or defensive points).
+   INDEPENDENT EVALUATION & REALISTIC DISAGREEMENT: Each persona evaluates strictly through their assigned professional role. Do NOT force artificial consensus across reviewers. In scholarly peer review, committees disagree on ~25% of decisions (e.g. Handling Editor may see scope misfit while Methods Referee finds technical execution sound). If evidence warrants divergence, let the panel disagree.
+   CONFIDENTIAL EDITORIAL NOTE: For "journal_editor" (Reviewer 1), you MUST include "confidentialEditorNote": a candid, confidential simulation of the handling editor's private memo to the editor-in-chief / editorial board (e.g. "Would I send this manuscript out for peer review? Candid triage assessment evaluating readership demand, desk reject justification, or competitive novelty").
+   Each persona MUST have: persona ("journal_editor" | "domain_expert" | "methods_reviewer" | "statistician" | "devils_advocate"), name (MUST be the anonymous reviewer track e.g. "Reviewer 1: Lead Handling Editor"), title (formal academic title, e.g. "Senior Handling Editor — Cardiovascular & Physiological Science"), affiliation (e.g. "Editorial Advisory Board, [Target Journal]"), expertise (specific areas of expertise, e.g. "Aims & scope compliance, clinical translation, and editorial triage"), roleDescription, decisionRecommendation ("Major Revision" | "Reject / Resubmit" | "Desk Reject" | "Minor Revision"), keyChallenge, assessment (2-3 detailed paragraphs citing the text), majorCritiques (array of 3-5 specific critiques), missingControlsOrAnalyses (array of 2-3 items), mustAddressItems (array of 3 items), evidenceAnchors (array of 2-3 typed text/equation anchors: text: §X "...", equation: Eq. Y, absence: §Z ...), counterArguments (array of 2-3 hostile counter-arguments or defensive points), and for Reviewer 1 confidentialEditorNote.
 5. TYPED EVIDENCE ANCHORS & REBUTTAL STRATEGIES:
    - Every priority issue MUST have a typed "evidenceAnchor": text: §X "<quote up to 25 words>", equation: Eq. Y, or absence: §Z lacks ...
    - Every priority issue MUST have a "rebuttalStrategy" detailing the point-by-point author defense and revision roadmap for the formal journal response letter.
@@ -703,11 +709,12 @@ export function buildPreSubmissionUserPrompt(
   const safeTitle = sanitizeAuthorText(manuscript.title);
   const safeAbstract = sanitizeAuthorText(manuscript.abstract);
   const safeTargetJournal = targetJournalName ? sanitizeAuthorText(targetJournalName) : undefined;
-  const safeIntro = sanitizeAuthorText(manuscript.sections.introduction || "");
-  const safeMethods = sanitizeAuthorText(manuscript.sections.methods || "");
-  const safeResults = sanitizeAuthorText(manuscript.sections.results || "");
-  const safeDiscussion = sanitizeAuthorText(manuscript.sections.discussion || "");
-  const safeConclusion = sanitizeAuthorText(manuscript.sections.conclusion || "");
+  const sections = manuscript.sections || (manuscript as any).imradSections || {};
+  const safeIntro = sanitizeAuthorText(sections.introduction || "");
+  const safeMethods = sanitizeAuthorText(sections.methods || "");
+  const safeResults = sanitizeAuthorText(sections.results || "");
+  const safeDiscussion = sanitizeAuthorText(sections.discussion || "");
+  const safeConclusion = sanitizeAuthorText(sections.conclusion || "");
   const safeRawText = sanitizeAuthorText(manuscript.rawText || "");
 
   const targetEntry = targetJournalName
@@ -770,7 +777,7 @@ ${documentBodyPayload}
 </untrusted_author_document>
 
 [SAMPLE BIBLIOGRAPHY REFERENCES (${manuscript.references.length} total)]
-${manuscript.references.slice(0, DEFAULT_DISPLAYED_REFS).map(sanitizeAuthorText).join("\n")}
+${manuscript.references.slice(0, DEFAULT_DISPLAYED_REFS).map((r) => sanitizeAuthorText(typeof r === "string" ? r : (r as any)?.raw || "")).join("\n")}
 
 [CROSSREF BIBLIOGRAPHY INTEGRITY METRICS]
 Total References: ${citationIntegrity.totalReferences}
@@ -1167,13 +1174,11 @@ export async function runManuscriptDiagnostic(
       ? "partial_llm"
       : "heuristic_offline";
 
-  // REQ-EN-06: In heuristic_offline mode, suppress reviewer personas and overall score entirely
+  // REQ-EN-06 & P0-1: Suppress overallScore whenever executionMode === "heuristic_offline" OR dimensionSource === "heuristic"
   let finalOverallScore: number | undefined = undefined;
-  if (executionMode !== "heuristic_offline") {
+  if (executionMode !== "heuristic_offline" && dimensionSource === "llm") {
     if (typeof parsedLLM?.overallScore === "number" && !isNaN(parsedLLM.overallScore)) {
       finalOverallScore = Math.min(100, Math.max(0, Math.round(parsedLLM.overallScore)));
-    } else {
-      finalOverallScore = domainSynthesis.overallScore;
     }
     // Enforce realistic desk-reject ceiling on severe cross-field scope mismatch
     if (journalMatches.targetJournalEvaluation?.isDisciplinaryMismatch && finalOverallScore !== undefined) {
@@ -1184,8 +1189,8 @@ export async function runManuscriptDiagnostic(
   let finalSummary =
     executionMode === "heuristic_offline"
       ? (llmCallError
-          ? `AI review unavailable (${llmCallError}) — connect a provider for the reviewer panel and dimension scoring. The checks below are deterministic.`
-          : "AI review unavailable — connect a provider for the reviewer panel and dimension scoring. The checks below are deterministic.")
+          ? `AI review unavailable (${llmCallError}) — connect an LLM provider for the simulated reviewer panel and dimension scoring. The report below presents an objective Deterministic Compliance Audit.`
+          : "AI review unavailable — connect an LLM provider for the simulated reviewer panel and dimension scoring. The report below presents an objective Deterministic Compliance Audit.")
       : typeof parsedLLM?.summary === "string" && parsedLLM.summary.length > MIN_SUMMARY_LENGTH
       ? parsedLLM.summary
       : domainSynthesis.summary;
@@ -1322,6 +1327,54 @@ export async function runManuscriptDiagnostic(
     });
   }
 
+  // Self-citation escalation (P2-2)
+  const selfCitRate =
+    citationIntegrity.selfCitationPercent ??
+    (manuscript.citationStats?.authorSelfCitationRatio !== undefined
+      ? manuscript.citationStats.authorSelfCitationRatio * 100
+      : undefined);
+  const checkedRefsCount =
+    (citationIntegrity.checkedCount || 0) > 0
+      ? (citationIntegrity.checkedCount || 0)
+      : (manuscript.citationStats?.totalReferences || 0);
+  const hasSelfCitationIssue = finalPriorityIssues.some(
+    (i) => i.id?.startsWith("iss-self-cit") || (i.category === "Citations" && /self-citation/i.test(`${i.title} ${i.description}`))
+  );
+
+  if (selfCitRate !== undefined && checkedRefsCount >= 8 && !hasSelfCitationIssue) {
+    if (selfCitRate > 40) {
+      additionalIssues.push({
+        id: "iss-self-cit-critical",
+        priority: "A",
+        title: `Critical Self-Citation Density (${selfCitRate.toFixed(1)}% of bibliography)`,
+        category: "Citations",
+        description: `Over 40% of verified references cite prior publications by the authors. Journal editors and reviewers routinely flag excessive self-citation (>25%) as citation-stacking or an insular conceptual foundation, and rates above 40% frequently trigger immediate desk rejection.`,
+        reviewerQuote:
+          executionMode === "heuristic_offline"
+            ? ""
+            : "'The manuscript exhibits unusually high self-citation (>40%), creating an insular empirical framing. Broaden foundational literature with third-party studies.'",
+        actionableFix:
+          "Audit references and replace non-essential self-citations with independent, third-party peer-reviewed empirical literature.",
+        source: "crossref",
+      });
+    } else if (selfCitRate > 25) {
+      additionalIssues.push({
+        id: "iss-self-cit-elevated",
+        priority: "B",
+        title: `Elevated Self-Citation Ratio (${selfCitRate.toFixed(1)}% of bibliography)`,
+        category: "Citations",
+        description: `Author self-citations represent ${selfCitRate.toFixed(1)}% of verified references, exceeding the standard academic ceiling of 25%. While direct extensions of previous datasets are valid, elevated ratios invite referee scrutiny.`,
+        reviewerQuote:
+          executionMode === "heuristic_offline"
+            ? ""
+            : "'Self-citation exceeds 25%. Ensure previous author papers are cited strictly where required for methodological lineage.'",
+        actionableFix:
+          "Verify that each self-citation is essential for method or data continuity, and introduce independent external benchmarks.",
+        source: "crossref",
+      });
+    }
+  }
+
   if (journalMatches.targetJournalEvaluation?.isDisciplinaryMismatch) {
     const hasScopeIssue = finalPriorityIssues.some(
       (i) => i.id === "iss-scope-mismatch" || (i.category === "Scope/Fit" && /mismatch|out-of-scope|remit/i.test(`${i.title} ${i.description}`))
@@ -1372,6 +1425,8 @@ export async function runManuscriptDiagnostic(
   };
 
   let finalPersonas: ReviewerPersonaFeedback[] = [];
+  const missingPersonaRoles: ReviewerPersonaFeedback["persona"][] = [];
+
   if (executionMode !== "heuristic_offline") {
     if (personaValidation.isValid && personaValidation.data) {
       const llmPersonas: ReviewerPersonaFeedback[] = personaValidation.data.map((p) => ({
@@ -1387,48 +1442,30 @@ export async function runManuscriptDiagnostic(
           : [],
       }));
 
-      // Ensure all 5 canonical roles are represented.
-      // If any role was omitted by the LLM (e.g. only 4 generated), backfill the missing role from domainSynthesis
+      // P0-1: Never backfill missing personas with synthetic templates in partial_llm mode!
       const existingRoles = new Set(llmPersonas.map((p) => p.persona));
-      const assembledPersonas: ReviewerPersonaFeedback[] = [...llmPersonas];
-
       for (const role of CANONICAL_PERSONA_ROLES) {
         if (!existingRoles.has(role)) {
-          const fallback = domainSynthesis.personas.find((p) => p.persona === role);
-          if (fallback) {
-            assembledPersonas.push({
-              ...fallback,
-              source: "heuristic" as const,
-              evidenceAnchors: Array.isArray(fallback.evidenceAnchors)
-                ? fallback.evidenceAnchors.map((a) => groundEvidenceAnchor(a, manuscript.rawText, manuscript.sections))
-                : [],
-            });
-            existingRoles.add(role);
-          }
+          missingPersonaRoles.push(role);
         }
       }
 
       // Sort canonically: editor -> domain -> methods -> statistician -> devils_advocate
+      const assembledPersonas = [...llmPersonas];
       assembledPersonas.sort((a, b) => {
         const idxA = CANONICAL_PERSONA_ROLES.indexOf(a.persona);
         const idxB = CANONICAL_PERSONA_ROLES.indexOf(b.persona);
         return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
       });
 
-      // Guarantee exactly 5 personas and enforce anonymous academic reviewer tracks
-      finalPersonas = assembledPersonas.slice(0, 5).map((p) => ({
+      finalPersonas = assembledPersonas.map((p) => ({
         ...p,
         name: CANONICAL_ANONYMOUS_TRACKS[p.persona] || p.name,
       }));
     } else {
-      finalPersonas = domainSynthesis.personas.map((p) => ({
-        ...p,
-        name: CANONICAL_ANONYMOUS_TRACKS[p.persona] || p.name,
-        source: "heuristic" as const,
-        evidenceAnchors: Array.isArray(p.evidenceAnchors)
-          ? p.evidenceAnchors.map((a) => groundEvidenceAnchor(a, manuscript.rawText, manuscript.sections))
-          : [],
-      }));
+      // If persona validation failed in partial_llm mode, do NOT fabricate fake personas
+      finalPersonas = [];
+      missingPersonaRoles.push(...CANONICAL_PERSONA_ROLES);
     }
 
     // Severe disciplinary scope mismatch = desk rejection at editorial triage.
@@ -1450,6 +1487,10 @@ export async function runManuscriptDiagnostic(
         : [];
     }
   }
+
+  // Panel Consensus and Score Uncertainty Margin (P0-3)
+  const panelConsensus = computePanelConsensus(finalPersonas, finalOverallScore);
+  const scoreUncertaintyMargin = panelConsensus?.uncertaintyMargin;
 
   // Editorial triage (desk-review) gate. Scope mismatch is the #1 desk-rejection
   // trigger and stops the manuscript before it reaches the reviewer panel.
@@ -1484,11 +1525,15 @@ export async function runManuscriptDiagnostic(
     editorialTriage,
     isEligibleForReview: true,
     overallScore: finalOverallScore,
+    scoreUncertaintyMargin,
+    panelConsensus,
+    complianceAudit: domainSynthesis.complianceAudit,
     summary: finalSummary,
     classification: finalClassification,
     dimensions: finalDimensions,
     priorityIssues: finalPriorityIssues,
     reviewerPersonas: finalPersonas,
+    missingPersonaRoles: missingPersonaRoles.length > 0 ? missingPersonaRoles : undefined,
     journalRecommendations: finalRecommendations,
     citationIntegrity,
     reportingGuideline: domainSynthesis.reportingGuideline
@@ -2244,6 +2289,281 @@ export function resolveDisciplineProfile(discipline: string): PersonaProfile {
 }
 
 /**
+ * Generates an objective, transparent Deterministic Compliance Audit (P0-1).
+ * Verifies factual document structure, reporting standards, causal language density,
+ * and Crossref citation integrity without fabricating synthetic referee opinions.
+ */
+export function buildDeterministicComplianceAudit(
+  manuscript: ParsedManuscript,
+  citationIntegrity: CitationIntegritySummary,
+  reportingGuideline?: ReportingGuidelineCheck,
+  targetJournalEvaluation?: TargetJournalEvaluation,
+  detectedDiscipline?: string
+): DeterministicComplianceAudit {
+  const items: ComplianceAuditItem[] = [];
+
+  // 1. Structural Section Completeness (IMRaD)
+  const hasTitle = Boolean(manuscript.title && manuscript.title.trim().length > 5);
+  items.push({
+    id: "audit-title",
+    category: "Structure",
+    name: "Manuscript Title & Declarative Contribution",
+    status: hasTitle ? "pass" : "fail",
+    detail: hasTitle
+      ? `Manuscript title identified: "${manuscript.title?.slice(0, 75)}${(manuscript.title?.length || 0) > 75 ? "..." : ""}"`
+      : "No distinct manuscript title identified in submission header.",
+    actionableRecommendation: hasTitle ? undefined : "Provide a clear declarative title summarizing the primary empirical contribution.",
+  });
+
+  const hasAbstract = Boolean(manuscript.abstract && manuscript.abstract.trim().length > 60);
+  items.push({
+    id: "audit-abstract",
+    category: "Structure",
+    name: "Abstract & Empirical Summary",
+    status: hasAbstract ? "pass" : "warn",
+    detail: hasAbstract
+      ? `Structured abstract detected (${manuscript.abstract?.length || 0} characters).`
+      : "Abstract is either missing or too brief (<60 chars) to convey background, methods, results, and significance.",
+    actionableRecommendation: hasAbstract ? undefined : "Add a complete 150–250 word abstract stating research objectives, methodology, main quantitative findings, and implications.",
+  });
+
+  const hasExplicitMethods = Boolean(
+    manuscript.sections?.methods ||
+    /methods|methodology|experimental procedures|materials and methods|study design/i.test(manuscript.rawText || "")
+  );
+  items.push({
+    id: "audit-methods",
+    category: "Structure",
+    name: "Explicit Methods / Protocol Section",
+    status: hasExplicitMethods ? "pass" : "fail",
+    detail: hasExplicitMethods
+      ? "Dedicated Methods / Methodology section identified in the document structure."
+      : "No explicit Methods heading detected — peer reviewers cannot locate protocol specifications or audit reproducibility.",
+    actionableRecommendation: hasExplicitMethods ? undefined : "Add an explicit Methods heading detailing participant cohorts, instrumentation, experimental design, and analytical models.",
+  });
+
+  // 2. Quantitative & Empirical Diagnostics
+  const sampleSizes = manuscript.empiricalCues?.sampleSizes || [];
+  const statMetrics = manuscript.empiricalCues?.statisticalMetrics || [];
+  const hasSampleCue = sampleSizes.length > 0;
+  items.push({
+    id: "audit-sample-size",
+    category: "Methodology",
+    name: "Sample Size / Cohort Specification",
+    status: hasSampleCue ? "pass" : "warn",
+    detail: hasSampleCue
+      ? `Sample size specifications identified (${sampleSizes.slice(0, 3).join(", ")}).`
+      : "No explicit sample size (e.g. n=..., N=..., cohort size) detected in text.",
+    actionableRecommendation: hasSampleCue ? undefined : "Explicitly report sample size (n), participant breakdown, or dataset record counts in the methodology.",
+  });
+
+  const hasStats = statMetrics.length > 0;
+  items.push({
+    id: "audit-quantitative-rigor",
+    category: "Methodology",
+    name: "Statistical & Model Metrics",
+    status: hasStats ? "pass" : "warn",
+    detail: hasStats
+      ? `Quantitative model metrics detected (${statMetrics.slice(0, 3).join(", ")}).`
+      : "No standard statistical indicators (e.g. p-values, CI, R², AUC, F-statistic) detected in results text.",
+    actionableRecommendation: hasStats ? undefined : "Report effect sizes, exact p-values, and confidence intervals rather than relying solely on descriptive claims.",
+  });
+
+  // 3. Reporting Guidelines Compliance
+  if (reportingGuideline) {
+    const score = reportingGuideline.scorePercent ?? 0;
+    const isPass = score >= 70;
+    const isWarn = score >= 40 && score < 70;
+    items.push({
+      id: "audit-reporting-guideline",
+      category: "Guidelines",
+      name: `${reportingGuideline.guidelineName} Checklist Compliance`,
+      status: isPass ? "pass" : isWarn ? "warn" : "fail",
+      detail: `Checklist adherence score: ${score}% (${reportingGuideline.compliantItems?.length || 0} compliant, ${reportingGuideline.missingOrPartialItems?.length || 0} missing/partial items).`,
+      actionableRecommendation: isPass ? undefined : `Address missing checklist items: ${reportingGuideline.missingOrPartialItems?.slice(0, 2).join("; ")}`,
+    });
+  }
+
+  // 4. Citation & Reference Integrity
+  const retCount = citationIntegrity.retractedCount || 0;
+  items.push({
+    id: "audit-retractions",
+    category: "Citations",
+    name: "Retraction Watch & Publisher Correction Audit",
+    status: retCount === 0 ? "pass" : "fail",
+    detail: retCount === 0
+      ? "Zero retracted references detected in cited bibliography."
+      : `${retCount} cited reference(s) have been formally retracted by academic publishers.`,
+    actionableRecommendation: retCount > 0 ? "Remove or replace retracted citations immediately prior to journal submission." : undefined,
+  });
+
+  const unresolvable = citationIntegrity.unresolvableCount || 0;
+  items.push({
+    id: "audit-doi-integrity",
+    category: "Citations",
+    name: "Crossref DOI Resolution & Verifiability",
+    status: unresolvable === 0 ? "pass" : unresolvable === 1 ? "warn" : "fail",
+    detail: unresolvable === 0
+      ? `All checked DOIs resolved successfully in the Crossref registry (${citationIntegrity.verifiedCount} verified).`
+      : `${unresolvable} cited DOI(s) failed resolution in Crossref (potential broken link or unverified reference).`,
+    actionableRecommendation: unresolvable > 0 ? "Verify DOI strings against publisher websites to ensure no trailing characters were truncated." : undefined,
+  });
+
+  const selfCit = citationIntegrity.selfCitationPercent;
+  if (selfCit !== undefined && (citationIntegrity.checkedCount || 0) >= 8) {
+    const isSelfWarn = selfCit > 25 && selfCit <= 40;
+    const isSelfFail = selfCit > 40;
+    items.push({
+      id: "audit-self-citation",
+      category: "Citations",
+      name: "Author Self-Citation Density",
+      status: isSelfFail ? "fail" : isSelfWarn ? "warn" : "pass",
+      detail: `Self-citation rate is ${selfCit.toFixed(1)}% (${citationIntegrity.selfCitationNote || ""}). Standard academic ceiling is 25%.`,
+      actionableRecommendation: isSelfFail || isSelfWarn ? "Diversify bibliography with third-party, independent peer-reviewed references." : undefined,
+    });
+  }
+
+  // 5. Causal Overclaiming & Assertion Hedging
+  const assertions = manuscript.empiricalCues?.causalAssertions || [];
+  const hasExcessiveCausal = assertions.length >= 3;
+  items.push({
+    id: "audit-causal-hedging",
+    category: "Language",
+    name: "Causal Assertion Bounding & Hedging",
+    status: hasExcessiveCausal ? "warn" : "pass",
+    detail: hasExcessiveCausal
+      ? `${assertions.length} strong causal assertions detected that may warrant methodological bounding or hedging.`
+      : "Causal claims appear appropriately bounded or within standard scholarly density limits.",
+    actionableRecommendation: hasExcessiveCausal ? "Add explicit epistemic hedging (e.g., 'results suggest', 'findings are consistent with') around non-experimental inferences." : undefined,
+  });
+
+  // 6. Target Journal Scope Alignment
+  if (targetJournalEvaluation) {
+    const isMismatch = targetJournalEvaluation.isDisciplinaryMismatch;
+    items.push({
+      id: "audit-scope-fit",
+      category: "Scope",
+      name: "Target Journal Remit & Disciplinary Alignment",
+      status: isMismatch ? "fail" : "pass",
+      detail: isMismatch
+        ? `Severe disciplinary mismatch: Manuscript study area is ${detectedDiscipline || "different field"}, while target journal "${targetJournalEvaluation.journalName}" operates in ${targetJournalEvaluation.journalDiscipline}. High desk-rejection hazard.`
+        : `Target journal "${targetJournalEvaluation.journalName}" scope is compatible with ${detectedDiscipline || "manuscript field"}.`,
+      actionableRecommendation: isMismatch ? "Target an appropriate disciplinary journal to avoid immediate editorial desk rejection." : undefined,
+    });
+  }
+
+  const passedCount = items.filter((i) => i.status === "pass").length;
+  const warnCount = items.filter((i) => i.status === "warn").length;
+  const failedCount = items.filter((i) => i.status === "fail").length;
+
+  const summary = `Deterministic Compliance Audit complete: ${passedCount} checks passed, ${warnCount} warning(s), ${failedCount} failure(s). Findings are grounded in deterministic text and registry audits.`;
+
+  return {
+    items,
+    passedCount,
+    warnCount,
+    failedCount,
+    summary,
+  };
+}
+
+/**
+ * Computes panel consensus distribution, agreement level, and score uncertainty margin (P0-3).
+ */
+export function computePanelConsensus(
+  personas: ReviewerPersonaFeedback[],
+  overallScore?: number
+): PanelConsensus | undefined {
+  if (!personas || personas.length < 3) return undefined;
+
+  const distribution = {
+    deskReject: 0,
+    reject: 0,
+    majorRevision: 0,
+    minorRevision: 0,
+  };
+
+  for (const p of personas) {
+    const rec = p.decisionRecommendation || "";
+    if (rec.includes("Desk Reject")) {
+      distribution.deskReject++;
+    } else if (rec.includes("Reject")) {
+      distribution.reject++;
+    } else if (rec.includes("Minor") || rec.includes("Accept")) {
+      distribution.minorRevision++;
+    } else {
+      distribution.majorRevision++;
+    }
+  }
+
+  const rejectFamily = distribution.deskReject + distribution.reject;
+  const reviseFamily = distribution.majorRevision + distribution.minorRevision;
+  const total = personas.length;
+
+  let consensusLevel: "unanimous" | "majority" | "split" = "majority";
+  let uncertaintyMargin = 6;
+
+  if (rejectFamily === total || reviseFamily === total) {
+    consensusLevel = "unanimous";
+    uncertaintyMargin = 3;
+  } else if (Math.abs(rejectFamily - reviseFamily) <= 1 && total >= 4) {
+    consensusLevel = "split";
+    uncertaintyMargin = 10;
+  } else {
+    consensusLevel = "majority";
+    uncertaintyMargin = 6;
+  }
+
+  // Borderline diagnosis
+  let borderlineDiagnosis = "";
+  if (consensusLevel === "unanimous") {
+    borderlineDiagnosis =
+      rejectFamily === total
+        ? "The panel is unanimous in recommending rejection prior to submission; structural revisions or alternate venue targeting is required."
+        : "The panel reaches unanimous consensus that the manuscript is suitable for peer review following targeted revisions.";
+  } else if (consensusLevel === "split") {
+    const editorIsReject = personas
+      .find((p) => p.persona === "journal_editor")
+      ?.decisionRecommendation?.includes("Reject");
+    const methodsIsReject = personas
+      .find((p) => p.persona === "methods_reviewer")
+      ?.decisionRecommendation?.includes("Reject");
+
+    if (editorIsReject && !methodsIsReject) {
+      borderlineDiagnosis =
+        "The panel splits on editorial significance and journal remit rather than methodology — your borderline hazard is venue framing and scope alignment.";
+    } else if (methodsIsReject && !editorIsReject) {
+      borderlineDiagnosis =
+        "The panel splits on experimental controls and empirical proof rather than conceptual interest — your borderline hazard is methodological rigor.";
+    } else {
+      borderlineDiagnosis =
+        "The panel displays substantial divergence between critical auditors and domain specialists (~25% inconsistency band), indicating a borderline submission.";
+    }
+  } else {
+    borderlineDiagnosis =
+      rejectFamily > reviseFamily
+        ? "A majority of the panel advises rejection, indicating substantial evidentiary or scope hurdles."
+        : "A majority of the panel supports proceeding to peer review after addressing specific methodological caveats.";
+  }
+
+  const scoreRange: [number, number] | undefined =
+    overallScore !== undefined
+      ? [
+          Math.max(0, overallScore - uncertaintyMargin),
+          Math.min(100, overallScore + uncertaintyMargin),
+        ]
+      : undefined;
+
+  return {
+    distribution,
+    consensusLevel,
+    borderlineDiagnosis,
+    uncertaintyMargin,
+    scoreRange,
+  };
+}
+
+/**
  * High-Fidelity Domain-Adaptive Scientific Review Synthesizer
  * Generates publication-grade, authentic peer review evaluations grounded in the manuscript.
  */
@@ -2262,6 +2582,7 @@ export function synthesizeGroundedAcademicReview(
   personas: ReviewerPersonaFeedback[];
   journalRecommendations: JournalRecommendation[];
   reportingGuideline?: ReportingGuidelineCheck;
+  complianceAudit: DeterministicComplianceAudit;
 } {
   const isAcademic = classification?.isAcademicManuscript ?? true;
   if (!isAcademic) {
@@ -2273,12 +2594,31 @@ export function synthesizeGroundedAcademicReview(
       personas: [],
       journalRecommendations: [],
       reportingGuideline: undefined,
+      complianceAudit: {
+        items: [],
+        passedCount: 0,
+        warnCount: 0,
+        failedCount: 0,
+        summary: "Compliance audit skipped for non-academic document.",
+      },
     };
   }
 
   // 1. Discipline & Journal Scope Resolution
   const cleanTitle = manuscript.title?.trim() || "Untitled Research Investigation";
   const targetJournal = targetJournalName?.trim() || "Target Journal";
+
+  // Normalize sections and references to prevent runtime exceptions on partial manuscript objects
+  const rawSections = manuscript.sections || (manuscript as any).imradSections || {};
+  manuscript.sections = {
+    introduction: rawSections.introduction || "",
+    methods: rawSections.methods || "",
+    results: rawSections.results || "",
+    discussion: rawSections.discussion || "",
+    conclusion: rawSections.conclusion || "",
+    ...rawSections,
+  };
+
   const catalogMatches =
     existingJournalMatches ||
     findMatchingJournals(
@@ -2288,7 +2628,8 @@ export function synthesizeGroundedAcademicReview(
       (manuscript.references || [])
         .slice(0, 50)
         .map((r) => {
-          const match = r.match(/\b([A-Z][A-Za-z\s&]{3,35})\b/);
+          const rawStr = typeof r === "string" ? r : (r as any)?.raw || "";
+          const match = rawStr.match(/\b([A-Z][A-Za-z\s&]{3,35})\b/);
           return match ? match[1] : "";
         })
         .filter(Boolean)
@@ -3044,6 +3385,15 @@ export function synthesizeGroundedAcademicReview(
   // 10. Dynamic Reporting Guideline Audit (A4 - Itemized Checklist with Evidence Extraction)
   const reportingGuideline: ReportingGuidelineCheck = auditReportingGuidelines(manuscript, discipline);
 
+  // 11. Deterministic Compliance Audit (P0-1)
+  const complianceAudit: DeterministicComplianceAudit = buildDeterministicComplianceAudit(
+    manuscript,
+    citationIntegrity,
+    reportingGuideline,
+    catalogMatches.targetJournalEvaluation,
+    discipline
+  );
+
   return {
     overallScore: dynamicScore,
     summary,
@@ -3054,5 +3404,6 @@ export function synthesizeGroundedAcademicReview(
     personas: personas.map((p) => ({ ...p, source: "heuristic" as const })),
     journalRecommendations,
     reportingGuideline,
+    complianceAudit,
   };
 }

@@ -33,6 +33,7 @@ import {
   Download,
   ChevronDown,
   Bookmark,
+  Lock,
 } from "lucide-react";
 import { DesktopActiveView } from "./DesktopSidebar";
 import {
@@ -133,7 +134,7 @@ export function DesktopDashboard({
   const isNonAcademic =
     ineligibilityReason === "non_academic_document" ||
     (fullReport?.classification && !fullReport.classification.isAcademicManuscript);
-  const overallScore = fullReport?.overallScore ?? (isReviewEligible ? data.score ?? 78 : undefined);
+  const overallScore = fullReport ? fullReport.overallScore : (isReviewEligible ? data.score : undefined);
   const targetJournal =
     fullReport?.targetJournal || data.targetJournal || "Target Journal";
   const summary = fullReport?.summary;
@@ -647,12 +648,15 @@ export function DesktopDashboard({
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
           <div>
-            <h2 className="text-base font-bold text-[#0F172A] dark:text-white flex items-center gap-2">
+            <h2 className="text-base font-bold text-[#0F172A] dark:text-white flex items-center gap-2 flex-wrap">
               <Users className="w-4 h-4 text-[#2563EB] dark:text-blue-400" />
               <span>
                 {isDeskReject
                   ? "Editorial Triage Decision"
                   : `${personas.length}-Persona Peer-Review Simulation (Adversarial Panel)`}
+              </span>
+              <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-2.5 py-0.5 rounded-full border border-neutral-200 dark:border-neutral-700">
+                ⚖️ Simulated Panel (Synthetic)
               </span>
             </h2>
             <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
@@ -672,6 +676,63 @@ export function DesktopDashboard({
             <p className="text-xs leading-relaxed text-rose-900/90 dark:text-rose-300/90">
               {triage.summary}
             </p>
+          </div>
+        )}
+
+        {/* Panel Consensus & Score Uncertainty Card (P0-3) */}
+        {fullReport?.panelConsensus && (
+          <div className="p-4 rounded-2xl liquid-glass-card shadow-2xs space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider">
+                  Panel Consensus:
+                </span>
+                <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
+                  fullReport.panelConsensus.consensusLevel === "unanimous"
+                    ? "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
+                    : fullReport.panelConsensus.consensusLevel === "majority"
+                    ? "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800"
+                    : "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
+                }`}>
+                  {fullReport.panelConsensus.consensusLevel.toUpperCase()} (±{fullReport.panelConsensus.uncertaintyMargin} Margin)
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 text-[11px] font-medium text-neutral-600 dark:text-neutral-400 flex-wrap">
+                {fullReport.panelConsensus.distribution.deskReject > 0 && (
+                  <span className="px-2 py-0.5 rounded bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300">
+                    Desk Reject ×{fullReport.panelConsensus.distribution.deskReject}
+                  </span>
+                )}
+                {fullReport.panelConsensus.distribution.reject > 0 && (
+                  <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300">
+                    Reject ×{fullReport.panelConsensus.distribution.reject}
+                  </span>
+                )}
+                {fullReport.panelConsensus.distribution.majorRevision > 0 && (
+                  <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+                    Major Rev ×{fullReport.panelConsensus.distribution.majorRevision}
+                  </span>
+                )}
+                {fullReport.panelConsensus.distribution.minorRevision > 0 && (
+                  <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                    Minor Rev ×{fullReport.panelConsensus.distribution.minorRevision}
+                  </span>
+                )}
+              </div>
+            </div>
+            <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
+              {fullReport.panelConsensus.borderlineDiagnosis}
+            </p>
+          </div>
+        )}
+
+        {/* Partial LLM Generation Notice (P0-1) */}
+        {fullReport?.missingPersonaRoles && fullReport.missingPersonaRoles.length > 0 && (
+          <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2 shadow-2xs">
+            <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+            <span>
+              <strong>Partial Reviewer Generation:</strong> {personas.length} of 5 reviewer perspectives generated by the AI provider (missing: {fullReport.missingPersonaRoles.join(", ")}). Missing perspectives are not fabricated to maintain academic integrity.
+            </span>
           </div>
         )}
 
@@ -799,6 +860,18 @@ export function DesktopDashboard({
                   </div>
                 )}
               </div>
+
+              {active.confidentialEditorNote && (
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 dark:bg-slate-900/60 dark:border-slate-800 text-xs space-y-1 shadow-2xs">
+                  <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-[11px]">
+                    <Lock className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+                    <span>Confidential Editorial Office Memo (Simulation):</span>
+                  </div>
+                  <p className="text-neutral-600 dark:text-neutral-300 italic leading-relaxed">
+                    &ldquo;{active.confidentialEditorNote}&rdquo;
+                  </p>
+                </div>
+              )}
 
             {active.evidenceAnchors && active.evidenceAnchors.length > 0 && (
               <div className="space-y-2">
@@ -1411,14 +1484,35 @@ export function DesktopDashboard({
               ) : (
                 <div className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl liquid-glass-card">
                   <div className="flex items-center flex-wrap gap-2.5">
-                    <div className="flex items-baseline">
-                      <span className="text-3xl sm:text-4xl font-black text-[#0F172A] dark:text-white">
-                        {overallScore}
-                      </span>
-                      <span className="text-xs sm:text-sm font-bold text-[#64748B] dark:text-neutral-400 uppercase tracking-wider ml-2">
-                        / 100 OVERALL ACCEPTANCE POTENTIAL
-                      </span>
-                    </div>
+                    {overallScore !== undefined ? (
+                      <div className="flex items-baseline">
+                        <span className="text-3xl sm:text-4xl font-black text-[#0F172A] dark:text-white">
+                          {overallScore}
+                        </span>
+                        {fullReport?.scoreUncertaintyMargin !== undefined && (
+                          <span className="text-sm font-semibold text-neutral-500 dark:text-neutral-400 ml-1.5">
+                            ±{fullReport.scoreUncertaintyMargin}
+                          </span>
+                        )}
+                        <span className="text-xs sm:text-sm font-bold text-[#64748B] dark:text-neutral-400 uppercase tracking-wider ml-2">
+                          / 100 OVERALL ACCEPTANCE POTENTIAL
+                        </span>
+                        {fullReport?.scoreUncertaintyMargin !== undefined && (
+                          <span className="text-[11px] ml-2 px-2.5 py-0.5 rounded-full font-mono bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">
+                            Band: [{Math.max(0, overallScore - fullReport.scoreUncertaintyMargin)} - {Math.min(100, overallScore + fullReport.scoreUncertaintyMargin)}]
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs sm:text-sm font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                          Deterministic Compliance Audit Mode
+                        </span>
+                        <span className="text-xs text-neutral-600 dark:text-neutral-400">
+                          Algorithmic peer-review scoring suppressed for scholarly integrity in offline heuristic mode.
+                        </span>
+                      </div>
+                    )}
                     {matchingJournalsData.targetJournalEvaluation?.isDisciplinaryMismatch && (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30">
                         <AlertTriangle className="w-3.5 h-3.5" />
@@ -1604,6 +1698,67 @@ export function DesktopDashboard({
                       </div>
                     );
                   })()}
+                </div>
+              </div>
+            )}
+
+            {/* CARD 5: Deterministic Compliance Audit (P0-1) */}
+            {fullReport?.complianceAudit && fullReport.complianceAudit.items && fullReport.complianceAudit.items.length > 0 && (
+              <div className="rounded-3xl liquid-glass-card p-6 sm:p-7 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E2E8F0] dark:border-[#1F2937]">
+                  <div className="flex items-center gap-2">
+                    <CheckSquare className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <h2 className="text-base font-bold text-[#0F172A] dark:text-white">
+                      Deterministic Compliance Audit
+                    </h2>
+                    <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded border border-neutral-200 dark:border-neutral-700">
+                      Rule-Based
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs font-medium">
+                    <span className="text-emerald-700 dark:text-emerald-400 font-bold">{fullReport.complianceAudit.passedCount} Passed</span>
+                    <span className="text-neutral-300 dark:text-neutral-700">•</span>
+                    <span className="text-amber-700 dark:text-amber-400 font-bold">{fullReport.complianceAudit.warnCount} Warnings</span>
+                    <span className="text-neutral-300 dark:text-neutral-700">•</span>
+                    <span className="text-rose-700 dark:text-rose-400 font-bold">{fullReport.complianceAudit.failedCount} Failures</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {fullReport.complianceAudit.items.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`p-4 rounded-2xl border transition shadow-2xs ${
+                        item.status === "pass"
+                          ? "bg-white border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937]"
+                          : item.status === "warn"
+                          ? "bg-amber-50/50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800/40"
+                          : "bg-rose-50/50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-800/40"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <span className="text-xs font-bold text-neutral-900 dark:text-white">{item.name}</span>
+                        <span
+                          className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider border shrink-0 ${
+                            item.status === "pass"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
+                              : item.status === "warn"
+                              ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
+                              : "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800"
+                          }`}
+                        >
+                          {item.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">{item.detail}</p>
+                      {item.actionableRecommendation && (
+                        <p className="text-[11px] text-neutral-600 dark:text-neutral-400 mt-2 pt-2 border-t border-neutral-100 dark:border-neutral-800 flex items-start gap-1.5">
+                          <span className="font-semibold text-neutral-800 dark:text-neutral-200 shrink-0">Remedy:</span>
+                          <span>{item.actionableRecommendation}</span>
+                        </p>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
