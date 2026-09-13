@@ -227,7 +227,7 @@ IMPORTANT OUTPUT INSTRUCTIONS:
                 value={targetJournal}
                 onChange={setTargetJournal}
                 placeholder="Select or type target journal..."
-                inputClassName="h-[42px] w-full pl-9 pr-16 py-2.5 rounded-xl liquid-glass-input text-xs sm:text-sm focus:outline-none"
+                inputClassName="h-[42px] w-full px-3.5 pr-16 py-2.5 rounded-xl liquid-glass-input text-xs sm:text-sm focus:outline-none"
               />
             </div>
             <div className="space-y-1">
