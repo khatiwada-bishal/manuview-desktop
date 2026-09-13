@@ -231,22 +231,22 @@ export function DesktopSidebar({
       >
         {/* LOGO: Hover reveals expand icon (Desktop only, in web mode it is rendered in DesktopHeader) */}
         {isDesktopApp() && (
-          <div className="p-3 border-b border-[#E5E7EB]/70 dark:border-[#1E293B] flex justify-center">
-            <div className="relative group flex justify-center">
+          <div className="p-3 border-b border-black/[0.06] dark:border-white/[0.08] flex justify-center">
+            <div className="relative group flex justify-center w-full">
               <button
                 type="button"
                 onClick={onToggleCollapse}
                 title="Expand sidebar"
-                className="w-9 h-9 rounded-xl bg-white dark:bg-[#161F30] border border-[#E5E7EB] dark:border-[#1E293B] hover:border-neutral-300 dark:hover:border-neutral-700 shadow-xs flex items-center justify-center transition cursor-pointer relative overflow-hidden"
+                className="w-full h-[46px] rounded-xl liquid-glass-card shadow-xs flex items-center justify-center transition cursor-pointer relative overflow-hidden group/btn hover:border-neutral-300 dark:hover:border-neutral-700"
               >
                 {/* Official ManuView Icon */}
                 <img
                   src="/icon.svg"
                   alt="ManuView Logo"
-                  className="w-7 h-7 rounded-lg shadow-xs transition-all duration-150 group-hover:opacity-0 group-hover:scale-75 select-none"
+                  className="w-7 h-7 rounded-lg shadow-xs transition-all duration-150 group-hover/btn:opacity-0 group-hover/btn:scale-75 select-none"
                 />
                 {/* Expand sidebar icon on hover */}
-                <div className="absolute inset-0 flex items-center justify-center text-[#0F172A] dark:text-white opacity-0 group-hover:opacity-100 transition-all duration-150 group-hover:scale-100">
+                <div className="absolute inset-0 flex items-center justify-center text-[#0F172A] dark:text-white opacity-0 group-hover/btn:opacity-100 transition-all duration-150 group-hover/btn:scale-100">
                   <PanelLeft className="w-4 h-4" />
                 </div>
               </button>
@@ -565,7 +565,7 @@ export function DesktopSidebar({
       {/* 1. COMPANY HEADER: Logo + Title + Collapse Button (Desktop only: web mode shows this in DesktopHeader) */}
       {isDesktopApp() && (
         <div className="p-3 border-b border-black/[0.06] dark:border-white/[0.08]">
-          <div className="flex items-center justify-between p-2 rounded-xl liquid-glass-card shadow-xs">
+          <div className="h-[46px] flex items-center justify-between px-2 py-1.5 rounded-xl liquid-glass-card shadow-xs">
             <div
               className="flex items-center gap-2.5 min-w-0 select-none"
             >
