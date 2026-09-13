@@ -12,7 +12,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import JournalCombobox from "@/components/JournalCombobox";
-import { callLLM, sanitizeAuthorText, sanitizeErrorMessage } from "@/lib/llm";
+import { callLLM, sanitizeAuthorText, sanitizeErrorMessage, getSavedClientConfig } from "@/lib/llm";
 import { ProviderConfig } from "@/lib/types";
 
 export function formatCoverLetterText(raw: string, targetJournal: string, title: string): string {
@@ -150,10 +150,7 @@ IMPORTANT OUTPUT INSTRUCTIONS:
 - Do NOT wrap in markdown code blocks.
 - Do NOT include conversational greetings before or after the letter.`;
 
-      const savedConfig = localStorage.getItem("manuview_provider_config");
-      const providerConfig: ProviderConfig | undefined = savedConfig
-        ? JSON.parse(savedConfig)
-        : undefined;
+      const providerConfig = getSavedClientConfig();
 
       setLetter("");
       const generated = await callLLM(

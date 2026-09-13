@@ -20,7 +20,7 @@ import { DesktopDashboardData } from "@/components/DesktopDashboard";
 import { PaperItem } from "@/components/DesktopSidebar";
 import { FullReviewReport, ProviderConfig } from "@/lib/types";
 import { useApiConnection } from "@/lib/useApiConnection";
-import { sanitizeErrorMessage } from "@/lib/llm";
+import { sanitizeErrorMessage, getSavedClientConfig } from "@/lib/llm";
 
 interface DesktopScanModalProps {
   isOpen: boolean;
@@ -114,13 +114,7 @@ export function DesktopScanModal({
       if (title.trim()) parsed.title = title.trim();
       if (abstract.trim()) parsed.abstract = abstract.trim();
 
-      let savedConfig: ProviderConfig | undefined;
-      if (typeof window !== "undefined") {
-        try {
-          const raw = localStorage.getItem("manuview_provider_config");
-          if (raw) savedConfig = JSON.parse(raw);
-        } catch {}
-      }
+      const savedConfig = getSavedClientConfig();
 
       const fullReport: FullReviewReport = await runManuscriptDiagnostic(
         parsed,

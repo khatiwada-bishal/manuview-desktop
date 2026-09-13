@@ -17,7 +17,7 @@ interface Props {
 
 export const DEFAULT_CONFIG: ProviderConfig = {
   provider: "gemini",
-  model: "gemini-2.5-flash",
+  model: "gemini-2.0-flash",
   baseUrl: "http://localhost:11434",
   apiKey: "",
 };
@@ -123,10 +123,16 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
 
         // If current model is not in the live list, pick the recommended or first
         const exists = models.some((m) => m.id === config.model);
-        if (!exists) {
-          const rec = models.find((m: AvailableModel) => m.recommended) || models[0];
-          setConfig((prev) => ({ ...prev, model: rec.id }));
-        }
+        const resolvedModel = exists ? config.model : (models.find((m: AvailableModel) => m.recommended) || models[0]).id;
+        const updatedConfig = { ...config, model: resolvedModel };
+        setConfig(updatedConfig);
+        try {
+          localStorage.setItem("manuview_provider_config", JSON.stringify(updatedConfig));
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event("manuview_config_changed"));
+          }
+          if (onSave) onSave(updatedConfig);
+        } catch {}
 
         // Open the dropdown so the user can easily review the fetched models
         setModelDropdownOpen(true);
@@ -149,7 +155,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
   const handleProviderChange = (newProvider: LLMProvider) => {
     const defaultModel =
       newProvider === "gemini"
-        ? "gemini-2.5-flash"
+        ? "gemini-2.0-flash"
         : newProvider === "openai"
         ? "gpt-4o"
         : newProvider === "anthropic"
@@ -181,6 +187,20 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
         if (result.availableModels.some((m: AvailableModel) => m.isLive)) {
           setHasFetchedLive(true);
         }
+      }
+      if (result.success) {
+        const verifiedConfig: ProviderConfig = {
+          ...config,
+          model: result.model || config.model,
+        };
+        setConfig(verifiedConfig);
+        try {
+          localStorage.setItem("manuview_provider_config", JSON.stringify(verifiedConfig));
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event("manuview_config_changed"));
+          }
+          if (onSave) onSave(verifiedConfig);
+        } catch {}
       }
     } catch (err: any) {
       setTestResult({

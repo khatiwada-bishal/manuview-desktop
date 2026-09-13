@@ -50,7 +50,7 @@ import { exportInteractiveHtmlReport, exportWordDocReport } from "@/lib/export-g
 import { pickManuscriptFileDesktop, isDesktopApp } from "@/lib/desktop";
 import { extractTextFromFile, parseManuscriptText } from "@/lib/parser";
 import { runManuscriptDiagnostic, runBriefJournalFitAnalysis } from "@/lib/diagnostic-engine";
-import { callLLM, sanitizeErrorMessage } from "@/lib/llm";
+import { callLLM, sanitizeErrorMessage, getSavedClientConfig } from "@/lib/llm";
 import { useApiConnection } from "@/lib/useApiConnection";
 import { PaperItem } from "@/components/DesktopSidebar";
 import { DesktopDashboardData } from "@/components/DesktopDashboard";
@@ -271,10 +271,7 @@ export function DesktopPreSubmissionScanView({
     setReport(null);
 
     try {
-      const savedConfig = localStorage.getItem("manuview_provider_config");
-      const providerConfig: ProviderConfig | undefined = savedConfig
-        ? JSON.parse(savedConfig)
-        : undefined;
+      const providerConfig = getSavedClientConfig();
 
       if (isFileScan) {
         // Full document audit

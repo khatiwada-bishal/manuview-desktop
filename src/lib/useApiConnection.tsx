@@ -66,6 +66,18 @@ export function ApiConnectionProvider({ children }: { children: React.ReactNode 
         if (saved) {
           try {
             config = JSON.parse(saved);
+            let modified = false;
+            if (config && config.model && config.model.startsWith("models/")) {
+              config.model = config.model.replace(/^models\//, "");
+              modified = true;
+            }
+            if (config && config.provider === "gemini" && (!config.model || config.model.includes("2.5"))) {
+              config.model = "gemini-2.0-flash";
+              modified = true;
+            }
+            if (modified) {
+              localStorage.setItem("manuview_provider_config", JSON.stringify(config));
+            }
           } catch {}
         }
       }
@@ -84,6 +96,12 @@ export function ApiConnectionProvider({ children }: { children: React.ReactNode 
           : currentProvider.toUpperCase();
 
       if (data && data.success) {
+        if (data.model && config && config.model !== data.model) {
+          config.model = data.model;
+          try {
+            localStorage.setItem("manuview_provider_config", JSON.stringify(config));
+          } catch {}
+        }
         const rawModel = data.model || config?.model || "AI Model";
         const cleanModel = rawModel.toUpperCase().replace(/-/g, " ");
 

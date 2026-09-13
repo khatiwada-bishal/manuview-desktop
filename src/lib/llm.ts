@@ -48,7 +48,24 @@ export function getSavedClientConfig(): ProviderConfig | undefined {
   if (typeof window === "undefined") return undefined;
   try {
     const raw = localStorage.getItem("manuview_provider_config");
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed: ProviderConfig = JSON.parse(raw);
+      let modified = false;
+      if (parsed.model && parsed.model.startsWith("models/")) {
+        parsed.model = parsed.model.replace(/^models\//, "");
+        modified = true;
+      }
+      if (parsed.provider === "gemini" && (!parsed.model || parsed.model.includes("2.5"))) {
+        parsed.model = "gemini-2.0-flash";
+        modified = true;
+      }
+      if (modified) {
+        try {
+          localStorage.setItem("manuview_provider_config", JSON.stringify(parsed));
+        } catch {}
+      }
+      return parsed;
+    }
   } catch (err: any) {
     console.debug("Failed to read saved client config:", err?.message);
   }
@@ -226,7 +243,11 @@ function extractGeminiDelta(line: string): string | null {
   if (!jsonStr || jsonStr === "[DONE]") return null;
   try {
     const data = JSON.parse(jsonStr);
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
+    const parts = data.candidates?.[0]?.content?.parts;
+    if (Array.isArray(parts) && parts.length > 0) {
+      return parts.map((p: any) => p.text || "").join("") || null;
+    }
+    return null;
   } catch {
     return null;
   }
@@ -334,11 +355,17 @@ export async function callLLM(
   // 1. Google Gemini API
   // -----------------------------------------------------------
   if (provider === "gemini" && apiKey) {
-    const geminiModel = model || "gemini-1.5-flash";
-    const cleanModel = encodeURIComponent(geminiModel.trim());
+    let geminiModel = (model || "gemini-2.0-flash").trim();
+    if (geminiModel.startsWith("models/")) {
+      geminiModel = geminiModel.replace(/^models\//, "");
+    }
+    if (geminiModel.includes("2.5")) {
+      geminiModel = "gemini-2.0-flash";
+    }
     const cleanKey = encodeURIComponent(apiKey.trim());
     const action = onChunk ? "streamGenerateContent?alt=sse&key=" : "generateContent?key=";
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:${action}${cleanKey}`;
+    let cleanModel = encodeURIComponent(geminiModel);
+    let geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:${action}${cleanKey}`;
     const { controller, reset: resetTimeout, cancel: cancelTimeout } = createIdleTimeout(LLM_TIMEOUT_MS);
     try {
       const systemMessage = messages.find(m => m.role === 'system')?.content;
@@ -381,6 +408,20 @@ export async function callLLM(
         signal: controller.signal,
       });
 
+      // Fallback: If requested model returns 404 (e.g. legacy or discontinued model ID), auto-fallback to gemini-2.0-flash
+      if (!response.ok && response.status === 404 && geminiModel !== "gemini-2.0-flash") {
+        console.warn(`Gemini model "${geminiModel}" returned 404, auto-falling back to gemini-2.0-flash...`);
+        geminiModel = "gemini-2.0-flash";
+        cleanModel = encodeURIComponent(geminiModel);
+        geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:${action}${cleanKey}`;
+        response = await fetch(geminiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestPayload),
+          signal: controller.signal,
+        });
+      }
+
       // Fallback: If systemInstruction or responseMimeType is rejected on legacy models with 400, retry merged
       if (!response.ok && response.status === 400 && systemMessage) {
         console.warn("Gemini rejected systemInstruction/json mode, retrying with prepended prompt...");
@@ -410,13 +451,36 @@ export async function callLLM(
       }
 
       if (onChunk) {
-        const text = await readStream(response, onChunk, extractGeminiDelta, resetTimeout);
-        if (text) return text;
+        try {
+          const text = await readStream(response, onChunk, extractGeminiDelta, resetTimeout);
+          if (text && text.trim().length > 0) return text;
+        } catch (streamErr) {
+          console.warn("Gemini stream failed, attempting resilient non-streaming fallback:", streamErr);
+        }
+
+        // Resilient non-streaming fallback if stream returned empty or had socket/SSE interruption
+        const nonStreamUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${cleanKey}`;
+        const fallbackRes = await fetch(nonStreamUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestPayload),
+          signal: controller.signal,
+        });
+        if (fallbackRes.ok) {
+          const fbData = await fallbackRes.json();
+          const fbParts = fbData.candidates?.[0]?.content?.parts;
+          const fbText = Array.isArray(fbParts) ? fbParts.map((p: any) => p.text || "").join("") : "";
+          if (fbText && fbText.trim().length > 0) {
+            onChunk(fbText, fbText);
+            return fbText;
+          }
+        }
         throw new Error("Gemini stream returned empty content.");
       }
 
       const data = await response.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      const parts = data.candidates?.[0]?.content?.parts;
+      const text = Array.isArray(parts) ? parts.map((p: any) => p.text || "").join("") : "";
       if (text) return text;
       throw new Error("Gemini returned empty candidate response.");
     } catch (err: any) {
@@ -449,7 +513,10 @@ export async function callLLM(
         endpoint = cleanBase.endsWith("/chat/completions") ? cleanBase : `${cleanBase}/chat/completions`;
       }
     }
-    const chosenModel = model || getEnv('OPENAI_MODEL') || (provider === "groq" ? "llama-3.3-70b-versatile" : "gpt-4o-mini");
+    let chosenModel = (model || getEnv('OPENAI_MODEL') || (provider === "groq" ? "llama-3.3-70b-versatile" : "gpt-4o-mini")).trim();
+    if (chosenModel.startsWith("models/")) {
+      chosenModel = chosenModel.replace(/^models\//, "");
+    }
     const isReasoningModel = /^o[13](?:-|$)/i.test(chosenModel);
 
     const { controller, reset: resetTimeout, cancel: cancelTimeout } = createIdleTimeout(LLM_TIMEOUT_MS);
@@ -462,6 +529,8 @@ export async function callLLM(
         return m;
       });
 
+      const maxTokens = provider === "groq" ? 4096 : 8192;
+
       const requestPayload: any = {
         model: chosenModel,
         messages: formattedMessages,
@@ -473,7 +542,7 @@ export async function callLLM(
         // Reasoning models reject temperature parameter
       } else {
         requestPayload.temperature = 0.2;
-        requestPayload.max_tokens = 8192;
+        requestPayload.max_tokens = maxTokens;
       }
 
       // Only request native JSON output when the caller actually wants JSON.
@@ -483,7 +552,7 @@ export async function callLLM(
         requestPayload.response_format = { type: "json_object" };
       }
 
-      const response = await fetch(endpoint, {
+      let response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -492,6 +561,21 @@ export async function callLLM(
         body: JSON.stringify(requestPayload),
         signal: controller.signal,
       });
+
+      // 400 Fallback: if json_object response_format was rejected by provider, retry without response_format
+      if (!response.ok && response.status === 400 && requestPayload.response_format) {
+        console.warn(`${provider} rejected response_format: json_object, retrying without response_format...`);
+        delete requestPayload.response_format;
+        response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey.trim()}`,
+          },
+          body: JSON.stringify(requestPayload),
+          signal: controller.signal,
+        });
+      }
 
       if (!response.ok) {
         let errMessage = `HTTP ${response.status}`;
@@ -507,8 +591,32 @@ export async function callLLM(
       }
 
       if (onChunk) {
-        const content = await readStream(response, onChunk, extractOpenAIDelta, resetTimeout);
-        if (content) return content;
+        try {
+          const content = await readStream(response, onChunk, extractOpenAIDelta, resetTimeout);
+          if (content && content.trim().length > 0) return content;
+        } catch (streamErr) {
+          console.warn(`${provider} stream failed, attempting resilient non-streaming fallback:`, streamErr);
+        }
+
+        // Resilient non-streaming fallback
+        const fallbackPayload = { ...requestPayload, stream: false };
+        const fallbackRes = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey.trim()}`,
+          },
+          body: JSON.stringify(fallbackPayload),
+          signal: controller.signal,
+        });
+        if (fallbackRes.ok) {
+          const fbData = await fallbackRes.json();
+          const content = fbData.choices?.[0]?.message?.content;
+          if (content && content.trim().length > 0) {
+            onChunk(content, content);
+            return content;
+          }
+        }
         throw new Error(`${provider.toUpperCase()} stream returned empty content.`);
       }
 
@@ -583,8 +691,49 @@ export async function callLLM(
       }
 
       if (onChunk) {
-        const text = await readStream(response, onChunk, extractAnthropicDelta, resetTimeout);
-        if (text) return text;
+        try {
+          const text = await readStream(response, onChunk, extractAnthropicDelta, resetTimeout);
+          if (text && text.trim().length > 0) return text;
+        } catch (streamErr) {
+          console.warn("Anthropic stream failed, attempting resilient non-streaming fallback:", streamErr);
+        }
+
+        // Resilient non-streaming fallback
+        const fallbackRes = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey.trim(),
+            "anthropic-version": "2023-06-01",
+            "anthropic-beta": "prompt-caching-2024-07-31",
+            "anthropic-dangerous-direct-browser-access": "true",
+          },
+          body: JSON.stringify({
+            model: (model || "claude-3-5-sonnet-20241022").replace(/^models\//, ""),
+            max_tokens: 8192,
+            stream: false,
+            system: isLongSystem
+              ? [
+                  {
+                    type: "text",
+                    text: systemMessage,
+                    cache_control: { type: "ephemeral" },
+                  },
+                ]
+              : systemMessage || undefined,
+            messages: userAssistantMessages,
+            temperature: 0.2,
+          }),
+          signal: controller.signal,
+        });
+        if (fallbackRes.ok) {
+          const fbData = await fallbackRes.json();
+          const fbText = fbData.content?.[0]?.text;
+          if (fbText && fbText.trim().length > 0) {
+            onChunk(fbText, fbText);
+            return fbText;
+          }
+        }
         throw new Error("Anthropic stream returned empty content.");
       }
 
@@ -665,25 +814,11 @@ export async function callLLM(
 export const CURATED_MODELS: Record<LLMProvider, AvailableModel[]> = {
   gemini: [
     {
-      id: "gemini-2.5-flash",
-      name: "Gemini 2.5 Flash",
-      description: "Google's newest adaptive thinking model. Fast, multimodal, and highly accurate for triage.",
-      tag: "✨ Recommended",
-      recommended: true,
-    },
-    {
-      id: "gemini-2.5-pro",
-      name: "Gemini 2.5 Pro",
-      description: "Frontier scientific reasoning model for deep experimental and causal validation.",
-      tag: "🧠 Frontier Reasoning",
-      recommended: false,
-    },
-    {
       id: "gemini-2.0-flash",
       name: "Gemini 2.0 Flash",
-      description: "Next-gen sub-second inference speed for instant diagnostics.",
-      tag: "⚡ Ultra Fast",
-      recommended: false,
+      description: "Google's next-gen multimodal flagship model. Ultra-fast, highly accurate for peer-review triage.",
+      tag: "✨ Recommended",
+      recommended: true,
     },
     {
       id: "gemini-1.5-flash",
@@ -697,6 +832,13 @@ export const CURATED_MODELS: Record<LLMProvider, AvailableModel[]> = {
       name: "Gemini 1.5 Pro",
       description: "Massive 2M token context window for comprehensive manuscript + supplement analysis.",
       tag: "2M Context",
+      recommended: false,
+    },
+    {
+      id: "gemini-2.0-flash-lite",
+      name: "Gemini 2.0 Flash Lite",
+      description: "Cost-efficient lightweight model designed for high throughput and rapid scans.",
+      tag: "⚡ Ultra Fast",
       recommended: false,
     },
   ],
@@ -879,7 +1021,7 @@ export async function fetchAvailableModels(
                 name: m.displayName || existing?.name || id,
                 description: existing?.description || m.description || "Google Generative AI Model",
                 tag: existing?.tag || (id.includes("flash") ? "⚡ Fast" : id.includes("pro") ? "🧠 Frontier" : undefined),
-                recommended: existing?.recommended || id.includes("2.5-flash") || id.includes("1.5-flash"),
+                recommended: existing?.recommended || id === "gemini-2.0-flash" || id === "gemini-1.5-flash",
                 isLive: true,
               };
             });
@@ -1133,15 +1275,21 @@ export async function testLLMConnection(
     // 1. Google Gemini Ping Probe
     // -----------------------------------------------------------
     if (provider === "gemini") {
-      const geminiModel = model || "gemini-1.5-flash";
-      const cleanModel = encodeURIComponent(geminiModel.trim());
+      let geminiModel = (model || "gemini-2.0-flash").trim();
+      if (geminiModel.startsWith("models/")) {
+        geminiModel = geminiModel.replace(/^models\//, "");
+      }
+      if (geminiModel.includes("2.5")) {
+        geminiModel = "gemini-2.0-flash";
+      }
       const cleanKey = encodeURIComponent(apiKey.trim());
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${cleanKey}`;
+      let cleanModel = encodeURIComponent(geminiModel);
+      let endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${cleanKey}`;
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-      const response = await fetch(endpoint, {
+      let response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1150,6 +1298,22 @@ export async function testLLMConnection(
         }),
         signal: controller.signal,
       });
+
+      // If requested model returns 404, auto-fallback probe to gemini-2.0-flash
+      if (!response.ok && response.status === 404 && geminiModel !== "gemini-2.0-flash") {
+        geminiModel = "gemini-2.0-flash";
+        cleanModel = encodeURIComponent(geminiModel);
+        endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${cleanKey}`;
+        response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: "ping" }] }],
+            generationConfig: { maxOutputTokens: 2 },
+          }),
+          signal: controller.signal,
+        });
+      }
       clearTimeout(timeoutId);
 
       const latencyMs = Date.now() - startTime;
