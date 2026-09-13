@@ -1214,15 +1214,45 @@ export function DesktopPreSubmissionScanView({
               </div>
             )}
 
-            {/* 5-Persona Peer-Review Simulation */}
+            {/* Editorial triage desk-reject banner: manuscript declined before peer review */}
+            {report.editorialTriage?.outcome === "desk_reject" && (
+              <div className="p-5 rounded-2xl bg-rose-50/80 border border-rose-200 dark:bg-rose-950/30 dark:border-rose-800/50 shadow-2xs space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-rose-950 dark:text-rose-200">
+                      Desk Rejected at Editorial Triage — Peer Review Bypassed
+                    </h3>
+                    <p className="text-xs text-rose-800 dark:text-rose-400">
+                      Out-of-scope submissions are declined by the handling editor during initial screening and are never sent to Reviewers 2–5.
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs leading-relaxed text-rose-900/90 dark:text-rose-300/90 pl-1">
+                  {report.editorialTriage.summary}
+                </p>
+              </div>
+            )}
+
+            {/* Peer-review panel — only reached when the manuscript clears editorial triage */}
             {report.reviewerPersonas && report.reviewerPersonas.length > 0 && (
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <div className="flex items-center gap-2 text-sm font-bold text-[#111827] dark:text-white">
                     <Users className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
-                    <span>5-Persona Peer-Review Simulation</span>
+                    <span>
+                      {report.editorialTriage?.outcome === "desk_reject"
+                        ? "Editorial Triage Decision"
+                        : "5-Persona Peer-Review Simulation"}
+                    </span>
                   </div>
-                  <span className="text-xs text-neutral-400">Independent domain evaluations</span>
+                  <span className="text-xs text-neutral-400">
+                    {report.editorialTriage?.outcome === "desk_reject"
+                      ? "Handling editor screening only — no peer reviewers engaged"
+                      : "Independent domain evaluations"}
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-2 border-b border-[#E5E7EB] dark:border-[#1F2937] pb-2 overflow-x-auto">

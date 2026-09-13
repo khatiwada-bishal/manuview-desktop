@@ -640,6 +640,8 @@ export function DesktopDashboard({
 
     const active = personas[selectedPersona] || personas[0];
     const isDevilsAdvocate = active?.persona === "devils_advocate" || selectedPersona === 4;
+    const triage = fullReport?.editorialTriage;
+    const isDeskReject = triage?.outcome === "desk_reject";
 
     return (
       <div className="space-y-6">
@@ -647,16 +649,31 @@ export function DesktopDashboard({
           <div>
             <h2 className="text-base font-bold text-[#0F172A] dark:text-white flex items-center gap-2">
               <Users className="w-4 h-4 text-[#2563EB] dark:text-blue-400" />
-              <span>{personas.length}-Persona Peer-Review Simulation (Adversarial Panel)</span>
+              <span>
+                {isDeskReject
+                  ? "Editorial Triage Decision"
+                  : `${personas.length}-Persona Peer-Review Simulation (Adversarial Panel)`}
+              </span>
             </h2>
             <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
-              Multi-disciplinary simulated peer review with domain-specific stress tests
+              {isDeskReject
+                ? "Handling editor desk-rejected the submission — peer reviewers were not engaged"
+                : "Multi-disciplinary simulated peer review with domain-specific stress tests"}
             </p>
           </div>
           <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
-            Independent domain evaluations
+            {isDeskReject ? "Editorial screening only" : "Independent domain evaluations"}
           </span>
         </div>
+
+        {isDeskReject && triage?.summary && (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50/80 dark:border-rose-800/50 dark:bg-rose-950/30 p-4 flex items-start gap-3">
+            <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+            <p className="text-xs leading-relaxed text-rose-900/90 dark:text-rose-300/90">
+              {triage.summary}
+            </p>
+          </div>
+        )}
 
         {/* Persona Switcher Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 pt-1 border-b border-[#E2E8F0] dark:border-[#1F2937]">

@@ -15,8 +15,9 @@ import {
   ScoreDimension,
   isScoreDimension,
   ReferenceVerification,
+  EditorialTriageOutcome,
 } from "./types";
-import { callLLM, sanitizeAuthorText, sanitizeErrorMessage, getSavedClientConfig } from "./llm";
+import { callLLM, sanitizeAuthorText, sanitizeErrorMessage, getSavedClientConfig, LLMMessage } from "./llm";
 export { sanitizeAuthorText, sanitizeErrorMessage };
 import { batchVerifyReferences } from "./crossref";
 import { findMatchingJournals, JOURNAL_CATALOG, isDisciplineMatch, inferJournalDiscipline } from "./journals";
@@ -50,6 +51,50 @@ export const MIN_VERIFIED_REFS_FOR_SELF_CITATION = 10;
 export const MIN_AUTHOR_FAMILY_NAME_LENGTH = 2; // Supports 2-letter Asian surnames (Li, Wu, Xu, Ho, Ng, Yu)
 export const MAX_MICRO_REPAIR_PAYLOAD_CHARS = 48000;
 export const BOUNDARY_DELIMITER = "MANUSCRIPT_UNTRUSTED_CONTENT_VERBATIM";
+
+/**
+ * Overall-score ceiling applied whenever a critical desk-reject condition
+ * (severe disciplinary scope mismatch, Priority-A Scope/Fit issue) is present.
+ */
+export const DESK_REJECT_SCORE_CEILING = 28;
+
+/** Clamps an overall score to the desk-reject ceiling. */
+export function clampDeskRejectScore(score: number): number {
+  return Math.min(DESK_REJECT_SCORE_CEILING, score);
+}
+
+/**
+ * Builds the canonical Priority-A "critical journal scope mismatch" issue.
+ * Shared by the heuristic synthesizer and the diagnostic orchestrator so the
+ * two paths cannot drift apart.
+ */
+export function buildScopeMismatchIssue(params: {
+  detectedDiscipline: string;
+  targetJournalName: string;
+  targetDiscipline: string;
+  realisticJournalName?: string;
+  /** Pass "" to suppress the quote (heuristic-offline mode); omit for the default. */
+  reviewerQuote?: string;
+}): PriorityIssue {
+  const { detectedDiscipline, targetJournalName, targetDiscipline, realisticJournalName } = params;
+  const reviewerQuote =
+    params.reviewerQuote ??
+    `'This submission is outside the editorial remit and readership interest of ${targetJournalName}. We strongly advise the authors to redirect their work to a suitable journal in ${detectedDiscipline}.'`;
+  return {
+    id: "iss-scope-mismatch",
+    priority: "A",
+    title: `Critical Journal Scope Mismatch (${detectedDiscipline} vs ${targetDiscipline})`,
+    category: "Scope/Fit",
+    description: `The manuscript's core research domain (${detectedDiscipline}) falls outside the published aims and scope of ${targetJournalName} (${targetDiscipline}). Submitting out-of-scope manuscripts is the primary cause of immediate editorial desk rejection without external review.`,
+    location: "Target Journal Alignment",
+    evidenceAnchor: `discipline-mismatch: ${detectedDiscipline} vs ${targetJournalName} [${targetDiscipline}]`,
+    reviewerQuote,
+    actionableFix: `Redirect submission to a domain-appropriate venue in ${detectedDiscipline} (such as ${realisticJournalName || "a journal in your field"}), or restructure the manuscript to directly address core problems in ${targetDiscipline}.`,
+    rebuttalStrategy:
+      "1. Retarget submission: Redirect to an indexed journal whose aims & scope align with your primary methodology and findings.\n2. Cross-disciplinary framing: If the paper has genuine cross-field application, explicitly rewrite the Abstract and Introduction to articulate direct relevance and methodological utility for the target journal's audience.",
+    source: "heuristic",
+  };
+}
 
 export const PROVIDER_CONTEXT_CHAR_LIMITS: Record<string, number> = {
   gemini: 65000,
@@ -543,6 +588,53 @@ export function computeCitationIntegrity(
   };
 }
 
+/**
+ * Calls the LLM expecting a JSON payload, parses it, and — if the initial parse
+ * fails on a substantive response — runs a single automated micro-repair pass
+ * (a targeted follow-up call that fixes JSON syntax) before giving up.
+ *
+ * Throws on unrecoverable failure so callers can decide how to degrade
+ * (offline heuristics, error banner, etc.). Shared by the full diagnostic and
+ * the brief journal-fit flows so the recovery logic lives in one place.
+ */
+export async function callLLMForJson<T>(
+  messages: LLMMessage[],
+  config: ProviderConfig,
+  opts?: {
+    onChunk?: (delta: string, accumulated: string) => void;
+    onRepairStart?: () => void;
+    maxRepairChars?: number;
+  }
+): Promise<T> {
+  const raw = await callLLM(messages, config, opts?.onChunk, { jsonMode: true });
+  try {
+    return cleanAndRepairJson<T>(raw);
+  } catch (parseErr: unknown) {
+    console.warn("JSON repair could not parse initial LLM output:", getErrorMessage(parseErr));
+    if (!raw || raw.trim().length <= 100) {
+      throw new Error("AI response was received but could not be parsed as valid JSON.");
+    }
+
+    // Automated micro-repair loop: fast targeted recovery of malformed JSON.
+    opts?.onRepairStart?.();
+    const max = opts?.maxRepairChars ?? MAX_MICRO_REPAIR_PAYLOAD_CHARS;
+    const payload = raw.length <= max ? raw : raw.slice(0, max);
+    const repairMessages: LLMMessage[] = [
+      {
+        role: "system",
+        content:
+          "You are an automated JSON syntax repair engine. The provided text contains a valid JSON payload that was truncated, has unescaped quotes, missing closing braces, or syntax errors. Fix all syntax errors and output ONLY the valid JSON object. Do not include markdown codeblocks or conversational text.",
+      },
+      {
+        role: "user",
+        content: `Repair this malformed JSON and return valid JSON:\n\n${payload}`,
+      },
+    ];
+    const repairedRaw = await callLLM(repairMessages, config, undefined, { jsonMode: true });
+    return cleanAndRepairJson<T>(repairedRaw);
+  }
+}
+
 export interface DiagnosticProgressUpdate {
   stage: 'parsing' | 'classifying' | 'verifying_references' | 'matching_journals' | 'generating_review' | 'streaming_review' | 'completed';
   message: string;
@@ -701,12 +793,9 @@ You MUST strictly reflect this reality:
 1. Overall acceptance score (overallScore) MUST NOT exceed 28 (reflecting realistic desk-reject hazard).
 2. Priority Issues MUST include a Priority A issue with category "Scope/Fit" explicitly flagging this field mismatch and advising submission to a ${detectedDiscipline} venue.
 3. Realistic and Fallback journal recommendations MUST be anchored in ${detectedDiscipline}, NOT in ${targetDiscipline}.
-4. Reviewer Personas MUST represent the TARGET JOURNAL's editorial board (${targetJournalName} / ${targetDiscipline}):
-   - "journal_editor" ("Reviewer 1: Lead Handling Editor"): Evaluates from ${targetJournalName}'s perspective and MUST recommend "Desk Reject" due to complete scope mismatch.
-   - "domain_expert" ("Reviewer 2: Target Domain Specialist"): Represents ${targetDiscipline} and must evaluate from the target field's perspective, highlighting the total absence of contributions to ${targetDiscipline}.
-   - "methods_reviewer" ("Reviewer 3: Research Methodology Referee"): Evaluates the manuscript's empirical methodology.
-   - "statistician" ("Reviewer 4: Statistical & Quantitative Auditor"): Audits sample power, variance reporting, and statistical validity.
-   - "devils_advocate" ("Reviewer 5: Adversarial Translation Referee"): Adversarially challenges why readers and subscribers of ${targetJournalName} would read an out-of-scope paper.`
+4. EDITORIAL TRIAGE — DESK REJECT BEFORE PEER REVIEW: Because this submission is out of scope, the handling editor desk-rejects it during initial editorial screening; it is NEVER forwarded to the peer-review panel. Therefore "reviewerPersonas" MUST contain EXACTLY ONE entry — the handling editor — and NO peer reviewers:
+   - "journal_editor" (name: "Reviewer 1: Lead Handling Editor"): Evaluates from ${targetJournalName}'s editorial triage perspective and MUST set decisionRecommendation to "Desk Reject" because of the aims-&-scope mismatch, explaining that the work belongs in ${detectedDiscipline} and cannot be sent to referees.
+   - Do NOT generate the domain_expert, methods_reviewer, statistician, or devils_advocate personas. A desk-rejected manuscript is never seen by peer reviewers, so fabricating their reports would misrepresent the submission process.`
     : targetJournalName ? `Calibrate your Realistic tier to "${targetJournalName}" or direct peer-equivalent journals in this field, Reach to higher-impact venues in this field, and Fallback to accessible specialty journals. Reviewer Personas should represent the editorial board and reviewer pool of "${targetJournalName}".` : ""
 }
 
@@ -961,70 +1050,36 @@ export async function runManuscriptDiagnostic(
     let lastProgressEmit = 0;
 
     try {
-      const rawResult = await callLLM(
+      parsedLLM = await callLLMForJson<RawLLMDiagnosticResponse>(
         [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
         activeConfig,
-        onProgress
-          ? (_delta, acc) => {
-              accumulatedLen = acc.length;
-              const now = Date.now();
-              if (now - lastProgressEmit > 300) {
-                lastProgressEmit = now;
-                const streamPercent = Math.min(95, 70 + Math.floor(accumulatedLen / 250));
-                onProgress({
-                  stage: 'streaming_review',
-                  message: `Synthesizing peer critiques and evidence anchors (${Math.round(accumulatedLen / 4)} tokens)...`,
-                  percent: streamPercent,
-                });
+        {
+          onChunk: onProgress
+            ? (_delta, acc) => {
+                accumulatedLen = acc.length;
+                const now = Date.now();
+                if (now - lastProgressEmit > 300) {
+                  lastProgressEmit = now;
+                  const streamPercent = Math.min(95, 70 + Math.floor(accumulatedLen / 250));
+                  onProgress({
+                    stage: 'streaming_review',
+                    message: `Synthesizing peer critiques and evidence anchors (${Math.round(accumulatedLen / 4)} tokens)...`,
+                    percent: streamPercent,
+                  });
+                }
               }
-            }
-          : undefined
-      );
-
-      try {
-        parsedLLM = cleanAndRepairJson(rawResult);
-      } catch (parseErr: unknown) {
-        console.warn("JSON repair could not parse initial LLM output:", getErrorMessage(parseErr));
-
-        // Automated Micro-Repair Loop: If we received substantive response that failed initial parsing,
-        // trigger a fast targeted recovery call to repair the JSON syntax before falling back to offline heuristics.
-        if (rawResult && rawResult.trim().length > 100) {
-          onProgress?.({
-            stage: 'generating_review',
-            message: 'Resolving JSON syntax boundary via micro-repair loop...',
-            percent: 96,
-          });
-
-          try {
-            const trimmedPayload = rawResult.length <= MAX_MICRO_REPAIR_PAYLOAD_CHARS
-              ? rawResult
-              : rawResult.slice(0, MAX_MICRO_REPAIR_PAYLOAD_CHARS);
-            const repairPrompt = [
-              {
-                role: "system" as const,
-                content:
-                  "You are an automated JSON syntax repair engine. The provided text contains a valid JSON payload that was truncated, has unescaped quotes, missing closing braces, or syntax errors. Fix all syntax errors and output ONLY the valid JSON object. Do not include markdown codeblocks or conversational text.",
-              },
-              {
-                role: "user" as const,
-                content: `Repair this malformed JSON and return valid JSON:\n\n${trimmedPayload}`,
-              },
-            ];
-
-            const repairedRaw = await callLLM(repairPrompt, activeConfig);
-            parsedLLM = cleanAndRepairJson(repairedRaw);
-            console.debug("Micro-repair loop successfully restored valid JSON review structure.");
-          } catch (repairErr: unknown) {
-            console.warn("Micro-repair loop also failed:", getErrorMessage(repairErr));
-            llmCallError = "AI response was received but could not be parsed as valid JSON.";
-          }
-        } else {
-          llmCallError = "AI response was received but could not be parsed as valid JSON.";
+            : undefined,
+          onRepairStart: () =>
+            onProgress?.({
+              stage: 'generating_review',
+              message: 'Resolving JSON syntax boundary via micro-repair loop...',
+              percent: 96,
+            }),
         }
-      }
+      );
     } catch (err: unknown) {
       const safeError = sanitizeErrorMessage(getErrorMessage(err) || "AI provider call failed or is not connected.");
       console.warn("LLM review generation warning, using document-grounded offline heuristics:", safeError);
@@ -1122,7 +1177,7 @@ export async function runManuscriptDiagnostic(
     }
     // Enforce realistic desk-reject ceiling on severe cross-field scope mismatch
     if (journalMatches.targetJournalEvaluation?.isDisciplinaryMismatch && finalOverallScore !== undefined) {
-      finalOverallScore = Math.min(28, finalOverallScore);
+      finalOverallScore = clampDeskRejectScore(finalOverallScore);
     }
   }
 
@@ -1272,19 +1327,15 @@ export async function runManuscriptDiagnostic(
       (i) => i.id === "iss-scope-mismatch" || (i.category === "Scope/Fit" && /mismatch|out-of-scope|remit/i.test(`${i.title} ${i.description}`))
     );
     if (!hasScopeIssue) {
-      const scopeIssue = domainSynthesis.priorityIssues.find((i) => i.id === "iss-scope-mismatch") || {
-        id: "iss-scope-mismatch",
-        priority: "A" as const,
-        title: `Critical Journal Scope Mismatch (${detectedDiscipline} vs ${journalMatches.targetJournalEvaluation.journalDiscipline})`,
-        category: "Scope/Fit" as const,
-        description: `The manuscript's core research domain (${detectedDiscipline}) falls outside the published aims and scope of ${targetJournalName} (${journalMatches.targetJournalEvaluation.journalDiscipline}). Submitting out-of-scope manuscripts is the primary cause of immediate editorial desk rejection without external review.`,
-        location: "Target Journal Alignment",
-        evidenceAnchor: `discipline-mismatch: ${detectedDiscipline} vs ${targetJournalName} [${journalMatches.targetJournalEvaluation.journalDiscipline}]`,
-        reviewerQuote: executionMode === "heuristic_offline" ? "" : `'This submission is outside the editorial remit and readership interest of ${targetJournalName}. We strongly advise the authors to redirect their work to a suitable journal in ${detectedDiscipline}.'`,
-        actionableFix: `Redirect submission to a domain-appropriate venue in ${detectedDiscipline} (such as ${journalMatches.realistic?.name || "a journal in your field"}), or restructure the manuscript to directly address core problems in ${journalMatches.targetJournalEvaluation.journalDiscipline}.`,
-        rebuttalStrategy: "1. Retarget submission: Redirect to an indexed journal whose aims & scope align with your primary methodology and findings.\n2. Cross-disciplinary framing: If the paper has genuine cross-field application, explicitly rewrite the Abstract and Introduction to articulate direct relevance and methodological utility for the target journal's audience.",
-        source: "heuristic" as const,
-      };
+      const scopeIssue =
+        domainSynthesis.priorityIssues.find((i) => i.id === "iss-scope-mismatch") ||
+        buildScopeMismatchIssue({
+          detectedDiscipline,
+          targetJournalName: targetJournalName || "the target journal",
+          targetDiscipline: journalMatches.targetJournalEvaluation.journalDiscipline,
+          realisticJournalName: journalMatches.realistic?.name,
+          reviewerQuote: executionMode === "heuristic_offline" ? "" : undefined,
+        });
       additionalIssues.unshift(scopeIssue);
     }
   }
@@ -1299,7 +1350,7 @@ export async function runManuscriptDiagnostic(
         (i) => i.priority === "A" && (i.category === "Scope/Fit" || /scope|fit|desk reject|out-of-scope/i.test(`${i.title} ${i.description}`))
       );
     if (hasCriticalDeskReject) {
-      finalOverallScore = Math.min(28, finalOverallScore);
+      finalOverallScore = clampDeskRejectScore(finalOverallScore);
     }
   }
 
@@ -1380,20 +1431,42 @@ export async function runManuscriptDiagnostic(
       }));
     }
 
-    // If severe disciplinary scope mismatch, ensure Handling Editor mandates Desk Reject
+    // Severe disciplinary scope mismatch = desk rejection at editorial triage.
+    // In the real workflow the handling editor declines out-of-scope submissions
+    // BEFORE peer review, so the paper never reaches Reviewers 2-5. Reflect that:
+    // keep only the handling editor's desk-reject decision and drop the peer panel.
     if (journalMatches.targetJournalEvaluation?.isDisciplinaryMismatch) {
-      finalPersonas = finalPersonas.map((p) => {
-        if (p.persona === "journal_editor") {
-          return {
-            ...p,
-            decisionRecommendation: "Desk Reject" as const,
-            keyChallenge: p.keyChallenge || `Disciplinary scope mismatch: Submission falls outside the published aims and scope of ${targetJournalName}.`,
-          };
-        }
-        return p;
-      });
+      const editor = finalPersonas.find((p) => p.persona === "journal_editor");
+      finalPersonas = editor
+        ? [
+            {
+              ...editor,
+              decisionRecommendation: "Desk Reject" as const,
+              keyChallenge:
+                editor.keyChallenge ||
+                `Disciplinary scope mismatch: Submission falls outside the published aims and scope of ${targetJournalName}.`,
+            },
+          ]
+        : [];
     }
   }
+
+  // Editorial triage (desk-review) gate. Scope mismatch is the #1 desk-rejection
+  // trigger and stops the manuscript before it reaches the reviewer panel.
+  const isDeskRejectByScope = Boolean(journalMatches.targetJournalEvaluation?.isDisciplinaryMismatch);
+  const editorialTriage: EditorialTriageOutcome = isDeskRejectByScope
+    ? {
+        outcome: "desk_reject",
+        sentToPeerReview: false,
+        deskRejectReason: "scope_mismatch",
+        handlingEditorDecision: "Desk Reject",
+        summary: `Desk rejected at editorial triage: "${targetJournalName}" publishes in ${journalMatches.targetJournalEvaluation?.journalDiscipline}, whereas this manuscript's field is ${detectedDiscipline}. Out-of-scope submissions are declined by the handling editor during initial screening and are never forwarded to the peer-review panel. Redirect the work to a ${detectedDiscipline} venue before resubmitting.`,
+      }
+    : {
+        outcome: "sent_for_review",
+        sentToPeerReview: true,
+        summary: `Cleared editorial triage (aims & scope aligned with ${targetJournalName || "the target field"}) and advanced to the peer-review panel for full evaluation.`,
+      };
 
   // Journal Recommendations (Prioritize genuine LLM recommendations, fall back to discipline catalog)
   const finalRecommendations: JournalRecommendation[] =
@@ -1408,6 +1481,7 @@ export async function runManuscriptDiagnostic(
     title: manuscript.title,
     targetJournal: targetJournalName,
     targetJournalEvaluation: journalMatches.targetJournalEvaluation,
+    editorialTriage,
     isEligibleForReview: true,
     overallScore: finalOverallScore,
     summary: finalSummary,
@@ -1622,7 +1696,7 @@ Respond with ONLY a valid JSON object matching this schema:
         percent: 65,
       });
 
-      const rawResponse = await callLLM(
+      parsedLLM = await callLLMForJson<RawLLMBriefFitResponse>(
         [
           {
             role: "system",
@@ -1634,39 +1708,18 @@ Respond with ONLY a valid JSON object matching this schema:
           },
         ],
         activeConfig,
-        onProgress
-          ? (_delta, acc) => {
-              onProgress({
-                stage: 'streaming_review',
-                message: `Synthesizing editorial assessment (${Math.round(acc.length / 4)} tokens)...`,
-                percent: Math.min(95, 65 + Math.floor(acc.length / 100)),
-              });
-            }
-          : undefined
-      );
-      try {
-        parsedLLM = cleanAndRepairJson(rawResponse);
-      } catch (parseErr: unknown) {
-        console.warn("Brief fit JSON parse error:", getErrorMessage(parseErr));
-        if (rawResponse && rawResponse.trim().length > 100) {
-          try {
-            const repairPrompt = [
-              {
-                role: "system" as const,
-                content: "You are an automated JSON syntax repair engine. Fix all syntax errors and output ONLY the valid JSON object.",
-              },
-              {
-                role: "user" as const,
-                content: `Repair this malformed JSON and return valid JSON:\n\n${rawResponse.slice(0, MAX_MICRO_REPAIR_PAYLOAD_CHARS)}`,
-              },
-            ];
-            const repairedRaw = await callLLM(repairPrompt, activeConfig);
-            parsedLLM = cleanAndRepairJson(repairedRaw);
-          } catch (repairErr: unknown) {
-            console.debug("Brief fit micro-repair fallback failed:", getErrorMessage(repairErr));
-          }
+        {
+          onChunk: onProgress
+            ? (_delta, acc) => {
+                onProgress({
+                  stage: 'streaming_review',
+                  message: `Synthesizing editorial assessment (${Math.round(acc.length / 4)} tokens)...`,
+                  percent: Math.min(95, 65 + Math.floor(acc.length / 100)),
+                });
+              }
+            : undefined,
         }
-      }
+      );
     } catch (err: unknown) {
       console.warn("LLM brief fit evaluation failed or timed out, falling back to catalog heuristics:", sanitizeErrorMessage(getErrorMessage(err)));
     }
@@ -2371,7 +2424,7 @@ export function synthesizeGroundedAcademicReview(
   const cappedBonus = Math.min(15, Math.round(rawBonus * 0.7));
   let dynamicScore = Math.max(0, Math.min(100, baseScore + cappedBonus - deductions));
   if (isScopeMismatch) {
-    dynamicScore = Math.min(28, Math.max(15, dynamicScore));
+    dynamicScore = clampDeskRejectScore(Math.max(15, dynamicScore));
   }
 
   // 5. Dynamic Grounded Editorial Synthesis Summary
@@ -2549,18 +2602,14 @@ export function synthesizeGroundedAcademicReview(
   const priorityIssues: PriorityIssue[] = [];
 
   if (isScopeMismatch) {
-    priorityIssues.push({
-      id: "iss-scope-mismatch",
-      priority: "A",
-      title: `Critical Journal Scope Mismatch (${discipline} vs ${targetDiscipline})`,
-      category: "Scope/Fit",
-      description: `The manuscript's core research domain (${discipline}) falls outside the published aims and scope of ${targetJournal} (${targetDiscipline}). Submitting out-of-scope manuscripts is the primary cause of immediate editorial desk rejection without external review.`,
-      location: "Target Journal Alignment",
-      evidenceAnchor: `discipline-mismatch: ${discipline} vs ${targetJournal} [${targetDiscipline}]`,
-      reviewerQuote: `'This submission is outside the editorial remit and readership interest of ${targetJournal}. We strongly advise the authors to redirect their work to a suitable journal in ${discipline}.'`,
-      actionableFix: `Redirect submission to a domain-appropriate venue in ${discipline} (such as ${catalogMatches.realistic?.name || "a journal in your field"}), or restructure the manuscript to directly address core problems in ${targetDiscipline}.`,
-      rebuttalStrategy: "1. Retarget submission: Redirect to an indexed journal whose aims & scope align with your primary methodology and findings.\n2. Cross-disciplinary framing: If the paper has genuine cross-field application, explicitly rewrite the Abstract and Introduction to articulate direct relevance and methodological utility for the target journal's audience.",
-    });
+    priorityIssues.push(
+      buildScopeMismatchIssue({
+        detectedDiscipline: discipline,
+        targetJournalName: targetJournal,
+        targetDiscipline: targetDiscipline as string,
+        realisticJournalName: catalogMatches.realistic?.name,
+      })
+    );
   }
 
   if (isMethodsMissing) {

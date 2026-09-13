@@ -247,6 +247,24 @@ export interface TargetJournalEvaluation {
   mismatchWarning?: string;
 }
 
+/**
+ * Editorial triage (desk-review) outcome. In the real submission workflow a
+ * manuscript is first screened by the handling editor for aims-&-scope fit and
+ * baseline quality. Roughly two-thirds are desk-rejected here — and a
+ * desk-rejected paper is NEVER sent to peer reviewers. Scope mismatch is the
+ * single most common desk-rejection trigger.
+ */
+export interface EditorialTriageOutcome {
+  outcome: 'sent_for_review' | 'desk_reject';
+  /** True only when the manuscript cleared triage and reached the reviewer panel. */
+  sentToPeerReview: boolean;
+  deskRejectReason?: 'scope_mismatch';
+  /** The handling editor's triage decision (present on desk reject). */
+  handlingEditorDecision?: ReviewerPersonaFeedback['decisionRecommendation'];
+  /** Human-readable explanation of the triage outcome. */
+  summary: string;
+}
+
 export interface FullReviewReport {
   mode?: 'full';
   id: string;
@@ -254,6 +272,8 @@ export interface FullReviewReport {
   title: string;
   targetJournal?: string;
   targetJournalEvaluation?: TargetJournalEvaluation;
+  /** Editorial desk-review gate result; determines whether peer review occurred. */
+  editorialTriage?: EditorialTriageOutcome;
   overallScore?: number; // 0 to 100 (omitted if non-academic or already published)
   isEligibleForReview?: boolean; // false if already published OR non-academic manuscript
   ineligibilityReason?: 'already_published' | 'non_academic_document';
