@@ -139,8 +139,42 @@ export function DesktopDashboard({
     fullReport?.targetJournal || data.targetJournal || "Target Journal";
   const summary = fullReport?.summary;
   const classification = fullReport?.classification;
-  const personas = fullReport?.reviewerPersonas || [];
   const dimensions = fullReport?.dimensions || {};
+  const personas: ReviewerPersonaFeedback[] = useMemo(() => {
+    if (fullReport?.reviewerPersonas && fullReport.reviewerPersonas.length > 0) {
+      return fullReport.reviewerPersonas;
+    }
+    if (data?.reviewers && data.reviewers.length > 0) {
+      return data.reviewers.map((r, idx) => ({
+        persona: (idx === 0
+          ? "journal_editor"
+          : idx === 1
+          ? "domain_expert"
+          : idx === 2
+          ? "methods_reviewer"
+          : idx === 3
+          ? "statistician"
+          : "devils_advocate") as ReviewerPersonaFeedback["persona"],
+        name: r.name || `Reviewer ${idx + 1}`,
+        title: r.role || "Peer Reviewer",
+        affiliation: "Editorial Review Panel",
+        expertise: "Scholarly Evaluation",
+        roleDescription: r.role || "Peer Reviewer",
+        decisionRecommendation: (r.tag === "Critical"
+          ? "Reject / Resubmit"
+          : "Major Revision") as ReviewerPersonaFeedback["decisionRecommendation"],
+        keyChallenge: r.quote || "Methodological rigor",
+        assessment: r.detail || r.quote || "Detailed evaluation required.",
+        majorCritiques: [r.quote || "Rigorous evaluation required."],
+        missingControlsOrAnalyses: [],
+        mustAddressItems: [],
+        evidenceAnchors: [],
+        counterArguments: [],
+        confidentialEditorNote: undefined,
+      }));
+    }
+    return [];
+  }, [fullReport?.reviewerPersonas, data?.reviewers]);
   const issues = fullReport?.priorityIssues || [];
   const journals = fullReport?.journalRecommendations || [];
 
@@ -634,7 +668,11 @@ export function DesktopDashboard({
       return (
         <div className="rounded-3xl liquid-glass-card p-6 flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400">
           <Users className="w-5 h-5 text-neutral-400" />
-          <span>Expert reviewer panel simulation is enabled when live AI evaluation is connected.</span>
+          <span>
+            {fullReport?.executionMode === "heuristic_offline"
+              ? "Expert reviewer panel simulation is offline. Connect an AI provider in AI Settings and re-run the scan to generate live simulated peer reviews."
+              : "Expert reviewer panel simulation is enabled when live AI evaluation is connected."}
+          </span>
         </div>
       );
     }
@@ -651,7 +689,7 @@ export function DesktopDashboard({
             <h2 className="text-base font-bold text-[#0F172A] dark:text-white flex items-center gap-2 flex-wrap">
               <Users className="w-4 h-4 text-[#2563EB] dark:text-blue-400" />
               <span>
-                {isDeskReject
+                {isDeskReject && personas.length <= 1
                   ? "Editorial Triage Decision"
                   : `${personas.length}-Persona Peer-Review Simulation (Adversarial Panel)`}
               </span>
@@ -660,13 +698,13 @@ export function DesktopDashboard({
               </span>
             </h2>
             <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
-              {isDeskReject
+              {isDeskReject && personas.length <= 1
                 ? "Handling editor desk-rejected the submission — peer reviewers were not engaged"
                 : "Multi-disciplinary simulated peer review with domain-specific stress tests"}
             </p>
           </div>
           <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
-            {isDeskReject ? "Editorial screening only" : "Independent domain evaluations"}
+            {isDeskReject && personas.length <= 1 ? "Editorial screening only" : "Independent domain evaluations"}
           </span>
         </div>
 

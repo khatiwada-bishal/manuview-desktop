@@ -800,9 +800,13 @@ You MUST strictly reflect this reality:
 1. Overall acceptance score (overallScore) MUST NOT exceed 28 (reflecting realistic desk-reject hazard).
 2. Priority Issues MUST include a Priority A issue with category "Scope/Fit" explicitly flagging this field mismatch and advising submission to a ${detectedDiscipline} venue.
 3. Realistic and Fallback journal recommendations MUST be anchored in ${detectedDiscipline}, NOT in ${targetDiscipline}.
-4. EDITORIAL TRIAGE — DESK REJECT BEFORE PEER REVIEW: Because this submission is out of scope, the handling editor desk-rejects it during initial editorial screening; it is NEVER forwarded to the peer-review panel. Therefore "reviewerPersonas" MUST contain EXACTLY ONE entry — the handling editor — and NO peer reviewers:
-   - "journal_editor" (name: "Reviewer 1: Lead Handling Editor"): Evaluates from ${targetJournalName}'s editorial triage perspective and MUST set decisionRecommendation to "Desk Reject" because of the aims-&-scope mismatch, explaining that the work belongs in ${detectedDiscipline} and cannot be sent to referees.
-   - Do NOT generate the domain_expert, methods_reviewer, statistician, or devils_advocate personas. A desk-rejected manuscript is never seen by peer reviewers, so fabricating their reports would misrepresent the submission process.`
+4. JOURNAL-CALIBRATED 5-PERSONA ADVERSARIAL PANEL:
+   You MUST generate ALL 5 PERSONAS calibrated to "${targetJournalName}" and its domain "${targetDiscipline}":
+   - "journal_editor" (name: "Reviewer 1: Lead Handling Editor"): Senior editor representing ${targetJournalName}'s editorial office. MUST set decisionRecommendation to "Desk Reject" because of the aims-&-scope mismatch, explaining that the work belongs in ${detectedDiscipline} and cannot be sent to referees.
+   - "domain_expert" (name: "Reviewer 2: Target Domain Specialist"): Specialist in ${targetDiscipline} (the target journal's field). Evaluates from ${targetJournalName}'s domain perspective, explaining why the manuscript's findings do not advance ${targetDiscipline} literature.
+   - "methods_reviewer" (name: "Reviewer 3: Research Methodology Referee"): Audits the paper's actual empirical methodology, design, and data protocols.
+   - "statistician" (name: "Reviewer 4: Statistical & Quantitative Auditor"): Audits the paper's quantitative analysis, statistical tests, and sample power.
+   - "devils_advocate" (name: "Reviewer 5: Adversarial Translation Referee"): Challenges cross-disciplinary relevance, translation barriers, and overclaims.`
     : targetJournalName ? `Calibrate your Realistic tier to "${targetJournalName}" or direct peer-equivalent journals in this field, Reach to higher-impact venues in this field, and Fallback to accessible specialty journals. Reviewer Personas should represent the editorial board and reviewer pool of "${targetJournalName}".` : ""
 }
 
@@ -1430,9 +1434,15 @@ export async function runManuscriptDiagnostic(
   if (executionMode !== "heuristic_offline") {
     if (personaValidation.isValid && personaValidation.data) {
       const llmPersonas: ReviewerPersonaFeedback[] = personaValidation.data.map((p) => ({
-        ...p,
         persona: p.persona || ("domain_expert" as const),
+        name: p.name || "Reviewer",
+        title: p.title || "Senior Peer Reviewer",
+        affiliation: p.affiliation || "Editorial Review Board",
+        expertise: p.expertise || "Domain Specialist",
+        roleDescription: p.roleDescription || "Panel Referee",
         decisionRecommendation: p.decisionRecommendation || ("Major Revision" as const),
+        keyChallenge: p.keyChallenge || "Methodological rigor and contribution significance",
+        assessment: p.assessment || "Thorough evaluation of manuscript rigor and validity required.",
         majorCritiques: p.majorCritiques || ["Document methodology and procedural controls systematically."],
         missingControlsOrAnalyses: p.missingControlsOrAnalyses || [],
         mustAddressItems: p.mustAddressItems || [],
@@ -1440,6 +1450,8 @@ export async function runManuscriptDiagnostic(
         evidenceAnchors: Array.isArray(p.evidenceAnchors)
           ? p.evidenceAnchors.map((a) => groundEvidenceAnchor(a, manuscript.rawText, manuscript.sections))
           : [],
+        counterArguments: p.counterArguments || [],
+        confidentialEditorNote: p.confidentialEditorNote,
       }));
 
       // P0-1: Never backfill missing personas with synthetic templates in partial_llm mode!
@@ -1468,23 +1480,22 @@ export async function runManuscriptDiagnostic(
       missingPersonaRoles.push(...CANONICAL_PERSONA_ROLES);
     }
 
-    // Severe disciplinary scope mismatch = desk rejection at editorial triage.
-    // In the real workflow the handling editor declines out-of-scope submissions
-    // BEFORE peer review, so the paper never reaches Reviewers 2-5. Reflect that:
-    // keep only the handling editor's desk-reject decision and drop the peer panel.
+    // Disciplinary scope mismatch: Ensure Reviewer 1 (Lead Handling Editor) reflects
+    // the authentic "Desk Reject" triage recommendation, while preserving the full
+    // 5-member panel's multi-perspective assessments:
     if (journalMatches.targetJournalEvaluation?.isDisciplinaryMismatch) {
-      const editor = finalPersonas.find((p) => p.persona === "journal_editor");
-      finalPersonas = editor
-        ? [
-            {
-              ...editor,
-              decisionRecommendation: "Desk Reject" as const,
-              keyChallenge:
-                editor.keyChallenge ||
-                `Disciplinary scope mismatch: Submission falls outside the published aims and scope of ${targetJournalName}.`,
-            },
-          ]
-        : [];
+      finalPersonas = finalPersonas.map((p) => {
+        if (p.persona === "journal_editor") {
+          return {
+            ...p,
+            decisionRecommendation: "Desk Reject" as const,
+            keyChallenge:
+              p.keyChallenge ||
+              `Disciplinary scope mismatch: Submission falls outside the published aims and scope of ${targetJournalName}.`,
+          };
+        }
+        return p;
+      });
     }
   }
 

@@ -67,20 +67,20 @@ const StringOrArray = z.union([
 ]);
 
 export const ReviewerPersonaSchema = z.object({
-  persona: ReviewerPersonaTypeSchema.catch("domain_expert"),
-  name: z.string().min(1),
-  title: z.string().min(1),
-  affiliation: z.string().min(1),
-  expertise: z.string().default("Domain Specialist"),
-  roleDescription: z.string().default("Panel Referee"),
-  decisionRecommendation: DecisionRecommendationSchema.catch("Major Revision"),
-  keyChallenge: z.string().default("Methodological rigor and contribution significance"),
-  assessment: z.string().min(1),
-  majorCritiques: StringOrArray.catch(["Explicit parameter and control documentation required."]),
-  missingControlsOrAnalyses: StringOrArray.catch([]),
-  mustAddressItems: StringOrArray.catch([]),
-  evidenceAnchors: StringOrArray.catch([]),
-  counterArguments: StringOrArray.catch([]),
+  persona: ReviewerPersonaTypeSchema.default("domain_expert"),
+  name: z.preprocess((val) => (typeof val === "string" && val.trim() ? val.trim() : "Reviewer"), z.string()),
+  title: z.preprocess((val) => (typeof val === "string" && val.trim() ? val.trim() : "Senior Peer Reviewer"), z.string()),
+  affiliation: z.preprocess((val) => (typeof val === "string" && val.trim() ? val.trim() : "Editorial Review Board"), z.string()),
+  expertise: z.preprocess((val) => (typeof val === "string" && val.trim() ? val.trim() : "Domain Specialist"), z.string()),
+  roleDescription: z.preprocess((val) => (typeof val === "string" && val.trim() ? val.trim() : "Panel Referee"), z.string()),
+  decisionRecommendation: DecisionRecommendationSchema.default("Major Revision"),
+  keyChallenge: z.preprocess((val) => (typeof val === "string" && val.trim() ? val.trim() : "Methodological rigor and contribution significance"), z.string()),
+  assessment: z.preprocess((val) => (typeof val === "string" && val.trim() ? val.trim() : "Thorough evaluation of manuscript rigor and validity required."), z.string()),
+  majorCritiques: StringOrArray.default(["Explicit parameter and control documentation required."]),
+  missingControlsOrAnalyses: StringOrArray.default([]),
+  mustAddressItems: StringOrArray.default([]),
+  evidenceAnchors: StringOrArray.default([]),
+  counterArguments: StringOrArray.default([]),
   confidentialEditorNote: z.string().optional(),
 });
 
@@ -111,6 +111,9 @@ export interface SectionValidationResult<T> {
   source: "llm" | "heuristic";
 }
 
+const isScoreDimension = (key: string): key is ScoreDimension =>
+  (VALID_SCORE_DIMENSIONS as readonly string[]).includes(key);
+
 /**
  * Validates dimensions object per-field against ScoreDimension keys and clamps scores (REQ-EN-05)
  */
@@ -121,24 +124,21 @@ export function validateDimensions(
     return { isValid: false, source: "heuristic" };
   }
 
-  const result: Record<string, z.infer<typeof DimensionScoreSchema>> = {};
-  let validCount = 0;
-
-  for (const key of VALID_SCORE_DIMENSIONS) {
-    if (rawDimensions[key]) {
-      const parseResult = DimensionScoreSchema.safeParse(rawDimensions[key]);
-      if (parseResult.success) {
-        result[key] = parseResult.data;
-        validCount++;
+  const validDimensions: Partial<Record<ScoreDimension, z.infer<typeof DimensionScoreSchema>>> = {};
+  for (const [key, value] of Object.entries(rawDimensions)) {
+    if (isScoreDimension(key)) {
+      const parsed = DimensionScoreSchema.safeParse(value);
+      if (parsed.success) {
+        validDimensions[key] = parsed.data;
       }
     }
   }
 
-  // Must have at least 5 of the 6 valid dimensions to be considered an LLM success
-  if (validCount >= 5) {
+  const validCount = Object.keys(validDimensions).length;
+  if (validCount >= 3) {
     return {
       isValid: true,
-      data: result as Record<ScoreDimension, z.infer<typeof DimensionScoreSchema>>,
+      data: validDimensions as Record<ScoreDimension, z.infer<typeof DimensionScoreSchema>>,
       source: "llm",
     };
   }
@@ -183,13 +183,15 @@ export function validateReviewerPersonas(
 
   const validPersonas: z.infer<typeof ReviewerPersonaSchema>[] = [];
   for (const item of rawPersonas) {
-    const parsed = ReviewerPersonaSchema.safeParse(item);
-    if (parsed.success) {
-      validPersonas.push(parsed.data);
+    if (item && typeof item === "object") {
+      const parsed = ReviewerPersonaSchema.safeParse(item);
+      if (parsed.success) {
+        validPersonas.push(parsed.data);
+      }
     }
   }
 
-  if (validPersonas.length >= 3) {
+  if (validPersonas.length >= 1) {
     return { isValid: true, data: validPersonas, source: "llm" };
   }
 
