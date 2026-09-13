@@ -233,12 +233,27 @@ export interface PublishedArticleDetails {
   detectedVia: string;
 }
 
+export interface TargetJournalEvaluation {
+  name: string;
+  journalName?: string;
+  foundInCatalog: boolean;
+  tier: 'Reach' | 'Realistic' | 'Fallback';
+  fitScore: number;
+  impactFactor: number;
+  discipline?: string;
+  journalDiscipline?: string;
+  manuscriptDiscipline?: string;
+  isDisciplinaryMismatch?: boolean;
+  mismatchWarning?: string;
+}
+
 export interface FullReviewReport {
   mode?: 'full';
   id: string;
   createdAt: string;
   title: string;
   targetJournal?: string;
+  targetJournalEvaluation?: TargetJournalEvaluation;
   overallScore?: number; // 0 to 100 (omitted if non-academic or already published)
   isEligibleForReview?: boolean; // false if already published OR non-academic manuscript
   ineligibilityReason?: 'already_published' | 'non_academic_document';

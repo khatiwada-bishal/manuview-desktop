@@ -2519,7 +2519,9 @@ export function detectDiscipline(
     'economics', 'macroeconomic', 'microeconomic', 'econometric', 'inflation', 'monetary policy',
     'gdp', 'firm performance', 'asset pricing', 'liquidity', 'capital structure', 'corporate governance',
     'stock returns', 'fintech', 'market efficiency', 'consumer behavior', 'behavioral economics',
-    'financial economics', 'portfolio', 'interest rate', 'venture capital', 'banking'
+    'financial economics', 'portfolio', 'interest rate', 'venture capital', 'banking', 'finance',
+    'financial', 'climate finance', 'funding sufficiency', 'subsidies', 'disbursement', 'fiscal policy',
+    'socioeconomic', 'willingness to pay'
   ];
   const econScore = econTerms.filter(t => manuscriptText.includes(t) || citedText.includes(t)).length;
 
@@ -2564,7 +2566,10 @@ export function detectDiscipline(
     'ecosystem', 'deforestation', 'renewable energy', 'life cycle assessment', 'lifecycle assessment',
     'environmental policy', 'water quality', 'ecological', 'conservation', 'carbon sequestration',
     'microplastics', 'pollution', 'sustainable development', 'planetary boundaries', 'circular economy',
-    'carbon emissions', 'emissions reduction', 'air quality', 'soil degradation', 'environmental science'
+    'carbon emissions', 'emissions reduction', 'air quality', 'soil degradation', 'environmental science',
+    'climate finance', 'climate funding', 'carbon finance', 'climate', 'renewable', 'clean energy',
+    'solar home', 'biogas', 'cookstove', 'energy access', 'rural energy', 'energy policy',
+    'energy transition', 'off-grid', 'clean cooking', 'firewood', 'energy poverty', 'solar energy'
   ];
   const envScore = envTerms.filter(t => manuscriptText.includes(t) || citedText.includes(t)).length;
 
@@ -2598,7 +2603,8 @@ export function detectDiscipline(
   const clinTerms = [
     'clinical trial', 'randomized controlled', 'randomised', 'placebo', 'cohort', 'patients',
     'phase 1', 'phase 2', 'phase 3', 'hospital', 'mortality', 'hazard ratio', 'survival rate',
-    'epidemiology', 'prognosis', 'multicenter', 'consort', 'strobe', 'lancet', 'nejm', 'jama'
+    'epidemiology', 'prognosis', 'multicenter', 'consort', 'strobe', 'lancet', 'nejm', 'jama',
+    'cardiology', 'cardiovascular', 'physiology', 'heart failure', 'hypertension'
   ];
   const clinScore = clinTerms.filter(t => manuscriptText.includes(t) || citedText.includes(t)).length;
 
@@ -2618,23 +2624,23 @@ export function detectDiscipline(
 
   // Evaluate weighted domain scores
   const scores = [
-    { discipline: 'Economics, Finance & Business' as const, score: econScore >= 2 ? econScore * 2.3 : 0 },
-    { discipline: 'Physical Sciences & Mathematics' as const, score: physMathScore >= 2 ? physMathScore * 2.3 : 0 },
-    { discipline: 'Chemistry & Materials Science' as const, score: chemMatScore >= 2 ? chemMatScore * 2.3 : 0 },
-    { discipline: 'Engineering & Applied Sciences' as const, score: engScore >= 2 ? engScore * 2.2 : 0 },
-    { discipline: 'Social Sciences, Psychology & Education' as const, score: socPsychScore >= 2 ? socPsychScore * 2.1 : 0 },
-    { discipline: 'Environmental Science & Sustainability' as const, score: envScore >= 2 ? envScore * 2.2 : 0 },
-    { discipline: 'Operations Research & Management' as const, score: orScore >= 2 ? orScore * 2.2 : 0 },
-    { discipline: 'Computer Science' as const, score: csScore >= 2 ? csScore * 2.0 : 0 },
-    { discipline: 'Oncology' as const, score: oncoScore >= 2 ? oncoScore * 2.2 : 0 },
-    { discipline: 'Neuroscience' as const, score: neuroScore >= 2 ? neuroScore * 2.0 : 0 },
-    { discipline: 'Clinical' as const, score: clinScore >= 2 ? clinScore * 1.8 : 0 },
-    { discipline: 'Biomedicine' as const, score: bioScore >= 2 ? bioScore * 1.2 : 0 }
+    { discipline: 'Environmental Science & Sustainability' as const, score: envScore * 2.4 },
+    { discipline: 'Economics, Finance & Business' as const, score: econScore * 2.3 },
+    { discipline: 'Physical Sciences & Mathematics' as const, score: physMathScore * 2.3 },
+    { discipline: 'Chemistry & Materials Science' as const, score: chemMatScore * 2.3 },
+    { discipline: 'Engineering & Applied Sciences' as const, score: engScore * 2.2 },
+    { discipline: 'Operations Research & Management' as const, score: orScore * 2.2 },
+    { discipline: 'Oncology' as const, score: oncoScore * 2.2 },
+    { discipline: 'Social Sciences, Psychology & Education' as const, score: socPsychScore * 2.1 },
+    { discipline: 'Computer Science' as const, score: csScore * 2.0 },
+    { discipline: 'Neuroscience' as const, score: neuroScore * 2.0 },
+    { discipline: 'Clinical' as const, score: clinScore * 1.8 },
+    { discipline: 'Biomedicine' as const, score: bioScore * 1.5 }
   ];
 
   scores.sort((a, b) => b.score - a.score);
 
-  if (scores[0].score > 2.5) {
+  if (scores[0].score >= 2.0) {
     return scores[0].discipline;
   }
 
@@ -2673,6 +2679,107 @@ export function detectDiscipline(
   }
 
   return 'Multidisciplinary';
+}
+
+/**
+ * Infers a journal's academic discipline from its name when it is not present in the curated catalog.
+ */
+export function inferJournalDiscipline(journalName: string): Discipline | undefined {
+  if (!journalName || !journalName.trim()) return undefined;
+  const name = journalName.toLowerCase();
+
+  // 1. Multidisciplinary
+  if (/\b(nature|science|pnas|plos one|scientific reports|proceedings of the national academy|peerj)\b/.test(name) && !/\b(nature [a-z]+|science [a-z]+)\b/.test(name)) {
+    return 'Multidisciplinary';
+  }
+
+  // 2. Clinical Medicine, Cardiology, & Human Physiology
+  if (
+    /\b(physiology|circulatory|cardiology|cardiovascular|heart|surgery|surgical|pediatrics?|pediatric|neurology|psychiatry|medicine|medical|pharmacology|pharmaceutical|radiology|orthopedic|dermatology|gastroenterology|endocrinology|nephrology|hematology|epidemiology|clinical|pathology|anesthesiology|ophthalmology|oncology|cancer|jama|lancet|nejm|bmj|american journal of physiology)\b/.test(
+      name
+    )
+  ) {
+    if (/\b(cancer|oncology|carcinoma|tumor|tumour|melanoma|leukemia|lymphoma)\b/.test(name)) {
+      return 'Oncology';
+    }
+    if (/\b(neuroscience|neuro|brain|synapse)\b/.test(name)) {
+      return 'Neuroscience';
+    }
+    return 'Clinical';
+  }
+
+  // 3. Oncology
+  if (/\b(cancer|oncology|carcinoma|tumor|tumour|melanoma|leukemia|lymphoma)\b/.test(name)) {
+    return 'Oncology';
+  }
+
+  // 4. Neuroscience
+  if (/\b(neuroscience|neuro|brain|synapse|cognitive neuroscience)\b/.test(name)) {
+    return 'Neuroscience';
+  }
+
+  // 5. Biomedicine & Molecular Biology
+  if (
+    /\b(biology|biological|biochemistry|genetics|genomics|molecular|cellular|immunology|microbiology|virology|biomedical|biomedicine|biophysics|cell reports|embo)\b/.test(
+      name
+    )
+  ) {
+    return 'Biomedicine';
+  }
+
+  // 6. Environmental Science, Energy & Sustainability
+  if (
+    /\b(environment|environmental|climate|ecology|ecological|sustainability|sustainable|energy|renewable|cleaner production|pollution|water resources|conservation|forestry|geosciences?|earth science|meteorology|energy policy)\b/.test(
+      name
+    )
+  ) {
+    return 'Environmental Science & Sustainability';
+  }
+
+  // 7. Operations Research & Industrial Engineering
+  if (/\b(operations research|supply chain|logistics|industrial engineering|management science|decision sciences|queueing|transportation research)\b/.test(name)) {
+    return 'Operations Research & Management';
+  }
+
+  // 8. Economics, Finance & Business
+  if (
+    /\b(economics?|economic|finance|financial|banking|accounting|business|management|marketing|econometrics?|macroeconomics|microeconomics)\b/.test(
+      name
+    )
+  ) {
+    return 'Economics, Finance & Business';
+  }
+
+  // 9. Computer Science & AI
+  if (
+    /\b(computer|computing|software|neural networks?|machine learning|artificial intelligence|robotics|pattern analysis|data mining|information systems|cybernetics?|ieee transactions on|acm transactions)\b/.test(
+      name
+    )
+  ) {
+    return 'Computer Science';
+  }
+
+  // 10. Engineering & Applied Sciences
+  if (/\b(engineering|applied sciences?|mechanics|aerospace|materials engineering|thermal engineering)\b/.test(name)) {
+    return 'Engineering & Applied Sciences';
+  }
+
+  // 11. Physical Sciences & Mathematics
+  if (/\b(physics|physical review|mathematics?|mathematical|astronomy|astrophysics|optics|quantum)\b/.test(name)) {
+    return 'Physical Sciences & Mathematics';
+  }
+
+  // 12. Chemistry & Materials Science
+  if (/\b(chemistry|chemical|materials|polymers|catalysis|nano)\b/.test(name)) {
+    return 'Chemistry & Materials Science';
+  }
+
+  // 13. Social Sciences, Psychology & Education
+  if (/\b(psychology|psychological|education|educational|sociology|sociological|public policy|political science|anthropology)\b/.test(name)) {
+    return 'Social Sciences, Psychology & Education';
+  }
+
+  return undefined;
 }
 
 export interface DisciplineMatchResult {
@@ -3073,17 +3180,25 @@ export function findMatchingJournals(
         : undefined,
     };
   } else if (targetJournal) {
+    const inferredDiscipline = inferJournalDiscipline(targetJournal);
+    const effectiveTargetDiscipline = inferredDiscipline || discipline;
+    const isMismatch = inferredDiscipline ? !isDisciplineMatch(discipline, inferredDiscipline).isMatch : false;
+    const targetScore = isMismatch ? 22 : realisticFitScore;
+
     targetJournalEvaluation = {
       name: targetJournal,
       journalName: targetJournal,
       foundInCatalog: false,
       tier: 'Realistic' as const,
-      fitScore: realisticFitScore,
+      fitScore: targetScore,
       impactFactor: realistic.impactFactor,
-      discipline: discipline,
-      journalDiscipline: discipline,
+      discipline: effectiveTargetDiscipline,
+      journalDiscipline: effectiveTargetDiscipline,
       manuscriptDiscipline: discipline,
-      isDisciplinaryMismatch: false,
+      isDisciplinaryMismatch: isMismatch,
+      mismatchWarning: isMismatch
+        ? `Severe Disciplinary Scope Mismatch: Manuscript study area is in "${discipline}", whereas target journal "${targetJournal}" operates in "${effectiveTargetDiscipline}". High desk-rejection risk.`
+        : undefined,
     };
   }
 

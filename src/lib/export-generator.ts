@@ -218,6 +218,14 @@ export async function exportBibTeX(report: ReviewReport) {
 export function generateFullReportHtml(r: FullReviewReport): string {
   const title = escapeHtml(r.title);
   const targetJournal = escapeHtml(r.targetJournal || "General High Impact Journal");
+  const isScopeMismatch = Boolean(
+    r.targetJournalEvaluation?.isDisciplinaryMismatch ||
+    r.priorityIssues?.some((i) => i.priority === "A" && (i.category === "Scope/Fit" || /scope|out-of-scope|desk reject/i.test(`${i.title} ${i.description}`)))
+  );
+  const mismatchWarning = r.targetJournalEvaluation?.mismatchWarning ||
+    (isScopeMismatch
+      ? `Manuscript research domain falls outside the published aims and scope of ${targetJournal}. Submitting out-of-scope manuscripts is the primary cause of immediate editorial desk rejection without external peer review.`
+      : "");
   const hasNumericScore = typeof r.overallScore === "number";
   const scoreLabel =
     r.isEligibleForReview === false
@@ -473,10 +481,19 @@ export function generateFullReportHtml(r: FullReviewReport): string {
     <div class="header-card">
       <div class="brand">
         <div class="brand-title">Manu<span>View</span> Diagnostic Suite</div>
-        <div class="meta-badge">Target: ${targetJournal}</div>
+        <div class="meta-badge" style="${isScopeMismatch ? "background: #FEE2E2; color: #991B1B; border: 1px solid #F87171; font-weight: 700;" : ""}">Target: ${targetJournal}${isScopeMismatch ? " (Scope Mismatch)" : ""}</div>
       </div>
       <h1>${title}</h1>
       <p style="color: var(--text-muted); font-size: 13px;">Generated on ${dateStr} • Peer-Review Calibrated Pre-Submission Diagnostic</p>
+
+      ${isScopeMismatch ? `
+      <div style="background-color: #FEF2F2; border: 1px solid #FCA5A5; border-left: 5px solid #DC2626; padding: 14px 18px; border-radius: 8px; margin-top: 16px; color: #991B1B; font-size: 13.5px; line-height: 1.5;">
+        <div style="font-weight: 700; font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+          <span>🚨 CRITICAL SCOPE MISMATCH WARNING (HIGH DESK-REJECT HAZARD)</span>
+        </div>
+        <div>${escapeHtml(mismatchWarning)}</div>
+      </div>
+      ` : ""}
 
       ${r.executionMode === "heuristic_offline" ? `
       <div style="background-color: #FEF3C7; border: 1px solid #F59E0B; padding: 12px 16px; border-radius: 8px; margin-top: 16px; color: #92400E; font-size: 13px;">
@@ -485,10 +502,10 @@ export function generateFullReportHtml(r: FullReviewReport): string {
       </div>
       ` : ""}
 
-      <div class="score-banner" style="${!hasNumericScore ? "background: #1E293B;" : ""}">
+      <div class="score-banner" style="${!hasNumericScore ? "background: #1E293B;" : (isScopeMismatch ? "background: linear-gradient(135deg, #7F1D1D 0%, #991B1B 100%);" : "")}">
         <div class="score-meter">
           <span class="score-number" style="${!hasNumericScore ? "font-size: 26px; color: #94A3B8;" : ""}">${scoreLabel}</span>
-          <span class="score-label">${hasNumericScore ? "/ 100 Overall Acceptance Potential" : (r.executionMode === "heuristic_offline" ? "AI scoring offline" : "Acceptance potential bypassed")}</span>
+          <span class="score-label">${hasNumericScore ? (isScopeMismatch ? "/ 100 Overall Acceptance Potential (Desk-Reject Capped)" : "/ 100 Overall Acceptance Potential") : (r.executionMode === "heuristic_offline" ? "AI scoring offline" : "Acceptance potential bypassed")}</span>
         </div>
         <button class="btn-print" onclick="window.print()">
           <span>🖨️ Print / Save as PDF</span>
@@ -688,6 +705,24 @@ export function generateFullReportHtml(r: FullReviewReport): string {
 
     <!-- Tab 5: Journals -->
     <div id="tab-journals" class="tab-content">
+      ${r.targetJournalEvaluation ? `
+      <div class="card" style="border-left: 5px solid ${r.targetJournalEvaluation.isDisciplinaryMismatch ? "#DC2626" : "#2563EB"}; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <strong style="font-size: 16px;">Target Submission Venue: ${escapeHtml(r.targetJournalEvaluation.name)}</strong>
+          <span style="font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 9999px; ${r.targetJournalEvaluation.isDisciplinaryMismatch ? "background: #FEE2E2; color: #991B1B;" : "background: #DCFCE7; color: #166534;"}">
+            ${r.targetJournalEvaluation.isDisciplinaryMismatch ? "Critical Scope Mismatch" : "In-Scope Target"} (Fit: ${r.targetJournalEvaluation.fitScore}%)
+          </span>
+        </div>
+        <div style="font-size: 13px; color: #64748B; margin-bottom: 8px;">
+          Target Venue Field: <strong>${escapeHtml(r.targetJournalEvaluation.journalDiscipline || "Unknown")}</strong> • Manuscript Field: <strong>${escapeHtml(r.targetJournalEvaluation.manuscriptDiscipline || "Unknown")}</strong> • Impact Factor: <strong>${r.targetJournalEvaluation.impactFactor || "N/A"}</strong>
+        </div>
+        ${r.targetJournalEvaluation.mismatchWarning ? `
+        <div style="background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 6px; padding: 10px 14px; font-size: 13px; color: #991B1B;">
+          <strong>⚠️ Mismatch Advisory:</strong> ${escapeHtml(r.targetJournalEvaluation.mismatchWarning)}
+        </div>
+        ` : ""}
+      </div>
+      ` : ""}
       <div class="journal-grid">
         ${(r.journalRecommendations || []).map(j => `
           <div class="journal-card">
