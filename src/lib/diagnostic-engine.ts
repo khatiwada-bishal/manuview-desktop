@@ -19,7 +19,7 @@ import {
 import { callLLM, sanitizeAuthorText, sanitizeErrorMessage, getSavedClientConfig } from "./llm";
 export { sanitizeAuthorText, sanitizeErrorMessage };
 import { batchVerifyReferences } from "./crossref";
-import { findMatchingJournals, JOURNAL_CATALOG, isDisciplineMatch } from "./journals";
+import { findMatchingJournals, JOURNAL_CATALOG, isDisciplineMatch, inferJournalDiscipline } from "./journals";
 import { classifyDocument } from "./parser";
 import { cleanAndRepairJson } from "./json-repair";
 import { detectPublishedArticle } from "./publication-detector";
@@ -617,8 +617,9 @@ export function buildPreSubmissionUserPrompt(
   const targetEntry = targetJournalName
     ? JOURNAL_CATALOG.find((j) => j.name.toLowerCase() === targetJournalName.trim().toLowerCase())
     : undefined;
+  const targetDiscipline = targetEntry?.discipline || (targetJournalName ? inferJournalDiscipline(targetJournalName) : undefined);
   const isTargetScopeMismatch = Boolean(
-    targetEntry && detectedDiscipline && !isDisciplineMatch(detectedDiscipline, targetEntry.discipline).isMatch
+    targetDiscipline && detectedDiscipline && !isDisciplineMatch(detectedDiscipline, targetDiscipline).isMatch
   );
 
   const hasSubstantialSections = Boolean(
@@ -686,16 +687,16 @@ Coverage Note: ${citationIntegrity.coverageNote}
 [AUTHOR'S STATED TARGET JOURNAL & DISCIPLINARY BENCHMARK]
 Detected Manuscript Field/Discipline: ${detectedDiscipline || "Scholarly Research"}
 ${targetJournalName ? `Stated Target Journal: "${targetJournalName}"` : "No target journal declared by author — calibrate Realistic tier directly from the manuscript's empirical scale and the cited literature below."}
-${targetEntry ? `Target Journal Remit & Discipline: ${targetEntry.discipline} (Aims & Scope: ${targetEntry.aimsAndScope.slice(0, 160)}...)` : ""}
+${targetDiscipline ? `Target Journal Remit & Discipline: ${targetDiscipline}${targetEntry ? ` (Aims & Scope: ${targetEntry.aimsAndScope.slice(0, 160)}...)` : ""}` : ""}
 ${
   isTargetScopeMismatch
     ? `\n>>> CRITICAL DISCIPLINARY SCOPE MISMATCH DIRECTIVE:
-The author has designated target journal "${targetJournalName}" (which publishes strictly in "${targetEntry?.discipline}"), but this manuscript's substantive domain is "${detectedDiscipline}".
+The author has designated target journal "${targetJournalName}" (which operates in "${targetDiscipline}"), but this manuscript's substantive domain is "${detectedDiscipline}".
 Submitting this paper to ${targetJournalName} represents an extreme cross-field discrepancy that triggers immediate editorial desk rejection in scholarly publishing.
 You MUST strictly reflect this reality:
-1. Overall acceptance score (overallScore) MUST NOT exceed 35 (reflecting realistic desk-reject hazard).
+1. Overall acceptance score (overallScore) MUST NOT exceed 28 (reflecting realistic desk-reject hazard).
 2. Priority Issues MUST include a Priority A issue with category "Scope/Fit" explicitly flagging this field mismatch and advising submission to a ${detectedDiscipline} venue.
-3. Realistic and Fallback journal recommendations MUST be anchored in ${detectedDiscipline}, NOT in ${targetEntry?.discipline}.`
+3. Realistic and Fallback journal recommendations MUST be anchored in ${detectedDiscipline}, NOT in ${targetDiscipline}.`
     : targetJournalName ? `Calibrate your Realistic tier to "${targetJournalName}" or direct peer-equivalent journals in this field, Reach to higher-impact venues in this field, and Fallback to accessible specialty journals.` : ""
 }
 
@@ -1111,7 +1112,7 @@ export async function runManuscriptDiagnostic(
     }
     // Enforce realistic desk-reject ceiling on severe cross-field scope mismatch
     if (journalMatches.targetJournalEvaluation?.isDisciplinaryMismatch && finalOverallScore !== undefined) {
-      finalOverallScore = Math.min(32, finalOverallScore);
+      finalOverallScore = Math.min(28, finalOverallScore);
     }
   }
 
@@ -1280,6 +1281,18 @@ export async function runManuscriptDiagnostic(
 
   finalPriorityIssues = [...additionalIssues, ...finalPriorityIssues];
 
+  // Dual-layer desk reject clamping: clamp overall score if scope mismatch or critical desk-reject issue present
+  if (finalOverallScore !== undefined) {
+    const hasCriticalDeskReject =
+      Boolean(journalMatches.targetJournalEvaluation?.isDisciplinaryMismatch) ||
+      finalPriorityIssues.some(
+        (i) => i.priority === "A" && (i.category === "Scope/Fit" || /scope|fit|desk reject|out-of-scope/i.test(`${i.title} ${i.description}`))
+      );
+    if (hasCriticalDeskReject) {
+      finalOverallScore = Math.min(28, finalOverallScore);
+    }
+  }
+
   // Reviewer Personas (Zero personas in heuristic_offline mode - REQ-EN-06)
   const CANONICAL_PERSONA_ROLES: ReviewerPersonaFeedback["persona"][] = [
     "methods_reviewer",
@@ -1358,6 +1371,7 @@ export async function runManuscriptDiagnostic(
     createdAt: new Date().toISOString(),
     title: manuscript.title,
     targetJournal: targetJournalName,
+    targetJournalEvaluation: journalMatches.targetJournalEvaluation,
     isEligibleForReview: true,
     overallScore: finalOverallScore,
     summary: finalSummary,
@@ -2304,10 +2318,11 @@ export function synthesizeGroundedAcademicReview(
   }
 
   const targetEntry = JOURNAL_CATALOG.find((j) => j.name.toLowerCase() === targetJournal.toLowerCase());
-  const discMatch = targetEntry
-    ? isDisciplineMatch(discipline, targetEntry.discipline)
+  const targetDiscipline = targetEntry?.discipline || (targetJournal ? inferJournalDiscipline(targetJournal) : undefined);
+  const discMatch = targetDiscipline
+    ? isDisciplineMatch(discipline, targetDiscipline)
     : { isMatch: true, crossDisciplinary: false };
-  const isScopeMismatch = Boolean(targetEntry && !discMatch.isMatch);
+  const isScopeMismatch = Boolean(targetDiscipline && !discMatch.isMatch);
 
   if (targetEntry && targetEntry.impactFactor > 25) {
     deductions += 2;
@@ -2320,7 +2335,7 @@ export function synthesizeGroundedAcademicReview(
   const cappedBonus = Math.min(15, Math.round(rawBonus * 0.7));
   let dynamicScore = Math.max(0, Math.min(100, baseScore + cappedBonus - deductions));
   if (isScopeMismatch) {
-    dynamicScore = Math.min(32, Math.max(15, dynamicScore));
+    dynamicScore = Math.min(28, Math.max(15, dynamicScore));
   }
 
   // 5. Dynamic Grounded Editorial Synthesis Summary
@@ -2501,13 +2516,13 @@ export function synthesizeGroundedAcademicReview(
     priorityIssues.push({
       id: "iss-scope-mismatch",
       priority: "A",
-      title: `Critical Journal Scope Mismatch (${discipline} vs ${targetEntry?.discipline})`,
+      title: `Critical Journal Scope Mismatch (${discipline} vs ${targetDiscipline})`,
       category: "Scope/Fit",
-      description: `The manuscript's core research domain (${discipline}) falls outside the published aims and scope of ${targetJournal} (${targetEntry?.discipline}). Submitting out-of-scope manuscripts is the primary cause of immediate editorial desk rejection without external review.`,
+      description: `The manuscript's core research domain (${discipline}) falls outside the published aims and scope of ${targetJournal} (${targetDiscipline}). Submitting out-of-scope manuscripts is the primary cause of immediate editorial desk rejection without external review.`,
       location: "Target Journal Alignment",
-      evidenceAnchor: `discipline-mismatch: ${discipline} vs ${targetJournal} [${targetEntry?.discipline}]`,
+      evidenceAnchor: `discipline-mismatch: ${discipline} vs ${targetJournal} [${targetDiscipline}]`,
       reviewerQuote: `'This submission is outside the editorial remit and readership interest of ${targetJournal}. We strongly advise the authors to redirect their work to a suitable journal in ${discipline}.'`,
-      actionableFix: `Redirect submission to a domain-appropriate venue in ${discipline} (such as ${catalogMatches.realistic?.name || "a journal in your field"}), or restructure the manuscript to directly address core problems in ${targetEntry?.discipline}.`,
+      actionableFix: `Redirect submission to a domain-appropriate venue in ${discipline} (such as ${catalogMatches.realistic?.name || "a journal in your field"}), or restructure the manuscript to directly address core problems in ${targetDiscipline}.`,
       rebuttalStrategy: "1. Retarget submission: Redirect to an indexed journal whose aims & scope align with your primary methodology and findings.\n2. Cross-disciplinary framing: If the paper has genuine cross-field application, explicitly rewrite the Abstract and Introduction to articulate direct relevance and methodological utility for the target journal's audience.",
     });
   }

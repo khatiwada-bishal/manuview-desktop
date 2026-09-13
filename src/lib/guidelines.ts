@@ -633,6 +633,92 @@ const ML_REPRODUCIBILITY_ITEMS: GuidelineDefinitionItem[] = [
   },
 ];
 
+// ----------------------------------------------------------------------
+// 6. SURVEY-Q / APA JARS-Quant (Empirical Survey, Field Study & Econometrics)
+// ----------------------------------------------------------------------
+export const SURVEY_EMPIRICAL_ITEMS: GuidelineDefinitionItem[] = [
+  {
+    itemNumber: 1,
+    name: "Research Objectives & Hypotheses",
+    section: "Introduction",
+    description: "Clear statement of research questions, objectives, or theoretical hypotheses",
+    detector: regexMatcher(/\b(research questions?|hypothes(?:is|es)|aim of this study|objective of (?:this|the) study|investigate whether|we examine|we explore|hypothesize that)\b/i, "introduction"),
+    recommendationIfAbsent: "Explicitly formulate hypotheses or precise research questions in the Introduction section.",
+  },
+  {
+    itemNumber: 2,
+    name: "Target Population & Sampling Strategy",
+    section: "Methods",
+    description: "Definition of target population, sampling frame, selection criteria, or sample size determination",
+    detector: regexMatcher(/\b(sampling frame|sample size|purposive sampling|stratified sampling|random sampling|convenience sampling|snowball|target population|sample of \d+|respondents|household survey|participants were selected)\b/i, "methods"),
+    recommendationIfAbsent: "Document the sampling strategy, target population, and sample size rationale in the Methods.",
+  },
+  {
+    itemNumber: 3,
+    name: "Measurement Instrument & Operationalization",
+    section: "Methods",
+    description: "Structure of survey instrument, questionnaire design, Likert scales, or construct operationalization",
+    detector: regexMatcher(/\b(questionnaire|survey instrument|survey was administered|likert|scale items?|measurement scale|structured survey|constructs were measured|operationaliz(?:ed|ation))\b/i, "methods"),
+    recommendationIfAbsent: "Describe the survey questionnaire, construct definitions, and scale measurement items.",
+  },
+  {
+    itemNumber: 4,
+    name: "Construct Validity & Reliability",
+    section: "Methods",
+    description: "Internal consistency, convergent/discriminant validity, Cronbach's alpha, CR, or pilot testing",
+    detector: regexMatcher(/\b(cronbach|composite reliability|convergent validity|discriminant validity|average variance extracted|\bave\b|factor loading|exploratory factor|confirmatory factor|\bcfa\b|pilot (?:study|test|phase)|fornell-larcker|htmt)\b/i, "methods"),
+    recommendationIfAbsent: "Report construct reliability (e.g. Cronbach's alpha, composite reliability) and validity metrics (AVE, HTMT).",
+  },
+  {
+    itemNumber: 5,
+    name: "Response Rate & Sample Representativeness",
+    section: "Results",
+    description: "Response rates, completion counts, non-response bias analysis, or participant demographics",
+    detector: regexMatcher(/\b(response rate|completion rate|non-response bias|representativeness|usable responses|usable surveys|\b\d+ completed\b|sample characteristics|demographic profile)\b/i, "results"),
+    recommendationIfAbsent: "State the final survey response rate, demographic distribution, and non-response bias assessment.",
+  },
+  {
+    itemNumber: 6,
+    name: "Quantitative Model Specification",
+    section: "Methods",
+    description: "Formal specification of statistical or econometric models (e.g. PLS-SEM, regression, ANOVA)",
+    detector: regexMatcher(/\b(pls-sem|structural equation model|econometric|regression model|ordinary least squares|logit|probit|panel data|fixed effects|random effects|path model|multivariate analysis|hierarchical regression|structural model)\b/i, "methods"),
+    recommendationIfAbsent: "Specify the quantitative statistical model, estimation technique, and software used.",
+  },
+  {
+    itemNumber: 7,
+    name: "Diagnostic & Robustness Checks",
+    section: "Results",
+    description: "Testing for common method variance, multicollinearity (VIF), endogeneity, or sensitivity checks",
+    detector: regexMatcher(/\b(multicollinearity|variance inflation factor|\bvif\b|common method (?:bias|variance)|harman|endogeneity|robustness check|sensitivity analysis|goodness-of-fit|model fit|\brmsea\b|\bsrmr\b|\bcfi\b)\b/i, "results"),
+    recommendationIfAbsent: "Report diagnostic tests such as variance inflation factors (VIF) and common method variance evaluations.",
+  },
+  {
+    itemNumber: 8,
+    name: "Statistical Precision & Effect Estimates",
+    section: "Results",
+    description: "Path coefficients, effect sizes, p-values, t-statistics, or confidence intervals",
+    detector: regexMatcher(/\b(p\s*<\s*0\.\d+|p-value|confidence interval|\bci\b|path coefficient|t-statistic|standard error|f-statistic|r-squared|\br2\b|adjusted r2|effect size|beta =|coefficient)\b/i, "results"),
+    recommendationIfAbsent: "Report exact effect estimates, standard errors/confidence intervals, and statistical significance.",
+  },
+  {
+    itemNumber: 9,
+    name: "Limitations & Boundary Conditions",
+    section: "Discussion",
+    description: "Methodological constraints, cross-sectional design caveats, or boundary conditions of findings",
+    detector: regexMatcher(/\b(limitations? of (?:this|the) study|several limitations|boundary conditions|caution in generalizing|generalizability|cross-sectional design|causal inference is limited)\b/i, "discussion"),
+    recommendationIfAbsent: "Discuss study limitations including sample constraints, cross-sectional caveats, and generalizability boundaries.",
+  },
+  {
+    itemNumber: 10,
+    name: "Data & Instrument Availability",
+    section: "Methods",
+    description: "Statement regarding availability of survey questionnaires, raw microdata, or replication scripts",
+    detector: regexMatcher(/\b(data availability|questionnaire is available|survey instrument is available|supplementary material|replication package|repository|available upon (?:reasonable )?request|open-access data|zenodo|osf\.io|github)\b/i),
+    recommendationIfAbsent: "Include a formal Data and Survey Instrument Availability Statement detailing access to questionnaires and data.",
+  },
+];
+
 /**
  * Executes deep reporting guideline audit against manuscript text
  */
@@ -666,6 +752,14 @@ export function auditReportingGuidelines(
     discipline === "Operations Research & Management" ||
     /\b(neural network|reinforcement learning|benchmark dataset|loss function|mixed-integer)\b/i.test(routingContext);
 
+  const isSurveyOrFieldEmpirical =
+    discipline === "Economics, Finance & Business" ||
+    discipline === "Environmental Science & Sustainability" ||
+    discipline === "Social Sciences, Psychology & Education" ||
+    discipline === "Social Sciences, Public Policy & Law" ||
+    discipline === "Education & Learning Sciences" ||
+    /\b(survey|questionnaire|pls-sem|structural equation|likert|household survey|respondents|econometric|microdata|semi-structured interview)\b/i.test(routingContext);
+
   if (isSystematicReview) {
     guidelineItems = PRISMA_ITEMS;
     guidelineName = "PRISMA 2020 — 12 of 27 core items screened";
@@ -698,6 +792,14 @@ export function auditReportingGuidelines(
     itemSetSize = 10;
     standardVersion = "NeurIPS 2020 ML Reproducibility";
     standardUrl = "https://neurips.cc/public/guides/PaperChecklist";
+  } else if (isSurveyOrFieldEmpirical) {
+    guidelineItems = SURVEY_EMPIRICAL_ITEMS;
+    guidelineName = "SURVEY-Q / APA JARS-Quant (10-Item Empirical Survey & Quantitative Checklist)";
+    standardType = "Empirical Survey, Field Study & Econometric Research";
+    itemSetScope = "full";
+    itemSetSize = 10;
+    standardVersion = "APA JARS-Quant / Survey Research Standard";
+    standardUrl = "https://apastyle.apa.org/jars/quantitative";
   } else {
     guidelineItems = STROBE_ITEMS;
     guidelineName = "STROBE (22-Item Observational Epidemiological Checklist)";
