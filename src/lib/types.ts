@@ -343,8 +343,8 @@ export interface FullReviewReport {
   scoreUncertaintyMargin?: number; // e.g., ±3 (unanimous) to ±10 (split panel)
   panelConsensus?: PanelConsensus;
   complianceAudit?: DeterministicComplianceAudit;
-  isEligibleForReview?: boolean; // false if already published OR non-academic manuscript
-  ineligibilityReason?: 'already_published' | 'non_academic_document';
+  isEligibleForReview?: boolean; // false if already published OR non-academic manuscript OR scope mismatch desk reject
+  ineligibilityReason?: 'already_published' | 'non_academic_document' | 'scope_mismatch';
   publishedDetails?: PublishedArticleDetails;
   summary: string;
   classification: DocumentClassification;

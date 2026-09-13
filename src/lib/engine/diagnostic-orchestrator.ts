@@ -909,11 +909,12 @@ export async function runManuscriptDiagnostic(
       targetJournal: targetJournalName,
       targetJournalEvaluation: journalMatches.targetJournalEvaluation,
       editorialTriage: earlyScopeTriage.editorialTriage,
-      overallScore: deskRejectScore,
-      scoreUncertaintyMargin: panelConsensus?.uncertaintyMargin,
-      panelConsensus,
+      overallScore: undefined,
+      scoreUncertaintyMargin: undefined,
+      panelConsensus: undefined,
       complianceAudit: domainSynthesis.complianceAudit,
-      isEligibleForReview: true,
+      isEligibleForReview: false,
+      ineligibilityReason: "scope_mismatch",
       summary: earlyScopeTriage.editorialTriage.summary,
       classification: heuristicClassification,
       dimensions: domainSynthesis.dimensions as Record<ScoreDimension, DimensionScore>,
@@ -1054,8 +1055,8 @@ export async function runManuscriptDiagnostic(
     if (typeof parsedLLM?.overallScore === "number" && !isNaN(parsedLLM.overallScore)) {
       finalOverallScore = Math.min(100, Math.max(0, Math.round(parsedLLM.overallScore)));
     }
-    if (isDeskRejectByScope && finalOverallScore !== undefined) {
-      finalOverallScore = clampDeskRejectScore(finalOverallScore);
+    if (isDeskRejectByScope) {
+      finalOverallScore = undefined;
     }
   }
 
@@ -1350,10 +1351,11 @@ export async function runManuscriptDiagnostic(
     targetJournal: targetJournalName,
     targetJournalEvaluation: journalMatches.targetJournalEvaluation,
     editorialTriage,
-    isEligibleForReview: true,
-    overallScore: finalOverallScore,
-    scoreUncertaintyMargin,
-    panelConsensus,
+    isEligibleForReview: !isDeskRejectByScope,
+    ineligibilityReason: isDeskRejectByScope ? "scope_mismatch" : undefined,
+    overallScore: isDeskRejectByScope ? undefined : finalOverallScore,
+    scoreUncertaintyMargin: isDeskRejectByScope ? undefined : scoreUncertaintyMargin,
+    panelConsensus: isDeskRejectByScope ? undefined : panelConsensus,
     complianceAudit: domainSynthesis.complianceAudit,
     summary: finalSummary,
     classification: finalClassification,

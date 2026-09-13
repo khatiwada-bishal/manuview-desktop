@@ -226,15 +226,21 @@ export function generateFullReportHtml(r: FullReviewReport): string {
     (isScopeMismatch
       ? `Manuscript research domain falls outside the published aims and scope of ${targetJournal}. Submitting out-of-scope manuscripts is the primary cause of immediate editorial desk rejection without external peer review.`
       : "");
-  const hasNumericScore = typeof r.overallScore === "number";
-  const scoreLabel =
-    r.isEligibleForReview === false
-      ? r.ineligibilityReason === "already_published"
-        ? "PUB"
-        : "N/A"
-      : hasNumericScore
-      ? `${r.overallScore}`
-      : "Not Assessed";
+  const isDeskReject = Boolean(
+    r.editorialTriage?.outcome === "desk_reject" ||
+    r.ineligibilityReason === "scope_mismatch" ||
+    isScopeMismatch
+  );
+  const hasNumericScore = !isDeskReject && typeof r.overallScore === "number";
+  const scoreLabel = isDeskReject
+    ? "DESK REJECT"
+    : r.isEligibleForReview === false
+    ? r.ineligibilityReason === "already_published"
+      ? "PUB"
+      : "N/A"
+    : hasNumericScore
+    ? `${r.overallScore}`
+    : "Not Assessed";
   const dateStr = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 
   return `<!DOCTYPE html>
@@ -505,7 +511,7 @@ export function generateFullReportHtml(r: FullReviewReport): string {
       <div class="score-banner" style="${!hasNumericScore ? "background: #1E293B;" : (isScopeMismatch ? "background: linear-gradient(135deg, #7F1D1D 0%, #991B1B 100%);" : "")}">
         <div class="score-meter">
           <span class="score-number" style="${!hasNumericScore ? "font-size: 26px; color: #94A3B8;" : ""}">${scoreLabel}</span>
-          <span class="score-label">${hasNumericScore ? (isScopeMismatch ? "/ 100 Overall Acceptance Potential (Desk-Reject Capped)" : "/ 100 Overall Acceptance Potential") : (r.executionMode === "heuristic_offline" ? "AI scoring offline" : "Acceptance potential bypassed")}</span>
+          <span class="score-label">${isDeskReject ? "Editorial Scope Screening (External Peer Review Bypassed)" : hasNumericScore ? "/ 100 Overall Acceptance Potential" : (r.executionMode === "heuristic_offline" ? "AI scoring offline" : "Acceptance potential bypassed")}</span>
         </div>
         <button class="btn-print" onclick="window.print()">
           <span>🖨️ Print / Save as PDF</span>
@@ -875,8 +881,15 @@ function generateBriefReportHtml(r: BriefJournalFitReport): string {
 export function generateFullReportWord(r: FullReviewReport): string {
   const title = escapeHtml(r.title);
   const targetJournal = escapeHtml(r.targetJournal || "General High Impact Journal");
-  const hasNumericScore = typeof r.overallScore === "number";
-  const scoreLabel = r.isEligibleForReview === false
+  const isDeskReject = Boolean(
+    r.editorialTriage?.outcome === "desk_reject" ||
+    r.ineligibilityReason === "scope_mismatch" ||
+    r.targetJournalEvaluation?.isDisciplinaryMismatch
+  );
+  const hasNumericScore = !isDeskReject && typeof r.overallScore === "number";
+  const scoreLabel = isDeskReject
+    ? "Status: Editorial Desk Reject (Scope Mismatch - Peer Review Bypassed)"
+    : r.isEligibleForReview === false
     ? (r.ineligibilityReason === "already_published" ? "Status: Already Published Article" : "Status: Ineligible (Non-Article)")
     : hasNumericScore
     ? `Overall Potential Score: ${r.overallScore} / 100`

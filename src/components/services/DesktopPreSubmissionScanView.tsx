@@ -261,10 +261,14 @@ export function DesktopPreSubmissionScanView({
 
   const registerCompletedScan = (fullReport: any) => {
     if (!onComplete) return;
-    const isEligible = fullReport.isEligibleForReview !== false;
+    const isDeskReject =
+      fullReport.editorialTriage?.outcome === "desk_reject" ||
+      fullReport.ineligibilityReason === "scope_mismatch";
+    const isEligible = !isDeskReject && fullReport.isEligibleForReview !== false;
     const isPublished =
-      fullReport.ineligibilityReason === "already_published" ||
-      Boolean(fullReport.publishedDetails?.isPublished);
+      !isDeskReject &&
+      (fullReport.ineligibilityReason === "already_published" ||
+      Boolean(fullReport.publishedDetails?.isPublished));
 
     const newPaper: PaperItem = {
       id: `paper-${Date.now()}`,
@@ -274,9 +278,10 @@ export function DesktopPreSubmissionScanView({
         .slice(0, 3)
         .join(" "),
       journal: fullReport.publishedDetails?.journalName || targetJournal,
-      score: isEligible ? (fullReport.overallScore || 80) : undefined,
-      isEligibleForReview: isEligible,
-      ineligibilityReason: fullReport.ineligibilityReason,
+      score: isDeskReject ? undefined : (isEligible ? (fullReport.overallScore || 80) : undefined),
+      isEligibleForReview: !isDeskReject && isEligible,
+      isDeskReject: isDeskReject,
+      ineligibilityReason: isDeskReject ? "scope_mismatch" : fullReport.ineligibilityReason,
       isPublished: isPublished,
       publishedJournal: fullReport.publishedDetails?.journalName,
       editorialTriage: fullReport.editorialTriage,
@@ -284,14 +289,20 @@ export function DesktopPreSubmissionScanView({
 
     const dashboardData: DesktopDashboardData = {
       paperTitle: newPaper.title,
-      headlineTitle: isPublished
+      headlineTitle: isDeskReject
+        ? `${targetJournal} Pre-Submission Diagnostic (Desk Reject)`
+        : isPublished
         ? `${newPaper.journal} (Published Article)`
         : `${targetJournal} Pre-Submission Diagnostic`,
       targetJournal: newPaper.journal,
       aiEngine: activeProviderInfo.name || "AI ENGINE",
       latencyMs: 120,
-      score: isEligible ? (fullReport.overallScore || 80) : undefined,
-      statusText: !isEligible
+      score: isDeskReject ? undefined : (isEligible ? (fullReport.overallScore || 80) : undefined),
+      isDeskReject: isDeskReject,
+      editorialTriage: fullReport.editorialTriage,
+      statusText: isDeskReject
+        ? "Editorial Desk Reject (Scope Mismatch)"
+        : !isEligible
         ? isPublished
           ? "Already Published Article"
           : "Ineligible Document Type"
