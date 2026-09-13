@@ -136,18 +136,11 @@ export function DesktopSidebar({
       ? "Connecting..."
       : "Connect AI";
 
+  const isServiceActive = (serviceId: string) => {
+    return activePaperId === `tool-${serviceId}` || activePaperId === serviceId;
+  };
+
   const SERVICES = [
-    {
-      id: "ai-review",
-      name: "Pre-Submission AI Review",
-      description: "5-Persona reviewer simulation",
-      icon: Sparkles,
-      color: "text-blue-600 bg-blue-50 dark:bg-blue-950/50 dark:text-blue-400",
-      action: () => {
-        if (onSelectService) onSelectService("ai-review");
-        else onNewReview();
-      },
-    },
     {
       id: "journal-fit",
       name: "Journal Fit Predictor",
@@ -475,21 +468,6 @@ export function DesktopSidebar({
                               <BookOpen className="w-3 h-3 text-indigo-600 dark:text-indigo-400 shrink-0" />
                               <span className="truncate">Target Journals</span>
                             </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onSelectView("citations");
-                              }}
-                              className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-[11px] transition text-left cursor-pointer ${
-                                activeView === "citations"
-                                  ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
-                                  : "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#1E293B]/60 hover:text-neutral-900 dark:hover:text-white"
-                              }`}
-                            >
-                              <CheckCircle2 className="w-3 h-3 text-teal-600 dark:text-teal-400 shrink-0" />
-                              <span className="truncate">Citation Integrity</span>
-                            </button>
                           </div>
                         )}
                       </div>
@@ -503,16 +481,21 @@ export function DesktopSidebar({
           {/* Divider */}
           <div className="w-8 h-px bg-[#E5E7EB] dark:bg-[#1E293B] mx-auto" />
 
-          {/* Services Icons (Bottom) */}
+          {/* Services Icons (Below Articles) */}
           <div className="space-y-1.5 flex flex-col items-center">
             {SERVICES.map((service) => {
               const Icon = service.icon;
+              const isItemActive = isServiceActive(service.id);
               return (
                 <div key={service.id} className="relative group flex justify-center">
                   <button
                     type="button"
                     onClick={service.action}
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition cursor-pointer hover:scale-105 shadow-2xs ${service.color}`}
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition cursor-pointer hover:scale-105 shadow-2xs ${
+                      isItemActive
+                        ? "bg-blue-600 text-white shadow-md ring-2 ring-blue-500/40"
+                        : service.color
+                    }`}
                   >
                     <Icon className="w-4 h-4" />
                   </button>
@@ -830,19 +813,6 @@ export function DesktopSidebar({
                           <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
                           <span className="truncate">Target Journals</span>
                         </button>
-
-                        <button
-                          type="button"
-                          onClick={() => onSelectView("citations")}
-                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer ${
-                            activeView === "citations"
-                              ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
-                              : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
-                          }`}
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
-                          <span className="truncate">Citation Integrity Audit</span>
-                        </button>
                       </div>
                     )}
                   </div>
@@ -852,7 +822,7 @@ export function DesktopSidebar({
           </div>
         </div>
 
-        {/* 3. SERVICES LIST (Bottom section) */}
+        {/* 3. SERVICES LIST (Below Articles) */}
         <div className="pt-2 border-t border-black/[0.04] dark:border-white/[0.06]">
           <div className="flex items-center justify-between px-2 mb-1.5">
             <button
@@ -876,20 +846,35 @@ export function DesktopSidebar({
             <div className="space-y-0.5">
               {SERVICES.map((service) => {
                 const Icon = service.icon;
+                const isItemActive = isServiceActive(service.id);
                 return (
                   <button
                     key={service.id}
                     type="button"
                     onClick={service.action}
-                    className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white text-neutral-700 dark:text-neutral-300 transition text-left cursor-pointer group"
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs transition text-left cursor-pointer group ${
+                      isItemActive
+                        ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white shadow-2xs"
+                        : "hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white text-neutral-700 dark:text-neutral-300"
+                    }`}
                   >
                     <div
-                      className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${service.color}`}
+                      className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${
+                        isItemActive
+                          ? "bg-blue-600 text-white shadow-xs"
+                          : service.color
+                      }`}
                     >
                       <Icon className="w-3 h-3" />
                     </div>
                     <div className="truncate min-w-0">
-                      <div className="font-medium text-xs text-neutral-800 dark:text-neutral-200 group-hover:text-black dark:group-hover:text-white truncate">
+                      <div
+                        className={`text-xs truncate ${
+                          isItemActive
+                            ? "font-semibold text-[#111827] dark:text-white"
+                            : "font-medium text-neutral-800 dark:text-neutral-200 group-hover:text-black dark:group-hover:text-white"
+                        }`}
+                      >
                         {service.name}
                       </div>
                     </div>

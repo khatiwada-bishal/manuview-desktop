@@ -33,6 +33,7 @@ import {
   ParsedManuscript,
   PriorityIssue,
   ProviderConfig,
+  ReferenceVerification,
   ReportingGuidelineCheck,
   ReviewerPersonaFeedback,
   ScoreDimension,
@@ -769,14 +770,12 @@ export async function runManuscriptDiagnostic(
   // Step 3: Parallel Scholarly Pre-Checks (References & Publication)
   onProgress?.({
     stage: "verifying_references",
-    message: "Auditing permanent scholarly records & Crossref bibliography in parallel...",
+    message: "Auditing permanent scholarly records...",
     percent: 35,
   });
-  const sampleRefs = manuscript.references.slice(0, DEFAULT_MAX_SAMPLED_REFS);
-  const [publishedDetails, verifiedRefs] = await Promise.all([
-    detectPublishedArticle(manuscript.rawText, manuscript.title),
-    batchVerifyReferences(sampleRefs),
-  ]);
+  // Citation integrity audit bypassed per user directive
+  const publishedDetails = await detectPublishedArticle(manuscript.rawText, manuscript.title);
+  const verifiedRefs: ReferenceVerification[] = [];
 
   const citationIntegrity = computeCitationIntegrity(
     verifiedRefs,
