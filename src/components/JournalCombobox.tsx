@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { Search, Plus, Check, X, BookOpen, Trash2, ChevronDown } from "lucide-react";
+import { Search, Plus, Check, X, BookOpen, Trash2, ChevronDown, Globe, RefreshCw } from "lucide-react";
 import MASTER_JOURNAL_LIST from "@/lib/journal-names.json";
 import { JOURNAL_CATALOG } from "@/lib/journals";
+import { useJournalScope, JournalScopeProfile } from "@/lib/journal-scope-service";
 
 interface JournalComboboxProps {
   value: string;
@@ -14,6 +15,8 @@ interface JournalComboboxProps {
   placeholder?: string;
   className?: string;
   inputClassName?: string;
+  showScopeBadge?: boolean;
+  onScopeLoaded?: (scope: JournalScopeProfile) => void;
 }
 
 const STORAGE_KEY = "manuview_custom_journals";
@@ -26,6 +29,8 @@ export default function JournalCombobox({
   placeholder = "Type at least 3 letters to search journals...",
   className = "",
   inputClassName = "",
+  showScopeBadge = true,
+  onScopeLoaded,
 }: JournalComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -39,6 +44,15 @@ export default function JournalCombobox({
     width: number;
     openUpwards: boolean;
   }>({ top: 0, left: 0, width: 0, openUpwards: false });
+
+  // Live background journal scope resolution
+  const { scope, isLoading: isScopeLoading } = useJournalScope(value || searchQuery);
+
+  useEffect(() => {
+    if (scope && onScopeLoaded) {
+      onScopeLoaded(scope);
+    }
+  }, [scope, onScopeLoaded]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -370,6 +384,42 @@ export default function JournalCombobox({
           </button>
         </div>
       </div>
+
+      {/* Background Fetched Scope Info Badge */}
+      {showScopeBadge && Boolean(value) && (
+        <div className="mt-1.5 transition-all">
+          {isScopeLoading && !scope ? (
+            <div className="flex items-center gap-1.5 text-[11px] text-blue-600 dark:text-blue-400 animate-pulse px-1">
+              <RefreshCw className="w-3 h-3 animate-spin" />
+              <span>Verifying journal aims &amp; scope in scholarly registry...</span>
+            </div>
+          ) : scope ? (
+            <div className="px-2.5 py-1.5 rounded-xl bg-blue-500/5 dark:bg-blue-500/10 border border-blue-500/15 text-[11px] text-[#334155] dark:text-neutral-200 flex items-start gap-2 shadow-2xs">
+              <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+              <div className="min-w-0 flex-1 leading-snug">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-bold text-[#0F172A] dark:text-white">
+                    {scope.publisher ? `${scope.publisher} • ` : ""}{scope.primaryDiscipline}
+                  </span>
+                  {scope.impactMetric && (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-[10px]">
+                      {scope.impactMetric}
+                    </span>
+                  )}
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-mono">
+                    {scope.source === "openalex" ? "Live Registry" : scope.source === "catalog" ? "Curated" : "Inferred"}
+                  </span>
+                </div>
+                {scope.keyConcepts.length > 0 && (
+                  <div className="text-[10px] text-[#64748B] dark:text-neutral-400 truncate mt-0.5">
+                    Topics: {scope.keyConcepts.slice(0, 5).join(", ")}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
 
       {/* Success Notification for newly added journal */}
       {addedToast && (

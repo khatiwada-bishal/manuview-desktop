@@ -60,6 +60,7 @@ import {
   buildScopeMismatchIssue,
   evaluateManuscriptScopeTriage,
 } from "./scope-triage-journals";
+import { fetchLiveJournalScope, JournalScopeProfile } from "../journal-scope-service";
 import { calculateDeterministicDimensions } from "./scoring-dimensions";
 import {
   callLLMForJson,
@@ -661,7 +662,8 @@ export async function runManuscriptDiagnostic(
   manuscript: ParsedManuscript,
   config?: ProviderConfig,
   targetJournalName?: string,
-  onProgress?: (update: DiagnosticProgressUpdate) => void
+  onProgress?: (update: DiagnosticProgressUpdate) => void,
+  preloadedScope?: JournalScopeProfile | null
 ): Promise<FullReviewReport> {
   const activeConfig = config || getSavedClientConfig();
   const isConfigUsable = Boolean(
@@ -718,11 +720,28 @@ export async function runManuscriptDiagnostic(
     };
   }
 
+  // Fetch or use preloaded live journal scope profile
+  let liveJournalScope: JournalScopeProfile | null = preloadedScope || null;
+  if (!liveJournalScope && targetJournalName && targetJournalName.trim().length >= 2) {
+    onProgress?.({
+      stage: "matching_journals",
+      message: `Fetching live scope for "${targetJournalName}" from scholarly registries...`,
+      percent: 22,
+    });
+    try {
+      liveJournalScope = await fetchLiveJournalScope(targetJournalName);
+    } catch {
+      // Graceful offline fallback
+    }
+  }
+
   // Step 2.5: Early Scope Triage & Target Journal Scope Screening
   const earlyScopeTriage = evaluateManuscriptScopeTriage(
     manuscript.title,
     manuscript.abstract,
-    targetJournalName
+    targetJournalName,
+    undefined,
+    liveJournalScope
   );
   const detectedDiscipline = earlyScopeTriage.detectedDiscipline;
   const isTargetScopeMismatch = earlyScopeTriage.isTargetScopeMismatch;
@@ -807,7 +826,96 @@ export async function runManuscriptDiagnostic(
   const citedJournalNamesOnly = Array.from(journalCitationCounts.keys());
 
   const journalMatches = findMatchingJournals(manuscript.title, manuscript.abstract, targetJournalName, citedJournalNamesOnly);
-  const isDeskRejectByScope = Boolean(journalMatches.targetJournalEvaluation?.isDisciplinaryMismatch);
+  const isDeskRejectByScope = isTargetScopeMismatch || Boolean(journalMatches.targetJournalEvaluation?.isDisciplinaryMismatch);
+
+  // In academic publishing, if a submission does not meet the journal's scope, the handling editor
+  // issues a direct Desk Reject during preliminary screening. The paper NEVER goes to peer review,
+  // and commissioning 5 external reviewer personas is completely bypassed.
+  if (isDeskRejectByScope) {
+    onProgress?.({
+      stage: "editorial_triage",
+      message: `Editorial Desk Reject: Manuscript domain (${detectedDiscipline}) is out of scope for "${targetJournalName}". Peer review panel bypassed.`,
+      percent: 85,
+    });
+
+    const domainSynthesis = synthesizeGroundedAcademicReview(
+      manuscript,
+      citationIntegrity,
+      targetJournalName,
+      detectedDiscipline,
+      heuristicClassification,
+      journalMatches
+    );
+
+    const deskRejectScore = clampDeskRejectScore(domainSynthesis.overallScore || 24);
+
+    let finalPriorityIssues = [...domainSynthesis.priorityIssues];
+    const hasScopeIssue = finalPriorityIssues.some(
+      (iss) => iss.category === "Scope/Fit" && /scope mismatch|field mismatch/i.test(iss.title + iss.description)
+    );
+    if (!hasScopeIssue && targetJournalName) {
+      finalPriorityIssues.unshift(
+        buildScopeMismatchIssue({
+          detectedDiscipline,
+          targetJournalName,
+          targetDiscipline:
+            earlyScopeTriage.editorialTriage.scopeComparison?.journalDiscipline ||
+            journalMatches.targetJournalEvaluation?.journalDiscipline ||
+            "Target Domain",
+          realisticJournalName: journalMatches.realistic?.name,
+          reviewerQuote: "",
+        })
+      );
+    }
+
+    if (citationIntegrity.retractedCount > 0 && !finalPriorityIssues.some((i) => i.id === "iss-retract")) {
+      finalPriorityIssues.push({
+        id: "iss-retract",
+        priority: "A",
+        title: `Retracted Reference Flagged (${citationIntegrity.retractedCount} found)`,
+        category: "Citations",
+        description:
+          "One or more references in the bibliography have been formally retracted by publishers. Citing retracted work can trigger immediate editorial desk rejection.",
+        reviewerQuote: "",
+        actionableFix: "Remove or replace the retracted citation with updated verified peer-reviewed literature.",
+        source: "crossref",
+      });
+    }
+
+    const panelConsensus = computePanelConsensus([], deskRejectScore);
+
+    onProgress?.({
+      stage: "completed",
+      message: "Editorial scope triage complete: Direct Desk Reject (peer review bypassed).",
+      percent: 100,
+    });
+
+    return {
+      mode: "full",
+      id: generateReportId("rev_"),
+      createdAt: new Date().toISOString(),
+      title: manuscript.title,
+      authors: manuscript.authors,
+      targetJournal: targetJournalName,
+      targetJournalEvaluation: journalMatches.targetJournalEvaluation,
+      editorialTriage: earlyScopeTriage.editorialTriage,
+      overallScore: deskRejectScore,
+      scoreUncertaintyMargin: panelConsensus?.uncertaintyMargin,
+      panelConsensus,
+      complianceAudit: domainSynthesis.complianceAudit,
+      isEligibleForReview: true,
+      summary: earlyScopeTriage.editorialTriage.summary,
+      classification: heuristicClassification,
+      dimensions: domainSynthesis.dimensions as Record<ScoreDimension, DimensionScore>,
+      priorityIssues: finalPriorityIssues,
+      reviewerPersonas: [], // Out-of-scope papers are never forwarded to external referees!
+      missingPersonaRoles: [],
+      journalRecommendations: domainSynthesis.journalRecommendations,
+      citationIntegrity,
+      reportingGuideline: domainSynthesis.reportingGuideline,
+      executionMode: isConfigUsable ? "llm_synthesized" : "heuristic_offline",
+    };
+  }
 
   // Step 5: Multi-Stage LLM Evaluation Simulation & Micro-Repair
   const provider = activeConfig?.provider || "gemini";

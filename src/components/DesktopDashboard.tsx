@@ -767,43 +767,121 @@ export function DesktopDashboard({
           </div>
 
           {/* Scope Contrast Comparison */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="rounded-2xl liquid-glass-card p-5 space-y-2 border border-rose-200/60 dark:border-rose-900/40">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
-                  Target Journal Remit
-                </span>
-                <span className="text-[11px] font-semibold text-neutral-400">Declared Target</span>
+          {triage?.scopeComparison ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-2xl liquid-glass-card p-5 space-y-3 border border-rose-200/60 dark:border-rose-900/40 bg-rose-50/20 dark:bg-rose-950/10">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                    Target Journal Remit &amp; Scope
+                  </span>
+                  <span className="text-[11px] font-semibold text-neutral-400">Declared Target</span>
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-[#0F172A] dark:text-white">
+                    {triage.scopeComparison.journalName}
+                  </div>
+                  {triage.scopeComparison.journalPublisher && (
+                    <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                      Publisher: {triage.scopeComparison.journalPublisher}
+                    </div>
+                  )}
+                </div>
+                <div className="text-xs text-neutral-600 dark:text-neutral-300">
+                  Published discipline: <strong className="text-rose-700 dark:text-rose-300 font-semibold">{triage.scopeComparison.journalDiscipline}</strong>
+                </div>
+                {triage.scopeComparison.journalKeyConcepts && triage.scopeComparison.journalKeyConcepts.length > 0 && (
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Key Registry Concepts</span>
+                    <div className="flex flex-wrap gap-1">
+                      {triage.scopeComparison.journalKeyConcepts.map((c, i) => (
+                        <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-rose-100/70 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {triage.scopeComparison.journalScopeSummary && (
+                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed border-t border-rose-200/40 dark:border-rose-900/30 pt-2">
+                    {triage.scopeComparison.journalScopeSummary}
+                  </p>
+                )}
               </div>
-              <div className="text-sm font-bold text-[#0F172A] dark:text-white">
-                {targetJournal}
-              </div>
-              <div className="text-xs text-neutral-600 dark:text-neutral-400">
-                Operates in discipline: <strong className="text-neutral-800 dark:text-neutral-200">{targetJournalDiscipline}</strong>
-              </div>
-              <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                Articles must directly contribute to the published scope and readership of {targetJournalDiscipline}.
-              </p>
-            </div>
 
-            <div className="rounded-2xl liquid-glass-card p-5 space-y-2 border border-emerald-200/60 dark:border-emerald-900/40">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                  Manuscript Focus
-                </span>
-                <span className="text-[11px] font-semibold text-neutral-400">Detected Scope</span>
+              <div className="rounded-2xl liquid-glass-card p-5 space-y-3 border border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/20 dark:bg-emerald-950/10">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                    Manuscript Focus &amp; Domain
+                  </span>
+                  <span className="text-[11px] font-semibold text-neutral-400">Detected Scope</span>
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-[#0F172A] dark:text-white">
+                    {title || "Uploaded Manuscript"}
+                  </div>
+                  <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                    Research Investigation
+                  </div>
+                </div>
+                <div className="text-xs text-neutral-600 dark:text-neutral-300">
+                  Study domain: <strong className="text-emerald-700 dark:text-emerald-300 font-semibold">{triage.scopeComparison.manuscriptDiscipline}</strong>
+                </div>
+                {triage.scopeComparison.manuscriptTopics && triage.scopeComparison.manuscriptTopics.length > 0 && (
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Extracted Topics</span>
+                    <div className="flex flex-wrap gap-1">
+                      {triage.scopeComparison.manuscriptTopics.map((t, i) => (
+                        <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed border-t border-emerald-200/40 dark:border-emerald-900/30 pt-2">
+                  Empirical findings, methodology, and theoretical contributions belong squarely to {triage.scopeComparison.manuscriptDiscipline}.
+                </p>
               </div>
-              <div className="text-sm font-bold text-[#0F172A] dark:text-white">
-                {title || "Uploaded Manuscript"}
-              </div>
-              <div className="text-xs text-neutral-600 dark:text-neutral-400">
-                Study domain: <strong className="text-emerald-700 dark:text-emerald-300">{paperDiscipline}</strong>
-              </div>
-              <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                Empirical findings and literature foundation belong squarely to {paperDiscipline}.
-              </p>
             </div>
-          </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-2xl liquid-glass-card p-5 space-y-2 border border-rose-200/60 dark:border-rose-900/40">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                    Target Journal Remit
+                  </span>
+                  <span className="text-[11px] font-semibold text-neutral-400">Declared Target</span>
+                </div>
+                <div className="text-sm font-bold text-[#0F172A] dark:text-white">
+                  {targetJournal}
+                </div>
+                <div className="text-xs text-neutral-600 dark:text-neutral-400">
+                  Operates in discipline: <strong className="text-neutral-800 dark:text-neutral-200">{targetJournalDiscipline}</strong>
+                </div>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                  Articles must directly contribute to the published scope and readership of {targetJournalDiscipline}.
+                </p>
+              </div>
+
+              <div className="rounded-2xl liquid-glass-card p-5 space-y-2 border border-emerald-200/60 dark:border-emerald-900/40">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                    Manuscript Focus
+                  </span>
+                  <span className="text-[11px] font-semibold text-neutral-400">Detected Scope</span>
+                </div>
+                <div className="text-sm font-bold text-[#0F172A] dark:text-white">
+                  {title || "Uploaded Manuscript"}
+                </div>
+                <div className="text-xs text-neutral-600 dark:text-neutral-400">
+                  Study domain: <strong className="text-emerald-700 dark:text-emerald-300">{paperDiscipline}</strong>
+                </div>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                  Empirical findings and literature foundation belong squarely to {paperDiscipline}.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Recommended Next Steps Card */}
           <div className="rounded-2xl liquid-glass-card p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-blue-200/60 dark:border-blue-900/40 bg-gradient-to-r from-blue-50/40 to-transparent dark:from-blue-950/20">
@@ -2051,12 +2129,17 @@ export function DesktopDashboard({
                         </span>
                       </div>
                     )}
-                    {matchingJournalsData.targetJournalEvaluation?.isDisciplinaryMismatch && (
+                    {isDeskReject ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30">
+                        <ShieldAlert className="w-3.5 h-3.5" />
+                        Editorial Desk Reject (Scope Mismatch)
+                      </span>
+                    ) : matchingJournalsData.targetJournalEvaluation?.isDisciplinaryMismatch ? (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30">
                         <AlertTriangle className="w-3.5 h-3.5" />
                         Target Journal Scope Mismatch
                       </span>
-                    )}
+                    ) : null}
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -2073,6 +2156,53 @@ export function DesktopDashboard({
                 </div>
               )}
             </div>
+
+            {/* EDITORIAL DESK REJECT TRIAGE GATE BANNER */}
+            {isDeskReject && (
+              <div className="rounded-3xl border-2 border-rose-500/40 bg-gradient-to-br from-rose-50/90 via-white/80 to-rose-50/50 dark:from-rose-950/40 dark:via-[#161F30] dark:to-rose-950/20 p-6 sm:p-7 space-y-4 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-rose-200/60 dark:border-rose-900/40 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                      <ShieldAlert className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-rose-950 dark:text-rose-200 flex items-center gap-2">
+                        <span>Editorial Triage: Immediate Desk Reject</span>
+                        <span className="text-[10px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 px-2 py-0.5 rounded-full">
+                          Preliminary Screening
+                        </span>
+                      </h3>
+                      <p className="text-xs text-rose-800/80 dark:text-rose-400">
+                        Target Journal Scope Mismatch &bull; External Peer Review Panel Bypassed
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onSelectView("personas")}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition cursor-pointer"
+                    >
+                      <span>Triage Rationale</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onSelectView("journals")}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition cursor-pointer"
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                      <span>Matching Journals</span>
+                    </button>
+                  </div>
+                </div>
+
+                <p className="text-xs sm:text-sm text-rose-900/90 dark:text-rose-200/90 leading-relaxed">
+                  {fullReport?.editorialTriage?.summary ||
+                    `The manuscript substantive focus lies in ${matchingJournalsData.detectedDiscipline || "a different domain"}, which falls outside the scope of ${targetJournal}. In scholarly publishing, out-of-scope papers are declined during initial editorial screening and are never forwarded to external peer reviewers.`}
+                </p>
+              </div>
+            )}
 
             {/* CARD 2: Editorial Synthesis & Triage Assessment Card (Omitted for non-academic documents) */}
             {!isNonAcademic && (
