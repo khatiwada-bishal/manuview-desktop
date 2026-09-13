@@ -56,8 +56,15 @@ export function calculateDeterministicDimensions(
     sections.methods.length < 50;
   const isMethodsInferred = Boolean(manuscript.sectionProvenance?.methodsInferred);
 
+  const effectiveWordCount =
+    typeof manuscript.wordCount === "number" && !isNaN(manuscript.wordCount)
+      ? manuscript.wordCount
+      : manuscript.rawText
+      ? manuscript.rawText.split(/\s+/).filter(Boolean).length
+      : 0;
+
   const origScore = abstractCore.length > 40 && cleanTitle.length > 25 ? 4 : 3;
-  const broadScore = manuscript.wordCount >= 2800 ? 4 : 3;
+  const broadScore = effectiveWordCount >= 2800 ? 4 : 3;
 
   const methScore = isMethodsMissing
     ? 1
@@ -70,7 +77,7 @@ export function calculateDeterministicDimensions(
     : 3;
 
   const claimsScore = causalCount > 2 ? 3 : 4;
-  const clarityScore = manuscript.wordCount > 1500 ? 4 : 3;
+  const clarityScore = effectiveWordCount > 1500 ? 4 : 3;
   const priorScore =
     citationIntegrity.retractedCount > 0
       ? 2
@@ -168,7 +175,7 @@ export function calculateDeterministicDimensions(
     clarity: {
       score: clarityScore,
       label: "Clarity & Presentation",
-      verdict: `Scholarly writing adhering to academic conventions (${manuscript.wordCount.toLocaleString()} words).`,
+      verdict: `Scholarly writing adhering to academic conventions (${effectiveWordCount.toLocaleString()} words).`,
       strengths: [
         "Structured presentation across manuscript sections",
         "Coherent academic narrative progression from problem formulation to findings",

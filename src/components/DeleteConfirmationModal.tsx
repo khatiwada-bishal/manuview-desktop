@@ -67,7 +67,11 @@ export function DeleteConfirmationModal({
           <div className="flex items-center gap-2 text-[11px] text-neutral-500 dark:text-neutral-400">
             <span className="font-medium text-neutral-600 dark:text-neutral-300">{paper.journal}</span>
             <span>&bull;</span>
-            {paper.isEligibleForReview === false ? (
+            {paper.isDeskReject || paper.editorialTriage?.outcome === "desk_reject" || paper.ineligibilityReason === "scope_mismatch" ? (
+              <span className="font-medium text-rose-600 dark:text-rose-400">
+                Editorial Desk Reject
+              </span>
+            ) : paper.isEligibleForReview === false ? (
               <span className="font-medium text-neutral-500 dark:text-neutral-400">
                 {paper.ineligibilityReason === "already_published" ? "Already Published" : "Non-Article"}
               </span>

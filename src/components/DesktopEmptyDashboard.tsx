@@ -13,6 +13,7 @@ import {
   Trash2,
   MessageSquare,
   AlertTriangle,
+  ShieldAlert,
 } from "lucide-react";
 import { PaperItem } from "./DesktopSidebar";
 
@@ -79,55 +80,93 @@ export function DesktopEmptyDashboard({
               </h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {papers.map((paper) => (
-                <div
-                  key={paper.id}
-                  onClick={() => onOpenArticle(paper.id)}
-                  className="group relative rounded-2xl liquid-glass-card liquid-glass-card-interactive p-4 transition cursor-pointer flex flex-col justify-between"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
-                        <FileText className="w-4 h-4" />
+              {papers.map((paper) => {
+                const isDeskReject =
+                  paper.isDeskReject === true ||
+                  paper.editorialTriage?.outcome === "desk_reject" ||
+                  paper.ineligibilityReason === "scope_mismatch";
+                return (
+                  <div
+                    key={paper.id}
+                    onClick={() => onOpenArticle(paper.id)}
+                    className={`group relative rounded-2xl liquid-glass-card liquid-glass-card-interactive p-4 transition cursor-pointer flex flex-col justify-between ${
+                      isDeskReject ? "border-rose-500/30 bg-rose-500/5 dark:bg-rose-950/20" : ""
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                            isDeskReject
+                              ? "bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400"
+                              : "bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400"
+                          }`}
+                        >
+                          {isDeskReject ? (
+                            <ShieldAlert className="w-4 h-4" />
+                          ) : (
+                            <FileText className="w-4 h-4" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h3
+                            className={`font-bold text-xs truncate transition ${
+                              isDeskReject
+                                ? "text-rose-950 dark:text-rose-200 group-hover:text-rose-600 dark:group-hover:text-rose-400"
+                                : "text-[#111827] dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400"
+                            }`}
+                          >
+                            {paper.title || paper.shortName}
+                          </h3>
+                          <p className="text-[11px] text-neutral-400 dark:text-neutral-500 truncate mt-0.5">
+                            {paper.journal}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <h3 className="font-bold text-xs text-[#111827] dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition truncate">
-                          {paper.title || paper.shortName}
-                        </h3>
-                        <p className="text-[11px] text-neutral-400 dark:text-neutral-500 truncate mt-0.5">
-                          {paper.journal}
-                        </p>
-                      </div>
+                      {onDeletePaper && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeletePaper(paper);
+                          }}
+                          title="Delete manuscript"
+                          className="p-1 rounded-md text-neutral-300 dark:text-neutral-600 hover:text-rose-600 hover:bg-rose-500/10 transition opacity-0 group-hover:opacity-100 cursor-pointer shrink-0"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
-                    {onDeletePaper && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDeletePaper(paper);
-                        }}
-                        title="Delete manuscript"
-                        className="p-1 rounded-md text-neutral-300 dark:text-neutral-600 hover:text-rose-600 hover:bg-rose-500/10 transition opacity-0 group-hover:opacity-100 cursor-pointer shrink-0"
+                    <div className="flex items-center justify-between pt-3 mt-3 border-t border-black/[0.04] dark:border-white/[0.06] text-[11px]">
+                      <span
+                        className={`font-semibold ${
+                          isDeskReject
+                            ? "text-rose-700 dark:text-rose-400"
+                            : "text-neutral-600 dark:text-neutral-400"
+                        }`}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                        {isDeskReject
+                          ? "Status: Editorial Desk Reject"
+                          : paper.isEligibleForReview === false
+                          ? paper.ineligibilityReason === "already_published"
+                            ? "Status: Already Published"
+                            : "Status: Review Ineligible"
+                          : `Triage Readiness: ${paper.score ?? 0}%`}
+                      </span>
+                      <span
+                        className={`inline-flex items-center gap-1 font-semibold ${
+                          isDeskReject
+                            ? "text-rose-600 dark:text-rose-400"
+                            : "text-blue-600 dark:text-blue-400"
+                        } group-hover:translate-x-0.5 transition-transform`}
+                      >
+                        <span>Open Workspace</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between pt-3 mt-3 border-t border-black/[0.04] dark:border-white/[0.06] text-[11px]">
-                    <span className="font-semibold text-neutral-600 dark:text-neutral-400">
-                      {paper.isEligibleForReview === false
-                        ? paper.ineligibilityReason === "already_published"
-                          ? "Status: Already Published"
-                          : "Status: Review Ineligible"
-                        : `Triage Readiness: ${paper.score ?? 0}%`}
-                    </span>
-                    <span className="inline-flex items-center gap-1 font-semibold text-blue-600 dark:text-blue-400 group-hover:translate-x-0.5 transition-transform">
-                      <span>Open Workspace</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
