@@ -3,8 +3,35 @@ import {
   JOURNAL_CATALOG,
   MatchedJournalItem,
   TargetJournalTierResults,
+  inferJournalDiscipline,
+  isDisciplineMatch,
 } from "../journals";
 import { EditorialTriageOutcome, JournalRecommendation, PriorityIssue } from "../types";
+import { JournalScopeProfile } from "../journal-scope-service";
+
+/**
+ * Extracts salient domain topics and keywords from manuscript title and abstract.
+ */
+export function extractManuscriptTopics(title: string, abstract: string): string[] {
+  const combined = `${title} ${abstract}`.toLowerCase();
+  const candidates = [
+    "machine learning", "deep learning", "neural networks", "computer vision",
+    "natural language processing", "optimization", "stochastic programming",
+    "integer programming", "operations research", "supply chain", "causal inference",
+    "oncology", "cancer", "immunotherapy", "biomarker", "clinical trial", "cardiovascular",
+    "econometrics", "macroeconomics", "corporate finance", "asset pricing",
+    "quantum computing", "bioinformatics", "genomics", "materials science", "robotics"
+  ];
+  const matched = candidates.filter((c) => combined.includes(c));
+  if (matched.length > 0) {
+    return matched.slice(0, 5);
+  }
+  const words = title
+    .replace(/[^a-zA-Z0-9\s]/g, "")
+    .split(/\s+/)
+    .filter((w) => w.length > 4 && !["using", "based", "study", "analysis", "approach", "novel", "towards"].includes(w.toLowerCase()));
+  return words.slice(0, 4);
+}
 
 /**
  * Builds the canonical Priority-A "critical journal scope mismatch" issue.
@@ -57,12 +84,35 @@ export function evaluateManuscriptScopeTriage(
   title: string,
   abstract: string,
   targetJournalName?: string,
-  citedJournals?: string[]
+  citedJournals?: string[],
+  liveJournalScope?: JournalScopeProfile | null
 ): ScopeTriageResult {
   const journalMatches = findMatchingJournals(title, abstract, targetJournalName, citedJournals);
   const detectedDiscipline = journalMatches.detectedDiscipline || "Scholarly Research";
   const targetEval = journalMatches.targetJournalEvaluation;
-  const isTargetScopeMismatch = Boolean(targetEval?.isDisciplinaryMismatch);
+
+  // Determine effective target discipline from live scope profile, catalog evaluation, or name inference
+  const effectiveJournalDiscipline =
+    liveJournalScope?.primaryDiscipline ||
+    targetEval?.journalDiscipline ||
+    (targetJournalName ? inferJournalDiscipline(targetJournalName) : undefined);
+
+  // Check disciplinary alignment
+  let isTargetScopeMismatch = false;
+  if (effectiveJournalDiscipline) {
+    const matchRes = isDisciplineMatch(detectedDiscipline, effectiveJournalDiscipline);
+    isTargetScopeMismatch = !matchRes.isMatch;
+  } else if (targetEval?.isDisciplinaryMismatch !== undefined) {
+    isTargetScopeMismatch = targetEval.isDisciplinaryMismatch;
+  }
+
+  const cleanJournalName = liveJournalScope?.officialName || targetJournalName || "Target Journal";
+  const manuscriptTopics = extractManuscriptTopics(title, abstract);
+  const journalDisciplineLabel = effectiveJournalDiscipline || "a different discipline";
+
+  const catalogEntry = targetJournalName
+    ? JOURNAL_CATALOG.find((j) => j.name.toLowerCase() === targetJournalName.toLowerCase())
+    : undefined;
 
   const editorialTriage: EditorialTriageOutcome = isTargetScopeMismatch
     ? {
@@ -70,12 +120,36 @@ export function evaluateManuscriptScopeTriage(
         sentToPeerReview: false,
         deskRejectReason: "scope_mismatch",
         handlingEditorDecision: "Desk Reject",
-        summary: `Desk rejected at editorial triage: "${targetJournalName}" publishes in ${targetEval?.journalDiscipline || "a different discipline"}, whereas this manuscript's substantive domain is ${detectedDiscipline}. Out-of-scope submissions are declined by the handling editor during initial screening and do not proceed to peer review. Redirect the work to a ${detectedDiscipline} venue before resubmitting.`,
+        summary: `Desk rejected at editorial triage: "${cleanJournalName}" publishes in ${journalDisciplineLabel}${liveJournalScope?.publisher ? ` (${liveJournalScope.publisher})` : ""}, whereas this manuscript's substantive domain is ${detectedDiscipline}. Out-of-scope submissions are declined by the handling editor during initial screening and do not proceed to peer review. Redirect the work to a ${detectedDiscipline} venue before resubmitting.`,
+        scopeComparison: {
+          manuscriptDiscipline: detectedDiscipline,
+          manuscriptTopics,
+          journalName: cleanJournalName,
+          journalDiscipline: journalDisciplineLabel,
+          journalPublisher: liveJournalScope?.publisher || catalogEntry?.publisher,
+          journalScopeSummary: liveJournalScope?.summaryScope || liveJournalScope?.aimsAndScope || catalogEntry?.aimsAndScope,
+          journalKeyConcepts: liveJournalScope?.keyConcepts || [journalDisciplineLabel],
+          mismatchExplanation: `The manuscript's core research domain (${detectedDiscipline}) falls outside the published aims and scope of ${cleanJournalName} (${journalDisciplineLabel}). Out-of-scope manuscripts face immediate editorial desk rejection without external referee assignment.`,
+          isScopeMatch: false,
+          suggestedVenues: [journalMatches.realistic.name, journalMatches.reach.name, journalMatches.fallback.name],
+        },
       }
     : {
         outcome: "sent_for_review",
         sentToPeerReview: true,
-        summary: `Cleared editorial triage (aims & scope aligned with ${targetJournalName || "the target field"}) and advanced to the peer-review panel for full evaluation.`,
+        summary: `Cleared editorial triage (aims & scope aligned with "${cleanJournalName}" in ${journalDisciplineLabel}) and advanced to the peer-review panel for full evaluation.`,
+        scopeComparison: targetJournalName
+          ? {
+              manuscriptDiscipline: detectedDiscipline,
+              manuscriptTopics,
+              journalName: cleanJournalName,
+              journalDiscipline: journalDisciplineLabel,
+              journalPublisher: liveJournalScope?.publisher || catalogEntry?.publisher,
+              journalScopeSummary: liveJournalScope?.summaryScope || liveJournalScope?.aimsAndScope || catalogEntry?.aimsAndScope,
+              journalKeyConcepts: liveJournalScope?.keyConcepts || [journalDisciplineLabel],
+              isScopeMatch: true,
+            }
+          : undefined,
       };
 
   return {

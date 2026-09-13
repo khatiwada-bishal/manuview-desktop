@@ -123,6 +123,7 @@ export interface DiagnosticProgressUpdate {
     | "classifying"
     | "verifying_references"
     | "matching_journals"
+    | "editorial_triage"
     | "generating_review"
     | "streaming_review"
     | "completed";

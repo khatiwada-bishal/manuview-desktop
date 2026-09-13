@@ -265,6 +265,19 @@ export interface TargetJournalEvaluation {
  * desk-rejected paper is NEVER sent to peer reviewers. Scope mismatch is the
  * single most common desk-rejection trigger.
  */
+export interface ScopeComparisonDetail {
+  manuscriptDiscipline: string;
+  manuscriptTopics: string[];
+  journalName: string;
+  journalDiscipline: string;
+  journalPublisher?: string;
+  journalScopeSummary?: string;
+  journalKeyConcepts?: string[];
+  mismatchExplanation?: string;
+  isScopeMatch: boolean;
+  suggestedVenues?: string[];
+}
+
 export interface EditorialTriageOutcome {
   outcome: 'sent_for_review' | 'desk_reject';
   /** True only when the manuscript cleared triage and reached the reviewer panel. */
@@ -274,6 +287,8 @@ export interface EditorialTriageOutcome {
   handlingEditorDecision?: ReviewerPersonaFeedback['decisionRecommendation'];
   /** Human-readable explanation of the triage outcome. */
   summary: string;
+  /** Detailed comparison of manuscript domain vs. fetched journal scope */
+  scopeComparison?: ScopeComparisonDetail;
 }
 
 /**
