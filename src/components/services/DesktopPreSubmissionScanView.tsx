@@ -33,6 +33,7 @@ import {
   Plus,
   Search,
   X,
+  Lock,
 } from "lucide-react";
 import {
   FullReviewReport,
@@ -1072,28 +1073,55 @@ export function DesktopPreSubmissionScanView({
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   {/* Readiness Score Card */}
                   <div className="p-6 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937] flex flex-col justify-center items-center text-center shadow-2xs">
-                    <div className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">
-                      Readiness Score
-                    </div>
-                    <div className="flex items-baseline gap-1 my-1">
-                      <span className="text-4xl font-extrabold text-[#111827] dark:text-white">{report.overallScore ?? 75}</span>
-                      <span className="text-neutral-400 text-sm font-semibold">/100</span>
-                    </div>
-                    <div
-                      className={`mt-1.5 px-3 py-1 rounded-md text-xs font-semibold border ${
-                        (report.overallScore ?? 75) >= 80
-                          ? "bg-[#ECFDF5] text-[#065F46] border-[#A7F3D0] dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
-                          : (report.overallScore ?? 75) >= 65
-                          ? "bg-[#FEF3C7] text-[#92400E] border-[#FDE68A] dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
-                          : "bg-[#FEF2F2] text-[#991B1B] border-[#FECACA] dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800"
-                      }`}
-                    >
-                      {(report.overallScore ?? 75) >= 80
-                        ? "Submission Ready"
-                        : (report.overallScore ?? 75) >= 65
-                        ? "Revision Prioritized"
-                        : "Substantive Hazards"}
-                    </div>
+                    {report.overallScore !== undefined ? (
+                      <>
+                        <div className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">
+                          Readiness Score
+                        </div>
+                        <div className="flex items-baseline gap-1 my-1">
+                          <span className="text-4xl font-extrabold text-[#111827] dark:text-white">{report.overallScore}</span>
+                          {report.scoreUncertaintyMargin !== undefined && (
+                            <span className="text-sm font-bold text-neutral-500 dark:text-neutral-400">
+                              ±{report.scoreUncertaintyMargin}
+                            </span>
+                          )}
+                          <span className="text-neutral-400 text-sm font-semibold">/100</span>
+                        </div>
+                        <div
+                          className={`mt-1.5 px-3 py-1 rounded-md text-xs font-semibold border ${
+                            report.overallScore >= 80
+                              ? "bg-[#ECFDF5] text-[#065F46] border-[#A7F3D0] dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
+                              : report.overallScore >= 65
+                              ? "bg-[#FEF3C7] text-[#92400E] border-[#FDE68A] dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
+                              : "bg-[#FEF2F2] text-[#991B1B] border-[#FECACA] dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800"
+                          }`}
+                        >
+                          {report.overallScore >= 80
+                            ? "Submission Ready"
+                            : report.overallScore >= 65
+                            ? "Revision Prioritized"
+                            : "Substantive Hazards"}
+                        </div>
+                        {report.panelConsensus && (
+                          <div className="text-[10px] text-neutral-500 dark:text-neutral-400 font-medium mt-1">
+                            Band: {report.panelConsensus.scoreRange?.[0]}–{report.panelConsensus.scoreRange?.[1]} ({report.panelConsensus.consensusLevel})
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-1">
+                          Evaluation Mode
+                        </div>
+                        <div className="my-1.5 flex items-center justify-center gap-1.5 text-blue-600 dark:text-blue-400 font-bold text-sm">
+                          <ShieldCheck className="w-5 h-5" />
+                          <span>Deterministic Audit</span>
+                        </div>
+                        <div className="mt-1 px-2.5 py-0.5 rounded text-[10px] font-semibold bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700">
+                          Scores Suppressed (Offline)
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Editorial Summary Callout */}
@@ -1236,16 +1264,78 @@ export function DesktopPreSubmissionScanView({
               </div>
             )}
 
+            {/* Deterministic Compliance Audit (P0-1) */}
+            {report.complianceAudit && report.complianceAudit.items && report.complianceAudit.items.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-sm font-bold text-[#111827] dark:text-white">
+                    <CheckSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <span>Deterministic Compliance Audit</span>
+                    <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded border border-neutral-200 dark:border-neutral-700">
+                      Rule-Based
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs font-medium">
+                    <span className="text-emerald-700 dark:text-emerald-400 font-bold">{report.complianceAudit.passedCount} Passed</span>
+                    <span className="text-neutral-300 dark:text-neutral-700">•</span>
+                    <span className="text-amber-700 dark:text-amber-400 font-bold">{report.complianceAudit.warnCount} Warnings</span>
+                    <span className="text-neutral-300 dark:text-neutral-700">•</span>
+                    <span className="text-rose-700 dark:text-rose-400 font-bold">{report.complianceAudit.failedCount} Failures</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {report.complianceAudit.items.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`p-4 rounded-2xl border transition shadow-2xs ${
+                        item.status === "pass"
+                          ? "bg-white border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937]"
+                          : item.status === "warn"
+                          ? "bg-amber-50/50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800/40"
+                          : "bg-rose-50/50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-800/40"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <span className="text-xs font-bold text-neutral-900 dark:text-white">{item.name}</span>
+                        <span
+                          className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider border shrink-0 ${
+                            item.status === "pass"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
+                              : item.status === "warn"
+                              ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
+                              : "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800"
+                          }`}
+                        >
+                          {item.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">{item.detail}</p>
+                      {item.actionableRecommendation && (
+                        <p className="text-[11px] text-neutral-600 dark:text-neutral-400 mt-2 pt-2 border-t border-neutral-100 dark:border-neutral-800 flex items-start gap-1.5">
+                          <span className="font-semibold text-neutral-800 dark:text-neutral-200 shrink-0">Remedy:</span>
+                          <span>{item.actionableRecommendation}</span>
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Peer-review panel — only reached when the manuscript clears editorial triage */}
             {report.reviewerPersonas && report.reviewerPersonas.length > 0 && (
               <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2 text-sm font-bold text-[#111827] dark:text-white">
                     <Users className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
                     <span>
                       {report.editorialTriage?.outcome === "desk_reject"
                         ? "Editorial Triage Decision"
                         : "5-Persona Peer-Review Simulation"}
+                    </span>
+                    <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded border border-neutral-200 dark:border-neutral-700">
+                      ⚖️ Simulated Panel (Synthetic)
                     </span>
                   </div>
                   <span className="text-xs text-neutral-400">
@@ -1254,6 +1344,63 @@ export function DesktopPreSubmissionScanView({
                       : "Independent domain evaluations"}
                   </span>
                 </div>
+
+                {/* Panel Consensus & Score Uncertainty Card (P0-3) */}
+                {report.panelConsensus && (
+                  <div className="p-4 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937] shadow-2xs space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider">
+                          Panel Consensus:
+                        </span>
+                        <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
+                          report.panelConsensus.consensusLevel === "unanimous"
+                            ? "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
+                            : report.panelConsensus.consensusLevel === "majority"
+                            ? "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800"
+                            : "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
+                        }`}>
+                          {report.panelConsensus.consensusLevel.toUpperCase()} (±{report.panelConsensus.uncertaintyMargin} Margin)
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px] font-medium text-neutral-600 dark:text-neutral-400 flex-wrap">
+                        {report.panelConsensus.distribution.deskReject > 0 && (
+                          <span className="px-2 py-0.5 rounded bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300">
+                            Desk Reject ×{report.panelConsensus.distribution.deskReject}
+                          </span>
+                        )}
+                        {report.panelConsensus.distribution.reject > 0 && (
+                          <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300">
+                            Reject ×{report.panelConsensus.distribution.reject}
+                          </span>
+                        )}
+                        {report.panelConsensus.distribution.majorRevision > 0 && (
+                          <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+                            Major Rev ×{report.panelConsensus.distribution.majorRevision}
+                          </span>
+                        )}
+                        {report.panelConsensus.distribution.minorRevision > 0 && (
+                          <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                            Minor Rev ×{report.panelConsensus.distribution.minorRevision}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                      {report.panelConsensus.borderlineDiagnosis}
+                    </p>
+                  </div>
+                )}
+
+                {/* Partial LLM Generation Notice (P0-1) */}
+                {report.missingPersonaRoles && report.missingPersonaRoles.length > 0 && (
+                  <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2 shadow-2xs">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+                    <span>
+                      <strong>Partial Reviewer Generation:</strong> {report.reviewerPersonas.length} of 5 reviewer perspectives generated by the AI provider (missing: {report.missingPersonaRoles.join(", ")}). Missing perspectives are honestly omitted rather than synthetically backfilled.
+                    </span>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-2 border-b border-[#E5E7EB] dark:border-[#1F2937] pb-2 overflow-x-auto">
                   {report.reviewerPersonas.map((p: ReviewerPersonaFeedback, idx: number) => {
@@ -1358,6 +1505,18 @@ export function DesktopPreSubmissionScanView({
                           </div>
                         )}
                       </div>
+
+                      {active.confidentialEditorNote && (
+                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 dark:bg-slate-900/60 dark:border-slate-800 text-xs space-y-1 shadow-2xs">
+                          <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-[11px]">
+                            <Lock className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+                            <span>Confidential Editorial Office Memo (Simulation):</span>
+                          </div>
+                          <p className="text-neutral-600 dark:text-neutral-300 italic leading-relaxed">
+                            &ldquo;{active.confidentialEditorNote}&rdquo;
+                          </p>
+                        </div>
+                      )}
 
                       <div className="p-4 rounded-xl bg-[#FEF2F2] border border-[#FECACA] dark:bg-rose-950/30 dark:border-rose-800/50 text-xs text-[#991B1B] dark:text-rose-300 flex items-start gap-2.5">
                         <span className="text-base select-none">⚠️</span>

@@ -328,7 +328,7 @@ export async function verifyDOIWithCrossref(doi: string): Promise<Partial<Refere
   }
 }
 
-export async function batchVerifyReferences(rawReferences: string[]): Promise<ReferenceVerification[]> {
+export async function batchVerifyReferences(rawReferences: (string | { raw?: string })[]): Promise<ReferenceVerification[]> {
   const results: ReferenceVerification[] = new Array(rawReferences.length);
   const concurrency = 6;
   let currentIndex = 0;
@@ -336,7 +336,8 @@ export async function batchVerifyReferences(rawReferences: string[]): Promise<Re
   async function worker() {
     while (currentIndex < rawReferences.length) {
       const idx = currentIndex++;
-      const raw = rawReferences[idx];
+      const item = rawReferences[idx];
+      const raw = typeof item === "string" ? item : item?.raw || "";
 
       // Extract DOI if present, stripping trailing punctuation (dots, commas, semicolons, brackets)
       const doiMatch = raw.match(/\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)\b/i);

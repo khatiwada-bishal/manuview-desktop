@@ -75,8 +75,12 @@ export function sanitizeErrorMessage(msg: string): string {
  * Sanitizes untrusted user/author text before LLM prompt injection (REQ-SEC-02).
  * Disarms custom delimiter sequences, fake XML boundary tags, and common prompt injection directives.
  */
-export function sanitizeAuthorText(text: string): string {
+export function sanitizeAuthorText(text: unknown): string {
   if (!text) return "";
+  if (typeof text !== "string") {
+    if (typeof (text as any).raw === "string") return sanitizeAuthorText((text as any).raw);
+    return String(text);
+  }
   return text
     // Neutralize custom boundary tags and XML wrapper impersonations
     .replace(/<{3,}[^>]+>{3,}/gi, "[delimiter neutralized]")

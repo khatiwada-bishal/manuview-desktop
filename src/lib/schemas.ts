@@ -81,6 +81,7 @@ export const ReviewerPersonaSchema = z.object({
   mustAddressItems: StringOrArray.catch([]),
   evidenceAnchors: StringOrArray.catch([]),
   counterArguments: StringOrArray.catch([]),
+  confidentialEditorNote: z.string().optional(),
 });
 
 export const JournalTierSchema = z.enum(["Reach", "Realistic", "Fallback"]);

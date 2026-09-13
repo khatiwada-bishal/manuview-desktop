@@ -151,7 +151,7 @@ export async function extractTextFromFile(file: File): Promise<string> {
 
 
 export function classifyDocument(rawText: string, filename?: string): DocumentClassification {
-  const clean = rawText.trim();
+  const clean = (rawText || "").trim();
   const wordCount = clean.split(/\s+/).filter(Boolean).length;
   const lower = clean.toLowerCase();
   const ext = filename ? filename.split('.').pop()?.toLowerCase() : '';

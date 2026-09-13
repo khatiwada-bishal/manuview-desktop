@@ -60,6 +60,8 @@ export interface ReviewerPersonaFeedback {
   evidenceAnchors?: string[];
   counterArguments?: string[];
   source?: 'llm' | 'heuristic';
+  /** Simulated handling editor confidential comments to editorial board (P0-3) */
+  confidentialEditorNote?: string;
 }
 
 export type ReferenceStatus = 'valid' | 'retracted' | 'expression_of_concern' | 'unresolvable' | 'unchecked';
@@ -187,6 +189,15 @@ export interface ParsedManuscript {
     detectedGuidelines?: string[];
     declaredLimitations?: string[];
   };
+  citationStats?: {
+    totalReferences?: number;
+    crossrefVerified?: number;
+    retractedCount?: number;
+    doiCount?: number;
+    pre2015Count?: number;
+    authorSelfCitationCount?: number;
+    authorSelfCitationRatio?: number;
+  };
 }
 
 export interface ReportingGuidelineItem {
@@ -265,6 +276,44 @@ export interface EditorialTriageOutcome {
   summary: string;
 }
 
+/**
+ * Deterministic compliance audit item (P0-1). Used in heuristic/offline mode
+ * to present factual, verifiable checks rather than fabricated referee opinions.
+ */
+export interface ComplianceAuditItem {
+  id: string;
+  category: 'Structure' | 'Methodology' | 'Guidelines' | 'Citations' | 'Language' | 'Scope';
+  name: string;
+  status: 'pass' | 'warn' | 'fail';
+  detail: string;
+  evidenceExcerpt?: string;
+  actionableRecommendation?: string;
+}
+
+export interface DeterministicComplianceAudit {
+  items: ComplianceAuditItem[];
+  passedCount: number;
+  warnCount: number;
+  failedCount: number;
+  summary: string;
+}
+
+/**
+ * Panel consensus and decision variance distribution across the simulated reviewers (P0-3).
+ */
+export interface PanelConsensus {
+  distribution: {
+    deskReject: number;
+    reject: number;
+    majorRevision: number;
+    minorRevision: number;
+  };
+  consensusLevel: 'unanimous' | 'majority' | 'split';
+  borderlineDiagnosis: string;
+  uncertaintyMargin: number; // e.g. ±3 (unanimous) to ±10 (split)
+  scoreRange?: [number, number]; // [minScore, maxScore]
+}
+
 export interface FullReviewReport {
   mode?: 'full';
   id: string;
@@ -274,7 +323,10 @@ export interface FullReviewReport {
   targetJournalEvaluation?: TargetJournalEvaluation;
   /** Editorial desk-review gate result; determines whether peer review occurred. */
   editorialTriage?: EditorialTriageOutcome;
-  overallScore?: number; // 0 to 100 (omitted if non-academic or already published)
+  overallScore?: number; // 0 to 100 (omitted if non-academic, already published, or heuristic-sourced)
+  scoreUncertaintyMargin?: number; // e.g., ±3 (unanimous) to ±10 (split panel)
+  panelConsensus?: PanelConsensus;
+  complianceAudit?: DeterministicComplianceAudit;
   isEligibleForReview?: boolean; // false if already published OR non-academic manuscript
   ineligibilityReason?: 'already_published' | 'non_academic_document';
   publishedDetails?: PublishedArticleDetails;
@@ -283,6 +335,7 @@ export interface FullReviewReport {
   dimensions?: Record<ScoreDimension, DimensionScore>;
   priorityIssues: PriorityIssue[];
   reviewerPersonas: ReviewerPersonaFeedback[];
+  missingPersonaRoles?: ReviewerPersonaFeedback['persona'][];
   journalRecommendations: JournalRecommendation[];
   citationIntegrity: CitationIntegritySummary;
   reportingGuideline?: ReportingGuidelineCheck;

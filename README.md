@@ -210,9 +210,11 @@ Once you have your key from any of the providers above:
 
 ## ⚠️ Scholarly Disclaimer & Responsible Use
 
-- **Use AI with Caution**: Generative AI models can occasionally produce inaccuracies, imprecise critiques, or false references. Always exercise independent scholarly judgment and verify citations and statistical parameters.
-- **Supporting Decision-Support Only**: ManuView is designed to assist authors in pre-submission preparation and diagnostic triage. It does not replace domain expertise, formal ethical review boards, or institutional oversight.
-- **No Publication Guarantee**: No automated system can guarantee manuscript acceptance or favorable peer review outcomes. Final editorial decisions rest exclusively with journal editors and external human peer reviewers.
+- **Simulated Synthetic Personas**: All reviewer personas, editorial office notes, and adversarial critiques displayed in ManuView are synthetic, AI-simulated role models designed exclusively for pre-submission stress-testing and manuscript triage. They do **not** represent real living individuals, actual journal editorial boards, or binding peer-review decisions.
+- **Offline Deterministic Audits vs. Synthetic Scoring**: When operated without an active LLM connection (offline heuristic mode), ManuView strictly suppresses overall acceptance scores and simulated personas to safeguard scholarly integrity. Instead, it provides a transparent, deterministic compliance audit covering IMRaD section structure, statistical and protocol cues, reporting guideline adherence, DOI validity, and author self-citation density.
+- **Use AI with Caution**: Generative AI models can occasionally produce inaccuracies, imprecise critiques, or false inferences. Always exercise independent scholarly judgment and verify citations, experimental methods, and statistical parameters.
+- **Decision-Support Only**: ManuView is designed solely to assist authors in pre-submission preparation and diagnostic triage. It does not replace domain expertise, formal peer review, institutional ethics boards, or editorial oversight.
+- **No Publication Guarantee**: Automated diagnostic evaluations cannot guarantee manuscript acceptance or favorable peer review outcomes. Final editorial decisions rest exclusively with journal editors and designated peer reviewers.
 - **Ethics Alignment**: Designed to assist compliance with international guidelines from the **Committee on Publication Ethics (COPE)** and the **International Committee of Medical Journal Editors (ICMJE)**.
 
 ---
