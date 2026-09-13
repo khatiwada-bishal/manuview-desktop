@@ -269,32 +269,6 @@ export function DesktopSidebar({
 
         {/* ICONS BENEATH LOGO (overflow-visible so tooltips and submenus fly out cleanly) */}
         <div className="flex-1 overflow-visible px-2 py-3 space-y-3">
-          {/* Services Icons */}
-          <div className="space-y-1.5 flex flex-col items-center">
-            {SERVICES.map((service) => {
-              const Icon = service.icon;
-              return (
-                <div key={service.id} className="relative group flex justify-center">
-                  <button
-                    type="button"
-                    onClick={service.action}
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition cursor-pointer hover:scale-105 shadow-2xs ${service.color}`}
-                  >
-                    <Icon className="w-4 h-4" />
-                  </button>
-                  {/* Tooltip on right */}
-                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1 bg-[#111827] text-white text-xs font-medium rounded-md shadow-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
-                    {service.name}
-                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#111827]" />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Divider */}
-          <div className="w-8 h-px bg-[#E5E7EB] dark:bg-[#1E293B] mx-auto" />
-
           {/* Search Icon */}
           <div className="relative group flex justify-center">
             <button
@@ -525,6 +499,32 @@ export function DesktopSidebar({
               </div>
             </div>
           </div>
+
+          {/* Divider */}
+          <div className="w-8 h-px bg-[#E5E7EB] dark:bg-[#1E293B] mx-auto" />
+
+          {/* Services Icons (Bottom) */}
+          <div className="space-y-1.5 flex flex-col items-center">
+            {SERVICES.map((service) => {
+              const Icon = service.icon;
+              return (
+                <div key={service.id} className="relative group flex justify-center">
+                  <button
+                    type="button"
+                    onClick={service.action}
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition cursor-pointer hover:scale-105 shadow-2xs ${service.color}`}
+                  >
+                    <Icon className="w-4 h-4" />
+                  </button>
+                  {/* Tooltip on right */}
+                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1 bg-[#111827] text-white text-xs font-medium rounded-md shadow-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
+                    {service.name}
+                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#111827]" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* FOOTER: Compact Settings Pill */}
@@ -632,55 +632,7 @@ export function DesktopSidebar({
 
       {/* SCROLLABLE MAIN CONTENT */}
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-4 [scrollbar-width:thin]">
-        {/* 2. SERVICES LIST */}
-        <div>
-          <div className="flex items-center justify-between px-2 mb-1.5">
-            <button
-              type="button"
-              onClick={() => setServicesExpanded(!servicesExpanded)}
-              className="flex items-center gap-1 text-[11px] font-bold text-neutral-400 dark:text-neutral-400 uppercase tracking-wider hover:text-neutral-700 dark:hover:text-neutral-200 transition cursor-pointer"
-            >
-              {servicesExpanded ? (
-                <ChevronDown className="w-3 h-3" />
-              ) : (
-                <ChevronRight className="w-3 h-3" />
-              )}
-              <span>SERVICES</span>
-            </button>
-            <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-400 bg-black/[0.04] dark:bg-white/[0.08] px-1.5 py-0.2 rounded-md">
-              {SERVICES.length}
-            </span>
-          </div>
-
-          {servicesExpanded && (
-            <div className="space-y-0.5">
-              {SERVICES.map((service) => {
-                const Icon = service.icon;
-                return (
-                  <button
-                    key={service.id}
-                    type="button"
-                    onClick={service.action}
-                    className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white text-neutral-700 dark:text-neutral-300 transition text-left cursor-pointer group"
-                  >
-                    <div
-                      className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${service.color}`}
-                    >
-                      <Icon className="w-3 h-3" />
-                    </div>
-                    <div className="truncate min-w-0">
-                      <div className="font-medium text-xs text-neutral-800 dark:text-neutral-200 group-hover:text-black dark:group-hover:text-white truncate">
-                        {service.name}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* 3. SEARCH BAR (Directly under Services) */}
+        {/* 1. SEARCH BAR */}
         <div className="pt-1">
           <button
             type="button"
@@ -697,7 +649,7 @@ export function DesktopSidebar({
           </button>
         </div>
 
-        {/* 4. ARTICLES LIST */}
+        {/* 2. ARTICLES LIST */}
         <div>
           <div className="flex items-center justify-between px-2 mb-1.5">
             <span className="text-[11px] font-bold text-[#9CA3AF] dark:text-neutral-400 uppercase tracking-wider">
@@ -898,6 +850,54 @@ export function DesktopSidebar({
               }))}
             </div>
           </div>
+        </div>
+
+        {/* 3. SERVICES LIST (Bottom section) */}
+        <div className="pt-2 border-t border-black/[0.04] dark:border-white/[0.06]">
+          <div className="flex items-center justify-between px-2 mb-1.5">
+            <button
+              type="button"
+              onClick={() => setServicesExpanded(!servicesExpanded)}
+              className="flex items-center gap-1 text-[11px] font-bold text-neutral-400 dark:text-neutral-400 uppercase tracking-wider hover:text-neutral-700 dark:hover:text-neutral-200 transition cursor-pointer"
+            >
+              {servicesExpanded ? (
+                <ChevronDown className="w-3 h-3" />
+              ) : (
+                <ChevronRight className="w-3 h-3" />
+              )}
+              <span>SERVICES</span>
+            </button>
+            <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-400 bg-black/[0.04] dark:bg-white/[0.08] px-1.5 py-0.2 rounded-md">
+              {SERVICES.length}
+            </span>
+          </div>
+
+          {servicesExpanded && (
+            <div className="space-y-0.5">
+              {SERVICES.map((service) => {
+                const Icon = service.icon;
+                return (
+                  <button
+                    key={service.id}
+                    type="button"
+                    onClick={service.action}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white text-neutral-700 dark:text-neutral-300 transition text-left cursor-pointer group"
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${service.color}`}
+                    >
+                      <Icon className="w-3 h-3" />
+                    </div>
+                    <div className="truncate min-w-0">
+                      <div className="font-medium text-xs text-neutral-800 dark:text-neutral-200 group-hover:text-black dark:group-hover:text-white truncate">
+                        {service.name}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* AI DISCLAIMER & USAGE PILL (Positioned in designated sidebar zone above footer) */}
