@@ -46,7 +46,7 @@ import {
   AvailableModel,
   ParsedManuscript,
 } from "@/lib/types";
-import JournalCombobox from "@/components/JournalCombobox";
+import JournalCombobox, { JournalInfoTooltip } from "@/components/JournalCombobox";
 import { BriefJournalFitView, BriefJournalFitPrintView } from "@/components/BriefJournalFitView";
 import { exportInteractiveHtmlReport, exportWordDocReport } from "@/lib/export-generator";
 import { pickManuscriptFileDesktop, isDesktopApp } from "@/lib/desktop";
@@ -511,15 +511,17 @@ export function DesktopPreSubmissionScanView({
         <div className="rounded-3xl liquid-glass-card p-5 sm:p-6 space-y-4 relative z-30">
           {/* Target Journal */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs sm:text-sm relative z-30">
-            <span className="w-36 flex items-center gap-2 font-semibold text-[#6B7280] dark:text-neutral-400">
+            <span className="w-36 flex items-center gap-1.5 font-semibold text-[#6B7280] dark:text-neutral-400">
               <Tag className="w-4 h-4 text-[#9CA3AF] dark:text-neutral-500" />
-              Target Journal <span className="text-red-500">*</span>
+              <span>Target Journal <span className="text-red-500">*</span></span>
+              <JournalInfoTooltip journal={targetJournal} />
             </span>
             <div className="flex-1 max-w-lg relative z-30">
               <JournalCombobox
                 value={targetJournal}
                 onChange={handleTargetJournalChange}
                 hasError={targetJournalError}
+                showScopeBadge={false}
                 placeholder="Type at least 3 letters to search 1,390+ journals..."
               />
               {targetJournalError && (

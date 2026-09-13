@@ -15,7 +15,7 @@ import {
   ArrowRight,
   ShieldAlert,
 } from "lucide-react";
-import JournalCombobox from "@/components/JournalCombobox";
+import JournalCombobox, { JournalInfoTooltip } from "@/components/JournalCombobox";
 import { pickManuscriptFileDesktop, isDesktopApp } from "@/lib/desktop";
 import { extractTextFromFile, parseManuscriptText } from "@/lib/parser";
 import { runManuscriptDiagnostic } from "@/lib/diagnostic-engine";
@@ -388,15 +388,19 @@ export function DesktopScanModal({
             </div>
 
             <div className="relative z-30">
-              <label className="block text-xs font-semibold text-[#374151] dark:text-neutral-300 mb-1">
-                Target Journal
-              </label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <label className="block text-xs font-semibold text-[#374151] dark:text-neutral-300">
+                  Target Journal
+                </label>
+                <JournalInfoTooltip journal={journal} />
+              </div>
               <JournalCombobox
                 value={journal}
                 onChange={(val) => {
                   setJournal(val);
                   setCompatibilityMatch(null);
                 }}
+                showScopeBadge={false}
                 placeholder="Type at least 3 letters to search journals..."
               />
             </div>

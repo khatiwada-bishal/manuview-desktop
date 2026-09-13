@@ -6,6 +6,7 @@ import { Search, Plus, Check, X, BookOpen, Trash2, ChevronDown, Globe, RefreshCw
 import MASTER_JOURNAL_LIST from "@/lib/journal-names.json";
 import { JOURNAL_CATALOG } from "@/lib/journals";
 import { useJournalScope, JournalScopeProfile } from "@/lib/journal-scope-service";
+export { default as JournalInfoTooltip } from "./JournalInfoTooltip";
 
 interface JournalComboboxProps {
   value: string;
@@ -29,7 +30,7 @@ export default function JournalCombobox({
   placeholder = "Type at least 3 letters to search journals...",
   className = "",
   inputClassName = "",
-  showScopeBadge = true,
+  showScopeBadge = false,
   onScopeLoaded,
 }: JournalComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
