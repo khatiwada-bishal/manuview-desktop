@@ -511,7 +511,7 @@ export function DesktopPreSubmissionScanView({
         <div className="rounded-3xl liquid-glass-card p-5 sm:p-6 space-y-4 relative z-30">
           {/* Target Journal */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs sm:text-sm relative z-30">
-            <span className="w-36 flex items-center gap-1.5 font-semibold text-[#6B7280] dark:text-neutral-400">
+            <span className="w-48 sm:w-52 shrink-0 flex items-center gap-1.5 font-semibold text-[#6B7280] dark:text-neutral-400 whitespace-nowrap">
               <Tag className="w-4 h-4 text-[#9CA3AF] dark:text-neutral-500" />
               <span>Target Journal <span className="text-red-500">*</span></span>
               <JournalInfoTooltip journal={targetJournal} />
@@ -535,7 +535,7 @@ export function DesktopPreSubmissionScanView({
 
           {/* AI Engine */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs sm:text-sm">
-            <span className="w-36 flex items-center gap-2 font-semibold text-[#6B7280] dark:text-neutral-400">
+            <span className="w-48 sm:w-52 shrink-0 flex items-center gap-2 font-semibold text-[#6B7280] dark:text-neutral-400 whitespace-nowrap">
               <SlidersHorizontal className="w-4 h-4 text-[#9CA3AF] dark:text-neutral-500" />
               AI Engine
             </span>
@@ -738,18 +738,18 @@ export function DesktopPreSubmissionScanView({
 
           {/* Diagnostic Scope */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs sm:text-sm">
-            <span className="w-36 flex items-center gap-2 font-semibold text-[#6B7280] dark:text-neutral-400">
+            <span className="w-48 sm:w-52 shrink-0 flex items-center gap-2 font-semibold text-[#6B7280] dark:text-neutral-400 whitespace-nowrap">
               <Hash className="w-4 h-4 text-[#9CA3AF] dark:text-neutral-500" />
               Diagnostic Scope
             </span>
             <div className="flex-1 text-neutral-600 dark:text-neutral-400 text-xs">
-              6 Evaluation Dimensions &bull; 5 Reviewer Personas &bull; Live Crossref DOI Validation &bull; Retraction Screening
+              6 Evaluation Dimensions &bull; 5 Reviewer Personas &bull; Scope &amp; Triage Alignment &bull; Actionable Prioritization
             </div>
           </div>
 
           {/* Data Retention */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs sm:text-sm">
-            <span className="w-36 flex items-center gap-2 font-semibold text-[#6B7280] dark:text-neutral-400">
+            <span className="w-48 sm:w-52 shrink-0 flex items-center gap-2 font-semibold text-[#6B7280] dark:text-neutral-400 whitespace-nowrap">
               <ShieldCheck className="w-4 h-4 text-[#9CA3AF] dark:text-neutral-500" />
               Data Retention
             </span>
