@@ -108,6 +108,21 @@ export type DocumentCategory =
   | 'general_or_creative'        // Essay, fiction, journalism, blog post
   | 'random_unstructured';       // Shopping list, notes, fragments, disorganized text
 
+export const VALID_DOCUMENT_CATEGORIES: ReadonlySet<DocumentCategory> = new Set<DocumentCategory>([
+  'academic_manuscript',
+  'source_code',
+  'resume_cv',
+  'grant_proposal',
+  'technical_doc',
+  'business_or_admin',
+  'general_or_creative',
+  'random_unstructured',
+]);
+
+export function isDocumentCategory(value: unknown): value is DocumentCategory {
+  return typeof value === 'string' && VALID_DOCUMENT_CATEGORIES.has(value as DocumentCategory);
+}
+
 export interface DocumentClassification {
   category: DocumentCategory;
   categoryLabel: string;
