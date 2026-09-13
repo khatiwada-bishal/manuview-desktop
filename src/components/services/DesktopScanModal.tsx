@@ -11,14 +11,19 @@ import {
   CheckCircle2,
   BookOpen,
   ShieldCheck,
+  Search,
+  ArrowRight,
+  ShieldAlert,
 } from "lucide-react";
 import JournalCombobox from "@/components/JournalCombobox";
 import { pickManuscriptFileDesktop, isDesktopApp } from "@/lib/desktop";
 import { extractTextFromFile, parseManuscriptText } from "@/lib/parser";
 import { runManuscriptDiagnostic } from "@/lib/diagnostic-engine";
+import { fetchLiveJournalScope, JournalScopeProfile } from "@/lib/journal-scope-service";
+import { evaluateManuscriptScopeTriage } from "@/lib/engine/scope-triage-journals";
 import { DesktopDashboardData } from "@/components/DesktopDashboard";
 import { PaperItem } from "@/components/DesktopSidebar";
-import { FullReviewReport, ProviderConfig } from "@/lib/types";
+import { FullReviewReport, ProviderConfig, ParsedManuscript } from "@/lib/types";
 import { useApiConnection } from "@/lib/useApiConnection";
 import { sanitizeErrorMessage, getSavedClientConfig } from "@/lib/llm";
 
@@ -53,6 +58,16 @@ export function DesktopScanModal({
   const [loadingPercent, setLoadingPercent] = useState<number | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
 
+  // Two-Stage Compatibility State
+  const [compatibilityMatch, setCompatibilityMatch] = useState<{
+    journalName: string;
+    journalDiscipline: string;
+    manuscriptDiscipline: string;
+    summary: string;
+    parsed: ParsedManuscript;
+    liveScope: JournalScopeProfile | null;
+  } | null>(null);
+
   if (!isOpen) return null;
 
   const handleSample = () => {
@@ -63,6 +78,7 @@ export function DesktopScanModal({
     setSelectedFile(null);
     setFileName(null);
     setError(null);
+    setCompatibilityMatch(null);
   };
 
   const handleNativePick = async () => {
@@ -73,6 +89,7 @@ export function DesktopScanModal({
         const blob = new Blob([res.bytes as unknown as BlobPart]);
         const file = new File([blob], res.name);
         setSelectedFile(file);
+        setCompatibilityMatch(null);
       }
     }
   };
@@ -83,10 +100,85 @@ export function DesktopScanModal({
       setSelectedFile(file);
       setFileName(file.name);
       setError(null);
+      setCompatibilityMatch(null);
     }
   };
 
-  const handleStartScan = async (e: React.FormEvent) => {
+  const finishScanAndOpenDashboard = (fullReport: FullReviewReport) => {
+    const newId = `paper-${Date.now()}`;
+    const isEligible = fullReport.isEligibleForReview !== false;
+    const isPublished =
+      fullReport.ineligibilityReason === "already_published" ||
+      Boolean(fullReport.publishedDetails?.isPublished);
+
+    const newPaper: PaperItem = {
+      id: newId,
+      title: fullReport.title || title || "Manuscript Pre-Submission",
+      shortName:
+        (fullReport.title || title).length > 24
+          ? (fullReport.title || title).substring(0, 24) + "..."
+          : fullReport.title || title,
+      journal: fullReport.publishedDetails?.journalName || journal,
+      score: isEligible ? (fullReport.overallScore || 80) : undefined,
+      isEligibleForReview: isEligible,
+      ineligibilityReason: fullReport.ineligibilityReason,
+      isPublished: isPublished,
+      publishedJournal: fullReport.publishedDetails?.journalName,
+      editorialTriage: fullReport.editorialTriage,
+    };
+
+    const savedConfig = getSavedClientConfig();
+    const engineName = isConnected && provider
+      ? `${provider.toUpperCase()} (${modelName || "ACTIVE"})`
+      : savedConfig?.provider
+      ? `${savedConfig.provider.toUpperCase()} (${savedConfig.model || "ACTIVE"})`
+      : "ManuView Academic Diagnostic Engine";
+
+    const dashboardData: DesktopDashboardData = {
+      paperTitle: fullReport.title || title,
+      headlineTitle: isPublished
+        ? `${newPaper.journal} (Published Article)`
+        : `${journal} Pre-Submission Diagnostic`,
+      targetJournal: newPaper.journal,
+      aiEngine: engineName,
+      latencyMs: 120,
+      score: isEligible ? (fullReport.overallScore || 80) : undefined,
+      statusText: !isEligible
+        ? isPublished
+          ? "Already Published Article"
+          : "Ineligible Document Type"
+        : (fullReport.overallScore || 80) >= 80
+        ? "High Acceptance Probability"
+        : "Revision Prioritized",
+      vulnerabilities: fullReport.priorityIssues?.map((issue) => ({
+        type: (issue.category === "Causal Claims" ? "overclaim" : "sample_size") as "overclaim" | "sample_size",
+        title: issue.title,
+        description: issue.description,
+        severity: (issue.priority === "A" ? "critical" : "warning") as "critical" | "warning",
+      })) || [],
+      reviewers: fullReport.reviewerPersonas?.map((p) => ({
+        name: p.name,
+        role: p.title || p.persona,
+        tag: (p.decisionRecommendation === "Desk Reject" ? "Critical" : "Major") as "Major" | "Minor" | "Critical",
+        quote: p.keyChallenge || p.assessment?.slice(0, 150) || "Comprehensive evaluation required.",
+        detail: p.majorCritiques?.join(" ") || p.assessment || "",
+      })) || [],
+      citationAudit: {
+        verifiedCount: fullReport.citationIntegrity?.verifiedCount ?? 0,
+        totalCount: fullReport.citationIntegrity?.totalReferences ?? 0,
+        retractedCount: fullReport.citationIntegrity?.retractedCount ?? 0,
+        notes: fullReport.citationIntegrity?.references?.length
+          ? `Verified ${fullReport.citationIntegrity.verifiedCount} DOIs via CrossRef Open API.`
+          : undefined,
+      },
+    };
+
+    onComplete(newPaper, dashboardData, fullReport);
+    onClose();
+  };
+
+  // Step D: Click 'Check compatibility' button
+  const handleCheckCompatibility = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFile && (!title.trim() || !abstract.trim())) {
       setError("Please provide either a manuscript document or Title and Abstract.");
@@ -99,8 +191,8 @@ export function DesktopScanModal({
 
     setLoading(true);
     setError(null);
-    setLoadingStep("Extracting sections and parsing bibliography...");
-    setLoadingPercent(10);
+    setLoadingStep("Analyzing paper & journal scope compatibility...");
+    setLoadingPercent(20);
 
     try {
       let rawText = "";
@@ -114,89 +206,85 @@ export function DesktopScanModal({
       if (title.trim()) parsed.title = title.trim();
       if (abstract.trim()) parsed.abstract = abstract.trim();
 
-      const savedConfig = getSavedClientConfig();
+      setLoadingStep(`Searching aims & scope for "${journal}" via scholarly registries...`);
+      setLoadingPercent(40);
+      const liveScope = await fetchLiveJournalScope(journal);
 
-      const fullReport: FullReviewReport = await runManuscriptDiagnostic(
+      setLoadingStep("Comparing manuscript research domain against journal remit...");
+      setLoadingPercent(70);
+      const triageResult = evaluateManuscriptScopeTriage(
+        parsed.title,
+        parsed.abstract,
+        journal,
+        undefined,
+        liveScope
+      );
+
+      // Decision F: Does scope match between journal and paper?
+      // Rejection Path: F -- No --> G [Desk Reject] --> H [Display Desk Reject Details] --> I ([End])
+      if (triageResult.isTargetScopeMismatch) {
+        setLoadingStep("Desk Reject flagged: Generating handling editor triage report...");
+        setLoadingPercent(85);
+
+        const savedConfig = getSavedClientConfig();
+        const deskRejectReport = await runManuscriptDiagnostic(
+          parsed,
+          savedConfig,
+          journal,
+          (update) => {
+            setLoadingStep(update.message);
+            if (update.percent !== undefined) setLoadingPercent(update.percent);
+          },
+          liveScope
+        );
+
+        finishScanAndOpenDashboard(deskRejectReport);
+        return;
+      }
+
+      // Acceptance Path: F -- Yes --> J [Submit for Review ready]
+      setCompatibilityMatch({
+        journalName: liveScope?.officialName || journal,
+        journalDiscipline: liveScope?.primaryDiscipline || triageResult.detectedDiscipline,
+        manuscriptDiscipline: triageResult.detectedDiscipline,
+        summary: triageResult.editorialTriage.summary,
         parsed,
+        liveScope,
+      });
+    } catch (err: any) {
+      setError(sanitizeErrorMessage(err.message || "Scope compatibility check failed."));
+    } finally {
+      setLoading(false);
+      setLoadingStep("");
+      setLoadingPercent(undefined);
+    }
+  };
+
+  // Step J: Click 'Submit for Review' button
+  const handleSubmitForReview = async () => {
+    if (!compatibilityMatch) return;
+
+    setLoading(true);
+    setError(null);
+    setLoadingStep("Commissioning 5-persona peer review panel (Methods, Domain, Editor, Stats, Devil's Advocate)...");
+    setLoadingPercent(40);
+
+    try {
+      const savedConfig = getSavedClientConfig();
+      const fullReport = await runManuscriptDiagnostic(
+        compatibilityMatch.parsed,
         savedConfig,
         journal,
         (update) => {
           setLoadingStep(update.message);
           if (update.percent !== undefined) setLoadingPercent(update.percent);
-        }
+        },
+        compatibilityMatch.liveScope
       );
 
-      const newId = `paper-${Date.now()}`;
-      const isEligible = fullReport.isEligibleForReview !== false;
-      const isPublished =
-        fullReport.ineligibilityReason === "already_published" ||
-        Boolean(fullReport.publishedDetails?.isPublished);
-
-      const newPaper: PaperItem = {
-        id: newId,
-        title: fullReport.title || title || "Manuscript Pre-Submission",
-        shortName:
-          (fullReport.title || title).length > 24
-            ? (fullReport.title || title).substring(0, 24) + "..."
-            : fullReport.title || title,
-        journal: fullReport.publishedDetails?.journalName || journal,
-        score: isEligible ? (fullReport.overallScore || 80) : undefined,
-        isEligibleForReview: isEligible,
-        ineligibilityReason: fullReport.ineligibilityReason,
-        isPublished: isPublished,
-        publishedJournal: fullReport.publishedDetails?.journalName,
-        editorialTriage: fullReport.editorialTriage,
-      };
-
-      const engineName = isConnected && provider
-        ? `${provider.toUpperCase()} (${modelName || "ACTIVE"})`
-        : savedConfig?.provider
-        ? `${savedConfig.provider.toUpperCase()} (${savedConfig.model || "ACTIVE"})`
-        : "ManuView Academic Diagnostic Engine";
-
-      const dashboardData: DesktopDashboardData = {
-        paperTitle: fullReport.title || title,
-        headlineTitle: isPublished
-          ? `${newPaper.journal} (Published Article)`
-          : `${journal} Pre-Submission Diagnostic`,
-        targetJournal: newPaper.journal,
-        aiEngine: engineName,
-        latencyMs: 120,
-        score: isEligible ? (fullReport.overallScore || 80) : undefined,
-        statusText: !isEligible
-          ? isPublished
-            ? "Already Published Article"
-            : "Ineligible Document Type"
-          : (fullReport.overallScore || 80) >= 80
-          ? "High Acceptance Probability"
-          : "Revision Prioritized",
-        vulnerabilities: fullReport.priorityIssues?.map((issue) => ({
-          type: (issue.category === "Causal Claims" ? "overclaim" : "sample_size") as "overclaim" | "sample_size",
-          title: issue.title,
-          description: issue.description,
-          severity: (issue.priority === "A" ? "critical" : "warning") as "critical" | "warning",
-        })) || [],
-        reviewers: fullReport.reviewerPersonas?.map((p) => ({
-          name: p.name,
-          role: p.title || p.persona,
-          tag: (p.decisionRecommendation === "Desk Reject" ? "Critical" : "Major") as "Major" | "Minor" | "Critical",
-          quote: p.keyChallenge || p.assessment?.slice(0, 150) || "Comprehensive evaluation required.",
-          detail: p.majorCritiques?.join(" ") || p.assessment || "",
-        })) || [],
-        citationAudit: {
-          verifiedCount: fullReport.citationIntegrity?.verifiedCount ?? 0,
-          totalCount: fullReport.citationIntegrity?.totalReferences ?? 0,
-          retractedCount: fullReport.citationIntegrity?.retractedCount ?? 0,
-          notes: fullReport.citationIntegrity?.references?.length
-            ? `Verified ${fullReport.citationIntegrity.verifiedCount} DOIs via CrossRef Open API.`
-            : undefined,
-        },
-      };
-
-      onComplete(newPaper, dashboardData, fullReport);
-      onClose();
+      finishScanAndOpenDashboard(fullReport);
     } catch (err: any) {
-      setError(sanitizeErrorMessage(err.message || "Diagnostic review failed."));
+      setError(sanitizeErrorMessage(err.message || "Peer review simulation failed."));
     } finally {
       setLoading(false);
       setLoadingStep("");
@@ -269,7 +357,7 @@ export function DesktopScanModal({
             </p>
           </div>
         ) : (
-          <form onSubmit={handleStartScan} className="space-y-4">
+          <form onSubmit={handleCheckCompatibility} className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
                 Manuscript Target &amp; Content
@@ -290,7 +378,10 @@ export function DesktopScanModal({
               </label>
               <JournalCombobox
                 value={journal}
-                onChange={setJournal}
+                onChange={(val) => {
+                  setJournal(val);
+                  setCompatibilityMatch(null);
+                }}
                 placeholder="Type at least 3 letters to search journals..."
               />
             </div>
@@ -302,7 +393,10 @@ export function DesktopScanModal({
               <input
                 type="text"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  setCompatibilityMatch(null);
+                }}
                 placeholder="e.g. Single-cell transcriptional profiling of DLL3 activation..."
                 className="w-full px-3.5 py-2 rounded-xl liquid-glass-input text-xs text-[#111827] dark:text-white dark:placeholder-neutral-500 focus:outline-none"
               />
@@ -315,7 +409,10 @@ export function DesktopScanModal({
               <textarea
                 rows={3}
                 value={abstract}
-                onChange={(e) => setAbstract(e.target.value)}
+                onChange={(e) => {
+                  setAbstract(e.target.value);
+                  setCompatibilityMatch(null);
+                }}
                 placeholder="Paste manuscript abstract or key summary..."
                 className="w-full px-3.5 py-2 rounded-xl liquid-glass-input text-xs text-[#111827] dark:text-white dark:placeholder-neutral-500 focus:outline-none resize-none"
               />
@@ -330,7 +427,7 @@ export function DesktopScanModal({
                 onClick={() => {
                   if (isDesktopApp()) handleNativePick();
                 }}
-                className="border border-dashed border-neutral-300 dark:border-white/15 hover:border-blue-500/50 dark:hover:border-blue-400/50 rounded-2xl p-4 flex flex-col items-center justify-center gap-1.5 bg-white/40 dark:bg-white/5 hover:bg-blue-500/5 transition cursor-pointer text-center relative backdrop-blur-xs"
+                className="border border-dashed border-neutral-300 dark:border-white/15 hover:border-blue-500/50 dark:hover:border-blue-400/50 rounded-2xl p-4 flex flex-col items-center justify-center gap-1.5 bg-white/40 dark:bg-white/5 hover:bg-blue-50/5 transition cursor-pointer text-center relative backdrop-blur-xs"
               >
                 {!isDesktopApp() && (
                   <input
@@ -353,6 +450,24 @@ export function DesktopScanModal({
                 </div>
               </div>
             </div>
+
+            {/* Scope Match Verified Card (When Passed) */}
+            {compatibilityMatch && (
+              <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 dark:bg-emerald-950/40 dark:border-emerald-800 space-y-2 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    Scope Match Confirmed
+                  </span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700">
+                    Passed Editorial Screening
+                  </span>
+                </div>
+                <p className="text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">
+                  Your manuscript research domain (<strong>{compatibilityMatch.manuscriptDiscipline}</strong>) aligns with <strong>{compatibilityMatch.journalName}</strong> ({compatibilityMatch.journalDiscipline}). Target journal scope verified via live registry.
+                </p>
+              </div>
+            )}
 
             {/* Academic Privacy & Confidentiality Guarantee */}
             <div className="p-3.5 rounded-2xl liquid-glass-card flex items-start gap-2.5 text-neutral-600 dark:text-neutral-400 text-[11px] leading-relaxed">
@@ -377,13 +492,34 @@ export function DesktopScanModal({
               >
                 Cancel
               </button>
-              <button
-                type="submit"
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl liquid-glass-btn-primary text-white text-xs font-semibold shadow-xs cursor-pointer"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Start Pre-Submission Review</span>
-              </button>
+              {compatibilityMatch ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setCompatibilityMatch(null)}
+                    className="px-3 py-2 rounded-xl text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition cursor-pointer"
+                  >
+                    Change Journal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSubmitForReview}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs cursor-pointer transition"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Submit for Review</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="submit"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs cursor-pointer transition"
+                >
+                  <Search className="w-3.5 h-3.5" />
+                  <span>Check Compatibility</span>
+                </button>
+              )}
             </div>
           </form>
         )}

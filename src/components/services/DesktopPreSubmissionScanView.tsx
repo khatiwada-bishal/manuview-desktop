@@ -34,6 +34,7 @@ import {
   Search,
   X,
   Lock,
+  ArrowRight,
 } from "lucide-react";
 import {
   FullReviewReport,
@@ -43,6 +44,7 @@ import {
   ReviewerPersonaFeedback,
   ProviderConfig,
   AvailableModel,
+  ParsedManuscript,
 } from "@/lib/types";
 import JournalCombobox from "@/components/JournalCombobox";
 import { BriefJournalFitView, BriefJournalFitPrintView } from "@/components/BriefJournalFitView";
@@ -50,6 +52,8 @@ import { exportInteractiveHtmlReport, exportWordDocReport } from "@/lib/export-g
 import { pickManuscriptFileDesktop, isDesktopApp } from "@/lib/desktop";
 import { extractTextFromFile, parseManuscriptText } from "@/lib/parser";
 import { runManuscriptDiagnostic, runBriefJournalFitAnalysis } from "@/lib/diagnostic-engine";
+import { fetchLiveJournalScope, JournalScopeProfile } from "@/lib/journal-scope-service";
+import { evaluateManuscriptScopeTriage } from "@/lib/engine/scope-triage-journals";
 import { callLLM, sanitizeErrorMessage, getSavedClientConfig } from "@/lib/llm";
 import { useApiConnection } from "@/lib/useApiConnection";
 import { PaperItem } from "@/components/DesktopSidebar";
@@ -114,6 +118,14 @@ export function DesktopPreSubmissionScanView({
   const [selectedPersona, setSelectedPersona] = useState<number>(0);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [showAllScanRefs, setShowAllScanRefs] = useState(false);
+  const [compatibilityMatch, setCompatibilityMatch] = useState<{
+    journalName: string;
+    journalDiscipline: string;
+    manuscriptDiscipline: string;
+    summary: string;
+    parsed: ParsedManuscript;
+    liveScope: JournalScopeProfile | null;
+  } | null>(null);
 
   const {
     status: apiStatus,
@@ -168,6 +180,7 @@ export function DesktopPreSubmissionScanView({
 
   const handleTargetJournalChange = (val: string) => {
     setTargetJournal(val);
+    setCompatibilityMatch(null);
     if (val.trim()) {
       setTargetJournalError(false);
     }
@@ -181,6 +194,7 @@ export function DesktopPreSubmissionScanView({
     setFile(null);
     setFileName(null);
     setError(null);
+    setCompatibilityMatch(null);
   };
 
   const handleLoadSampleFull = () => {
@@ -193,6 +207,7 @@ export function DesktopPreSubmissionScanView({
     setFile(sampleFile);
     setFileName("sample_sclc_manuscript.txt");
     setError(null);
+    setCompatibilityMatch(null);
   };
 
   const handleLoadSample = handleLoadSampleQuick;
@@ -206,6 +221,7 @@ export function DesktopPreSubmissionScanView({
         const f = new File([blob], res.name);
         setFile(f);
         setError(null);
+        setCompatibilityMatch(null);
       }
     }
   };
@@ -216,6 +232,7 @@ export function DesktopPreSubmissionScanView({
       setFile(f);
       setFileName(f.name);
       setError(null);
+      setCompatibilityMatch(null);
     }
   };
 
@@ -242,7 +259,84 @@ export function DesktopPreSubmissionScanView({
     exportWordDocReport(report);
   };
 
-  const handleRunScan = async (e: React.FormEvent) => {
+  const registerCompletedScan = (fullReport: any) => {
+    if (!onComplete) return;
+    const isEligible = fullReport.isEligibleForReview !== false;
+    const isPublished =
+      fullReport.ineligibilityReason === "already_published" ||
+      Boolean(fullReport.publishedDetails?.isPublished);
+
+    const newPaper: PaperItem = {
+      id: `paper-${Date.now()}`,
+      title: fullReport.title || manuscriptTitle || "Untitled Manuscript",
+      shortName: (fullReport.title || manuscriptTitle || "Manuscript")
+        .split(" ")
+        .slice(0, 3)
+        .join(" "),
+      journal: fullReport.publishedDetails?.journalName || targetJournal,
+      score: isEligible ? (fullReport.overallScore || 80) : undefined,
+      isEligibleForReview: isEligible,
+      ineligibilityReason: fullReport.ineligibilityReason,
+      isPublished: isPublished,
+      publishedJournal: fullReport.publishedDetails?.journalName,
+      editorialTriage: fullReport.editorialTriage,
+    };
+
+    const dashboardData: DesktopDashboardData = {
+      paperTitle: newPaper.title,
+      headlineTitle: isPublished
+        ? `${newPaper.journal} (Published Article)`
+        : `${targetJournal} Pre-Submission Diagnostic`,
+      targetJournal: newPaper.journal,
+      aiEngine: activeProviderInfo.name || "AI ENGINE",
+      latencyMs: 120,
+      score: isEligible ? (fullReport.overallScore || 80) : undefined,
+      statusText: !isEligible
+        ? isPublished
+          ? "Already Published Article"
+          : "Ineligible Document Type"
+        : (fullReport.overallScore || 80) >= 80
+        ? "High Acceptance Probability"
+        : "Revision Prioritized",
+      vulnerabilities:
+        fullReport.priorityIssues?.map((issue: any) => ({
+          type: (issue.category === "Causal Claims"
+            ? "overclaim"
+            : "sample_size") as "overclaim" | "sample_size",
+          title: issue.title,
+          description: issue.description,
+          severity: (issue.priority === "A" ? "critical" : "warning") as
+            | "critical"
+            | "warning",
+        })) || [],
+      reviewers:
+        fullReport.reviewerPersonas?.map((p: any) => ({
+          name: p.name,
+          role: p.title || p.persona,
+          tag: (p.decisionRecommendation?.includes("Reject")
+            ? "Critical"
+            : "Major") as "Major" | "Minor" | "Critical",
+          quote:
+            p.keyChallenge ||
+            p.assessment?.slice(0, 150) ||
+            "Comprehensive evaluation required.",
+          detail: p.majorCritiques?.join(" ") || p.assessment || "",
+        })) || [],
+      citationAudit: {
+        verifiedCount: fullReport.citationIntegrity?.verifiedCount ?? 0,
+        totalCount: fullReport.citationIntegrity?.totalReferences ?? 0,
+        retractedCount: fullReport.citationIntegrity?.retractedCount ?? 0,
+        notes: fullReport.citationIntegrity?.references?.length
+          ? `Verified ${fullReport.citationIntegrity.verifiedCount} DOIs via CrossRef Open API.`
+          : undefined,
+      },
+    };
+
+    onComplete(newPaper, dashboardData, fullReport);
+  };
+
+  // Step D: Click 'Check compatibility' button
+  const handleCheckCompatibility = async (e: React.FormEvent) => {
     e.preventDefault();
     if (apiStatus !== "connected") {
       setError(
@@ -270,126 +364,105 @@ export function DesktopPreSubmissionScanView({
     setLoading(true);
     setError(null);
     setReport(null);
+    setLoadingStep("Analyzing paper & journal scope compatibility...");
+    setLoadingPercent(20);
 
     try {
-      const providerConfig = getSavedClientConfig();
-
+      let parsed: ParsedManuscript;
       if (isFileScan) {
-        // Full document audit
         setLoadingStep("Extracting sections and parsing bibliography...");
-        setLoadingPercent(10);
-
+        setLoadingPercent(15);
         const extracted = await extractTextFromFile(file);
-        const parsed = parseManuscriptText(extracted, file.name || "manuscript.txt");
+        parsed = parseManuscriptText(extracted, file.name || "manuscript.txt");
         if (manuscriptTitle.trim()) parsed.title = manuscriptTitle.trim();
         if (manuscriptAbstract.trim()) parsed.abstract = manuscriptAbstract.trim();
+      } else {
+        const rawText = `Title: ${manuscriptTitle}\n\nAbstract:\n${manuscriptAbstract}\n\nKeywords: ${manuscriptKeywords}`;
+        parsed = parseManuscriptText(rawText, "manuscript.txt");
+        parsed.title = manuscriptTitle.trim();
+        parsed.abstract = manuscriptAbstract.trim();
+      }
 
-        const fullReport = await runManuscriptDiagnostic(
+      setLoadingStep(`Searching aims & scope for "${targetJournal}" via scholarly registries...`);
+      setLoadingPercent(40);
+      const liveScope = await fetchLiveJournalScope(targetJournal);
+
+      setLoadingStep("Comparing manuscript research domain against journal remit...");
+      setLoadingPercent(70);
+      const triageResult = evaluateManuscriptScopeTriage(
+        parsed.title,
+        parsed.abstract,
+        targetJournal,
+        undefined,
+        liveScope
+      );
+
+      // Decision F: Does scope match between journal and paper?
+      // Rejection Path: F -- No --> G [Desk Reject] --> H [Display Desk Reject Details] --> I ([End])
+      if (triageResult.isTargetScopeMismatch) {
+        setLoadingStep("Desk Reject flagged: Generating handling editor triage report...");
+        setLoadingPercent(85);
+
+        const providerConfig = getSavedClientConfig();
+        const deskRejectReport = await runManuscriptDiagnostic(
           parsed,
           providerConfig,
           targetJournal,
           (update) => {
             setLoadingStep(update.message);
             if (update.percent !== undefined) setLoadingPercent(update.percent);
-          }
-        );
-        setReport(fullReport);
-
-        // Register paper in articles store if onComplete provided
-        if (onComplete) {
-          const isEligible = fullReport.isEligibleForReview !== false;
-          const isPublished =
-            fullReport.ineligibilityReason === "already_published" ||
-            Boolean(fullReport.publishedDetails?.isPublished);
-
-          const newPaper: PaperItem = {
-            id: `paper-${Date.now()}`,
-            title: fullReport.title || manuscriptTitle || "Untitled Manuscript",
-            shortName: (fullReport.title || manuscriptTitle || "Manuscript")
-              .split(" ")
-              .slice(0, 3)
-              .join(" "),
-            journal: fullReport.publishedDetails?.journalName || targetJournal,
-            score: isEligible ? (fullReport.overallScore || 80) : undefined,
-            isEligibleForReview: isEligible,
-            ineligibilityReason: fullReport.ineligibilityReason,
-            isPublished: isPublished,
-            publishedJournal: fullReport.publishedDetails?.journalName,
-            editorialTriage: fullReport.editorialTriage,
-          };
-
-          const dashboardData: DesktopDashboardData = {
-            paperTitle: newPaper.title,
-            headlineTitle: isPublished
-              ? `${newPaper.journal} (Published Article)`
-              : `${targetJournal} Pre-Submission Diagnostic`,
-            targetJournal: newPaper.journal,
-            aiEngine: activeProviderInfo.name || "AI ENGINE",
-            latencyMs: 120,
-            score: isEligible ? (fullReport.overallScore || 80) : undefined,
-            statusText: !isEligible
-              ? isPublished
-                ? "Already Published Article"
-                : "Ineligible Document Type"
-              : (fullReport.overallScore || 80) >= 80
-              ? "High Acceptance Probability"
-              : "Revision Prioritized",
-            vulnerabilities:
-              fullReport.priorityIssues?.map((issue) => ({
-                type: (issue.category === "Causal Claims"
-                  ? "overclaim"
-                  : "sample_size") as "overclaim" | "sample_size",
-                title: issue.title,
-                description: issue.description,
-                severity: (issue.priority === "A" ? "critical" : "warning") as
-                  | "critical"
-                  | "warning",
-              })) || [],
-            reviewers:
-              fullReport.reviewerPersonas?.map((p) => ({
-                name: p.name,
-                role: p.title || p.persona,
-                tag: (p.decisionRecommendation?.includes("Reject")
-                  ? "Critical"
-                  : "Major") as "Major" | "Minor" | "Critical",
-                quote:
-                  p.keyChallenge ||
-                  p.assessment?.slice(0, 150) ||
-                  "Comprehensive evaluation required.",
-                detail: p.majorCritiques?.join(" ") || p.assessment || "",
-              })) || [],
-            citationAudit: {
-              verifiedCount: fullReport.citationIntegrity?.verifiedCount ?? 0,
-              totalCount: fullReport.citationIntegrity?.totalReferences ?? 0,
-              retractedCount: fullReport.citationIntegrity?.retractedCount ?? 0,
-              notes: fullReport.citationIntegrity?.references?.length
-                ? `Verified ${fullReport.citationIntegrity.verifiedCount} DOIs via CrossRef Open API.`
-                : undefined,
-            },
-          };
-
-          onComplete(newPaper, dashboardData, fullReport);
-        }
-      } else {
-        // Fast editorial scope validation
-        setLoadingStep("Evaluating manuscript title & abstract scope...");
-        setLoadingPercent(20);
-
-        const briefReport = await runBriefJournalFitAnalysis(
-          {
-            title: manuscriptTitle,
-            abstract: manuscriptAbstract,
-            keywords: manuscriptKeywords,
-            targetJournal: targetJournal || "Target Journal",
-            providerConfig,
           },
-          (update) => {
-            setLoadingStep(update.message);
-            if (update.percent !== undefined) setLoadingPercent(update.percent);
-          }
+          liveScope
         );
-        setReport(briefReport);
+
+        setReport(deskRejectReport);
+        registerCompletedScan(deskRejectReport);
+        return;
       }
+
+      // Acceptance Path: F -- Yes --> J [Submit for Review ready]
+      setCompatibilityMatch({
+        journalName: liveScope?.officialName || targetJournal,
+        journalDiscipline: liveScope?.primaryDiscipline || triageResult.detectedDiscipline,
+        manuscriptDiscipline: triageResult.detectedDiscipline,
+        summary: triageResult.editorialTriage.summary,
+        parsed,
+        liveScope,
+      });
+    } catch (err: any) {
+      console.error("Scope compatibility check error:", err);
+      setError(sanitizeErrorMessage(err?.message || "Scope compatibility check failed. Please verify your AI provider credentials."));
+    } finally {
+      setLoading(false);
+      setLoadingStep("");
+      setLoadingPercent(undefined);
+    }
+  };
+
+  // Step J: Click 'Submit for Review' button
+  const handleSubmitForReview = async () => {
+    if (!compatibilityMatch) return;
+
+    setLoading(true);
+    setError(null);
+    setLoadingStep("Commissioning 5-persona peer review panel (Methods, Domain, Editor, Stats, Devil's Advocate)...");
+    setLoadingPercent(30);
+
+    try {
+      const providerConfig = getSavedClientConfig();
+      const fullReport = await runManuscriptDiagnostic(
+        compatibilityMatch.parsed,
+        providerConfig,
+        targetJournal,
+        (update) => {
+          setLoadingStep(update.message);
+          if (update.percent !== undefined) setLoadingPercent(update.percent);
+        },
+        compatibilityMatch.liveScope
+      );
+
+      setReport(fullReport);
+      registerCompletedScan(fullReport);
     } catch (err: any) {
       console.error("Diagnostic scan error:", err);
       setError(sanitizeErrorMessage(err?.message || "Failed to generate diagnostic report. Please verify your AI provider credentials."));
@@ -672,7 +745,7 @@ export function DesktopPreSubmissionScanView({
 
         {/* Input Form Card */}
         {!report && (
-          <form onSubmit={handleRunScan} className="rounded-3xl liquid-glass-card p-6 space-y-6 relative z-10">
+          <form onSubmit={handleCheckCompatibility} className="rounded-3xl liquid-glass-card p-6 space-y-6 relative z-10">
             {/* Header with Load Sample Preprint */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[#E5E7EB] dark:border-[#1F2937]">
               <div>
@@ -763,6 +836,7 @@ export function DesktopPreSubmissionScanView({
                     onClick={() => {
                       setFile(null);
                       setFileName(null);
+                      setCompatibilityMatch(null);
                     }}
                     className="text-[11px] text-red-600 dark:text-red-400 hover:underline self-end mt-1.5 cursor-pointer font-medium"
                   >
@@ -791,6 +865,7 @@ export function DesktopPreSubmissionScanView({
                     value={manuscriptTitle}
                     onChange={(e) => {
                       setManuscriptTitle(e.target.value);
+                      setCompatibilityMatch(null);
                       if (error) setError(null);
                     }}
                     placeholder="e.g. Single-cell transcriptional profiling of DLL3..."
@@ -807,6 +882,7 @@ export function DesktopPreSubmissionScanView({
                     value={manuscriptAbstract}
                     onChange={(e) => {
                       setManuscriptAbstract(e.target.value);
+                      setCompatibilityMatch(null);
                       if (error) setError(null);
                     }}
                     placeholder="Paste background, methodology, key findings, and conclusions..."
@@ -821,7 +897,10 @@ export function DesktopPreSubmissionScanView({
                   <input
                     type="text"
                     value={manuscriptKeywords}
-                    onChange={(e) => setManuscriptKeywords(e.target.value)}
+                    onChange={(e) => {
+                      setManuscriptKeywords(e.target.value);
+                      setCompatibilityMatch(null);
+                    }}
                     placeholder="e.g. small cell lung cancer, DLL3, CRISPR screen, organoids"
                     className="w-full px-3.5 py-2 rounded-xl border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#1E293B] text-xs sm:text-sm text-[#111827] dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   />
@@ -833,6 +912,24 @@ export function DesktopPreSubmissionScanView({
               <div className="p-3.5 rounded-xl bg-[#FEF2F2] dark:bg-rose-950/40 border border-[#FECACA] dark:border-rose-800 text-[#991B1B] dark:text-rose-300 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 <span>{error}</span>
+              </div>
+            )}
+
+            {/* Scope Match Verified Card (When Passed) */}
+            {compatibilityMatch && (
+              <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 dark:bg-emerald-950/40 dark:border-emerald-800 space-y-2 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    Scope Compatibility Verified
+                  </span>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700">
+                    Passed Initial Scope Screening
+                  </span>
+                </div>
+                <p className="text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">
+                  Your manuscript research domain (<strong>{compatibilityMatch.manuscriptDiscipline}</strong>) aligns with target journal <strong>{compatibilityMatch.journalName}</strong> ({compatibilityMatch.journalDiscipline}). Target journal scope verified via live registry. Ready for full 5-persona peer review simulation.
+                </p>
               </div>
             )}
 
@@ -849,34 +946,73 @@ export function DesktopPreSubmissionScanView({
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3.5 px-4 rounded-xl font-semibold text-xs sm:text-sm bg-[#0F172A] dark:bg-blue-600 hover:bg-[#1E293B] dark:hover:bg-blue-500 text-white transition-colors duration-150 flex items-center justify-center gap-2 shadow-xs disabled:cursor-not-allowed disabled:bg-[#1E293B] disabled:text-white/80 cursor-pointer isolate relative overflow-hidden select-none"
-            >
-              {loading ? (
-                <span key="btn-loading-state" className="flex items-center justify-center gap-2 truncate max-w-full">
-                  <RefreshCw className="w-4 h-4 animate-spin text-blue-400 shrink-0" />
-                  <span key={loadingStep || "analyzing-step"} className="truncate">
-                    {loadingStep || "Analyzing Manuscript..."}
-                    {loadingPercent !== undefined ? ` (${loadingPercent}%)` : ""}
+            {compatibilityMatch ? (
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCompatibilityMatch(null)}
+                  disabled={loading}
+                  className="w-full sm:w-auto px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition cursor-pointer"
+                >
+                  Change Journal or Paper
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmitForReview}
+                  disabled={loading}
+                  className="flex-1 w-full py-3.5 px-4 rounded-xl font-semibold text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-700 text-white transition-colors duration-150 flex items-center justify-center gap-2 shadow-xs disabled:cursor-not-allowed disabled:bg-emerald-800 disabled:text-white/80 cursor-pointer isolate relative overflow-hidden select-none"
+                >
+                  {loading ? (
+                    <span key="btn-loading-state" className="flex items-center justify-center gap-2 truncate max-w-full">
+                      <RefreshCw className="w-4 h-4 animate-spin text-white shrink-0" />
+                      <span key={loadingStep || "analyzing-step"} className="truncate">
+                        {loadingStep || "Running Peer Review Simulation..."}
+                        {loadingPercent !== undefined ? ` (${loadingPercent}%)` : ""}
+                      </span>
+                    </span>
+                  ) : (
+                    <span key="btn-submit-review-state" className="flex items-center justify-center gap-2 truncate max-w-full">
+                      <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
+                      <span className="truncate">Submit for Review (Run 5-Persona Simulation)</span>
+                      <ArrowRight className="w-4 h-4 shrink-0" />
+                    </span>
+                  )}
+                  {loading && loadingPercent !== undefined && (
+                    <div
+                      className="absolute bottom-0 left-0 h-1 bg-white/40 transition-all duration-300"
+                      style={{ width: `${loadingPercent}%` }}
+                    />
+                  )}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 px-4 rounded-xl font-semibold text-xs sm:text-sm bg-[#0F172A] dark:bg-blue-600 hover:bg-[#1E293B] dark:hover:bg-blue-500 text-white transition-colors duration-150 flex items-center justify-center gap-2 shadow-xs disabled:cursor-not-allowed disabled:bg-[#1E293B] disabled:text-white/80 cursor-pointer isolate relative overflow-hidden select-none"
+              >
+                {loading ? (
+                  <span key="btn-loading-state" className="flex items-center justify-center gap-2 truncate max-w-full">
+                    <RefreshCw className="w-4 h-4 animate-spin text-blue-400 shrink-0" />
+                    <span key={loadingStep || "analyzing-step"} className="truncate">
+                      {loadingStep || "Checking Compatibility..."}
+                      {loadingPercent !== undefined ? ` (${loadingPercent}%)` : ""}
+                    </span>
                   </span>
-                </span>
-              ) : (
-                <span key="btn-idle-state" className="flex items-center justify-center gap-2 truncate max-w-full">
-                  <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span className="truncate">
-                    {file ? "Run Pre-Submission Diagnostic Scan" : "Validate Target Journal Scope & Fit"}
+                ) : (
+                  <span key="btn-idle-state" className="flex items-center justify-center gap-2 truncate max-w-full">
+                    <Search className="w-4 h-4 text-blue-400 shrink-0" />
+                    <span className="truncate">Check Compatibility</span>
                   </span>
-                </span>
-              )}
-              {loading && loadingPercent !== undefined && (
-                <div
-                  className="absolute bottom-0 left-0 h-1 bg-blue-500 dark:bg-blue-400 transition-all duration-300"
-                  style={{ width: `${loadingPercent}%` }}
-                />
-              )}
-            </button>
+                )}
+                {loading && loadingPercent !== undefined && (
+                  <div
+                    className="absolute bottom-0 left-0 h-1 bg-blue-500 dark:bg-blue-400 transition-all duration-300"
+                    style={{ width: `${loadingPercent}%` }}
+                  />
+                )}
+              </button>
+            )}
           </form>
         )}
 
