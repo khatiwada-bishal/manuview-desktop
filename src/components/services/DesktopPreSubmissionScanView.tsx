@@ -113,6 +113,7 @@ export function DesktopPreSubmissionScanView({
   const [error, setError] = useState<string | null>(null);
   const [selectedPersona, setSelectedPersona] = useState<number>(0);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const [showAllScanRefs, setShowAllScanRefs] = useState(false);
 
   const {
     status: apiStatus,
@@ -358,9 +359,9 @@ export function DesktopPreSubmissionScanView({
                 detail: p.majorCritiques?.join(" ") || p.assessment || "",
               })) || [],
             citationAudit: {
-              verifiedCount: fullReport.citationIntegrity?.verifiedCount || 10,
-              totalCount: fullReport.citationIntegrity?.totalReferences || 10,
-              retractedCount: fullReport.citationIntegrity?.retractedCount || 0,
+              verifiedCount: fullReport.citationIntegrity?.verifiedCount ?? 0,
+              totalCount: fullReport.citationIntegrity?.totalReferences ?? 0,
+              retractedCount: fullReport.citationIntegrity?.retractedCount ?? 0,
               notes: fullReport.citationIntegrity?.references?.length
                 ? `Verified ${fullReport.citationIntegrity.verifiedCount} DOIs via CrossRef Open API.`
                 : undefined,
@@ -1646,11 +1647,23 @@ export function DesktopPreSubmissionScanView({
             </div>
 
             <div className="rounded-2xl bg-white border border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937] overflow-hidden shadow-2xs">
-              <div className="p-3.5 bg-[#F9FAFB] dark:bg-[#161F30] border-b border-[#E5E7EB] dark:border-[#1F2937] text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider">
-                Bibliography Samples
+              <div className="p-3.5 bg-[#F9FAFB] dark:bg-[#161F30] border-b border-[#E5E7EB] dark:border-[#1F2937] flex items-center justify-between text-xs font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider">
+                <span>Bibliography References ({report.citationIntegrity.references.length})</span>
+                {report.citationIntegrity.references.length > 5 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllScanRefs(!showAllScanRefs)}
+                    className="text-[11px] normal-case font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer"
+                  >
+                    {showAllScanRefs ? "Show First 5 Only" : `Show All (${report.citationIntegrity.references.length})`}
+                  </button>
+                )}
               </div>
               <div className="divide-y divide-[#E5E7EB] dark:divide-[#1F2937]">
-                {report.citationIntegrity.references.slice(0, 5).map((ref, idx) => (
+                {(showAllScanRefs
+                  ? report.citationIntegrity.references
+                  : report.citationIntegrity.references.slice(0, 5)
+                ).map((ref, idx) => (
                   <div
                     key={idx}
                     className="p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs"

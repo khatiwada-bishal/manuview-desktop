@@ -431,6 +431,18 @@ export default function App() {
           onNewScan={() => handleOpenService("ai-review")}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onDeleteArticle={() => setPaperToDelete(currentPaper)}
+          onUpdateFullReport={(updatedReport, updatedData) => {
+            if (activeTabId) {
+              setFullReportsStore((prev) => ({ ...prev, [activeTabId]: updatedReport }));
+              if (updatedData) {
+                setDashboardStore((prev) => ({ ...prev, [activeTabId]: updatedData }));
+              }
+              const paper = papers.find((p) => p.id === activeTabId);
+              if (paper) {
+                saveProject(paper, updatedData || currentDashboardData || ({} as any), updatedReport);
+              }
+            }
+          }}
         />
       );
     }

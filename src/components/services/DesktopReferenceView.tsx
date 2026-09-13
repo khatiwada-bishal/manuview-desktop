@@ -13,6 +13,7 @@ import {
   Info,
   Bookmark,
   Download,
+  Search,
 } from "lucide-react";
 import { ReferenceVerification, FullReviewReport } from "@/lib/types";
 import { batchVerifyReferences } from "@/lib/crossref";
@@ -31,9 +32,12 @@ export function DesktopReferenceView() {
     total: number;
     retractedCount: number;
     unresolvableCount: number;
+    uncheckedCount: number;
     verified: ReferenceVerification[];
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "valid" | "retracted" | "unresolvable" | "unchecked">("all");
 
   const handleSample = () => {
     setInput(SAMPLE_BIBLIOGRAPHY);
@@ -52,17 +56,20 @@ export function DesktopReferenceView() {
     try {
       const refList = extractReferencesFromText(input);
       if (refList.length === 0) {
-        throw new Error("No references detected. Please provide numbered or DOI citations.");
+        throw new Error("No references detected. Please provide references with numbers, DOIs, or author citations.");
       }
 
-      const verified = await batchVerifyReferences(refList.slice(0, 30));
-      const retractedCount = verified.filter((v) => v.isRetracted).length;
+      // Audit all parsed references (supporting up to 200)
+      const verified = await batchVerifyReferences(refList.slice(0, 200));
+      const retractedCount = verified.filter((v) => v.isRetracted || v.status === "retracted").length;
       const unresolvableCount = verified.filter((v) => v.status === "unresolvable").length;
+      const uncheckedCount = verified.filter((v) => v.status === "unchecked").length;
 
       setResults({
         total: verified.length,
         retractedCount,
         unresolvableCount,
+        uncheckedCount,
         verified,
       });
     } catch (err: any) {
@@ -71,6 +78,32 @@ export function DesktopReferenceView() {
       setLoading(false);
     }
   };
+
+  const filteredVerified = React.useMemo(() => {
+    if (!results) return [];
+    let list = results.verified;
+    if (statusFilter !== "all") {
+      if (statusFilter === "retracted") {
+        list = list.filter((r) => r.isRetracted || r.status === "retracted");
+      } else if (statusFilter === "valid") {
+        list = list.filter((r) => r.status === "valid" && !r.isRetracted);
+      } else {
+        list = list.filter((r) => r.status === statusFilter);
+      }
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(
+        (r) =>
+          (r.title && r.title.toLowerCase().includes(q)) ||
+          (r.raw && r.raw.toLowerCase().includes(q)) ||
+          (r.doi && r.doi.toLowerCase().includes(q)) ||
+          (r.journal && r.journal.toLowerCase().includes(q)) ||
+          (r.authors && r.authors.some((a) => a.toLowerCase().includes(q)))
+      );
+    }
+    return list;
+  }, [results, statusFilter, searchQuery]);
 
   return (
     <div className="flex-1 overflow-y-auto p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC]">
@@ -168,7 +201,7 @@ export function DesktopReferenceView() {
               <div className="p-4 rounded-2xl liquid-glass-card border border-emerald-500/20 bg-emerald-500/5">
                 <div className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase">Verified Valid</div>
                 <div className="text-2xl font-bold text-emerald-800 dark:text-emerald-300 mt-1">
-                  {results.total - results.unresolvableCount - results.retractedCount}
+                  {results.total - results.unresolvableCount - results.retractedCount - (results.uncheckedCount || 0)}
                 </div>
               </div>
               <div className="p-4 rounded-2xl liquid-glass-card border border-amber-500/20 bg-amber-500/5">
@@ -181,57 +214,99 @@ export function DesktopReferenceView() {
               </div>
             </div>
 
-            {/* Citations Table */}
+            {/* Citations Controls & Table */}
             <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider">
-                  Audited Reference Registry
-                </h3>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await exportBibTeX({
-                      mode: "full",
-                      id: "bib-export",
-                      createdAt: new Date().toISOString(),
-                      title: "Audited_Bibliography",
-                      targetJournal: "Target Journal",
-                      overallScore: 80,
-                      summary: "Audited Bibliography",
-                      citationIntegrity: {
-                        totalReferences: results.total,
-                        sampledCount: results.total,
-                        checkedCount: results.verified.length,
-                        coverageNote: "Live Crossref verification",
-                        verifiedCount: results.verified.filter((v) => v.status === "valid").length,
-                        unresolvableCount: results.unresolvableCount,
-                        uncheckedCount: 0,
-                        retractedCount: results.retractedCount,
-                        retractionCheckAvailable: true,
-                        references: results.verified,
-                      },
-                      priorityIssues: [],
-                      reviewerPersonas: [],
-                      journalRecommendations: [],
-                      dimensions: {} as any,
-                      classification: {
-                        category: "academic_manuscript",
-                        categoryLabel: "Academic Manuscript",
-                        isAcademicManuscript: true,
-                        confidence: 1,
-                        detectedFeatures: [],
-                        salutation: "",
-                        advisoryMessage: "",
-                        customGuidance: "",
-                      },
-                    } as FullReviewReport);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold liquid-glass-btn-secondary transition cursor-pointer"
-                >
-                  <Bookmark className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                  <span>Export BibTeX (.bib)</span>
-                </button>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider">
+                    Audited Reference Registry ({filteredVerified.length} of {results.total})
+                  </h3>
+                  {/* Status filter pills */}
+                  <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                    {(
+                      [
+                        { id: "all", label: `All (${results.total})` },
+                        { id: "valid", label: `Verified (${results.total - results.unresolvableCount - results.retractedCount - (results.uncheckedCount || 0)})` },
+                        { id: "retracted", label: `Retracted (${results.retractedCount})` },
+                        { id: "unresolvable", label: `Unresolvable (${results.unresolvableCount})` },
+                        { id: "unchecked", label: `Unchecked (${results.uncheckedCount || 0})` },
+                      ] as const
+                    ).map((tab) => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setStatusFilter(tab.id)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer ${
+                          statusFilter === tab.id
+                            ? "bg-blue-600 text-white shadow-xs"
+                            : "bg-black/[0.04] dark:bg-white/[0.06] text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.08] dark:hover:bg-white/[0.1]"
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-stretch sm:self-auto">
+                  <div className="relative flex-1 sm:w-56">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search citations or DOIs..."
+                      className="w-full pl-8 pr-3 py-1.5 rounded-xl liquid-glass-input text-xs focus:outline-none"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await exportBibTeX({
+                        mode: "full",
+                        id: "bib-export",
+                        createdAt: new Date().toISOString(),
+                        title: "Audited_Bibliography",
+                        targetJournal: "Target Journal",
+                        overallScore: 80,
+                        summary: "Audited Bibliography",
+                        citationIntegrity: {
+                          totalReferences: results.total,
+                          sampledCount: results.total,
+                          checkedCount: results.verified.length,
+                          coverageNote: "Live Crossref verification",
+                          verifiedCount: results.verified.filter((v) => v.status === "valid").length,
+                          unresolvableCount: results.unresolvableCount,
+                          uncheckedCount: results.uncheckedCount || 0,
+                          retractedCount: results.retractedCount,
+                          retractionCheckAvailable: true,
+                          references: results.verified,
+                        },
+                        priorityIssues: [],
+                        reviewerPersonas: [],
+                        journalRecommendations: [],
+                        dimensions: {} as any,
+                        classification: {
+                          category: "academic_manuscript",
+                          categoryLabel: "Academic Manuscript",
+                          isAcademicManuscript: true,
+                          confidence: 1,
+                          detectedFeatures: [],
+                          salutation: "",
+                          advisoryMessage: "",
+                          customGuidance: "",
+                        },
+                      } as FullReviewReport);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold liquid-glass-btn-secondary transition cursor-pointer shrink-0"
+                  >
+                    <Bookmark className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    <span>Export BibTeX</span>
+                  </button>
+                </div>
               </div>
+
               <div className="liquid-glass-card rounded-2xl overflow-hidden">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className="bg-black/5 dark:bg-white/5 border-b border-black/10 dark:border-white/10 text-neutral-500 dark:text-neutral-400 font-semibold uppercase tracking-wider text-[10px]">
@@ -243,7 +318,14 @@ export function DesktopReferenceView() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#E5E7EB] dark:divide-[#1F2937]">
-                    {results.verified.map((ref, idx) => (
+                    {filteredVerified.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-8 text-center text-neutral-400 text-xs">
+                          No references match your current filter or search criteria.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredVerified.map((ref, idx) => (
                       <tr
                         key={idx}
                         className={
@@ -319,7 +401,7 @@ export function DesktopReferenceView() {
                           )}
                         </td>
                       </tr>
-                    ))}
+                    )))}
                   </tbody>
                 </table>
               </div>

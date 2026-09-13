@@ -319,6 +319,7 @@ export interface FullReviewReport {
   id: string;
   createdAt: string;
   title: string;
+  authors?: string[];
   targetJournal?: string;
   targetJournalEvaluation?: TargetJournalEvaluation;
   /** Editorial desk-review gate result; determines whether peer review occurred. */
