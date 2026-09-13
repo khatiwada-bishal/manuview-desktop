@@ -235,7 +235,7 @@ export function DesktopDashboard({
       reviewerPersonas: personas.length > 0 ? personas : [
         {
           persona: "methods_reviewer" as const,
-          name: "Dr. A. Vance",
+          name: "Reviewer 3: Research Methodology Referee",
           title: "Senior Methodology Reviewer",
           affiliation: "Editorial Board Reviewer",
           expertise: "Research Methodology and Experimental Rigor",
