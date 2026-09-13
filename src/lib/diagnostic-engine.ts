@@ -800,13 +800,10 @@ You MUST strictly reflect this reality:
 1. Overall acceptance score (overallScore) MUST NOT exceed 28 (reflecting realistic desk-reject hazard).
 2. Priority Issues MUST include a Priority A issue with category "Scope/Fit" explicitly flagging this field mismatch and advising submission to a ${detectedDiscipline} venue.
 3. Realistic and Fallback journal recommendations MUST be anchored in ${detectedDiscipline}, NOT in ${targetDiscipline}.
-4. JOURNAL-CALIBRATED 5-PERSONA ADVERSARIAL PANEL:
-   You MUST generate ALL 5 PERSONAS calibrated to "${targetJournalName}" and its domain "${targetDiscipline}":
-   - "journal_editor" (name: "Reviewer 1: Lead Handling Editor"): Senior editor representing ${targetJournalName}'s editorial office. MUST set decisionRecommendation to "Desk Reject" because of the aims-&-scope mismatch, explaining that the work belongs in ${detectedDiscipline} and cannot be sent to referees.
-   - "domain_expert" (name: "Reviewer 2: Target Domain Specialist"): Specialist in ${targetDiscipline} (the target journal's field). Evaluates from ${targetJournalName}'s domain perspective, explaining why the manuscript's findings do not advance ${targetDiscipline} literature.
-   - "methods_reviewer" (name: "Reviewer 3: Research Methodology Referee"): Audits the paper's actual empirical methodology, design, and data protocols.
-   - "statistician" (name: "Reviewer 4: Statistical & Quantitative Auditor"): Audits the paper's quantitative analysis, statistical tests, and sample power.
-   - "devils_advocate" (name: "Reviewer 5: Adversarial Translation Referee"): Challenges cross-disciplinary relevance, translation barriers, and overclaims.`
+4. EDITORIAL TRIAGE — DIRECT DESK REJECT BEFORE PEER REVIEW:
+   Because this submission falls outside "${targetJournalName}"'s aims and scope, the handling editor desk-rejects it during initial editorial screening; it does NOT go to peer review.
+   Therefore, "reviewerPersonas" MUST be an empty array [] (no external peer review personas are required or engaged).
+   Focus your summary on the Handling Editor's formal triage statement explaining the scope mismatch and advising redirection to ${detectedDiscipline} venues.`
     : targetJournalName ? `Calibrate your Realistic tier to "${targetJournalName}" or direct peer-equivalent journals in this field, Reach to higher-impact venues in this field, and Fallback to accessible specialty journals. Reviewer Personas should represent the editorial board and reviewer pool of "${targetJournalName}".` : ""
 }
 
@@ -952,6 +949,26 @@ export async function runManuscriptDiagnostic(
     };
   }
 
+  // Step 2.5: Early Scope Triage & Target Journal Scope Screening
+  // Immediately evaluate whether the manuscript's discipline matches the target journal's aims and scope.
+  const earlyScopeMatches = findMatchingJournals(
+    manuscript.title,
+    manuscript.abstract,
+    targetJournalName
+  );
+  const earlyDetectedDiscipline = earlyScopeMatches.detectedDiscipline || "Scholarly Research";
+  const earlyIsTargetScopeMismatch = Boolean(earlyScopeMatches.targetJournalEvaluation?.isDisciplinaryMismatch);
+
+  if (targetJournalName) {
+    onProgress?.({
+      stage: 'matching_journals',
+      message: earlyIsTargetScopeMismatch
+        ? `Scope Triage: Manuscript domain (${earlyDetectedDiscipline}) falls outside target journal aims. Direct desk reject flagged.`
+        : `Scope Triage: Manuscript domain aligns with ${targetJournalName}. Advancing to review pipeline...`,
+      percent: 25,
+    });
+  }
+
   // Step 3: Parallel Scholarly Pre-Checks: Scholarly Records & Bibliography Integrity (REQ-PERF-01)
   onProgress?.({
     stage: 'verifying_references',
@@ -1051,9 +1068,12 @@ export async function runManuscriptDiagnostic(
       ? `API key missing for provider "${activeConfig.provider}".`
       : "No AI provider configured. Configure API keys in Settings to enable the AI review panel.";
   } else {
+    const isDeskReject = Boolean(journalMatches.targetJournalEvaluation?.isDisciplinaryMismatch);
     onProgress?.({
       stage: 'generating_review',
-      message: "Simulating 5-persona peer review panel (Methods, Domain, Statistician, Editor, Devil's Advocate)...",
+      message: isDeskReject
+        ? "Direct Desk Reject: Synthesizing Handling Editor triage statement & in-scope recommendations..."
+        : "Simulating 5-persona peer review panel (Methods, Domain, Statistician, Editor, Devil's Advocate)...",
       percent: 70,
     });
 
@@ -1480,23 +1500,19 @@ export async function runManuscriptDiagnostic(
       missingPersonaRoles.push(...CANONICAL_PERSONA_ROLES);
     }
 
-    // Disciplinary scope mismatch: Ensure Reviewer 1 (Lead Handling Editor) reflects
-    // the authentic "Desk Reject" triage recommendation, while preserving the full
-    // 5-member panel's multi-perspective assessments:
+    // Disciplinary scope mismatch: Direct Desk Reject at editorial triage
+    // In scholarly publishing, out-of-scope submissions are declined during initial editorial screening
+    // and never forwarded to external referees. No 5 peer review personas are required.
     if (journalMatches.targetJournalEvaluation?.isDisciplinaryMismatch) {
-      finalPersonas = finalPersonas.map((p) => {
-        if (p.persona === "journal_editor") {
-          return {
-            ...p,
-            decisionRecommendation: "Desk Reject" as const,
-            keyChallenge:
-              p.keyChallenge ||
-              `Disciplinary scope mismatch: Submission falls outside the published aims and scope of ${targetJournalName}.`,
-          };
-        }
-        return p;
-      });
+      finalPersonas = [];
+      missingPersonaRoles.length = 0;
     }
+  }
+
+  // Ensure finalPersonas is strictly empty on scope mismatch regardless of execution mode
+  if (journalMatches.targetJournalEvaluation?.isDisciplinaryMismatch) {
+    finalPersonas = [];
+    missingPersonaRoles.length = 0;
   }
 
   // Panel Consensus and Score Uncertainty Margin (P0-3)

@@ -140,11 +140,15 @@ export function DesktopDashboard({
   const summary = fullReport?.summary;
   const classification = fullReport?.classification;
   const dimensions = fullReport?.dimensions || {};
+  const isDeskReject = fullReport?.editorialTriage?.outcome === "desk_reject";
   const personas: ReviewerPersonaFeedback[] = useMemo(() => {
+    if (isDeskReject) {
+      return [];
+    }
     if (fullReport?.reviewerPersonas && fullReport.reviewerPersonas.length > 0) {
       return fullReport.reviewerPersonas;
     }
-    if (data?.reviewers && data.reviewers.length > 0) {
+    if (!isDeskReject && data?.reviewers && data.reviewers.length > 0) {
       return data.reviewers.map((r, idx) => ({
         persona: (idx === 0
           ? "journal_editor"
@@ -174,7 +178,7 @@ export function DesktopDashboard({
       }));
     }
     return [];
-  }, [fullReport?.reviewerPersonas, data?.reviewers]);
+  }, [fullReport?.reviewerPersonas, fullReport?.editorialTriage?.outcome, data?.reviewers, isDeskReject]);
   const issues = fullReport?.priorityIssues || [];
   const journals = fullReport?.journalRecommendations || [];
 
@@ -664,6 +668,139 @@ export function DesktopDashboard({
 
   // --- Section 3: 5-Persona Peer-Review Simulation (Adversarial Panel) ---
   const renderPersonasSection = () => {
+    const triage = fullReport?.editorialTriage;
+    const isDeskReject = triage?.outcome === "desk_reject";
+
+    if (isDeskReject) {
+      const mismatch = matchingJournalsData.targetJournalEvaluation;
+      const targetJournalDiscipline = mismatch?.journalDiscipline || "Different Academic Discipline";
+      const paperDiscipline = matchingJournalsData.detectedDiscipline || "Scholarly Research";
+
+      return (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <div>
+              <h2 className="text-base font-bold text-[#0F172A] dark:text-white flex items-center gap-2 flex-wrap">
+                <ShieldAlert className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                <span>Editorial Triage: Direct Desk Reject</span>
+                <span className="text-[10px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 px-2.5 py-0.5 rounded-full border border-rose-200 dark:border-rose-800">
+                  ⛔ Declined at Editorial Screening
+                </span>
+              </h2>
+              <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
+                Manuscript does not meet the published aims and scope of the target journal — external peer review bypassed
+              </p>
+            </div>
+            <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 px-2.5 py-1 rounded-lg border border-rose-200 dark:border-rose-900">
+              No Referees Convened
+            </span>
+          </div>
+
+          {/* Core Alert Banner */}
+          <div className="rounded-2xl border border-rose-200 bg-rose-50/90 dark:border-rose-800/60 dark:bg-rose-950/40 p-5 space-y-3">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-rose-900 dark:text-rose-200">
+                  Why Was This Submission Desk-Rejected Before Peer Review?
+                </h3>
+                <p className="text-xs text-rose-800/90 dark:text-rose-300/90 leading-relaxed">
+                  In academic publishing, when a submission falls outside a journal&apos;s stated aims and scope, the handling editor declines the paper during initial screening (desk reject). Because out-of-scope papers are never assigned to external referees, peer-review simulation is bypassed to maintain academic integrity and avoid generating fabricated review reports.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Handling Editor's Triage Statement */}
+          <div className="rounded-2xl liquid-glass-card p-6 space-y-4 border-l-4 border-l-rose-500">
+            <div className="flex items-center justify-between border-b border-black/[0.06] dark:border-white/[0.08] pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-rose-100 dark:bg-rose-950/60 flex items-center justify-center text-rose-600 dark:text-rose-400 font-bold text-xs">
+                  ED
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-[#0F172A] dark:text-white">
+                    Handling Editor&apos;s Official Triage Statement
+                  </h4>
+                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                    Lead Editorial Office &bull; Preliminary Screening Review
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-bold text-rose-600 dark:text-rose-400 px-2.5 py-1 rounded-md bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800">
+                Decision: Desk Reject
+              </span>
+            </div>
+
+            <div className="text-xs leading-relaxed text-[#334155] dark:text-neutral-300 whitespace-pre-line bg-neutral-50/60 dark:bg-neutral-900/40 p-4 rounded-xl border border-neutral-200/60 dark:border-neutral-800">
+              {triage?.summary || fullReport?.summary || `The manuscript substantive focus lies in ${paperDiscipline}, which falls outside the scope of ${targetJournal} (${targetJournalDiscipline}). The submission is declined during editorial screening.`}
+            </div>
+          </div>
+
+          {/* Scope Contrast Comparison */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-2xl liquid-glass-card p-5 space-y-2 border border-rose-200/60 dark:border-rose-900/40">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                  Target Journal Remit
+                </span>
+                <span className="text-[11px] font-semibold text-neutral-400">Declared Target</span>
+              </div>
+              <div className="text-sm font-bold text-[#0F172A] dark:text-white">
+                {targetJournal}
+              </div>
+              <div className="text-xs text-neutral-600 dark:text-neutral-400">
+                Operates in discipline: <strong className="text-neutral-800 dark:text-neutral-200">{targetJournalDiscipline}</strong>
+              </div>
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                Articles must directly contribute to the published scope and readership of {targetJournalDiscipline}.
+              </p>
+            </div>
+
+            <div className="rounded-2xl liquid-glass-card p-5 space-y-2 border border-emerald-200/60 dark:border-emerald-900/40">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                  Manuscript Focus
+                </span>
+                <span className="text-[11px] font-semibold text-neutral-400">Detected Scope</span>
+              </div>
+              <div className="text-sm font-bold text-[#0F172A] dark:text-white">
+                {title || "Uploaded Manuscript"}
+              </div>
+              <div className="text-xs text-neutral-600 dark:text-neutral-400">
+                Study domain: <strong className="text-emerald-700 dark:text-emerald-300">{paperDiscipline}</strong>
+              </div>
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                Empirical findings and literature foundation belong squarely to {paperDiscipline}.
+              </p>
+            </div>
+          </div>
+
+          {/* Recommended Next Steps Card */}
+          <div className="rounded-2xl liquid-glass-card p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-blue-200/60 dark:border-blue-900/40 bg-gradient-to-r from-blue-50/40 to-transparent dark:from-blue-950/20">
+            <div className="space-y-1">
+              <h4 className="text-sm font-bold text-[#0F172A] dark:text-white flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span>Redirect Manuscript to In-Scope Journals</span>
+              </h4>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400 max-w-xl">
+                ManuView has calibrated Reach, Realistic, and Fallback journal tiers matching your manuscript&apos;s substantive domain ({paperDiscipline}). View in-scope journals to maximize acceptance probability.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => onSelectView("journals")}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition shrink-0 cursor-pointer"
+            >
+              <span>View Matching Journals ({journals.length})</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     if (personas.length === 0) {
       return (
         <div className="rounded-3xl liquid-glass-card p-6 flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400">
@@ -679,8 +816,6 @@ export function DesktopDashboard({
 
     const active = personas[selectedPersona] || personas[0];
     const isDevilsAdvocate = active?.persona === "devils_advocate" || selectedPersona === 4;
-    const triage = fullReport?.editorialTriage;
-    const isDeskReject = triage?.outcome === "desk_reject";
 
     return (
       <div className="space-y-6">
@@ -1246,7 +1381,7 @@ export function DesktopDashboard({
               </button>
               <span className="text-neutral-300 dark:text-neutral-600">/</span>
               <span className="text-xs font-bold text-[#0F172A] dark:text-white">
-                {activeView === "personas" && `${personas.length || 5} Expert Reviewer Panel`}
+                {activeView === "personas" && (isDeskReject ? "Editorial Triage Decision" : `${personas.length || 5} Expert Reviewer Panel`)}
                 {activeView === "dimensions" && "6 Scoring Dimensions"}
                 {activeView === "issues" && `Priority Action Items (${issues.length})`}
                 {(activeView === "journals" || activeView === "recommendations") &&

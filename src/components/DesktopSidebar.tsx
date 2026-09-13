@@ -34,6 +34,8 @@ export type DesktopActiveView =
   | "citations"
   | "recommendations";
 
+import { EditorialTriageOutcome } from "@/lib/types";
+
 export interface PaperItem {
   id: string;
   title: string;
@@ -44,6 +46,7 @@ export interface PaperItem {
   ineligibilityReason?: "already_published" | "non_academic_document";
   isPublished?: boolean;
   publishedJournal?: string;
+  editorialTriage?: EditorialTriageOutcome;
 }
 
 interface DesktopSidebarProps {
@@ -437,7 +440,11 @@ export function DesktopSidebar({
                               }`}
                             >
                               <Users className="w-3 h-3 text-blue-600 dark:text-blue-400 shrink-0" />
-                              <span className="truncate">5-Persona Reviews</span>
+                              <span className="truncate">
+                                {paper.editorialTriage?.outcome === "desk_reject"
+                                  ? "Editorial Triage (Desk Reject)"
+                                  : "5-Persona Reviews"}
+                              </span>
                             </button>
                             <button
                               type="button"
@@ -800,7 +807,11 @@ export function DesktopSidebar({
                           }`}
                         >
                           <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                          <span className="truncate">5-Persona Reviews</span>
+                          <span className="truncate">
+                            {paper.editorialTriage?.outcome === "desk_reject"
+                              ? "Editorial Triage (Desk Reject)"
+                              : "5-Persona Reviews"}
+                          </span>
                         </button>
 
                         <button

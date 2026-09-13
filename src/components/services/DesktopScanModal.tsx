@@ -145,6 +145,7 @@ export function DesktopScanModal({
         ineligibilityReason: fullReport.ineligibilityReason,
         isPublished: isPublished,
         publishedJournal: fullReport.publishedDetails?.journalName,
+        editorialTriage: fullReport.editorialTriage,
       };
 
       const engineName = isConnected && provider
