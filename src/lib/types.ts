@@ -6,6 +6,19 @@ export type ScoreDimension =
   | 'clarity'
   | 'prior_work';
 
+export const VALID_SCORE_DIMENSIONS: ReadonlySet<ScoreDimension> = new Set<ScoreDimension>([
+  'originality',
+  'broad_interest',
+  'claims_vs_evidence',
+  'methodology',
+  'clarity',
+  'prior_work',
+]);
+
+export function isScoreDimension(value: unknown): value is ScoreDimension {
+  return typeof value === 'string' && VALID_SCORE_DIMENSIONS.has(value as ScoreDimension);
+}
+
 export interface DimensionScore {
   score: number; // 1 to 5
   label: string;
@@ -78,7 +91,8 @@ export interface CitationIntegritySummary {
   retractedCount: number;
   expressionOfConcernCount?: number;
   retractionCheckAvailable: boolean; // false if Crossref/network failed or offline
-  selfCitationRatio?: number; // Omitted if authors cannot be matched or checkedCount < 10
+  selfCitationPercent?: number; // 0 to 100 percentage of verified references matching manuscript authors
+  selfCitationRatio?: number; // Backward-compatible alias matching selfCitationPercent (0 to 100)
   selfCitationNote?: string; // Transparent explanation when ratio is omitted or calculated
   recencyProfile?: {
     last5YearsPercent: number;
