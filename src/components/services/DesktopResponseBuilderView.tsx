@@ -14,7 +14,7 @@ import {
   FileCode,
   Download,
 } from "lucide-react";
-import { callLLM, sanitizeAuthorText, sanitizeErrorMessage } from "@/lib/llm";
+import { callLLM, sanitizeAuthorText, sanitizeErrorMessage, getSavedClientConfig } from "@/lib/llm";
 import { cleanAndRepairJson } from "@/lib/json-repair";
 import { ProviderConfig } from "@/lib/types";
 
@@ -86,10 +86,7 @@ Return a JSON array of parsed reviewer comments with the following format:
   }
 ]`;
 
-      const savedConfig = localStorage.getItem("manuview_provider_config");
-      const providerConfig: ProviderConfig | undefined = savedConfig
-        ? JSON.parse(savedConfig)
-        : undefined;
+      const providerConfig = getSavedClientConfig();
 
       const raw = await callLLM([{ role: "user", content: prompt }], providerConfig);
       let parsed: RebuttalItem[] = [];
