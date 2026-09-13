@@ -47,7 +47,8 @@ import { exportInteractiveHtmlReport, exportWordDocReport } from "@/lib/export-g
 import { pickManuscriptFileDesktop, isDesktopApp } from "@/lib/desktop";
 import { extractTextFromFile, parseManuscriptText } from "@/lib/parser";
 import { runManuscriptDiagnostic, runBriefJournalFitAnalysis } from "@/lib/diagnostic-engine";
-import { callLLM, fetchAvailableModels, testLLMConnection, sanitizeErrorMessage } from "@/lib/llm";
+import { callLLM, sanitizeErrorMessage } from "@/lib/llm";
+import { useApiConnection } from "@/lib/useApiConnection";
 import { PaperItem } from "@/components/DesktopSidebar";
 import { DesktopDashboardData } from "@/components/DesktopDashboard";
 import { findMatchingJournals } from "@/lib/journals";
@@ -108,21 +109,27 @@ export function DesktopPreSubmissionScanView({
   const [report, setReport] = useState<ReviewReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedPersona, setSelectedPersona] = useState<number>(0);
-  const [availableModels, setAvailableModels] = useState<AvailableModel[]>([]);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
-  const [pinging, setPinging] = useState(false);
-  const [apiStatus, setApiStatus] = useState<"checking" | "connected" | "unconfigured" | "error">("checking");
-  const [apiErrorMessage, setApiErrorMessage] = useState<string>("");
-  const [scanPingResult, setScanPingResult] = useState<{
-    success: boolean;
-    latencyMs: number;
-    message: string;
-    error?: string;
-  } | null>(null);
-  const [activeProviderInfo, setActiveProviderInfo] = useState<{
-    name: string;
-    model: string;
-  }>({ name: "AI Engine", model: "Checking status..." });
+
+  const {
+    status: apiStatus,
+    isConnected,
+    isLoading: isApiLoading,
+    provider,
+    providerName,
+    modelName,
+    rawModelId,
+    latencyMs,
+    availableModels,
+    errorMessage: apiErrorMessage,
+    refresh: checkProviderStatus,
+    selectModel: handleSelectModel,
+  } = useApiConnection();
+
+  const activeProviderInfo = React.useMemo(() => ({
+    name: providerName || "AI Engine",
+    model: rawModelId || modelName || "Checking status...",
+  }), [providerName, rawModelId, modelName]);
 
   const scanMatchingData = React.useMemo(() => {
     if (!report) return null;
@@ -141,94 +148,6 @@ export function DesktopPreSubmissionScanView({
   const otherScanJournals = React.useMemo(() => {
     return scanMatchingData?.otherMatches || [];
   }, [scanMatchingData]);
-
-  useEffect(() => {
-    checkProviderStatus();
-  }, []);
-
-  const checkProviderStatus = async () => {
-    setPinging(true);
-    setApiStatus("checking");
-    setApiErrorMessage("");
-
-    const saved = localStorage.getItem("manuview_provider_config");
-    let browserConfig: ProviderConfig | null = null;
-    if (saved) {
-      try {
-        browserConfig = JSON.parse(saved);
-      } catch {}
-    }
-
-    const hasClientKey = !!(browserConfig && browserConfig.apiKey?.trim());
-    const isOllama = browserConfig?.provider === "ollama";
-
-    if (!hasClientKey && !isOllama) {
-      setActiveProviderInfo({
-        name: "No Provider",
-        model: "Requires API Key",
-      });
-      setApiStatus("unconfigured");
-      setScanPingResult(null);
-      setPinging(false);
-      return;
-    }
-
-    const models = await fetchAvailableModels(browserConfig || undefined);
-    setAvailableModels(models);
-
-    setActiveProviderInfo({
-      name: isOllama ? "Local Ollama" : (browserConfig?.provider || "AI").toUpperCase(),
-      model: browserConfig?.model || (models[0]?.id || "active"),
-    });
-
-    try {
-      const pingRes = await testLLMConnection(browserConfig || undefined);
-      if (pingRes.success) {
-        setApiStatus("connected");
-        setScanPingResult({
-          success: true,
-          latencyMs: pingRes.latencyMs || 0,
-          message: pingRes.message || "Connection operational",
-        });
-      } else {
-        setApiStatus("error");
-        const errMsg = pingRes.error || pingRes.message || "Connection failed";
-        setApiErrorMessage(errMsg);
-        setScanPingResult({
-          success: false,
-          latencyMs: pingRes.latencyMs || 0,
-          message: "Connection failed",
-          error: errMsg,
-        });
-      }
-    } catch (err: any) {
-      setApiStatus("error");
-      const errMsg = err?.message || "Network error checking connection";
-      setApiErrorMessage(errMsg);
-      setScanPingResult({
-        success: false,
-        latencyMs: 0,
-        message: "Network test failed",
-        error: errMsg,
-      });
-    } finally {
-      setPinging(false);
-    }
-  };
-
-  const handleSelectModel = (modelId: string) => {
-    const saved = localStorage.getItem("manuview_provider_config");
-    let current: ProviderConfig = { provider: "gemini", model: modelId };
-    if (saved) {
-      try {
-        current = JSON.parse(saved);
-      } catch {}
-    }
-    current.model = modelId;
-    localStorage.setItem("manuview_provider_config", JSON.stringify(current));
-    setActiveProviderInfo((prev) => ({ ...prev, model: modelId }));
-    setModelDropdownOpen(false);
-  };
 
   const handleTargetJournalChange = (val: string) => {
     setTargetJournal(val);
@@ -545,7 +464,10 @@ export function DesktopPreSubmissionScanView({
                             <button
                               key={m.id}
                               type="button"
-                              onClick={() => handleSelectModel(m.id)}
+                              onClick={() => {
+                                handleSelectModel(m.id);
+                                setModelDropdownOpen(false);
+                              }}
                               className={`w-full text-left px-2.5 py-2 rounded-xl transition flex items-start justify-between gap-2 ${
                                 isCur
                                   ? "bg-neutral-100 dark:bg-[#1E293B] text-[#111827] dark:text-white font-semibold border border-neutral-300 dark:border-neutral-600"
@@ -586,17 +508,42 @@ export function DesktopPreSubmissionScanView({
               )}
 
               {apiStatus === "unconfigured" && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-[#FEF3C7] dark:bg-amber-950/40 text-[#92400E] dark:text-amber-300 border border-[#FDE68A] dark:border-amber-800">
-                  <span className="w-2 h-2 rounded-full bg-[#D97706]" />
-                  No API Key (Setup Required)
-                </span>
+                <div className="inline-flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-[#FEF3C7] dark:bg-amber-950/40 text-[#92400E] dark:text-amber-300 border border-[#FDE68A] dark:border-amber-800">
+                    <span className="w-2 h-2 rounded-full bg-[#D97706]" />
+                    No API Key (Setup Required)
+                  </span>
+                  {onOpenSettings && (
+                    <button
+                      type="button"
+                      onClick={onOpenSettings}
+                      className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:underline cursor-pointer"
+                    >
+                      Configure Provider &rarr;
+                    </button>
+                  )}
+                </div>
               )}
 
               {apiStatus === "error" && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-[#FEF2F2] dark:bg-rose-950/40 text-[#991B1B] dark:text-rose-300 border border-[#FECACA] dark:border-rose-800">
-                  <span className="w-2 h-2 rounded-full bg-[#EF4444]" />
-                  {activeProviderInfo.name}: Connection Error
-                </span>
+                <div className="inline-flex items-center gap-2">
+                  <span
+                    title={apiErrorMessage || "Connection error"}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-[#FEF2F2] dark:bg-rose-950/40 text-[#991B1B] dark:text-rose-300 border border-[#FECACA] dark:border-rose-800"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-[#EF4444]" />
+                    {activeProviderInfo.name}: Connection Error
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => checkProviderStatus()}
+                    disabled={isApiLoading}
+                    className="text-xs text-neutral-600 dark:text-neutral-400 font-medium hover:underline cursor-pointer inline-flex items-center gap-1"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isApiLoading ? "animate-spin" : ""}`} />
+                    Retry
+                  </button>
+                </div>
               )}
 
               {apiStatus === "checking" && (
@@ -606,42 +553,39 @@ export function DesktopPreSubmissionScanView({
                 </span>
               )}
 
-              <button
-                type="button"
-                onClick={checkProviderStatus}
-                disabled={pinging}
-                className="isolate inline-flex items-center justify-center gap-1.5 text-xs px-2.5 py-1 min-w-[110px] rounded-lg bg-white dark:bg-[#1E293B] hover:bg-neutral-50 dark:hover:bg-[#334155] border border-[#E5E7EB] dark:border-[#334155] text-neutral-700 dark:text-neutral-300 shadow-2xs transition-colors disabled:opacity-60 cursor-pointer select-none"
-                style={{ transform: "translateZ(0)" }}
-                title="Test API connection & ping latency"
-              >
-                {pinging ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-600 shrink-0" />
-                ) : (
-                  <Activity className="w-3.5 h-3.5 text-neutral-400 dark:text-neutral-500 shrink-0" />
-                )}
-                {pinging ? (
-                  <span key="pinging">Testing...</span>
-                ) : (
-                  <span key="idle">Check Latency</span>
-                )}
-              </button>
+              {/* Latency Test Button & Result (only visible when connected) */}
+              {apiStatus === "connected" && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => checkProviderStatus()}
+                    disabled={isApiLoading}
+                    className="isolate inline-flex items-center justify-center gap-1.5 text-xs px-2.5 py-1 min-w-[110px] rounded-lg bg-white dark:bg-[#1E293B] hover:bg-neutral-50 dark:hover:bg-[#334155] border border-[#E5E7EB] dark:border-[#334155] text-neutral-700 dark:text-neutral-300 shadow-2xs transition-colors disabled:opacity-60 cursor-pointer select-none"
+                    style={{ transform: "translateZ(0)" }}
+                    title="Test API connection & ping latency"
+                  >
+                    {isApiLoading ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-600 shrink-0" />
+                    ) : (
+                      <Activity className="w-3.5 h-3.5 text-neutral-400 dark:text-neutral-500 shrink-0" />
+                    )}
+                    {isApiLoading ? (
+                      <span key="pinging">Testing...</span>
+                    ) : (
+                      <span key="idle">Check Latency</span>
+                    )}
+                  </button>
 
-              {scanPingResult && (
-                <span
-                  title={scanPingResult.error || scanPingResult.message}
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-mono font-medium border ${
-                    scanPingResult.success
-                      ? "bg-[#ECFDF5] dark:bg-emerald-950/50 text-[#065F46] dark:text-emerald-300 border-[#A7F3D0] dark:border-emerald-800"
-                      : "bg-[#FEF2F2] dark:bg-rose-950/50 text-[#991B1B] dark:text-rose-300 border-[#FECACA] dark:border-rose-800"
-                  }`}
-                >
-                  <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0" />
-                  <span>
-                    {scanPingResult.success
-                      ? `${scanPingResult.latencyMs}ms`
-                      : `Failed`}
-                  </span>
-                </span>
+                  {latencyMs !== null && !isApiLoading && (
+                    <span
+                      title={`Response latency: ${latencyMs}ms`}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-mono font-medium border bg-[#ECFDF5] dark:bg-emerald-950/50 text-[#065F46] dark:text-emerald-300 border-[#A7F3D0] dark:border-emerald-800"
+                    >
+                      <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0" />
+                      <span>{latencyMs}ms</span>
+                    </span>
+                  )}
+                </>
               )}
             </div>
           </div>
