@@ -234,27 +234,48 @@ export function DesktopHeader({
         >
           {sidebarOpen ? (
             <>
-              <button
-                type="button"
-                data-no-drag
-                onClick={onGoHome}
-                className="flex items-center gap-2.5 min-w-0 text-left hover:opacity-85 transition cursor-pointer"
-                title="Back to Landing Page"
-              >
-                <img
-                  src="/icon.svg"
-                  alt="ManuView Logo"
-                  className="w-7 h-7 rounded-lg shadow-xs shrink-0 select-none"
-                />
-                <div className="truncate min-w-0">
-                  <div className="font-bold text-xs text-[#0F172A] dark:text-white tracking-tight leading-tight">
-                    ManuView Desktop
+              {onGoHome && !isDesktopApp() ? (
+                <button
+                  type="button"
+                  data-no-drag
+                  onClick={onGoHome}
+                  className="flex items-center gap-2.5 min-w-0 text-left hover:opacity-85 transition cursor-pointer"
+                  title="Back to Landing Page"
+                >
+                  <img
+                    src="/icon.svg"
+                    alt="ManuView Logo"
+                    className="w-7 h-7 rounded-lg shadow-xs shrink-0 select-none"
+                  />
+                  <div className="truncate min-w-0">
+                    <div className="font-bold text-xs text-[#0F172A] dark:text-white tracking-tight leading-tight">
+                      ManuView Desktop
+                    </div>
+                    <div className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium leading-tight">
+                      Research &amp; Review Suite
+                    </div>
                   </div>
-                  <div className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium leading-tight">
-                    Research &amp; Review Suite
+                </button>
+              ) : (
+                <div
+                  data-no-drag
+                  className="flex items-center gap-2.5 min-w-0 text-left select-none"
+                >
+                  <img
+                    src="/icon.svg"
+                    alt="ManuView Logo"
+                    className="w-7 h-7 rounded-lg shadow-xs shrink-0 select-none"
+                  />
+                  <div className="truncate min-w-0">
+                    <div className="font-bold text-xs text-[#0F172A] dark:text-white tracking-tight leading-tight">
+                      ManuView Desktop
+                    </div>
+                    <div className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium leading-tight">
+                      Research &amp; Review Suite
+                    </div>
                   </div>
                 </div>
-              </button>
+              )}
               <button
                 type="button"
                 data-no-drag

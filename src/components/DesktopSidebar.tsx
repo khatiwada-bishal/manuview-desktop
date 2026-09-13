@@ -567,9 +567,7 @@ export function DesktopSidebar({
         <div className="p-3 border-b border-black/[0.06] dark:border-white/[0.08]">
           <div className="flex items-center justify-between p-2 rounded-xl liquid-glass-card shadow-xs">
             <div
-              onClick={onGoHome}
-              className={`flex items-center gap-2.5 min-w-0 ${onGoHome ? "cursor-pointer hover:opacity-85 transition" : ""}`}
-              title={onGoHome ? "Back to Landing Page" : undefined}
+              className="flex items-center gap-2.5 min-w-0 select-none"
             >
               <img
                 src="/icon.svg"
