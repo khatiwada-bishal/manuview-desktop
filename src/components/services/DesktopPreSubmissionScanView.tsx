@@ -53,7 +53,7 @@ import { pickManuscriptFileDesktop, isDesktopApp } from "@/lib/desktop";
 import { extractTextFromFile, parseManuscriptText } from "@/lib/parser";
 import { runManuscriptDiagnostic, runBriefJournalFitAnalysis } from "@/lib/diagnostic-engine";
 import { fetchLiveJournalScope, JournalScopeProfile } from "@/lib/journal-scope-service";
-import { evaluateManuscriptScopeTriage } from "@/lib/engine/scope-triage-journals";
+import { evaluateManuscriptScopeTriage, evaluateManuscriptScopeTriageWithLLM } from "@/lib/engine/scope-triage-journals";
 import { callLLM, sanitizeErrorMessage, getSavedClientConfig } from "@/lib/llm";
 import { useApiConnection } from "@/lib/useApiConnection";
 import { PaperItem } from "@/components/DesktopSidebar";
@@ -384,17 +384,21 @@ export function DesktopPreSubmissionScanView({
       }
 
       setLoadingStep(`Searching aims & scope for "${targetJournal}" via scholarly registries...`);
-      setLoadingPercent(40);
+      setLoadingPercent(35);
       const liveScope = await fetchLiveJournalScope(targetJournal);
 
-      setLoadingStep("Comparing manuscript research domain against journal remit...");
-      setLoadingPercent(70);
-      const triageResult = evaluateManuscriptScopeTriage(
+      setLoadingStep(`Evaluating scope compatibility for "${targetJournal}" with AI Handling Editor...`);
+      setLoadingPercent(65);
+      const providerConfig = getSavedClientConfig();
+      const triageResult = await evaluateManuscriptScopeTriageWithLLM(
         parsed.title,
         parsed.abstract,
         targetJournal,
-        undefined,
-        liveScope
+        providerConfig,
+        liveScope,
+        manuscriptKeywords,
+        parsed.rawText?.slice(0, 3000),
+        (msg) => setLoadingStep(msg)
       );
 
       // Decision F: Does scope match between journal and paper?
