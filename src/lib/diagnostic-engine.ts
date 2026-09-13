@@ -6,6 +6,8 @@ import {
   CitationIntegritySummary,
   ReviewerPersonaFeedback,
   DocumentClassification,
+  DocumentCategory,
+  isDocumentCategory,
   JournalRecommendation,
   DimensionScore,
   PriorityIssue,
@@ -39,7 +41,7 @@ export const MIN_SUMMARY_LENGTH = 50;
 export const MAX_ASSERTION_SNIPPET_LENGTH = 85;
 export const MIN_VERIFIED_REFS_FOR_SELF_CITATION = 10;
 export const MIN_AUTHOR_FAMILY_NAME_LENGTH = 2; // Supports 2-letter Asian surnames (Li, Wu, Xu, Ho, Ng, Yu)
-export const MAX_MICRO_REPAIR_PAYLOAD_CHARS = 12000;
+export const MAX_MICRO_REPAIR_PAYLOAD_CHARS = 48000;
 export const BOUNDARY_DELIMITER = "MANUSCRIPT_UNTRUSTED_CONTENT_VERBATIM";
 
 export const PROVIDER_CONTEXT_CHAR_LIMITS: Record<string, number> = {
@@ -54,6 +56,52 @@ export const DEFAULT_CONTEXT_CHAR_LIMIT = 45000;
 // -----------------------------------------------------------------------------
 // RAW LLM RESPONSE INTERFACES (Compile-Time Type Safety)
 // -----------------------------------------------------------------------------
+export interface RawDimensionScore {
+  score?: number | string;
+  label?: string;
+  verdict?: string;
+  strengths?: (string | unknown)[];
+  vulnerabilities?: (string | unknown)[];
+}
+
+export interface RawPriorityIssue {
+  id?: string;
+  priority?: "A" | "B" | "C" | string;
+  title?: string;
+  category?: PriorityIssue["category"] | string;
+  description?: string;
+  location?: string;
+  evidenceAnchor?: string;
+  reviewerQuote?: string;
+  actionableFix?: string;
+  rebuttalStrategy?: string;
+}
+
+export interface RawReviewerPersona {
+  persona?: ReviewerPersonaFeedback["persona"] | string;
+  name?: string;
+  title?: string;
+  affiliation?: string;
+  expertise?: string;
+  roleDescription?: string;
+  decisionRecommendation?: ReviewerPersonaFeedback["decisionRecommendation"] | string;
+  keyChallenge?: string;
+  assessment?: string;
+  majorCritiques?: (string | unknown)[];
+  missingControlsOrAnalyses?: (string | unknown)[];
+  mustAddressItems?: (string | unknown)[];
+  evidenceAnchors?: (string | unknown)[];
+  counterArguments?: (string | unknown)[];
+}
+
+export interface RawJournalRecommendation {
+  name?: string;
+  tier?: "Reach" | "Realistic" | "Safe Fallback" | string;
+  matchReason?: string;
+  publisher?: string;
+  impactFactor?: number | string;
+}
+
 export interface RawLLMDiagnosticResponse {
   classification?: {
     category?: string;
@@ -67,9 +115,9 @@ export interface RawLLMDiagnosticResponse {
   };
   overallScore?: number;
   summary?: string;
-  dimensions?: Record<string, any>;
-  priorityIssues?: any[];
-  reviewerPersonas?: any[];
+  dimensions?: Record<string, RawDimensionScore | undefined>;
+  priorityIssues?: RawPriorityIssue[];
+  reviewerPersonas?: RawReviewerPersona[];
   reportingGuideline?: {
     guidelineName?: string;
     standardType?: string;
@@ -77,7 +125,7 @@ export interface RawLLMDiagnosticResponse {
     compliantItems?: string[];
     missingOrPartialItems?: string[];
   };
-  journalRecommendations?: any[];
+  journalRecommendations?: RawJournalRecommendation[];
 }
 
 export interface RawLLMBriefFitResponse {
@@ -107,13 +155,34 @@ export function normalizeJournalName(rawName: string): string {
     .replace(/[.,;:]+$/, "")
     .trim();
 
+  // Check exact or direct match in catalog first
+  const lowerTrim = norm.toLowerCase();
+  const directMatch = JOURNAL_CATALOG.find((j) => j.name.toLowerCase() === lowerTrim);
+  if (directMatch) return directMatch.name;
+
+  // Multi-word compound abbreviations (Must take precedence before single-word abbreviations)
   norm = norm
-    .replace(/\bJ\b\.?/gi, "Journal")
+    .replace(/\bProc\.?\s+(?:Natl?\.?\s+)?Acad\.?\s+Sci\.?(?:\s+USA)?\b/gi, "Proceedings of the National Academy of Sciences")
+    .replace(/\bNat\.?\s+Acad\.?\s+Sci\.?\b/gi, "National Academy of Sciences")
+    .replace(/\bNatl?\.?\s+Acad\.?\b/gi, "National Academy")
+    .replace(/\bJ\.?\s+Am\.?\s+Chem\.?\s+Soc\.?\b/gi, "Journal of the American Chemical Society")
+    .replace(/\bPhys\.?\s+Rev\.?\s+Lett\.?\b/gi, "Physical Review Letters")
+    .replace(/\bPhys\.?\s+Rev\.?\b/gi, "Physical Review")
+    .replace(/\bAnn\.?\s+Intern\.?\s+Med\.?\b/gi, "Annals of Internal Medicine")
+    .replace(/\bNew\s+Engl\.?\s+J\.?\s+Med\.?\b/gi, "New England Journal of Medicine")
+    .replace(/\bN\.?\s*Engl\.?\s*J\.?\s*Med\.?\b/gi, "New England Journal of Medicine")
+    .replace(/\bIEEE\s+Trans\.?\b/gi, "IEEE Transactions on")
+    .replace(/\bACM\s+Trans\.?\b/gi, "ACM Transactions on");
+
+  // Disambiguated single-word expansions
+  norm = norm
+    .replace(/\bNatl\b\.?/gi, "National")
+    .replace(/\bNat\b\.(?!\s*Acad)/gi, "Nature")
+    .replace(/\bJ\b\.(?=\s|[A-Z]|$)/gi, "Journal")
     .replace(/\bInt\b\.?/gi, "International")
     .replace(/\bAm\b\.?/gi, "American")
     .replace(/\bSoc\b\.?/gi, "Society")
     .replace(/\bMed\b\.?/gi, "Medicine")
-    .replace(/\bNat\b\.?/gi, "Nature")
     .replace(/\bRev\b\.?/gi, "Review")
     .replace(/\bSci\b\.?/gi, "Science")
     .replace(/\bProc\b\.?/gi, "Proceedings")
@@ -124,7 +193,7 @@ export function normalizeJournalName(rawName: string): string {
     .trim();
 
   const minorWords = new Set(["of", "the", "and", "in", "on", "for", "with", "a", "an", "&"]);
-  return norm
+  const capitalized = norm
     .split(" ")
     .map((word, idx) => {
       const lower = word.toLowerCase();
@@ -132,6 +201,9 @@ export function normalizeJournalName(rawName: string): string {
       return word.charAt(0).toUpperCase() + word.slice(1);
     })
     .join(" ");
+
+  const catalogMatch = JOURNAL_CATALOG.find((j) => j.name.toLowerCase() === capitalized.toLowerCase());
+  return catalogMatch ? catalogMatch.name : capitalized;
 }
 
 function generateReportId(prefix = "rev_"): string {
@@ -392,9 +464,11 @@ export function computeCitationIntegrity(
             for (const msAuth of parsedManuscriptAuthors) {
               if (msAuth.family === fam) {
                 if (fam.length >= 4) {
+                  // Standard surname (>= 4 chars): high confidence exact match
                   isMatch = true;
                   break;
-                } else if (fam.length >= MIN_AUTHOR_FAMILY_NAME_LENGTH && msAuth.initial) {
+                } else if (msAuth.initial) {
+                  // Short surname (2-3 chars) WITH manuscript author initial: disambiguate against ref authors
                   const hasMatchingInitial = (ref.authors || []).some((ra: string) => {
                     const norm = normalizeAuthorName(ra);
                     if (norm.includes(fam)) {
@@ -407,11 +481,13 @@ export function computeCitationIntegrity(
                     isMatch = true;
                     break;
                   }
-                } else if (fam.length >= MIN_AUTHOR_FAMILY_NAME_LENGTH && fam === msAuth.family) {
-                  // Exact match for 2- or 3-letter surnames when initial not available
+                } else if (fam.length === 3) {
+                  // 3-letter surname WITHOUT initial: match on exact token
                   isMatch = true;
                   break;
                 }
+                // Note: 2-letter surname WITHOUT initial (e.g. "Li" with no initial available)
+                // is intentionally omitted to avoid high false-positive self-citation inflation.
               }
             }
             if (isMatch) break;
@@ -534,13 +610,21 @@ export function buildPreSubmissionUserPrompt(
 
   let documentBodyPayload = "";
   if (hasSubstantialSections) {
+    // Proportional section budgets derived from maxBodyChars (baseline 62,000 chars)
+    const scale = Math.max(0.2, Math.min(1.0, maxBodyChars / 62000));
+    const introBudget = Math.floor(10000 * scale);
+    const methodsBudget = Math.floor(18000 * scale);
+    const resultsBudget = Math.floor(18000 * scale);
+    const discussionBudget = Math.floor(12000 * scale);
+    const conclusionBudget = Math.floor(4000 * scale);
+
     documentBodyPayload = [
       safeAbstract ? `[MANUSCRIPT ABSTRACT]\n${safeAbstract}` : "",
-      safeIntro ? `[SECTION: INTRODUCTION & BACKGROUND]\n${safeIntro.slice(0, 10000)}` : "",
-      safeMethods ? `[SECTION: METHODOLOGY & MODEL DEVELOPMENT]\n${safeMethods.slice(0, 18000)}` : "",
-      safeResults ? `[SECTION: RESULTS & EMPIRICAL FINDINGS]\n${safeResults.slice(0, 18000)}` : "",
-      safeDiscussion ? `[SECTION: DISCUSSION & LIMITATIONS]\n${safeDiscussion.slice(0, 12000)}` : "",
-      safeConclusion ? `[SECTION: CONCLUSION]\n${safeConclusion.slice(0, 4000)}` : "",
+      safeIntro ? `[SECTION: INTRODUCTION & BACKGROUND]\n${safeIntro.slice(0, introBudget)}` : "",
+      safeMethods ? `[SECTION: METHODOLOGY & MODEL DEVELOPMENT]\n${safeMethods.slice(0, methodsBudget)}` : "",
+      safeResults ? `[SECTION: RESULTS & EMPIRICAL FINDINGS]\n${safeResults.slice(0, resultsBudget)}` : "",
+      safeDiscussion ? `[SECTION: DISCUSSION & LIMITATIONS]\n${safeDiscussion.slice(0, discussionBudget)}` : "",
+      safeConclusion ? `[SECTION: CONCLUSION]\n${safeConclusion.slice(0, conclusionBudget)}` : "",
     ].filter(Boolean).join("\n\n");
   } else {
     documentBodyPayload = `[MANUSCRIPT ABSTRACT]\n${safeAbstract || "Extracted in text"}\n\n[MANUSCRIPT BODY CONTENT]\n${safeRawText.slice(0, maxBodyChars)}`;
@@ -673,12 +757,16 @@ export async function runManuscriptDiagnostic(
 ): Promise<FullReviewReport> {
   // Step 1: Auto-resolve provider config from caller or saved client store (headless/testing safe)
   const activeConfig = config || getSavedClientConfig();
+  const isConfigUsable = Boolean(
+    activeConfig?.provider &&
+    (activeConfig.provider === "ollama" || (typeof activeConfig.apiKey === "string" && activeConfig.apiKey.trim().length > 0))
+  );
 
   // Step 2: Pre-Check: Academic Document Classification
   onProgress?.({
     stage: 'classifying',
     message: 'Analyzing document structure & academic eligibility...',
-    percent: 15,
+    percent: 20,
   });
   const heuristicClassification = manuscript.classification || classifyDocument(manuscript.rawText);
   if (!heuristicClassification.isAcademicManuscript) {
@@ -726,7 +814,7 @@ export async function runManuscriptDiagnostic(
   onProgress?.({
     stage: 'verifying_references',
     message: 'Auditing permanent scholarly records & Crossref bibliography in parallel...',
-    percent: 30,
+    percent: 35,
   });
   const sampleRefs = manuscript.references.slice(0, DEFAULT_MAX_SAMPLED_REFS);
   const [publishedDetails, verifiedRefs] = await Promise.all([
@@ -777,7 +865,7 @@ export async function runManuscriptDiagnostic(
   onProgress?.({
     stage: 'matching_journals',
     message: 'Calibrating Reach, Realistic, and Fallback target journal tiers...',
-    percent: 55,
+    percent: 50,
   });
   const journalCitationCounts = new Map<string, number>();
   for (const ref of verifiedRefs) {
@@ -815,93 +903,109 @@ export async function runManuscriptDiagnostic(
   let parsedLLM: RawLLMDiagnosticResponse | null = null;
   let llmCallError: string | null = null;
 
-  onProgress?.({
-    stage: 'generating_review',
-    message: "Simulating 5-persona peer review panel (Methods, Domain, Statistician, Editor, Devil's Advocate)...",
-    percent: 75,
-  });
+  if (!isConfigUsable) {
+    llmCallError = activeConfig?.provider
+      ? `API key missing for provider "${activeConfig.provider}".`
+      : "No AI provider configured. Configure API keys in Settings to enable the AI review panel.";
+  } else {
+    onProgress?.({
+      stage: 'generating_review',
+      message: "Simulating 5-persona peer review panel (Methods, Domain, Statistician, Editor, Devil's Advocate)...",
+      percent: 70,
+    });
 
-  let accumulatedLen = 0;
-  let lastProgressEmit = 0;
-
-  try {
-    const rawResult = await callLLM(
-      [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      activeConfig,
-      onProgress
-        ? (_delta, acc) => {
-            accumulatedLen = acc.length;
-            const now = Date.now();
-            if (now - lastProgressEmit > 300) {
-              lastProgressEmit = now;
-              const streamPercent = Math.min(95, 75 + Math.floor(accumulatedLen / 250));
-              onProgress({
-                stage: 'streaming_review',
-                message: `Synthesizing peer critiques and evidence anchors (${Math.round(accumulatedLen / 4)} tokens)...`,
-                percent: streamPercent,
-              });
-            }
-          }
-        : undefined
-    );
+    let accumulatedLen = 0;
+    let lastProgressEmit = 0;
 
     try {
-      parsedLLM = cleanAndRepairJson(rawResult);
-    } catch (parseErr: any) {
-      console.warn("JSON repair could not parse initial LLM output:", parseErr?.message);
+      const rawResult = await callLLM(
+        [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        activeConfig,
+        onProgress
+          ? (_delta, acc) => {
+              accumulatedLen = acc.length;
+              const now = Date.now();
+              if (now - lastProgressEmit > 300) {
+                lastProgressEmit = now;
+                const streamPercent = Math.min(95, 70 + Math.floor(accumulatedLen / 250));
+                onProgress({
+                  stage: 'streaming_review',
+                  message: `Synthesizing peer critiques and evidence anchors (${Math.round(accumulatedLen / 4)} tokens)...`,
+                  percent: streamPercent,
+                });
+              }
+            }
+          : undefined
+      );
 
-      // Automated Micro-Repair Loop: If we received substantive response that failed initial parsing,
-      // trigger a fast targeted recovery call to repair the JSON syntax before falling back to offline heuristics.
-      if (rawResult && rawResult.trim().length > 100) {
-        onProgress?.({
-          stage: 'generating_review',
-          message: 'Resolving JSON syntax boundary via micro-repair loop...',
-          percent: 92,
-        });
+      try {
+        parsedLLM = cleanAndRepairJson(rawResult);
+      } catch (parseErr: any) {
+        console.warn("JSON repair could not parse initial LLM output:", parseErr?.message);
 
-        try {
-          const trimmedPayload = rawResult.slice(0, MAX_MICRO_REPAIR_PAYLOAD_CHARS);
-          const repairPrompt = [
-            {
-              role: "system" as const,
-              content:
-                "You are an automated JSON syntax repair engine. The provided text contains a valid JSON payload that was truncated, has unescaped quotes, missing closing braces, or syntax errors. Fix all syntax errors and output ONLY the valid JSON object. Do not include markdown codeblocks or conversational text.",
-            },
-            {
-              role: "user" as const,
-              content: `Repair this malformed JSON and return valid JSON:\n\n${trimmedPayload}`,
-            },
-          ];
+        // Automated Micro-Repair Loop: If we received substantive response that failed initial parsing,
+        // trigger a fast targeted recovery call to repair the JSON syntax before falling back to offline heuristics.
+        if (rawResult && rawResult.trim().length > 100) {
+          onProgress?.({
+            stage: 'generating_review',
+            message: 'Resolving JSON syntax boundary via micro-repair loop...',
+            percent: 96,
+          });
 
-          const repairedRaw = await callLLM(repairPrompt, activeConfig);
-          parsedLLM = cleanAndRepairJson(repairedRaw);
-          console.log("Micro-repair loop successfully restored valid JSON review structure.");
-        } catch (repairErr: any) {
-          console.warn("Micro-repair loop also failed:", repairErr?.message);
+          try {
+            const trimmedPayload = rawResult.length <= MAX_MICRO_REPAIR_PAYLOAD_CHARS
+              ? rawResult
+              : rawResult.slice(0, MAX_MICRO_REPAIR_PAYLOAD_CHARS);
+            const repairPrompt = [
+              {
+                role: "system" as const,
+                content:
+                  "You are an automated JSON syntax repair engine. The provided text contains a valid JSON payload that was truncated, has unescaped quotes, missing closing braces, or syntax errors. Fix all syntax errors and output ONLY the valid JSON object. Do not include markdown codeblocks or conversational text.",
+              },
+              {
+                role: "user" as const,
+                content: `Repair this malformed JSON and return valid JSON:\n\n${trimmedPayload}`,
+              },
+            ];
+
+            const repairedRaw = await callLLM(repairPrompt, activeConfig);
+            parsedLLM = cleanAndRepairJson(repairedRaw);
+            console.log("Micro-repair loop successfully restored valid JSON review structure.");
+          } catch (repairErr: any) {
+            console.warn("Micro-repair loop also failed:", repairErr?.message);
+            llmCallError = "AI response was received but could not be parsed as valid JSON.";
+          }
+        } else {
           llmCallError = "AI response was received but could not be parsed as valid JSON.";
         }
-      } else {
-        llmCallError = "AI response was received but could not be parsed as valid JSON.";
       }
+    } catch (err: any) {
+      const safeError = sanitizeErrorMessage(err?.message || "AI provider call failed or is not connected.");
+      console.warn("LLM review generation warning, using document-grounded offline heuristics:", safeError);
+      llmCallError = safeError;
     }
-  } catch (err: any) {
-    const safeError = sanitizeErrorMessage(err?.message || "AI provider call failed or is not connected.");
-    console.warn("LLM review generation warning, using document-grounded offline heuristics:", safeError);
-    llmCallError = safeError;
   }
 
   // Step 6: Finalize Document Classification
+  const rawCategory = parsedLLM?.classification?.category;
+  const category: DocumentCategory = isDocumentCategory(rawCategory)
+    ? rawCategory
+    : heuristicClassification.category;
+
+  const rawConfidence = parsedLLM?.classification?.confidence;
+  const confidence = typeof rawConfidence === "number" ? rawConfidence : heuristicClassification.confidence;
+
   const finalClassification: DocumentClassification = {
-    category: (parsedLLM?.classification?.category as any) || heuristicClassification.category,
+    category,
     categoryLabel: parsedLLM?.classification?.categoryLabel || heuristicClassification.categoryLabel,
     isAcademicManuscript:
       parsedLLM?.classification?.isAcademicManuscript !== undefined
         ? Boolean(parsedLLM.classification.isAcademicManuscript)
         : heuristicClassification.isAcademicManuscript,
-    confidence: parsedLLM?.classification?.confidence || heuristicClassification.confidence,
+    confidence,
     detectedFeatures:
       parsedLLM?.classification?.detectedFeatures && parsedLLM.classification.detectedFeatures.length > 0
         ? parsedLLM.classification.detectedFeatures
@@ -942,10 +1046,9 @@ export async function runManuscriptDiagnostic(
     citationIntegrity,
     targetJournalName,
     detectedDiscipline,
-    finalClassification
+    finalClassification,
+    journalMatches
   );
-
-  const isLLMAvailable = Boolean(parsedLLM);
 
   // Section validation and field sources (REQ-EN-05)
   const dimValidation = validateDimensions(parsedLLM?.dimensions);
@@ -957,14 +1060,14 @@ export async function runManuscriptDiagnostic(
   const issueSource = issueValidation.isValid ? "llm" : "heuristic";
   const personaSource = personaValidation.isValid ? "llm" : "heuristic";
 
-  // REQ-EN-03: Derive executionMode from actual field sources
+  // REQ-EN-03: Derive executionMode directly from actual validated field sources
   const usedLlm = [dimensionSource, issueSource, personaSource].filter((s) => s === "llm").length;
   const executionMode: "llm_synthesized" | "partial_llm" | "heuristic_offline" =
-    !isLLMAvailable || usedLlm === 0
-      ? "heuristic_offline"
-      : usedLlm === 3
+    usedLlm === 3
       ? "llm_synthesized"
-      : "partial_llm";
+      : usedLlm > 0
+      ? "partial_llm"
+      : "heuristic_offline";
 
   // REQ-EN-06: In heuristic_offline mode, suppress reviewer personas and overall score entirely
   let finalOverallScore: number | undefined = undefined;
@@ -987,7 +1090,7 @@ export async function runManuscriptDiagnostic(
 
   let finalDimensions: Record<ScoreDimension, DimensionScore> | undefined = undefined;
   if (executionMode !== "heuristic_offline") {
-    const dims: Record<ScoreDimension, DimensionScore> = {} as any;
+    const dims: Partial<Record<ScoreDimension, DimensionScore>> = {};
     if (dimValidation.isValid && dimValidation.data) {
       for (const [key, dim] of Object.entries(dimValidation.data) as [ScoreDimension, DimensionScore][]) {
         dims[key] = {
@@ -1003,7 +1106,25 @@ export async function runManuscriptDiagnostic(
         };
       }
     }
-    finalDimensions = dims;
+
+    // Ensure all 6 required dimensions are populated
+    const REQUIRED_DIMENSIONS: ScoreDimension[] = [
+      "originality",
+      "broad_interest",
+      "claims_vs_evidence",
+      "methodology",
+      "clarity",
+      "prior_work",
+    ];
+    for (const dimKey of REQUIRED_DIMENSIONS) {
+      if (!dims[dimKey]) {
+        dims[dimKey] = {
+          ...domainSynthesis.dimensions[dimKey],
+          source: "heuristic",
+        };
+      }
+    }
+    finalDimensions = dims as Record<ScoreDimension, DimensionScore>;
   }
 
   let finalPriorityIssues: PriorityIssue[] = [];
@@ -1031,7 +1152,17 @@ export async function runManuscriptDiagnostic(
 
   // Step 8: Ensure Crossref integrity issues are always included if detected, with highest priority
   const additionalIssues: PriorityIssue[] = [];
-  if (retractedCount > 0 && !finalPriorityIssues.some((i) => i.id === "iss-retract")) {
+  const hasRetractionIssue = finalPriorityIssues.some(
+    (i) => i.id === "iss-retract" || (i.category === "Citations" && /retract/i.test(`${i.title} ${i.description}`))
+  );
+  const hasUnresolvableIssue = finalPriorityIssues.some(
+    (i) =>
+      i.id === "iss-hallucinate" ||
+      i.id === "iss-unverified-doi" ||
+      (i.category === "Citations" && /unresolv|hallucinat/i.test(`${i.title} ${i.description}`))
+  );
+
+  if (retractedCount > 0 && !hasRetractionIssue) {
     additionalIssues.push({
       id: "iss-retract",
       priority: "A",
@@ -1048,19 +1179,34 @@ export async function runManuscriptDiagnostic(
     });
   }
 
-  if (unresolvableCount > 0 && !finalPriorityIssues.some((i) => i.id === "iss-hallucinate")) {
+  if (unresolvableCount >= 2 && !hasUnresolvableIssue) {
     additionalIssues.push({
       id: "iss-hallucinate",
       priority: "A",
-      title: `Unresolvable DOI Detected (${unresolvableCount} references)`,
+      title: `Unresolvable DOIs Detected (${unresolvableCount} references)`,
       category: "Citations",
       description:
-        "DOIs in the reference list failed resolution against the Crossref registry. This pattern is commonly flagged by editors as an AI-hallucinated reference.",
+        "Multiple DOIs in the reference list failed resolution against the Crossref registry. This pattern is commonly flagged by editors as potential AI-hallucinated citations.",
       reviewerQuote:
         executionMode === "heuristic_offline"
           ? ""
           : "'Several cited DOIs return 404 in Crossref. Are these valid citations or hallucinated citations?'",
       actionableFix: "Verify each cited paper's official DOI directly on the publisher's journal website.",
+      source: "crossref",
+    });
+  } else if (unresolvableCount === 1 && !hasUnresolvableIssue) {
+    additionalIssues.push({
+      id: "iss-unverified-doi",
+      priority: "B",
+      title: "Unverified Reference DOI (1 reference)",
+      category: "Citations",
+      description:
+        "One DOI in the reference list could not be resolved against the Crossref registry. This may indicate a formatting typo or newly published article.",
+      reviewerQuote:
+        executionMode === "heuristic_offline"
+          ? ""
+          : "'One of the cited DOIs did not resolve in the Crossref database. Please verify the DOI string.'",
+      actionableFix: "Check the DOI string on the publisher's website to ensure no characters or punctuation were truncated.",
       source: "crossref",
     });
   }
@@ -1279,11 +1425,15 @@ export async function runBriefJournalFitAnalysis(
 
   // Step 1: Auto-resolve provider config from caller or saved client store (headless/testing safe)
   const activeConfig = input.providerConfig || getSavedClientConfig();
+  const isConfigUsable = Boolean(
+    activeConfig?.provider &&
+    (activeConfig.provider === "ollama" || (typeof activeConfig.apiKey === "string" && activeConfig.apiKey.trim().length > 0))
+  );
 
   let parsedLLM: RawLLMBriefFitResponse | null = null;
 
-  // Only run LLM editorial triage if journal profile was assessed (catalog or OpenAlex)
-  if (isScopeAssessed) {
+  // Only run LLM editorial triage if journal profile was assessed (catalog or OpenAlex) and provider config is valid
+  if (isScopeAssessed && isConfigUsable) {
     try {
       const sanitizedTitle = sanitizeAuthorText(title);
       const sanitizedAbstract = sanitizeAuthorText(abstract);
@@ -1819,6 +1969,62 @@ export function getDefaultDisciplineProfile(discipline: string): PersonaProfile 
   };
 }
 
+export const DISCIPLINE_ALIAS_MAP: Record<string, string> = {
+  "Machine Learning": "Computer Science",
+  "Artificial Intelligence": "Computer Science",
+  "Data Science": "Computer Science",
+  "Software Engineering": "Computer Science",
+  "Computing": "Computer Science",
+  "Information Systems": "Computer Science",
+  "Medicine": "Clinical",
+  "Clinical Medicine": "Clinical",
+  "Medical Sciences": "Clinical",
+  "Epidemiology": "Clinical",
+  "Public Health": "Clinical",
+  "Internal Medicine": "Clinical",
+  "Biomedicine": "Clinical",
+  "Cancer": "Oncology",
+  "Cancer Research": "Oncology",
+  "Cancer Biology": "Oncology",
+  "Ecology": "Environmental Science & Sustainability",
+  "Climate Science": "Environmental Science & Sustainability",
+  "Environmental Engineering": "Environmental Science & Sustainability",
+  "Sustainability": "Environmental Science & Sustainability",
+  "Earth Sciences": "Environmental Science & Sustainability",
+  "Operations Research": "Operations Research & Management",
+  "Management": "Operations Research & Management",
+  "Management Science": "Operations Research & Management",
+  "Supply Chain": "Operations Research & Management",
+  "Economics": "Operations Research & Management",
+  "Finance": "Operations Research & Management",
+  "Business": "Operations Research & Management",
+  "Economics, Finance & Business": "Operations Research & Management",
+  "Engineering & Applied Sciences": "Computer Science",
+  "Physical Sciences & Mathematics": "Computer Science",
+};
+
+export function resolveDisciplineProfile(discipline: string): PersonaProfile {
+  if (DISCIPLINE_HEURISTIC_PROFILES[discipline]) {
+    return DISCIPLINE_HEURISTIC_PROFILES[discipline];
+  }
+  const directAlias = DISCIPLINE_ALIAS_MAP[discipline];
+  if (directAlias && DISCIPLINE_HEURISTIC_PROFILES[directAlias]) {
+    return DISCIPLINE_HEURISTIC_PROFILES[directAlias];
+  }
+  const normalized = discipline.toLowerCase().trim();
+  for (const [key, profile] of Object.entries(DISCIPLINE_HEURISTIC_PROFILES)) {
+    if (key.toLowerCase() === normalized || normalized.includes(key.toLowerCase()) || key.toLowerCase().includes(normalized)) {
+      return profile;
+    }
+  }
+  for (const [aliasKey, targetKey] of Object.entries(DISCIPLINE_ALIAS_MAP)) {
+    if (normalized.includes(aliasKey.toLowerCase())) {
+      return DISCIPLINE_HEURISTIC_PROFILES[targetKey] || getDefaultDisciplineProfile(discipline);
+    }
+  }
+  return getDefaultDisciplineProfile(discipline);
+}
+
 /**
  * High-Fidelity Domain-Adaptive Scientific Review Synthesizer
  * Generates publication-grade, authentic peer review evaluations grounded in the manuscript.
@@ -1828,7 +2034,8 @@ export function synthesizeGroundedAcademicReview(
   citationIntegrity: CitationIntegritySummary,
   targetJournalName?: string,
   detectedDiscipline?: string,
-  classification?: DocumentClassification
+  classification?: DocumentClassification,
+  existingJournalMatches?: ReturnType<typeof findMatchingJournals>
 ): {
   overallScore: number;
   summary: string;
@@ -1854,14 +2061,20 @@ export function synthesizeGroundedAcademicReview(
   // 1. Discipline & Journal Scope Resolution
   const cleanTitle = manuscript.title?.trim() || "Untitled Research Investigation";
   const targetJournal = targetJournalName?.trim() || "Target Journal";
-  const citedNames = (manuscript.references || [])
-    .slice(0, 50)
-    .map((r) => {
-      const match = r.match(/\b([A-Z][A-Za-z\s&]{3,35})\b/);
-      return match ? match[1] : "";
-    })
-    .filter(Boolean);
-  const catalogMatches = findMatchingJournals(cleanTitle, manuscript.abstract || "", targetJournal, citedNames);
+  const catalogMatches =
+    existingJournalMatches ||
+    findMatchingJournals(
+      cleanTitle,
+      manuscript.abstract || "",
+      targetJournal,
+      (manuscript.references || [])
+        .slice(0, 50)
+        .map((r) => {
+          const match = r.match(/\b([A-Z][A-Za-z\s&]{3,35})\b/);
+          return match ? match[1] : "";
+        })
+        .filter(Boolean)
+    );
   const discipline = detectedDiscipline || catalogMatches.detectedDiscipline || "Scholarly Research";
 
   // 2. Extract Core Findings / Thesis Statement from Abstract
@@ -1899,16 +2112,18 @@ export function synthesizeGroundedAcademicReview(
   const causalCount = causalAssertions.length;
   const limitCount = declaredLimitations.length;
 
-  // 4. Dynamic Calibrated Overall Score Computation
-  let dynamicScore = 75;
+  // 4. Dynamic Calibrated Overall Score Computation (Baseline 65, diminishing returns on bonuses capped at +15)
+  const baseScore = 65;
+  let rawBonus = 0;
+  let deductions = 0;
 
   if (cleanTitle.length > 20 && !cleanTitle.toLowerCase().startsWith("untitled")) {
-    dynamicScore += 2;
+    rawBonus += 2;
   }
   if (manuscript.abstract && manuscript.abstract.length > 200) {
-    dynamicScore += 3;
+    rawBonus += 3;
   } else if (!manuscript.abstract || manuscript.abstract.length < 50) {
-    dynamicScore -= 4;
+    deductions += 4;
   }
 
   const isMethodsMissing = Boolean(manuscript.sectionProvenance?.methodsMissing) || (!manuscript.sections.methods || manuscript.sections.methods.length < 50);
@@ -1917,60 +2132,70 @@ export function synthesizeGroundedAcademicReview(
   const isDiscussionInferred = Boolean(manuscript.sectionProvenance?.discussionInferred);
 
   if (!isMethodsMissing && !isMethodsInferred && manuscript.sections.methods && manuscript.sections.methods.length > 150) {
-    dynamicScore += 3;
+    rawBonus += 3;
   } else if (isMethodsInferred) {
     // REQ-EN-02: Inferred section penalty instead of bonus
-    dynamicScore -= 2;
+    deductions += 2;
   } else {
-    dynamicScore -= 4;
+    deductions += 4;
   }
 
   if (manuscript.sections.results && manuscript.sections.results.length > 150) {
-    dynamicScore += isResultsInferred ? -1 : 3;
+    if (isResultsInferred) {
+      deductions += 1;
+    } else {
+      rawBonus += 3;
+    }
   } else if (!manuscript.sections.results || manuscript.sections.results.length < 50) {
-    dynamicScore -= 3;
+    deductions += 3;
   }
 
   if (manuscript.sections.discussion && manuscript.sections.discussion.length > 150) {
-    dynamicScore += isDiscussionInferred ? -1 : 2;
+    if (isDiscussionInferred) {
+      deductions += 1;
+    } else {
+      rawBonus += 2;
+    }
   } else if (!manuscript.sections.discussion || manuscript.sections.discussion.length < 50) {
-    dynamicScore -= 2;
+    deductions += 2;
   }
 
-  if (sampleCount > 0) dynamicScore += 2;
-  if (statCount > 0) dynamicScore += 2;
-  if (eqCount > 0) dynamicScore += 2;
-  if (repoCount > 0) dynamicScore += 2;
+  if (sampleCount > 0) rawBonus += 2;
+  if (statCount > 0) rawBonus += 2;
+  if (eqCount > 0) rawBonus += 2;
+  if (repoCount > 0) rawBonus += 2;
 
   if (citationIntegrity.verifiedCount >= 20) {
-    dynamicScore += 3;
+    rawBonus += 3;
   } else if (citationIntegrity.verifiedCount >= 8) {
-    dynamicScore += 1;
+    rawBonus += 1;
   }
 
   if (citationIntegrity.retractedCount > 0) {
-    dynamicScore -= Math.min(25, citationIntegrity.retractedCount * 8);
+    deductions += Math.min(25, citationIntegrity.retractedCount * 8);
   }
-  if (citationIntegrity.unresolvableCount > 2) {
-    dynamicScore -= Math.min(8, citationIntegrity.unresolvableCount * 2);
+  if (citationIntegrity.unresolvableCount >= 2) {
+    deductions += Math.min(8, citationIntegrity.unresolvableCount * 2);
   }
 
   if (causalCount > 1 && limitCount === 0) {
-    dynamicScore -= 3;
+    deductions += 3;
   }
 
   if (manuscript.wordCount >= 3000 && manuscript.wordCount <= 14000) {
-    dynamicScore += 2;
+    rawBonus += 2;
   } else if (manuscript.wordCount < 1800) {
-    dynamicScore -= 5;
+    deductions += 5;
   }
 
   const targetEntry = JOURNAL_CATALOG.find((j) => j.name.toLowerCase() === targetJournal.toLowerCase());
   if (targetEntry && targetEntry.impactFactor > 25) {
-    dynamicScore -= 2;
+    deductions += 2;
   }
 
-  dynamicScore = Math.max(0, Math.min(100, dynamicScore));
+  // Diminishing returns on positive bonuses, strictly capped at +15
+  const cappedBonus = Math.min(15, Math.round(rawBonus * 0.7));
+  let dynamicScore = Math.max(0, Math.min(100, baseScore + cappedBonus - deductions));
 
   // 5. Dynamic Grounded Editorial Synthesis Summary
   const empiricalParts: string[] = [];
@@ -2063,8 +2288,8 @@ export function synthesizeGroundedAcademicReview(
           : "Empirical findings detailed in text",
       ],
       vulnerabilities: [
-        causalCount > 0
-          ? `Causal statement requires hedging: "${causalAssertions[0].slice(0, 85)}..."`
+        causalCount > 0 && causalAssertions[0]
+          ? `Causal statement requires hedging: "${causalAssertions[0].slice(0, MAX_ASSERTION_SNIPPET_LENGTH)}..."`
           : "Ensure observed empirical associations are strictly framed within observational limits",
       ],
     },
@@ -2164,7 +2389,7 @@ export function synthesizeGroundedAcademicReview(
     });
   }
 
-  if (citationIntegrity.unresolvableCount > 2) {
+  if (citationIntegrity.unresolvableCount >= 2) {
     priorityIssues.push({
       id: "iss-hallucinate",
       priority: "A",
@@ -2177,9 +2402,22 @@ export function synthesizeGroundedAcademicReview(
       actionableFix: "Verify each cited work's official DOI directly on the publisher's journal website.",
       rebuttalStrategy: "1. Check DOIs against publisher landing pages and supply corrected DOI strings.\n2. Provide direct journal URLs for any non-DOI grey literature citations.",
     });
+  } else if (citationIntegrity.unresolvableCount === 1) {
+    priorityIssues.push({
+      id: "iss-unverified-doi",
+      priority: "B",
+      title: "Unverified Reference DOI (1 reference)",
+      category: "Citations",
+      description: "One DOI in the bibliography failed resolution against the Crossref registry. This may indicate a typographical error in the DOI string.",
+      location: "References",
+      evidenceAnchor: "references: 1 unverified DOI in Crossref",
+      reviewerQuote: "'One of the cited DOIs did not resolve in Crossref. Please verify the DOI string.'",
+      actionableFix: "Verify the cited paper's official DOI directly on the publisher's journal website.",
+      rebuttalStrategy: "1. Check the DOI string against the publisher website and provide corrected DOI in bibliography.",
+    });
   }
 
-  if (causalCount > 0) {
+  if (causalCount > 0 && causalAssertions[0]) {
     priorityIssues.push({
       id: "iss-causal",
       priority: "B",
@@ -2187,7 +2425,7 @@ export function synthesizeGroundedAcademicReview(
       category: "Causal Claims",
       description: `The manuscript asserts strong causal mechanisms that should be moderated to reflect observational or empirical boundaries for "${cleanTitle.slice(0, 60)}...".`,
       location: "Abstract / Discussion",
-      evidenceAnchor: `text: "${causalAssertions[0].slice(0, 85)}"`,
+      evidenceAnchor: `text: "${causalAssertions[0].slice(0, MAX_ASSERTION_SNIPPET_LENGTH)}"`,
       reviewerQuote: `'The assertion "${causalAssertions[0].slice(0, 55)}..." overstates what the presented empirical data can definitively prove.'`,
       actionableFix: "Reframe statements using calibrated hedging language (e.g. 'is strongly associated with' or 'provides empirical evidence consistent with') rather than unconditional causal claims.",
       rebuttalStrategy: "1. Acknowledge inferential limits: Concede that observational evidence cannot rule out unmeasured confounders.\n2. Soften causal verbs throughout Abstract, Results, and Discussion.\n3. Add dedicated Limitations subsection outlining required interventional studies for future work.",
@@ -2239,7 +2477,7 @@ export function synthesizeGroundedAcademicReview(
   }
 
   // 8. Dynamic 5-Persona Peer Review Panel Tailored to Discipline
-  const matchedProfile = DISCIPLINE_HEURISTIC_PROFILES[discipline] || getDefaultDisciplineProfile(discipline);
+  const matchedProfile = resolveDisciplineProfile(discipline);
 
   const personas: ReviewerPersonaFeedback[] = [
     {
@@ -2395,8 +2633,8 @@ export function synthesizeGroundedAcademicReview(
         "Add a dedicated subsection in Limitations detailing rival hypotheses and unmeasured confounding bounds.",
       ],
       evidenceAnchors: [
-        causalCount > 0
-          ? `text: "${causalAssertions[0].slice(0, 80)}"`
+        causalCount > 0 && causalAssertions[0]
+          ? `text: "${causalAssertions[0].slice(0, MAX_ASSERTION_SNIPPET_LENGTH)}"`
           : `text: §Introduction "${cleanTitle.slice(0, 60)}..."`,
         "absence: §Limitations lacks formal unmeasured confounding sensitivity bounds",
       ],
