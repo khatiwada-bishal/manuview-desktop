@@ -981,6 +981,25 @@ export function DesktopDashboard({
           </span>
         </div>
 
+        {/* Scope Mismatch Warning Banner */}
+        {matchingJournalsData.targetJournalEvaluation?.isDisciplinaryMismatch && (
+          <div className="p-4 sm:p-5 rounded-3xl bg-rose-500/10 border border-rose-500/30 text-rose-950 dark:text-rose-200 flex items-start gap-3.5">
+            <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+            <div className="space-y-1 text-xs">
+              <div className="font-bold text-sm text-rose-900 dark:text-rose-300">
+                Critical Scope Mismatch: &ldquo;{targetJournal}&rdquo; ({matchingJournalsData.targetJournalEvaluation.journalDiscipline})
+              </div>
+              <p className="leading-relaxed text-rose-800 dark:text-rose-200/90">
+                {matchingJournalsData.targetJournalEvaluation.mismatchWarning ||
+                  `The author-specified target journal "${targetJournal}" publishes in ${matchingJournalsData.targetJournalEvaluation.journalDiscipline}, while this manuscript belongs to ${matchingJournalsData.detectedDiscipline}. Submitting out of scope carries a very high probability of immediate editorial desk rejection.`}
+              </p>
+              <p className="text-[11px] text-rose-700 dark:text-rose-300/80 pt-1 font-medium">
+                The strategic tiers below have been dynamically recalibrated to peer-reviewed venues directly within <strong>{matchingJournalsData.detectedDiscipline}</strong>.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* 3 Strategic Recommendation Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {displayJournals.map((j, idx) => (
@@ -1337,13 +1356,21 @@ export function DesktopDashboard({
                 </div>
               ) : (
                 <div className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl liquid-glass-card">
-                  <div className="flex items-baseline">
-                    <span className="text-3xl sm:text-4xl font-black text-[#0F172A] dark:text-white">
-                      {overallScore}
-                    </span>
-                    <span className="text-xs sm:text-sm font-bold text-[#64748B] dark:text-neutral-400 uppercase tracking-wider ml-2">
-                      / 100 OVERALL ACCEPTANCE POTENTIAL
-                    </span>
+                  <div className="flex items-center flex-wrap gap-2.5">
+                    <div className="flex items-baseline">
+                      <span className="text-3xl sm:text-4xl font-black text-[#0F172A] dark:text-white">
+                        {overallScore}
+                      </span>
+                      <span className="text-xs sm:text-sm font-bold text-[#64748B] dark:text-neutral-400 uppercase tracking-wider ml-2">
+                        / 100 OVERALL ACCEPTANCE POTENTIAL
+                      </span>
+                    </div>
+                    {matchingJournalsData.targetJournalEvaluation?.isDisciplinaryMismatch && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        Target Journal Scope Mismatch
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2">
