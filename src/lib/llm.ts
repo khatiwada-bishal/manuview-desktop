@@ -5,6 +5,29 @@ export interface LLMMessage {
   content: string;
 }
 
+export interface LLMCallOptions {
+  /**
+   * Explicitly request (or suppress) provider-native JSON output mode.
+   * When omitted, the mode is inferred from the prompt via {@link inferJsonMode}.
+   */
+  jsonMode?: boolean;
+}
+
+/**
+ * Heuristically infers whether the caller wants provider-native JSON output.
+ * Requires an explicit JSON/schema mention AND the absence of an opt-out
+ * directive ("do not return json", "plain text"), so a prose prompt that
+ * merely says "Do NOT return JSON" is correctly treated as non-JSON.
+ */
+export function inferJsonMode(messages: LLMMessage[]): boolean {
+  const mentionsJson = messages.some((m) => /\bjson\b|\bschema\b/i.test(m.content));
+  if (!mentionsJson) return false;
+  const optsOut = messages.some((m) =>
+    /do\s+not\s+(?:return|output|produce|wrap)[^.]*json|plain\s*text|not\s+json/i.test(m.content)
+  );
+  return !optsOut;
+}
+
 export function getEnv(key: string): string {
   try {
     const g = (typeof window !== "undefined" ? window : globalThis) as any;
@@ -120,10 +143,34 @@ export function getServerConfigStatus(): {
 
 const LLM_TIMEOUT_MS = 90_000;
 
+/**
+ * Creates an AbortController backed by an *idle* timeout: the abort fires only
+ * after `ms` of inactivity. Call `reset()` on each sign of progress (e.g. a
+ * streamed chunk) to keep a long-but-healthy request alive.
+ */
+function createIdleTimeout(ms: number): {
+  controller: AbortController;
+  reset: () => void;
+  cancel: () => void;
+} {
+  const controller = new AbortController();
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const reset = () => {
+    if (timeoutId) clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => controller.abort(), ms);
+  };
+  const cancel = () => {
+    if (timeoutId) clearTimeout(timeoutId);
+  };
+  reset();
+  return { controller, reset, cancel };
+}
+
 async function readStream(
   response: Response,
   onChunk: (delta: string, accumulated: string) => void,
-  extractDelta: (line: string) => string | null
+  extractDelta: (line: string) => string | null,
+  onActivity?: () => void
 ): Promise<string> {
   if (!response.body) {
     throw new Error("Response body is null, cannot stream.");
@@ -137,6 +184,9 @@ async function readStream(
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
+      // Reset the idle-timeout watchdog on every received chunk so a long but
+      // healthy stream is not aborted mid-generation by the wall-clock timeout.
+      onActivity?.();
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split("\n");
       buffer = lines.pop() || "";
@@ -218,8 +268,12 @@ function extractOllamaDelta(line: string): string | null {
 export async function callLLM(
   messages: LLMMessage[],
   config?: ProviderConfig,
-  onChunk?: (delta: string, accumulated: string) => void
+  onChunk?: (delta: string, accumulated: string) => void,
+  options?: LLMCallOptions
 ): Promise<string> {
+  // Resolve JSON output mode once: explicit option wins, otherwise infer from
+  // the prompt with a guard against prose prompts that say "Do NOT return JSON".
+  const jsonMode = options?.jsonMode ?? inferJsonMode(messages);
   // 1. Resolve Provider and Credentials
   const resolvedConfig = config || getSavedClientConfig();
   let provider: LLMProvider = resolvedConfig?.provider || "ollama";
@@ -281,8 +335,7 @@ export async function callLLM(
     const cleanKey = encodeURIComponent(apiKey.trim());
     const action = onChunk ? "streamGenerateContent?alt=sse&key=" : "generateContent?key=";
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:${action}${cleanKey}`;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+    const { controller, reset: resetTimeout, cancel: cancelTimeout } = createIdleTimeout(LLM_TIMEOUT_MS);
     try {
       const systemMessage = messages.find(m => m.role === 'system')?.content;
       const nonSystemMessages = messages.filter(m => m.role !== 'system');
@@ -302,16 +355,12 @@ export async function callLLM(
         });
       }
 
-      const isJsonRequested = messages.some(
-        (m) => m.content.includes("JSON") || m.content.includes("json") || m.content.includes("schema")
-      ) && !messages.some((m) => m.content.includes("Do NOT return JSON") || m.content.includes("plain text"));
-
       const requestPayload: any = {
         contents,
         generationConfig: {
           temperature: 0.2,
           maxOutputTokens: 8192,
-          ...(isJsonRequested ? { responseMimeType: "application/json" } : {}),
+          ...(jsonMode ? { responseMimeType: "application/json" } : {}),
         },
       };
 
@@ -357,7 +406,7 @@ export async function callLLM(
       }
 
       if (onChunk) {
-        const text = await readStream(response, onChunk, extractGeminiDelta);
+        const text = await readStream(response, onChunk, extractGeminiDelta, resetTimeout);
         if (text) return text;
         throw new Error("Gemini stream returned empty content.");
       }
@@ -374,7 +423,7 @@ export async function callLLM(
       console.error("Gemini call failed:", safeMsg);
       throw new Error(`Google Gemini call failed: ${safeMsg}`);
     } finally {
-      clearTimeout(timeoutId);
+      cancelTimeout();
     }
   }
 
@@ -399,8 +448,7 @@ export async function callLLM(
     const chosenModel = model || getEnv('OPENAI_MODEL') || (provider === "groq" ? "llama-3.3-70b-versatile" : "gpt-4o-mini");
     const isReasoningModel = /^o[13](?:-|$)/i.test(chosenModel);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+    const { controller, reset: resetTimeout, cancel: cancelTimeout } = createIdleTimeout(LLM_TIMEOUT_MS);
 
     try {
       const formattedMessages = messages.map(m => {
@@ -424,8 +472,10 @@ export async function callLLM(
         requestPayload.max_tokens = 8192;
       }
 
-      const isJsonRequested = messages.some((m) => /json/i.test(m.content));
-      if (provider === "groq" || (provider === "openai" && isJsonRequested && !isReasoningModel)) {
+      // Only request native JSON output when the caller actually wants JSON.
+      // (Previously Groq forced json_object unconditionally, which broke prose
+      // services such as the cover-letter generator.)
+      if (jsonMode && !isReasoningModel) {
         requestPayload.response_format = { type: "json_object" };
       }
 
@@ -453,7 +503,7 @@ export async function callLLM(
       }
 
       if (onChunk) {
-        const content = await readStream(response, onChunk, extractOpenAIDelta);
+        const content = await readStream(response, onChunk, extractOpenAIDelta, resetTimeout);
         if (content) return content;
         throw new Error(`${provider.toUpperCase()} stream returned empty content.`);
       }
@@ -470,7 +520,7 @@ export async function callLLM(
       console.error(`${provider} call failed:`, safeMsg);
       throw new Error(`${provider.toUpperCase()} call failed: ${safeMsg}`);
     } finally {
-      clearTimeout(timeoutId);
+      cancelTimeout();
     }
   }
 
@@ -478,8 +528,7 @@ export async function callLLM(
   // 3. Anthropic Claude API
   // -----------------------------------------------------------
   if (provider === "anthropic" && apiKey) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+    const { controller, reset: resetTimeout, cancel: cancelTimeout } = createIdleTimeout(LLM_TIMEOUT_MS);
     try {
       const systemMessage = messages.find(m => m.role === 'system')?.content || "";
       const userAssistantMessages = messages
@@ -530,7 +579,7 @@ export async function callLLM(
       }
 
       if (onChunk) {
-        const text = await readStream(response, onChunk, extractAnthropicDelta);
+        const text = await readStream(response, onChunk, extractAnthropicDelta, resetTimeout);
         if (text) return text;
         throw new Error("Anthropic stream returned empty content.");
       }
@@ -547,7 +596,7 @@ export async function callLLM(
       console.error("Anthropic call failed:", safeMsg);
       throw new Error(`Anthropic call failed: ${safeMsg}`);
     } finally {
-      clearTimeout(timeoutId);
+      cancelTimeout();
     }
   }
 
@@ -555,8 +604,7 @@ export async function callLLM(
   // 4. Local Ollama (100% Offline & Free)
   // -----------------------------------------------------------
   if (provider === "ollama") {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+    const { controller, reset: resetTimeout, cancel: cancelTimeout } = createIdleTimeout(LLM_TIMEOUT_MS);
     try {
       let cleanBase = (baseUrl || "http://localhost:11434").trim();
       if (!cleanBase.startsWith("http://") && !cleanBase.startsWith("https://")) {
@@ -564,7 +612,6 @@ export async function callLLM(
       }
       cleanBase = cleanBase.replace(/\/+$/, "");
 
-      const isJsonRequested = messages.some((m) => /json/i.test(m.content));
       const requestPayload: any = {
         model: model || getEnv('OLLAMA_MODEL') || "llama3.3",
         messages,
@@ -575,7 +622,7 @@ export async function callLLM(
           num_ctx: 16384,
         },
       };
-      if (isJsonRequested) {
+      if (jsonMode) {
         requestPayload.format = "json";
       }
 
@@ -588,7 +635,7 @@ export async function callLLM(
 
       if (response.ok) {
         if (onChunk) {
-          const content = await readStream(response, onChunk, extractOllamaDelta);
+          const content = await readStream(response, onChunk, extractOllamaDelta, resetTimeout);
           return content;
         }
         const data = await response.json();
@@ -602,7 +649,7 @@ export async function callLLM(
       const safeMsg = sanitizeErrorMessage(err.message);
       throw new Error(`Local Ollama service unreachable at ${baseUrl}: ${safeMsg}`);
     } finally {
-      clearTimeout(timeoutId);
+      cancelTimeout();
     }
   }
 
@@ -956,7 +1003,7 @@ export async function fetchAvailableModels(
               name: m.display_name || existing?.name || id,
               description: existing?.description || `Anthropic model ${id}`,
               tag: existing?.tag || (id.includes("sonnet") ? "🧠 Frontier" : id.includes("haiku") ? "⚡ Fast" : undefined),
-              recommended: existing?.recommended || id.includes("sonnet-3-7") || id.includes("sonnet-3-5"),
+              recommended: existing?.recommended || /3-7-sonnet|3-5-sonnet/.test(id),
               isLive: true,
             };
           });
