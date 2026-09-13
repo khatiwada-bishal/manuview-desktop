@@ -788,9 +788,12 @@ export function DesktopSidebar({
               }))}
             </div>
           </div>
+        </div>
 
-        {/* 2. SERVICES LIST (Below Articles) */}
-        <div className="pt-2 border-t border-black/[0.04] dark:border-white/[0.06]">
+      {/* 2. DOCKED BOTTOM SECTION: SERVICES & DISCLAIMER (Positioned at bottom above footer) */}
+      <div className="px-3 pt-2 pb-1 border-t border-black/[0.06] dark:border-white/[0.08] space-y-2 shrink-0">
+        {/* SERVICES LIST */}
+        <div>
           <div className="flex items-center justify-between px-2 mb-1.5">
             <button
               type="button"
@@ -810,7 +813,7 @@ export function DesktopSidebar({
           </div>
 
           {servicesExpanded && (
-            <div className="space-y-0.5">
+            <div className="space-y-0.5 max-h-52 overflow-y-auto [scrollbar-width:thin]">
               {SERVICES.map((service) => {
                 const Icon = service.icon;
                 const isItemActive = isServiceActive(service.id);
@@ -844,8 +847,8 @@ export function DesktopSidebar({
           )}
         </div>
 
-        {/* 3. AI DISCLAIMER & USAGE PILL (Positioned in designated sidebar zone above footer) */}
-        <div className="pb-2 pt-1 border-t border-black/[0.04] dark:border-white/[0.04]">
+        {/* AI DISCLAIMER & USAGE PILL */}
+        <div className="pb-1 pt-1 border-t border-black/[0.04] dark:border-white/[0.04]">
           <div ref={disclaimerRef} className="relative group">
             <button
               type="button"
