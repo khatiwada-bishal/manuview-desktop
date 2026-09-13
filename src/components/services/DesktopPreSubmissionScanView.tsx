@@ -314,6 +314,7 @@ export function DesktopPreSubmissionScanView({
             ineligibilityReason: fullReport.ineligibilityReason,
             isPublished: isPublished,
             publishedJournal: fullReport.publishedDetails?.journalName,
+            editorialTriage: fullReport.editorialTriage,
           };
 
           const dashboardData: DesktopDashboardData = {
