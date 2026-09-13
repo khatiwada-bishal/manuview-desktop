@@ -2501,7 +2501,8 @@ export const JOURNAL_CATALOG: JournalEntry[] = [
 
 /**
  * Intelligent domain classifier to detect manuscript discipline
- * Incorporates target journal, cited journals, and deep keyword patterns
+ * Evaluates the manuscript content (title, abstract, keywords, and cited references)
+ * independently from the author's target journal preference.
  */
 export function detectDiscipline(
   title: string,
@@ -2509,39 +2510,10 @@ export function detectDiscipline(
   targetJournal?: string,
   citedJournals?: string[]
 ): JournalEntry['discipline'] {
-  const text = `${title} ${abstract} ${targetJournal || ''}`.toLowerCase();
+  const manuscriptText = `${title} ${abstract}`.toLowerCase();
   const citedText = (citedJournals || []).join(' ').toLowerCase();
 
-  // 1. Direct Target Journal Catalog Check (highest confidence anchor)
-  if (targetJournal) {
-    const targetNorm = targetJournal.trim().toLowerCase();
-    const catalogDirect = JOURNAL_CATALOG.find(
-      j => j.name.toLowerCase() === targetNorm || targetNorm.includes(j.name.toLowerCase()) || j.name.toLowerCase().includes(targetNorm)
-    );
-    if (catalogDirect) {
-      return catalogDirect.discipline;
-    }
-  }
-
-  // 2. Cited Journals Check (strong empirical signal from references)
-  if (citedJournals && citedJournals.length > 0) {
-    const disciplineCitationCounts: Partial<Record<Discipline, number>> = {};
-    for (const cited of citedJournals) {
-      const cNorm = cited.trim().toLowerCase();
-      for (const catEntry of JOURNAL_CATALOG) {
-        if (catEntry.discipline === 'Multidisciplinary') continue;
-        if (cNorm.includes(catEntry.name.toLowerCase()) || catEntry.name.toLowerCase().includes(cNorm)) {
-          disciplineCitationCounts[catEntry.discipline] = (disciplineCitationCounts[catEntry.discipline] || 0) + 1;
-        }
-      }
-    }
-    const sortedCitations = Object.entries(disciplineCitationCounts).sort((a, b) => (b[1] || 0) - (a[1] || 0));
-    if (sortedCitations.length > 0 && (sortedCitations[0][1] || 0) >= 2) {
-      return sortedCitations[0][0] as Discipline;
-    }
-  }
-
-  // 3. Keyword Scoring across all 12 distinct disciplinary fields
+  // 1. Keyword Scoring across all 12 distinct disciplinary fields
   // Economics, Finance & Business
   const econTerms = [
     'economics', 'macroeconomic', 'microeconomic', 'econometric', 'inflation', 'monetary policy',
@@ -2549,7 +2521,7 @@ export function detectDiscipline(
     'stock returns', 'fintech', 'market efficiency', 'consumer behavior', 'behavioral economics',
     'financial economics', 'portfolio', 'interest rate', 'venture capital', 'banking'
   ];
-  const econScore = econTerms.filter(t => text.includes(t) || citedText.includes(t)).length;
+  const econScore = econTerms.filter(t => manuscriptText.includes(t) || citedText.includes(t)).length;
 
   // Physical Sciences & Mathematics
   const physMathTerms = [
@@ -2558,7 +2530,7 @@ export function detectDiscipline(
     'fermi', 'lorentz', 'differential equation', 'eigenvalue', 'stochastic calculus',
     'topology', 'manifold', 'riemannian', 'bayesian inference', 'markov chain', 'photon', 'optics'
   ];
-  const physMathScore = physMathTerms.filter(t => text.includes(t) || citedText.includes(t)).length;
+  const physMathScore = physMathTerms.filter(t => manuscriptText.includes(t) || citedText.includes(t)).length;
 
   // Chemistry & Materials Science
   const chemMatTerms = [
@@ -2567,7 +2539,7 @@ export function detectDiscipline(
     'density functional theory', 'dft', 'nmr', 'ligand', 'perovskite', 'corrosion', 'composite material',
     'chemical engineering', 'reaction kinetics', 'sol-gel'
   ];
-  const chemMatScore = chemMatTerms.filter(t => text.includes(t) || citedText.includes(t)).length;
+  const chemMatScore = chemMatTerms.filter(t => manuscriptText.includes(t) || citedText.includes(t)).length;
 
   // Engineering & Applied Sciences
   const engTerms = [
@@ -2575,7 +2547,7 @@ export function detectDiscipline(
     'turbulent flow', 'structural integrity', 'actuator', 'aerodynamic', 'tribology', 'vibration analysis',
     'signal processing', 'mechatronics', 'robotics', 'control system', 'kinematics', 'inverter', 'motor drive'
   ];
-  const engScore = engTerms.filter(t => text.includes(t) || citedText.includes(t)).length;
+  const engScore = engTerms.filter(t => manuscriptText.includes(t) || citedText.includes(t)).length;
 
   // Social Sciences, Psychology & Education
   const socPsychTerms = [
@@ -2584,7 +2556,7 @@ export function detectDiscipline(
     'sociological', 'curriculum', 'qualitative interview', 'behavioral intervention', 'likert scale',
     'educational technology', 'learning analytics', 'health equity'
   ];
-  const socPsychScore = socPsychTerms.filter(t => text.includes(t) || citedText.includes(t)).length;
+  const socPsychScore = socPsychTerms.filter(t => manuscriptText.includes(t) || citedText.includes(t)).length;
 
   // Environmental Science & Sustainability
   const envTerms = [
@@ -2594,7 +2566,7 @@ export function detectDiscipline(
     'microplastics', 'pollution', 'sustainable development', 'planetary boundaries', 'circular economy',
     'carbon emissions', 'emissions reduction', 'air quality', 'soil degradation', 'environmental science'
   ];
-  const envScore = envTerms.filter(t => text.includes(t) || citedText.includes(t)).length;
+  const envScore = envTerms.filter(t => manuscriptText.includes(t) || citedText.includes(t)).length;
 
   // Operations Research, Supply Chain & Industrial Engineering
   const orTerms = [
@@ -2604,7 +2576,7 @@ export function detectDiscipline(
     'production planning', 'queueing', 'stochastic programming', 'vehicle routing',
     'facility location', 'integer programming', 'linear programming'
   ];
-  const orScore = orTerms.filter(t => text.includes(t) || citedText.includes(t)).length;
+  const orScore = orTerms.filter(t => manuscriptText.includes(t) || citedText.includes(t)).length;
 
   // Computer Science & AI
   const csTerms = [
@@ -2612,7 +2584,7 @@ export function detectDiscipline(
     'segmentation', 'benchmark', 'classifier', 'algorithm', 'loss function', 'gpu',
     'reinforcement learning', 'llm', 'natural language', 'backbone', 'convolutional', 'tpami', 'ieee trans'
   ];
-  const csScore = csTerms.filter(t => text.includes(t) || citedText.includes(t)).length;
+  const csScore = csTerms.filter(t => manuscriptText.includes(t) || citedText.includes(t)).length;
 
   // Oncology / Cancer Biology
   const oncoTerms = [
@@ -2620,7 +2592,7 @@ export function detectDiscipline(
     'melanoma', 'chemotherapy', 'metastasis', 'pd-l1', 'organoid', 'immunotherapy', 'leukemia',
     'lymphoma', 'glioma', 'p53', 'kras', 'biomarker', 'pou2f1', 'crispr screen'
   ];
-  const oncoScore = oncoTerms.filter(t => text.includes(t) || citedText.includes(t)).length;
+  const oncoScore = oncoTerms.filter(t => manuscriptText.includes(t) || citedText.includes(t)).length;
 
   // Clinical Medicine
   const clinTerms = [
@@ -2628,21 +2600,21 @@ export function detectDiscipline(
     'phase 1', 'phase 2', 'phase 3', 'hospital', 'mortality', 'hazard ratio', 'survival rate',
     'epidemiology', 'prognosis', 'multicenter', 'consort', 'strobe', 'lancet', 'nejm', 'jama'
   ];
-  const clinScore = clinTerms.filter(t => text.includes(t) || citedText.includes(t)).length;
+  const clinScore = clinTerms.filter(t => manuscriptText.includes(t) || citedText.includes(t)).length;
 
   // Neuroscience
   const neuroTerms = [
     'neuron', 'neural circuit', 'synaptic', 'cortex', 'hippocampus', 'electrophysiology',
     'optogenetic', 'brain', 'cognitive', 'glial', 'astrocyte', 'neurodegenerative', 'parkinson', 'alzheimer'
   ];
-  const neuroScore = neuroTerms.filter(t => text.includes(t) || citedText.includes(t)).length;
+  const neuroScore = neuroTerms.filter(t => manuscriptText.includes(t) || citedText.includes(t)).length;
 
   // Biomedicine / Genetics
   const bioTerms = [
     'rna-seq', 'protein', 'crispr', 'chip-seq', 'pathway', 'gene expression', 'enzyme',
     'western blot', 'mutation', 'cell culture', 'phosphorylation', 'chromatin', 'promoter', 'enhancer'
   ];
-  const bioScore = bioTerms.filter(t => text.includes(t) || citedText.includes(t)).length;
+  const bioScore = bioTerms.filter(t => manuscriptText.includes(t) || citedText.includes(t)).length;
 
   // Evaluate weighted domain scores
   const scores = [
@@ -2666,7 +2638,122 @@ export function detectDiscipline(
     return scores[0].discipline;
   }
 
+  // 2. Cited Journals Check (strong empirical signal from references)
+  if (citedJournals && citedJournals.length > 0) {
+    const disciplineCitationCounts: Partial<Record<Discipline, number>> = {};
+    for (const cited of citedJournals) {
+      const cNorm = cited.trim().toLowerCase();
+      for (const catEntry of JOURNAL_CATALOG) {
+        if (catEntry.discipline === 'Multidisciplinary') continue;
+        if (cNorm.includes(catEntry.name.toLowerCase()) || catEntry.name.toLowerCase().includes(cNorm)) {
+          disciplineCitationCounts[catEntry.discipline] = (disciplineCitationCounts[catEntry.discipline] || 0) + 1;
+        }
+      }
+    }
+    const sortedCitations = Object.entries(disciplineCitationCounts).sort((a, b) => (b[1] || 0) - (a[1] || 0));
+    if (sortedCitations.length > 0 && (sortedCitations[0][1] || 0) >= 2) {
+      return sortedCitations[0][0] as Discipline;
+    }
+  }
+
+  // Moderate keyword signal fallback
+  if (scores[0].score > 1.5) {
+    return scores[0].discipline;
+  }
+
+  // 3. Fallback to Target Journal ONLY if manuscript content and citations provided zero domain signal
+  if (targetJournal) {
+    const targetNorm = targetJournal.trim().toLowerCase();
+    const catalogDirect = JOURNAL_CATALOG.find(
+      j => j.name.toLowerCase() === targetNorm || targetNorm.includes(j.name.toLowerCase()) || j.name.toLowerCase().includes(targetNorm)
+    );
+    if (catalogDirect) {
+      return catalogDirect.discipline;
+    }
+  }
+
   return 'Multidisciplinary';
+}
+
+export interface DisciplineMatchResult {
+  isMatch: boolean;
+  isCrossDisciplinary: boolean;
+  crossDisciplinary: boolean;
+  severity: "exact" | "cross_field" | "mismatch";
+  message: string;
+}
+
+function normalizeDisciplineInput(d: string): Discipline {
+  const norm = d.trim();
+  if (norm === "Clinical Medicine" || norm === "Medicine") return "Clinical";
+  if (norm === "Biomedical Sciences") return "Biomedicine";
+  if (norm === "Machine Learning" || norm === "Artificial Intelligence") return "Computer Science";
+  return norm as Discipline;
+}
+
+/**
+ * Checks whether a target journal's disciplinary remit aligns with the manuscript's detected discipline
+ */
+export function isDisciplineMatch(
+  manuscriptDiscipline: Discipline | string,
+  journalDiscipline: Discipline | string
+): DisciplineMatchResult {
+  const mDisc = normalizeDisciplineInput(manuscriptDiscipline);
+  const jDisc = normalizeDisciplineInput(journalDiscipline);
+
+  if (mDisc === jDisc) {
+    return {
+      isMatch: true,
+      isCrossDisciplinary: false,
+      crossDisciplinary: false,
+      severity: "exact",
+      message: `Direct discipline match (${mDisc}).`,
+    };
+  }
+
+  if (jDisc === "Multidisciplinary" || mDisc === "Multidisciplinary") {
+    return {
+      isMatch: true,
+      isCrossDisciplinary: true,
+      crossDisciplinary: true,
+      severity: "cross_field",
+      message: `Cross-disciplinary alignment with multidisciplinary venue.`,
+    };
+  }
+
+  // Interdisciplinary domain pairings that share substantive crossover
+  const COMPATIBLE_CROSS_FIELDS: Record<string, Set<Discipline>> = {
+    "Computer Science": new Set(["Operations Research & Management", "Engineering & Applied Sciences", "Physical Sciences & Mathematics"]),
+    "Operations Research & Management": new Set(["Computer Science", "Economics, Finance & Business", "Engineering & Applied Sciences"]),
+    "Economics, Finance & Business": new Set(["Operations Research & Management", "Social Sciences, Psychology & Education"]),
+    "Oncology": new Set(["Biomedicine", "Clinical"]),
+    "Clinical": new Set(["Oncology", "Biomedicine", "Neuroscience"]),
+    "Biomedicine": new Set(["Oncology", "Clinical", "Neuroscience", "Chemistry & Materials Science"]),
+    "Neuroscience": new Set(["Biomedicine", "Clinical", "Social Sciences, Psychology & Education"]),
+    "Environmental Science & Sustainability": new Set(["Engineering & Applied Sciences", "Economics, Finance & Business"]),
+    "Engineering & Applied Sciences": new Set(["Computer Science", "Operations Research & Management", "Physical Sciences & Mathematics", "Chemistry & Materials Science"]),
+    "Physical Sciences & Mathematics": new Set(["Engineering & Applied Sciences", "Chemistry & Materials Science", "Computer Science"]),
+    "Chemistry & Materials Science": new Set(["Physical Sciences & Mathematics", "Engineering & Applied Sciences", "Biomedicine"]),
+    "Social Sciences, Psychology & Education": new Set(["Economics, Finance & Business", "Neuroscience"]),
+  };
+
+  if (COMPATIBLE_CROSS_FIELDS[mDisc]?.has(jDisc)) {
+    return {
+      isMatch: true,
+      isCrossDisciplinary: true,
+      crossDisciplinary: true,
+      severity: "cross_field",
+      message: `Interdisciplinary crossover between ${mDisc} and ${jDisc}.`,
+    };
+  }
+
+  return {
+    isMatch: false,
+    isCrossDisciplinary: false,
+    crossDisciplinary: false,
+    severity: "mismatch",
+    message: `Disciplinary mismatch: manuscript is in ${mDisc}, while journal publishes in ${jDisc}.`,
+  };
 }
 
 /**
@@ -2700,51 +2787,78 @@ export interface TargetJournalTierResults {
   crossDisciplinary?: JournalEntry[];
   targetJournalEvaluation?: {
     name: string;
+    journalName?: string;
     foundInCatalog: boolean;
     tier: 'Reach' | 'Realistic' | 'Fallback';
     fitScore: number;
     impactFactor: number;
+    discipline?: Discipline;
+    journalDiscipline?: string;
+    manuscriptDiscipline?: string;
+    isDisciplinaryMismatch?: boolean;
+    mismatchWarning?: string;
   };
 }
 
 /**
  * Calculates a dynamic, mathematically sound fit score (0-100) based on
- * text overlap, tier expectation alignment, citation cues, and target journal relevance.
+ * disciplinary compatibility, text overlap, tier expectation alignment, and citation cues.
  */
-function calculateDynamicFitScore(
+export function calculateDynamicFitScore(
   journal: JournalEntry,
   tier: 'Reach' | 'Realistic' | 'Fallback',
   manuscriptText: string,
+  manuscriptDiscipline: Discipline,
   isTarget: boolean,
   isCited: boolean
 ): number {
-  let score = 82;
+  const matchInfo = isDisciplineMatch(manuscriptDiscipline, journal.discipline);
 
-  if (isTarget) score += 7;
-  if (isCited) score += 5;
+  // If severe disciplinary mismatch:
+  if (!matchInfo.isMatch) {
+    let mismatchScore = 24;
+    if (isCited) mismatchScore += 6;
+    const scopeWords = journal.aimsAndScope.toLowerCase().split(/\W+/).filter(w => w.length > 5);
+    const matched = scopeWords.filter(w => manuscriptText.toLowerCase().includes(w)).length;
+    mismatchScore += Math.min(5, matched);
+    return Math.min(35, Math.max(15, mismatchScore));
+  }
 
-  // Check keyword overlap with journal scope
+  // Baseline by discipline affinity
+  let baseScore = matchInfo.severity === "exact" ? 78 : 68;
+
+  if (isTarget) baseScore += 5;
+  if (isCited) baseScore += 8;
+
+  // Semantic keyword overlap with journal aimsAndScope & keyExpectations
+  const textLower = manuscriptText.toLowerCase();
   const scopeWords = journal.aimsAndScope.toLowerCase().split(/\W+/).filter(w => w.length > 4);
-  const matchedWords = scopeWords.filter(w => manuscriptText.includes(w)).length;
-  score += Math.min(6, Math.floor(matchedWords / 2));
+  const expectationsWords = journal.keyExpectations.join(" ").toLowerCase().split(/\W+/).filter(w => w.length > 4);
+  const allJournalKeywords = new Set([...scopeWords, ...expectationsWords]);
 
+  let matchedWords = 0;
+  for (const w of allJournalKeywords) {
+    if (textLower.includes(w)) matchedWords++;
+  }
+  baseScore += Math.min(10, Math.floor(matchedWords / 3));
+
+  // Tier adjustment
   if (tier === 'Realistic') {
-    return Math.min(95, Math.max(86, score + 3));
+    return Math.min(95, Math.max(68, baseScore + 4));
   } else if (tier === 'Reach') {
-    // Reach tier has more stringent criteria, slightly lower fit probability
-    return Math.min(88, Math.max(74, score - 5));
+    return Math.min(88, Math.max(60, baseScore - 4));
   } else {
-    // Fallback is accessible with higher acceptance likelihood
-    return Math.min(94, Math.max(83, score + 1));
+    return Math.min(96, Math.max(72, baseScore + 6));
   }
 }
 
 /**
  * Genuine Target Journal Recommendation Engine:
- * - Anchors tiers (Reach, Realistic, Fallback) relative to the author's specified Target Journal (if present)
- * - Calibrates against cited references from the manuscript
- * - Filters strictly within the manuscript's detected domain
- * - Generates mathematically grounded dynamic fit scores instead of static numbers
+ * - Detects manuscript study area / discipline strictly from manuscript content
+ * - Anchors tiers (Reach, Realistic, Fallback) relative to the author's specified Target Journal when in-field,
+ *   or strictly within the manuscript's detected domain when target journal is out-of-field
+ * - Scores candidate journals dynamically using keyword & thematic relevance against journal aims & scope
+ * - Dynamically ranks list view (otherMatches) by matchScore descending
  */
 export function findMatchingJournals(
   title: string,
@@ -2775,50 +2889,37 @@ export function findMatchingJournals(
     );
   }
 
+  // Check if target journal discipline matches manuscript discipline
+  const isTargetDisciplineMatch = targetEntry
+    ? isDisciplineMatch(discipline, targetEntry.discipline).isMatch
+    : true;
+
   // Set of cited journal names normalized
   const citedNormSet = new Set((citedJournals || []).map(c => c.trim().toLowerCase()));
 
   if (domainJournals.length >= 3) {
-    if (targetEntry && targetEntry.discipline === discipline) {
-      // -------------------------------------------------------------
-      // TARGET-CENTRIC TIER CALIBRATION:
-      // Author specified a target journal that belongs to this field.
-      // Calibrate tiers around this specific journal!
-      // -------------------------------------------------------------
+    if (targetEntry && isTargetDisciplineMatch && targetEntry.discipline === discipline) {
+      // TARGET-CENTRIC TIER CALIBRATION (In-Discipline)
       const targetIF = targetEntry.impactFactor;
-
-      // Realistic: The target journal itself
       realistic = targetEntry;
 
-      // Reach: A journal in the domain with higher impact factor (> 1.2x targetIF)
       const higherIFJournals = domainJournals.filter(j => j.impactFactor > targetIF * 1.15 && j.name !== targetEntry!.name);
       if (higherIFJournals.length > 0) {
         reach = higherIFJournals[0];
       } else {
-        // Target is already at or near top of domain, Reach is the top cross-disciplinary or domain flagship
         reach = domainJournals[0].name !== targetEntry.name ? domainJournals[0] : (multiJournals[0] || domainJournals[0]);
       }
 
-      // Fallback: A journal with higher acceptance rate and accessible impact in the domain
       const fallbackCandidates = domainJournals
         .filter(j => j.name !== realistic.name && j.name !== reach.name)
-        .sort((a, b) => {
-          const arA = parseAcceptanceRate(a.acceptanceRate);
-          const arB = parseAcceptanceRate(b.acceptanceRate);
-          return arB - arA;
-        });
+        .sort((a, b) => parseAcceptanceRate(b.acceptanceRate) - parseAcceptanceRate(a.acceptanceRate));
 
       fallback = fallbackCandidates[0] || domainJournals[domainJournals.length - 1];
     } else {
-      // -------------------------------------------------------------
-      // DOMAIN CITATION & EMPIRICAL CALIBRATION:
-      // Target journal not specified or outside direct domain match.
-      // Anchor Realistic to cited journal or median-impact venue.
-      // -------------------------------------------------------------
-      // Reach: Highest impact factor in the domain
+      // DOMAIN CITATION & EMPIRICAL CALIBRATION (Manuscript-grounded)
+      // When target is out-of-discipline or not specified, calibrate tiers strictly within manuscript's true field!
       reach = domainJournals[0];
 
-      // Fallback: In-discipline journal with the highest acceptance rate
       const nonReach = domainJournals.slice(1);
       const sortedByAR = [...nonReach].sort((a, b) => {
         const arDiff = parseAcceptanceRate(b.acceptanceRate) - parseAcceptanceRate(a.acceptanceRate);
@@ -2827,14 +2928,12 @@ export function findMatchingJournals(
       });
       fallback = sortedByAR[0];
 
-      // Realistic: Check if any cited journal is in remaining domain journals
       const remaining = domainJournals.filter(j => j.name !== reach.name && j.name !== fallback.name);
       const citedMatch = remaining.find(j => citedNormSet.has(j.name.toLowerCase()));
 
       if (citedMatch) {
         realistic = citedMatch;
       } else {
-        // Nearest median acceptance rate and balanced impact
         const domainARs = domainJournals.map(j => parseAcceptanceRate(j.acceptanceRate)).sort((a, b) => a - b);
         const medianAR = domainARs[Math.floor(domainARs.length / 2)];
 
@@ -2861,11 +2960,12 @@ export function findMatchingJournals(
     fallback = multiJournals[multiJournals.length - 1];
   }
 
-  // Compute dynamic fit scores for the three primary tiers
+  // Compute dynamic fit scores
   const reachFitScore = calculateDynamicFitScore(
     reach,
     'Reach',
     text,
+    discipline,
     targetJournal ? reach.name.toLowerCase().includes(targetJournal.toLowerCase()) : false,
     citedNormSet.has(reach.name.toLowerCase())
   );
@@ -2873,6 +2973,7 @@ export function findMatchingJournals(
     realistic,
     'Realistic',
     text,
+    discipline,
     targetJournal ? realistic.name.toLowerCase().includes(targetJournal.toLowerCase()) : false,
     citedNormSet.has(realistic.name.toLowerCase())
   );
@@ -2880,38 +2981,31 @@ export function findMatchingJournals(
     fallback,
     'Fallback',
     text,
+    discipline,
     targetJournal ? fallback.name.toLowerCase().includes(targetJournal.toLowerCase()) : false,
     citedNormSet.has(fallback.name.toLowerCase())
   );
 
-  // Cross-disciplinary journals (clearly marked, never disguised as in-discipline)
+  // Cross-disciplinary journals
   const crossDisciplinary = discipline !== 'Multidisciplinary'
     ? multiJournals.map(j => ({ ...j, isCrossDisciplinary: true }))
     : [];
 
-  const allScored: MatchedJournalItem[] = [
-    ...domainJournals.map(j => ({
-      journal: j,
-      matchScore: calculateDynamicFitScore(j, 'Realistic', text, false, citedNormSet.has(j.name.toLowerCase()))
-    })),
-    ...crossDisciplinary.map(j => ({ journal: j, matchScore: 76 })),
-  ];
-
-  // Candidates for "other journals" (list view - guarantees at least 10+ journals)
   const primaryNames = new Set([reach.name, realistic.name, fallback.name]);
 
+  // Score candidate journals in domain and multidisciplinary
   const remainingDomain: MatchedJournalItem[] = domainJournals
     .filter(j => !primaryNames.has(j.name))
     .map(j => ({
       journal: j,
-      matchScore: calculateDynamicFitScore(j, 'Realistic', text, false, citedNormSet.has(j.name.toLowerCase())),
+      matchScore: calculateDynamicFitScore(j, 'Realistic', text, discipline, false, citedNormSet.has(j.name.toLowerCase())),
     }));
 
   const remainingMulti: MatchedJournalItem[] = multiJournals
     .filter(j => !primaryNames.has(j.name))
     .map(j => ({
       journal: { ...j, isCrossDisciplinary: discipline !== 'Multidisciplinary' },
-      matchScore: discipline === 'Multidisciplinary' ? 84 : 75,
+      matchScore: calculateDynamicFitScore(j, 'Realistic', text, discipline, false, citedNormSet.has(j.name.toLowerCase())),
     }));
 
   const otherMatches: MatchedJournalItem[] = [...remainingDomain];
@@ -2927,26 +3021,71 @@ export function findMatchingJournals(
       if (!primaryNames.has(j.name) && !otherMatches.some(x => x.journal.name === j.name)) {
         otherMatches.push({
           journal: { ...j, isCrossDisciplinary: true },
-          matchScore: 72,
+          matchScore: calculateDynamicFitScore(j, 'Fallback', text, discipline, false, citedNormSet.has(j.name.toLowerCase())),
         });
       }
       if (otherMatches.length >= 12) break;
     }
   }
 
-  const targetJournalEvaluation = targetEntry ? {
-    name: targetEntry.name,
-    foundInCatalog: true,
-    tier: (targetEntry.name === reach.name ? 'Reach' : targetEntry.name === fallback.name ? 'Fallback' : 'Realistic') as 'Reach' | 'Realistic' | 'Fallback',
-    fitScore: realisticFitScore,
-    impactFactor: targetEntry.impactFactor,
-  } : targetJournal ? {
-    name: targetJournal,
-    foundInCatalog: false,
-    tier: 'Realistic' as const,
-    fitScore: realisticFitScore,
-    impactFactor: realistic.impactFactor,
-  } : undefined;
+  // DYNAMIC SORT: Sort otherMatches by matchScore descending!
+  // Journals that have the highest thematic and keyword overlap with this paper's title/abstract/keywords rank first!
+  otherMatches.sort((a, b) => {
+    if (b.matchScore !== a.matchScore) {
+      return b.matchScore - a.matchScore;
+    }
+    return b.journal.impactFactor - a.journal.impactFactor;
+  });
+
+  const allScored: MatchedJournalItem[] = [
+    { journal: reach, matchScore: reachFitScore },
+    { journal: realistic, matchScore: realisticFitScore },
+    { journal: fallback, matchScore: fallbackFitScore },
+    ...otherMatches,
+  ];
+
+  // Target journal evaluation (calibrated for field match or out-of-scope mismatch)
+  let targetJournalEvaluation: TargetJournalTierResults['targetJournalEvaluation'] = undefined;
+  if (targetEntry) {
+    const isMismatch = !isDisciplineMatch(discipline, targetEntry.discipline).isMatch;
+    const targetScore = calculateDynamicFitScore(
+      targetEntry,
+      'Realistic',
+      text,
+      discipline,
+      true,
+      citedNormSet.has(targetEntry.name.toLowerCase())
+    );
+
+    targetJournalEvaluation = {
+      name: targetEntry.name,
+      journalName: targetEntry.name,
+      foundInCatalog: true,
+      tier: (targetEntry.name === reach.name ? 'Reach' : targetEntry.name === fallback.name ? 'Fallback' : 'Realistic') as 'Reach' | 'Realistic' | 'Fallback',
+      fitScore: targetScore,
+      impactFactor: targetEntry.impactFactor,
+      discipline: targetEntry.discipline,
+      journalDiscipline: targetEntry.discipline,
+      manuscriptDiscipline: discipline,
+      isDisciplinaryMismatch: isMismatch,
+      mismatchWarning: isMismatch
+        ? `Severe Disciplinary Scope Mismatch: Manuscript study area is in "${discipline}", whereas "${targetEntry.name}" publishes in "${targetEntry.discipline}". High desk-rejection risk.`
+        : undefined,
+    };
+  } else if (targetJournal) {
+    targetJournalEvaluation = {
+      name: targetJournal,
+      journalName: targetJournal,
+      foundInCatalog: false,
+      tier: 'Realistic' as const,
+      fitScore: realisticFitScore,
+      impactFactor: realistic.impactFactor,
+      discipline: discipline,
+      journalDiscipline: discipline,
+      manuscriptDiscipline: discipline,
+      isDisciplinaryMismatch: false,
+    };
+  }
 
   return {
     reach,

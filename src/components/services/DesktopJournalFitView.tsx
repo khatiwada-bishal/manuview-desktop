@@ -11,6 +11,7 @@ import {
   Shield,
   Clock,
   Award,
+  AlertTriangle,
 } from "lucide-react";
 import { findMatchingJournals, JournalEntry, JOURNAL_CATALOG, TargetJournalTierResults } from "@/lib/journals";
 import JournalCombobox from "@/components/JournalCombobox";
@@ -137,6 +138,25 @@ export function DesktopJournalFitView() {
                 Field: <strong>{results.detectedDiscipline}</strong>
               </span>
             </div>
+
+            {/* Target Journal Mismatch Banner */}
+            {results.targetJournalEvaluation?.isDisciplinaryMismatch && (
+              <div className="p-4 sm:p-5 rounded-3xl bg-rose-500/10 border border-rose-500/30 text-rose-950 dark:text-rose-200 flex items-start gap-3.5">
+                <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                <div className="space-y-1 text-xs">
+                  <div className="font-bold text-sm text-rose-900 dark:text-rose-300">
+                    Stated Target Journal Scope Mismatch: &ldquo;{results.targetJournalEvaluation.journalName}&rdquo;
+                  </div>
+                  <p className="leading-relaxed text-rose-800 dark:text-rose-200/90">
+                    {results.targetJournalEvaluation.mismatchWarning ||
+                      `The specified target journal belongs to ${results.targetJournalEvaluation.journalDiscipline}, while this manuscript is detected in ${results.detectedDiscipline}. Submitting out of scope carries a very high probability of immediate desk rejection.`}
+                  </p>
+                  <p className="text-[11px] text-rose-700 dark:text-rose-300/80 pt-1 font-medium">
+                    Calculated fit for target journal: <strong>{results.targetJournalEvaluation.fitScore}%</strong> (High Desk-Reject Hazard). Strategic recommendation tiers below have been recalibrated to <strong>{results.detectedDiscipline}</strong>.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Reach Target */}
