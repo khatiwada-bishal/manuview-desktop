@@ -1624,23 +1624,23 @@ export function DesktopDashboard({
           </div>
         )}
 
-        {/* Persona Switcher Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 pt-1 border-b border-[#E2E8F0] dark:border-[#1F2937]">
+        {/* Persona Switcher Tabs - 5-Column Balanced Grid so all reviewers are seen */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 pb-2 pt-1 border-b border-[#E2E8F0] dark:border-[#1F2937]">
           {personas.map((p, idx) => {
             const isActive = selectedPersona === idx;
             const isDA = p.persona === "devils_advocate" || idx === 4;
             const isReject = p.decisionRecommendation?.includes("Reject");
             const isAccept = p.decisionRecommendation?.includes("Accept");
-            const shortLabel =
+            const roleName =
               p.persona === "journal_editor" || idx === 0
-                ? "Reviewer 1 (Editor)"
+                ? "Editor"
                 : p.persona === "domain_expert" || idx === 1
-                ? "Reviewer 2 (Domain)"
+                ? "Domain"
                 : p.persona === "methods_reviewer" || idx === 2
-                ? "Reviewer 3 (Methods)"
+                ? "Methods"
                 : p.persona === "statistician" || idx === 3
-                ? "Reviewer 4 (Stats)"
-                : "Reviewer 5 (Adversary)";
+                ? "Stats"
+                : "Adversary";
             const icon =
               p.persona === "journal_editor" || idx === 0
                 ? "📑"
@@ -1657,36 +1657,60 @@ export function DesktopDashboard({
                 key={idx}
                 type="button"
                 onClick={() => setSelectedPersona(idx)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer flex items-center gap-2 border ${
+                className={`p-2.5 sm:p-3 rounded-2xl text-left transition cursor-pointer flex flex-col justify-between gap-1.5 border relative group select-none ${
                   isActive
-                    ? "bg-[#0F172A] dark:bg-blue-600 text-white border-[#0F172A] dark:border-blue-600 shadow-xs"
+                    ? "bg-[#0F172A] dark:bg-blue-600 text-white border-[#0F172A] dark:border-blue-600 shadow-sm ring-2 ring-[#0F172A]/10 dark:ring-blue-500/25"
                     : isDA
-                    ? "bg-rose-500/10 text-rose-800 dark:text-rose-300 border-rose-500/20 hover:bg-rose-500/20"
-                    : "liquid-glass-btn-secondary text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#1E293B]"
+                    ? "bg-rose-50/50 dark:bg-rose-950/20 text-rose-900 dark:text-rose-200 border-rose-200 dark:border-rose-900/60 hover:bg-rose-100/60 dark:hover:bg-rose-950/40"
+                    : "liquid-glass-card hover:bg-neutral-50/80 dark:hover:bg-white/[0.04] text-neutral-800 dark:text-neutral-200 border-[#E2E8F0] dark:border-[#334155] shadow-2xs"
                 }`}
               >
-                <span>{icon}</span>
-                <span>{shortLabel}</span>
-                {isDA && !isActive && (
-                  <span className="text-[9px] uppercase px-1.5 py-0.2 rounded font-extrabold bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/30">
-                    Stress-Test
-                  </span>
-                )}
-                {p.decisionRecommendation && (
+                <div className="flex items-center justify-between gap-1 w-full min-w-0">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-sm shrink-0">{icon}</span>
+                    <span className="text-xs font-bold truncate leading-snug">
+                      Reviewer {idx + 1}
+                    </span>
+                  </div>
+                  {isDA && (
+                    <span
+                      className={`text-[8px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded border shrink-0 ${
+                        isActive
+                          ? "bg-white/20 text-white border-white/30"
+                          : "bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-500/30"
+                      }`}
+                    >
+                      Stress
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between gap-1.5 w-full min-w-0 pt-0.5">
                   <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded font-bold border ${
+                    className={`text-[11px] truncate font-medium ${
                       isActive
-                        ? "bg-white/20 text-white border-white/30"
-                        : isReject
-                        ? "bg-red-50 text-[#991B1B] border-red-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800"
-                        : isAccept
-                        ? "bg-emerald-50 text-[#065F46] border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
-                        : "bg-amber-50 text-[#92400E] border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
+                        ? "text-slate-300 dark:text-blue-100"
+                        : "text-neutral-500 dark:text-neutral-400"
                     }`}
                   >
-                    {p.decisionRecommendation}
+                    {roleName}
                   </span>
-                )}
+                  {p.decisionRecommendation && (
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold border shrink-0 truncate max-w-[110px] ${
+                        isActive
+                          ? "bg-white/20 text-white border-white/30"
+                          : isReject
+                          ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800"
+                          : isAccept
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
+                          : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800"
+                      }`}
+                    >
+                      {p.decisionRecommendation}
+                    </span>
+                  )}
+                </div>
               </button>
             );
           })}
