@@ -35,6 +35,7 @@ import {
   purgeLegacyDummyData,
   initIndexedDBStorage,
 } from "@/lib/projectStorage";
+import { migrateLegacyLocalStorageKeys } from "@/lib/secureStorage";
 
 export default function App() {
   // Web vs Desktop workspace view state
@@ -73,6 +74,7 @@ export default function App() {
     }
 
     purgeLegacyDummyData();
+    migrateLegacyLocalStorageKeys();
     const startTime = Date.now();
 
     initIndexedDBStorage()

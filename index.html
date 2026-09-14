@@ -38,25 +38,6 @@
         background: #FFFFFF !important;
       }
     </style>
-    <script>
-      // Capability check: detect if running in native Tauri desktop container
-      window.__IS_DESKTOP__ = Boolean(window.__TAURI_INTERNALS__ || window.__TAURI__);
-
-      // Every time the application is opened, default loading is in light mode
-      try {
-        const sessionTheme = sessionStorage.getItem('manuview_theme_mode');
-        if (sessionTheme === 'dark') {
-          document.documentElement.classList.add('dark');
-          document.documentElement.style.colorScheme = 'dark';
-        } else {
-          document.documentElement.classList.remove('dark');
-          document.documentElement.style.colorScheme = 'light';
-        }
-      } catch (e) {
-        document.documentElement.classList.remove('dark');
-        document.documentElement.style.colorScheme = 'light';
-      }
-    </script>
   </head>
   <body class="bg-[#FFFFFF] text-[#111827] dark:bg-[#080B11] dark:text-[#F8FAFC] antialiased">
     <!-- App Startup Video Intro Screen: Mounted strictly in native desktop Tauri app -->
@@ -67,52 +48,6 @@
       </video>
       <button id="intro-skip" type="button" style="position: absolute; bottom: 28px; right: 28px; z-index: 100000; padding: 7px 16px; font-size: 11px; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; font-weight: 600; letter-spacing: 0.02em; color: rgba(255,255,255,0.85); background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); border-radius: 9999px; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); cursor: pointer; transition: all 0.2s ease;">Skip Intro &rarr;</button>
     </div>
-    <script>
-      (function() {
-        if (!window.__IS_DESKTOP__) {
-          // Web application mode: completely eliminate startup intro video splash screen
-          var splash = document.getElementById('app-splash');
-          if (splash) splash.remove();
-          return;
-        }
-
-        // Native Desktop mode: display and activate intro video
-        var splash = document.getElementById('app-splash');
-        if (splash) splash.style.display = 'flex';
-        document.body.classList.add('overflow-hidden', 'select-none');
-
-        const vid = document.getElementById('intro-video');
-        const skip = document.getElementById('intro-skip');
-        if (vid) {
-          vid.autoplay = true;
-          vid.muted = false;
-          vid.volume = 1.0;
-          const playPromise = vid.play();
-          if (playPromise !== undefined) {
-            playPromise.catch(function() {
-              vid.muted = true;
-              vid.play().catch(function() {});
-              const unmute = function() {
-                vid.muted = false;
-                document.removeEventListener('pointerdown', unmute);
-                document.removeEventListener('keydown', unmute);
-              };
-              document.addEventListener('pointerdown', unmute);
-              document.addEventListener('keydown', unmute);
-            });
-          }
-          vid.addEventListener('ended', function() {
-            if (window.__dismissSplash) window.__dismissSplash(true);
-          });
-        }
-        if (skip) {
-          skip.addEventListener('click', function(e) {
-            e.stopPropagation();
-            if (window.__dismissSplash) window.__dismissSplash(true);
-          });
-        }
-      })();
-    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

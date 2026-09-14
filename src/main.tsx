@@ -4,6 +4,7 @@ if (typeof window !== "undefined") {
   (window as any).global = (window as any).global || window;
 }
 
+import "./splash";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";

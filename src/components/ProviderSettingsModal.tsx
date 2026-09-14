@@ -5,8 +5,16 @@ import { ProviderConfig, LLMProvider, AvailableModel } from "@/lib/types";
 import {
   fetchAvailableModels,
   testLLMConnection,
+  validateBaseUrl,
 } from "@/lib/llm";
-import { Settings, ShieldCheck, X, CheckCircle2, Activity, RefreshCw, AlertCircle, Zap, Check, ChevronDown, Sparkles, Search } from "lucide-react";
+import {
+  saveSecureApiKey,
+  getSecureApiKey,
+  hasSecureApiKey,
+  deleteSecureApiKey,
+  maskApiKey,
+} from "@/lib/secureStorage";
+import { Settings, ShieldCheck, X, CheckCircle2, Activity, RefreshCw, AlertCircle, Zap, Check, ChevronDown, Sparkles, Search, KeyRound } from "lucide-react";
 import { GeminiLogo, OpenAILogo, GroqLogo, AnthropicLogo, OllamaLogo } from "./BrandLogos";
 
 interface Props {
@@ -47,6 +55,10 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
     message: string;
     error?: string;
   } | null>(null);
+  const [hasSecureKey, setHasSecureKey] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [isKeyDirty, setIsKeyDirty] = useState(false);
+  const [baseUrlError, setBaseUrlError] = useState<string | null>(null);
 
   useEffect(() => {
     // Check browser local storage
@@ -55,6 +67,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
     if (saved) {
       try {
         currentConfig = JSON.parse(saved);
+        delete (currentConfig as any).apiKey;
         setConfig(currentConfig);
       } catch {}
     }
@@ -62,6 +75,11 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
     setTestResult(null);
     setFetchFeedback(null);
     setHasFetchedLive(false);
+    setApiKeyInput("");
+    setIsKeyDirty(false);
+    setBaseUrlError(null);
+
+    hasSecureApiKey(currentConfig.provider).then(setHasSecureKey);
 
     // Fetch models for current provider
     loadModelsForProvider(currentConfig);
@@ -100,7 +118,8 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
   };
 
   const handleFetchModels = async () => {
-    if (!config.apiKey?.trim() && config.provider !== "ollama") {
+    let effectiveKey = isKeyDirty ? apiKeyInput.trim() : (await getSecureApiKey(config.provider)) || config.apiKey?.trim() || "";
+    if (!effectiveKey && config.provider !== "ollama") {
       setFetchFeedback({
         type: "error",
         message: `Please enter your ${config.provider.toUpperCase()} API key first.`,
@@ -108,10 +127,17 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
       return;
     }
 
+    if (isKeyDirty && apiKeyInput.trim()) {
+      await saveSecureApiKey(config.provider, apiKeyInput.trim());
+      setHasSecureKey(true);
+      setIsKeyDirty(false);
+    }
+
     setFetchingModels(true);
     setFetchFeedback(null);
     try {
-      const models = await fetchAvailableModels(config, { throwOnError: true });
+      const targetConfig = { ...config, apiKey: effectiveKey };
+      const models = await fetchAvailableModels(targetConfig, { throwOnError: true });
       if (Array.isArray(models) && models.length > 0) {
         setAvailableModels(models);
         setHasFetchedLive(true);
@@ -125,6 +151,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
         const exists = models.some((m) => m.id === config.model);
         const resolvedModel = exists ? config.model : (models.find((m: AvailableModel) => m.recommended) || models[0]).id;
         const updatedConfig = { ...config, model: resolvedModel };
+        delete (updatedConfig as any).apiKey;
         setConfig(updatedConfig);
         try {
           localStorage.setItem("manuview_provider_config", JSON.stringify(updatedConfig));
@@ -169,18 +196,46 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
       provider: newProvider,
       model: defaultModel,
     };
+    delete (updated as any).apiKey;
     setConfig(updated);
     setTestResult(null);
     setFetchFeedback(null);
     setHasFetchedLive(false);
+    setApiKeyInput("");
+    setIsKeyDirty(false);
+    setBaseUrlError(null);
+    hasSecureApiKey(newProvider).then(setHasSecureKey);
     loadModelsForProvider(updated);
   };
 
   const handleCheckConnection = async () => {
+    if (config.provider === "openai" && config.baseUrl) {
+      const urlCheck = validateBaseUrl(config.baseUrl);
+      if (!urlCheck.valid) {
+        setBaseUrlError(urlCheck.error || "Insecure Base URL");
+        setTestResult({
+          success: false,
+          provider: config.provider,
+          model: config.model,
+          latencyMs: 0,
+          message: "Validation Error",
+          error: urlCheck.error,
+        });
+        return;
+      }
+    }
+
+    let effectiveKey = isKeyDirty ? apiKeyInput.trim() : (await getSecureApiKey(config.provider)) || config.apiKey?.trim() || "";
+    if (isKeyDirty && apiKeyInput.trim()) {
+      await saveSecureApiKey(config.provider, apiKeyInput.trim());
+      setHasSecureKey(true);
+      setIsKeyDirty(false);
+    }
+
     setTesting(true);
     setTestResult(null);
     try {
-      const result = await testLLMConnection(config);
+      const result = await testLLMConnection({ ...config, apiKey: effectiveKey });
       setTestResult(result);
       if (Array.isArray(result.availableModels) && result.availableModels.length > 0) {
         setAvailableModels(result.availableModels);
@@ -193,6 +248,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
           ...config,
           model: result.model || config.model,
         };
+        delete (verifiedConfig as any).apiKey;
         setConfig(verifiedConfig);
         try {
           localStorage.setItem("manuview_provider_config", JSON.stringify(verifiedConfig));
@@ -216,12 +272,34 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
     }
   };
 
-  const handleSave = () => {
-    localStorage.setItem("manuview_provider_config", JSON.stringify(config));
+  const handleSave = async () => {
+    if (config.provider === "openai" && config.baseUrl) {
+      const urlCheck = validateBaseUrl(config.baseUrl);
+      if (!urlCheck.valid) {
+        setBaseUrlError(urlCheck.error || "Insecure Base URL");
+        return;
+      }
+    }
+
+    if (isKeyDirty && apiKeyInput.trim()) {
+      await saveSecureApiKey(config.provider, apiKeyInput.trim());
+      setHasSecureKey(true);
+      setIsKeyDirty(false);
+      setApiKeyInput("");
+    }
+
+    const sanitizedConfig: ProviderConfig = {
+      provider: config.provider,
+      model: config.model,
+      baseUrl: config.baseUrl,
+    };
+    delete (sanitizedConfig as any).apiKey;
+
+    localStorage.setItem("manuview_provider_config", JSON.stringify(sanitizedConfig));
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event("manuview_config_changed"));
     }
-    if (onSave) onSave(config);
+    if (onSave) onSave(sanitizedConfig);
     setSavedSuccess(true);
     setTimeout(() => {
       setSavedSuccess(false);
@@ -380,9 +458,10 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
               <div className="flex items-center gap-2">
                 <input
                   type="password"
-                  value={config.apiKey || ""}
+                  value={apiKeyInput}
                   onChange={(e) => {
-                    setConfig({ ...config, apiKey: e.target.value });
+                    setApiKeyInput(e.target.value);
+                    setIsKeyDirty(true);
                     setFetchFeedback(null);
                   }}
                   onKeyDown={(e) => {
@@ -392,7 +471,9 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                     }
                   }}
                   placeholder={
-                    config.provider === "gemini"
+                    hasSecureKey && !isKeyDirty
+                      ? "•••••••• (Stored securely in OS Keychain)"
+                      : config.provider === "gemini"
                       ? "AIzaSy..."
                       : config.provider === "anthropic"
                       ? "sk-ant-..."
@@ -404,7 +485,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                 <button
                   type="button"
                   onClick={handleFetchModels}
-                  disabled={fetchingModels || !config.apiKey?.trim()}
+                  disabled={fetchingModels || (!apiKeyInput.trim() && !hasSecureKey)}
                   className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#2F3437] dark:bg-blue-600 text-white hover:bg-black dark:hover:bg-blue-500 disabled:bg-[#F7F7F5] dark:disabled:bg-[#1E293B] disabled:text-[#9B9A97] dark:disabled:text-neutral-600 disabled:border-[#EBEBEA] dark:disabled:border-[#334155] border border-[#2F3437] dark:border-blue-600 transition shadow-xs cursor-pointer disabled:cursor-not-allowed shrink-0 whitespace-nowrap"
                   title="Fetch verified models authorized for this API key"
                 >
@@ -423,7 +504,25 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
               </div>
 
               <div className="flex items-center justify-between mt-1 text-[11px]">
-                <span className="text-[#787774] dark:text-neutral-400">Client keys are stored locally on your machine.</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[#787774] dark:text-neutral-400">
+                    {hasSecureKey ? "Stored securely in native OS Keychain" : "Keys are persisted to the native OS Keychain."}
+                  </span>
+                  {hasSecureKey && !isKeyDirty && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await deleteSecureApiKey(config.provider);
+                        setHasSecureKey(false);
+                        setApiKeyInput("");
+                        setIsKeyDirty(false);
+                      }}
+                      className="text-red-500 hover:underline cursor-pointer"
+                    >
+                      Clear key
+                    </button>
+                  )}
+                </div>
                 {hasFetchedLive && (
                   <span className="text-[#1E5A2A] dark:text-emerald-400 font-medium flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3 text-[#1E5A2A] dark:text-emerald-400" />
@@ -441,8 +540,15 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                     type="text"
                     value={config.baseUrl || ""}
                     onChange={(e) => {
-                      setConfig({ ...config, baseUrl: e.target.value });
+                      const val = e.target.value;
+                      setConfig({ ...config, baseUrl: val });
                       setFetchFeedback(null);
+                      if (val.trim()) {
+                        const check = validateBaseUrl(val);
+                        setBaseUrlError(check.valid ? null : (check.error || "Insecure Base URL"));
+                      } else {
+                        setBaseUrlError(null);
+                      }
                     }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
@@ -451,8 +557,16 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                       }
                     }}
                     placeholder="https://api.openai.com/v1 (or your custom proxy URL)"
-                    className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#1E293B] border border-[#EBEBEA] dark:border-[#334155] focus:border-[#2F3437] dark:focus:border-blue-500 focus:outline-none text-xs text-[#2F3437] dark:text-white font-mono transition shadow-2xs placeholder:text-[#9B9A97] dark:placeholder:text-neutral-500"
+                    className={`w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#1E293B] border ${
+                      baseUrlError ? "border-red-500 dark:border-red-500" : "border-[#EBEBEA] dark:border-[#334155]"
+                    } focus:border-[#2F3437] dark:focus:border-blue-500 focus:outline-none text-xs text-[#2F3437] dark:text-white font-mono transition shadow-2xs placeholder:text-[#9B9A97] dark:placeholder:text-neutral-500`}
                   />
+                  {baseUrlError && (
+                    <p className="text-red-500 dark:text-red-400 text-xs mt-1.5 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>{baseUrlError}</span>
+                    </p>
+                  )}
                 </div>
               )}
             </div>

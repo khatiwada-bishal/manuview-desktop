@@ -168,3 +168,13 @@ export async function callLLMForJson<T>(
     return cleanAndRepairJson<T>(repairedRaw);
   }
 }
+
+/**
+ * Wraps user-supplied manuscript text in strict XML boundary delimiters.
+ * Defense-in-depth against prompt injection: ensures the LLM treats manuscript content
+ * as untrusted data to analyze rather than executable instructions.
+ */
+export function wrapUntrustedAuthorText(text: string): string {
+  if (!text) return "";
+  return `<untrusted_author_text>\n${text}\n</untrusted_author_text>`;
+}

@@ -11,7 +11,8 @@
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build",
-    "desktop:build:mac": "./scripts/build-mac.sh"
+    "desktop:build:mac": "./scripts/build-mac.sh",
+    "audit:npm": "npm audit --audit-level=high"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",
@@ -20,7 +21,7 @@
     "@tauri-apps/plugin-shell": "^2.3.6",
     "clsx": "^2.1.1",
     "jszip": "^3.10.2",
-    "lucide-react": "^1.16.0",
+    "lucide-react": "^1.44.0",
     "mammoth": "^1.12.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

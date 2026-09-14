@@ -55,10 +55,18 @@ export async function pickManuscriptFileDesktop(): Promise<{
  * Opens an external URL in the user's default browser (instead of navigating the desktop window).
  */
 export async function openExternalLink(url: string): Promise<void> {
+  if (!url || typeof url !== "string") return;
+  const trimmed = url.trim();
+  // Strictly enforce http and https schemes to prevent arbitrary URI/file execution (Audit Finding #11)
+  if (!/^https?:\/\//i.test(trimmed)) {
+    console.warn("Blocked potentially dangerous protocol in openExternalLink:", trimmed);
+    return;
+  }
+
   if (isDesktopApp()) {
     try {
       const { open } = await import("@tauri-apps/plugin-shell");
-      await open(url);
+      await open(trimmed);
       return;
     } catch (err) {
       console.warn("Tauri shell open failed, falling back to window.open", err);
@@ -66,7 +74,7 @@ export async function openExternalLink(url: string): Promise<void> {
   }
 
   if (typeof window !== "undefined") {
-    window.open(url, "_blank", "noopener,noreferrer");
+    window.open(trimmed, "_blank", "noopener,noreferrer");
   }
 }
 
@@ -102,25 +110,15 @@ export async function saveFileDesktop(
         return { success: false };
       }
 
-      // 1. Try native Rust command first
-      try {
-        const { invoke } = await import("@tauri-apps/api/core");
-        await invoke("save_file", { path: filePath, content });
-        return { success: true, filePath };
-      } catch (invokeErr) {
-        console.warn("invoke save_file failed, trying plugin-fs writeTextFile:", invokeErr);
-      }
-
-      // 2. Try plugin-fs writeTextFile
+      // Write strictly via scoped official Tauri fs plugin (Audit Finding #2)
       try {
         const { writeTextFile } = await import("@tauri-apps/plugin-fs");
         await writeTextFile(filePath, content);
         return { success: true, filePath };
       } catch (fsErr) {
         console.error("plugin-fs writeTextFile failed:", fsErr);
+        return { success: false, error: String(fsErr) };
       }
-
-      return { success: false, error: "Failed to write file to selected path" };
     } catch (err) {
       console.error("Native save dialog error:", err);
       return { success: false, error: String(err) };

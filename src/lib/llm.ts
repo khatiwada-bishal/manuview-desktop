@@ -1,4 +1,6 @@
 import { ProviderConfig, LLMProvider, AvailableModel } from "./types";
+import { getSecureApiKey } from "./secureStorage";
+import { isDesktopApp } from "./desktop";
 
 export interface LLMMessage {
   role: 'system' | 'user' | 'assistant';
@@ -28,17 +30,99 @@ export function inferJsonMode(messages: LLMMessage[]): boolean {
   return !optsOut;
 }
 
+/**
+ * Validates and normalizes an API base URL (Audit Finding #4).
+ * Strictly requires HTTPS for all remote endpoints.
+ * Allows plain HTTP exclusively for loopback hosts (localhost, 127.0.0.1, [::1]).
+ */
+export function validateBaseUrl(rawUrl: string | undefined | null): { valid: boolean; normalized?: string; error?: string } {
+  if (!rawUrl || !rawUrl.trim()) {
+    return { valid: true, normalized: undefined };
+  }
+  let urlStr = rawUrl.trim();
+  if (!/^https?:\/\//i.test(urlStr)) {
+    urlStr = `https://${urlStr}`;
+  }
+  try {
+    const parsed = new URL(urlStr);
+    const isLoopback = parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1" || parsed.hostname === "[::1]";
+    if (parsed.protocol === "http:" && !isLoopback) {
+      return {
+        valid: false,
+        error: `Insecure HTTP is only permitted for loopback hosts (localhost, 127.0.0.1). Remote endpoint "${parsed.hostname}" must use HTTPS (https://).`
+      };
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return { valid: false, error: `Invalid URL protocol: ${parsed.protocol}. Only HTTPS (or local HTTP) is allowed.` };
+    }
+    return { valid: true, normalized: urlStr.replace(/\/+$/, "") };
+  } catch {
+    return { valid: false, error: `Malformed API base URL: "${rawUrl}"` };
+  }
+}
+
+/**
+ * Executes a network request using the native Rust backend in desktop mode
+ * to bypass browser Origin headers and eliminate the need for dangerous browser flags.
+ */
+async function nativeFetch(
+  url: string,
+  init: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal }
+): Promise<{ ok: boolean; status: number; text: () => Promise<string>; json: () => Promise<any> }> {
+  if (isDesktopApp()) {
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      const cleanHeaders: Record<string, string> = {};
+      if (init.headers) {
+        for (const [k, v] of Object.entries(init.headers)) {
+          // Exclude dangerous direct browser access flag from native requests (Audit Finding #3)
+          if (k.toLowerCase() === "anthropic-dangerous-direct-browser-access") continue;
+          cleanHeaders[k] = v;
+        }
+      }
+      const res = await invoke<{ status: number; body: string; ok: boolean }>("call_llm_native", {
+        url,
+        method: init.method || "POST",
+        headers: cleanHeaders,
+        body: init.body || null,
+      });
+      return {
+        ok: res.ok,
+        status: res.status,
+        text: async () => res.body,
+        json: async () => JSON.parse(res.body),
+      };
+    } catch (err) {
+      console.warn("Native LLM IPC call failed, falling back to standard fetch:", err);
+    }
+  }
+
+  // Web fallback
+  const cleanHeaders: Record<string, string> = { ...(init.headers || {}) };
+  // Remove dangerous header completely
+  delete cleanHeaders["anthropic-dangerous-direct-browser-access"];
+  const res = await fetch(url, {
+    method: init.method,
+    headers: cleanHeaders,
+    body: init.body,
+    signal: init.signal,
+  });
+  return {
+    ok: res.ok,
+    status: res.status,
+    text: async () => res.text(),
+    json: async () => res.json(),
+  };
+}
+
 export function getEnv(key: string): string {
   try {
     const g = (typeof window !== "undefined" ? window : globalThis) as any;
     if (g?.process?.env?.[key]) return String(g.process.env[key]).trim();
-    let meta: any = undefined;
-    try {
-      meta = new Function("try { return import.meta.env; } catch (e) { return undefined; }")();
-    } catch {}
-    if (meta) {
-      if (meta[key]) return String(meta[key]).trim();
-      if (meta[`VITE_${key}`]) return String(meta[`VITE_${key}`]).trim();
+    const metaEnv = typeof import.meta !== "undefined" ? (import.meta as any).env : undefined;
+    if (metaEnv) {
+      if (metaEnv[key]) return String(metaEnv[key]).trim();
+      if (metaEnv[`VITE_${key}`]) return String(metaEnv[`VITE_${key}`]).trim();
     }
   } catch {}
   return "";
@@ -306,7 +390,19 @@ export async function callLLM(
   let model: string = resolvedConfig?.model || "";
   let baseUrl: string = resolvedConfig?.baseUrl || "http://localhost:11434";
 
-  // If no apiKey provided by client, auto-detect from server environment variables
+  // If no apiKey provided by client, first query native OS Keychain / secure storage
+  if (!apiKey && provider !== "ollama") {
+    try {
+      const secureKey = await getSecureApiKey(provider);
+      if (secureKey) {
+        apiKey = secureKey;
+      }
+    } catch (e) {
+      console.warn(`Failed to retrieve secure key for ${provider}:`, e);
+    }
+  }
+
+  // If still no apiKey provided by client, auto-detect from server environment variables
   if (!apiKey) {
     if (provider === "gemini" || (!config && (getEnv('GEMINI_API_KEY') || getEnv('GOOGLE_API_KEY')))) {
       apiKey = getEnv('GEMINI_API_KEY') || getEnv('GOOGLE_API_KEY');
@@ -362,10 +458,10 @@ export async function callLLM(
     if (geminiModel.includes("2.5")) {
       geminiModel = "gemini-2.0-flash";
     }
-    const cleanKey = encodeURIComponent(apiKey.trim());
-    const action = onChunk ? "streamGenerateContent?alt=sse&key=" : "generateContent?key=";
+    const cleanKey = apiKey.trim();
+    const action = onChunk ? "streamGenerateContent?alt=sse" : "generateContent";
     let cleanModel = encodeURIComponent(geminiModel);
-    let geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:${action}${cleanKey}`;
+    let geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:${action}`;
     const { controller, reset: resetTimeout, cancel: cancelTimeout } = createIdleTimeout(LLM_TIMEOUT_MS);
     try {
       const systemMessage = messages.find(m => m.role === 'system')?.content;
@@ -403,7 +499,10 @@ export async function callLLM(
 
       let response = await fetch(geminiUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": cleanKey,
+        },
         body: JSON.stringify(requestPayload),
         signal: controller.signal,
       });
@@ -413,10 +512,13 @@ export async function callLLM(
         console.warn(`Gemini model "${geminiModel}" returned 404, auto-falling back to gemini-2.0-flash...`);
         geminiModel = "gemini-2.0-flash";
         cleanModel = encodeURIComponent(geminiModel);
-        geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:${action}${cleanKey}`;
+        geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:${action}`;
         response = await fetch(geminiUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": cleanKey,
+          },
           body: JSON.stringify(requestPayload),
           signal: controller.signal,
         });
@@ -428,7 +530,10 @@ export async function callLLM(
         const mergedText = `[SYSTEM INSTRUCTIONS]\n${systemMessage}\n\n[USER INPUT]\n${nonSystemMessages.map(m => m.content).join("\n\n")}`;
         response = await fetch(geminiUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": cleanKey,
+          },
           body: JSON.stringify({
             contents: [{ role: "user", parts: [{ text: mergedText }] }],
             generationConfig: { temperature: 0.2, maxOutputTokens: 8192 },
@@ -459,10 +564,13 @@ export async function callLLM(
         }
 
         // Resilient non-streaming fallback if stream returned empty or had socket/SSE interruption
-        const nonStreamUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${cleanKey}`;
+        const nonStreamUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent`;
         const fallbackRes = await fetch(nonStreamUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": cleanKey,
+          },
           body: JSON.stringify(requestPayload),
           signal: controller.signal,
         });
@@ -505,11 +613,11 @@ export async function callLLM(
     } else {
       const customBase = config?.baseUrl || getEnv('OPENAI_BASE_URL');
       if (customBase) {
-        let cleanBase = customBase.trim();
-        if (!cleanBase.startsWith("http://") && !cleanBase.startsWith("https://")) {
-          cleanBase = `https://${cleanBase}`;
+        const validated = validateBaseUrl(customBase);
+        if (!validated.valid) {
+          throw new Error(validated.error || `Invalid OpenAI base URL: ${customBase}`);
         }
-        cleanBase = cleanBase.replace(/\/+$/, "");
+        let cleanBase = validated.normalized || customBase.trim().replace(/\/+$/, "");
         endpoint = cleanBase.endsWith("/chat/completions") ? cleanBase : `${cleanBase}/chat/completions`;
       }
     }
@@ -656,7 +764,6 @@ export async function callLLM(
           "x-api-key": apiKey.trim(),
           "anthropic-version": "2023-06-01",
           "anthropic-beta": "prompt-caching-2024-07-31",
-          "anthropic-dangerous-direct-browser-access": "true",
         },
         body: JSON.stringify({
           model: model || "claude-3-5-sonnet-20241022",
@@ -706,7 +813,6 @@ export async function callLLM(
             "x-api-key": apiKey.trim(),
             "anthropic-version": "2023-06-01",
             "anthropic-beta": "prompt-caching-2024-07-31",
-            "anthropic-dangerous-direct-browser-access": "true",
           },
           body: JSON.stringify({
             model: (model || "claude-3-5-sonnet-20241022").replace(/^models\//, ""),
@@ -980,6 +1086,17 @@ export async function fetchAvailableModels(
   let apiKey = config?.apiKey?.trim() || "";
   let baseUrl = config?.baseUrl?.trim() || "";
 
+  if (!apiKey && provider !== "ollama") {
+    try {
+      const secureKey = await getSecureApiKey(provider);
+      if (secureKey) {
+        apiKey = secureKey;
+      }
+    } catch (e) {
+      console.warn(`Failed to read secure key for ${provider}:`, e);
+    }
+  }
+
   if (!apiKey) {
     if (provider === "gemini") apiKey = getEnv('GEMINI_API_KEY') || getEnv('GOOGLE_API_KEY');
     else if (provider === "groq") apiKey = getEnv('GROQ_API_KEY');
@@ -999,11 +1116,14 @@ export async function fetchAvailableModels(
 
   try {
     if (provider === "gemini" && apiKey) {
-      const cleanKey = encodeURIComponent(apiKey.trim());
+      const cleanKey = apiKey.trim();
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 6000);
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`, {
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models`, {
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": cleanKey,
+        },
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
@@ -1041,8 +1161,14 @@ export async function fetchAvailableModels(
       }
     } else if (provider === "openai" && apiKey) {
       let cleanBase = (baseUrl || "https://api.openai.com/v1").trim();
-      if (!cleanBase.startsWith("http://") && !cleanBase.startsWith("https://")) {
-        cleanBase = `https://${cleanBase}`;
+      const validated = validateBaseUrl(cleanBase);
+      if (!validated.valid) {
+        if (options?.throwOnError) {
+          throw new Error(validated.error || `Invalid OpenAI base URL: ${cleanBase}`);
+        }
+        cleanBase = "https://api.openai.com/v1";
+      } else if (validated.normalized) {
+        cleanBase = validated.normalized;
       }
       cleanBase = cleanBase.replace(/\/+$/, "");
       const endpoint = cleanBase.endsWith("/models") ? cleanBase : `${cleanBase}/models`;
@@ -1132,7 +1258,6 @@ export async function fetchAvailableModels(
         headers: {
           "x-api-key": apiKey.trim(),
           "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true",
         },
         signal: controller.signal,
       });
@@ -1233,7 +1358,19 @@ export async function testLLMConnection(
   let model: string = config?.model?.trim() || "";
   let baseUrl: string = (config?.baseUrl || (provider === 'openai' ? getEnv('OPENAI_BASE_URL') : undefined) || getEnv('OLLAMA_BASE_URL') || "http://localhost:11434").trim();
 
-  // If no apiKey provided, resolve from environment
+  // If no apiKey provided, query secure storage first
+  if (!apiKey && provider !== "ollama") {
+    try {
+      const secureKey = await getSecureApiKey(provider);
+      if (secureKey) {
+        apiKey = secureKey;
+      }
+    } catch (e) {
+      console.warn(`Failed to read secure key for ${provider}:`, e);
+    }
+  }
+
+  // If still no apiKey provided, resolve from environment
   if (!apiKey && provider !== "ollama") {
     if (provider === "gemini") {
       apiKey = getEnv('GEMINI_API_KEY') || getEnv('GOOGLE_API_KEY');
@@ -1282,16 +1419,19 @@ export async function testLLMConnection(
       if (geminiModel.includes("2.5")) {
         geminiModel = "gemini-2.0-flash";
       }
-      const cleanKey = encodeURIComponent(apiKey.trim());
+      const cleanKey = apiKey.trim();
       let cleanModel = encodeURIComponent(geminiModel);
-      let endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${cleanKey}`;
+      let endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent`;
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       let response = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": cleanKey,
+        },
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: "ping" }] }],
           generationConfig: { maxOutputTokens: 2 },
@@ -1303,10 +1443,13 @@ export async function testLLMConnection(
       if (!response.ok && response.status === 404 && geminiModel !== "gemini-2.0-flash") {
         geminiModel = "gemini-2.0-flash";
         cleanModel = encodeURIComponent(geminiModel);
-        endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${cleanKey}`;
+        endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent`;
         response = await fetch(endpoint, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": cleanKey,
+          },
           body: JSON.stringify({
             contents: [{ role: "user", parts: [{ text: "ping" }] }],
             generationConfig: { maxOutputTokens: 2 },
@@ -1353,22 +1496,29 @@ export async function testLLMConnection(
     // 2. OpenAI / Compatible Proxy / Groq Ping Probe
     // -----------------------------------------------------------
     if (provider === "openai" || provider === "groq") {
+      const chosenModel = model || (provider === "groq" ? "llama-3.3-70b-versatile" : "gpt-4o-mini");
       let endpoint = "https://api.openai.com/v1/chat/completions";
       if (provider === "groq") {
         endpoint = "https://api.groq.com/openai/v1/chat/completions";
       } else {
         const customBase = config?.baseUrl || getEnv('OPENAI_BASE_URL');
         if (customBase) {
-          let cleanBase = customBase.trim();
-          if (!cleanBase.startsWith("http://") && !cleanBase.startsWith("https://")) {
-            cleanBase = `https://${cleanBase}`;
+          const validated = validateBaseUrl(customBase);
+          if (!validated.valid) {
+            return {
+              success: false,
+              provider,
+              model: chosenModel,
+              latencyMs: Date.now() - startTime,
+              message: `OpenAI custom base URL rejected: ${validated.error}`,
+              error: validated.error,
+              availableModels,
+            };
           }
-          cleanBase = cleanBase.replace(/\/+$/, "");
+          let cleanBase = validated.normalized || customBase.trim().replace(/\/+$/, "");
           endpoint = cleanBase.endsWith("/chat/completions") ? cleanBase : `${cleanBase}/chat/completions`;
         }
       }
-
-      const chosenModel = model || (provider === "groq" ? "llama-3.3-70b-versatile" : "gpt-4o-mini");
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -1437,7 +1587,6 @@ export async function testLLMConnection(
           "Content-Type": "application/json",
           "x-api-key": apiKey.trim(),
           "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true",
         },
         body: JSON.stringify({
           model: chosenModel,

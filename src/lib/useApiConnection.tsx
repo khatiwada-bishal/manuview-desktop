@@ -76,7 +76,9 @@ export function ApiConnectionProvider({ children }: { children: React.ReactNode 
               modified = true;
             }
             if (modified) {
-              localStorage.setItem("manuview_provider_config", JSON.stringify(config));
+              const sanitized = { ...config };
+              delete (sanitized as any).apiKey;
+              localStorage.setItem("manuview_provider_config", JSON.stringify(sanitized));
             }
           } catch {}
         }
@@ -99,7 +101,9 @@ export function ApiConnectionProvider({ children }: { children: React.ReactNode 
         if (data.model && config && config.model !== data.model) {
           config.model = data.model;
           try {
-            localStorage.setItem("manuview_provider_config", JSON.stringify(config));
+            const sanitized = { ...config };
+            delete (sanitized as any).apiKey;
+            localStorage.setItem("manuview_provider_config", JSON.stringify(sanitized));
           } catch {}
         }
         const rawModel = data.model || config?.model || "AI Model";
@@ -164,7 +168,9 @@ export function ApiConnectionProvider({ children }: { children: React.ReactNode 
           } catch {}
         }
         current.model = modelId;
-        localStorage.setItem("manuview_provider_config", JSON.stringify(current));
+        const sanitized = { ...current };
+        delete (sanitized as any).apiKey;
+        localStorage.setItem("manuview_provider_config", JSON.stringify(sanitized));
         window.dispatchEvent(new Event("manuview_config_changed"));
       }
     },

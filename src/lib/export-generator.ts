@@ -11,6 +11,19 @@ function escapeHtml(str: string | number | undefined | null): string {
     .replace(/'/g, "&#039;");
 }
 
+/**
+ * Strictly validates dynamic hyperlinks to allow only http:// and https:// schemes (Audit Finding #6).
+ * Neutralizes javascript:, data:, file:, and other unsafe schemes.
+ */
+export function sanitizeHref(url: string | undefined | null): string | null {
+  if (!url || typeof url !== "string") return null;
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  return null;
+}
+
 function sanitizeFilename(title: string): string {
   return (title || "Manuscript")
     .replace(/[^a-zA-Z0-9_-]/g, "_")
@@ -247,7 +260,7 @@ export function generateFullReportHtml(r: FullReviewReport): string {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; script-src 'none';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ManuView Report: ${title}</title>
   <style>
@@ -336,34 +349,17 @@ export function generateFullReportHtml(r: FullReviewReport): string {
     }
     .btn-print:hover { background: #334155; }
     
-    /* Navigation Tabs */
+    /* Navigation Index */
     .tabs-nav {
       display: flex;
-      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
       border-bottom: 2px solid #E2E8F0;
       margin-bottom: 24px;
-      overflow-x: auto;
+      padding-bottom: 12px;
     }
-    .tab-btn {
-      background: none;
-      border: none;
-      padding: 12px 18px;
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text-muted);
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-      margin-bottom: -2px;
-      white-space: nowrap;
-      transition: all 0.2s ease;
-    }
-    .tab-btn:hover { color: var(--text-main); }
-    .tab-btn.active {
-      color: var(--accent);
-      border-bottom-color: var(--accent);
-    }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
+    .tab-content { display: block; margin-bottom: 32px; }
 
     /* Cards */
     .card {
@@ -420,8 +416,7 @@ export function generateFullReportHtml(r: FullReviewReport): string {
       color: #FFF;
       border-color: #0F172A;
     }
-    .persona-panel { display: none; }
-    .persona-panel.active { display: block; }
+    .persona-panel { display: block; margin-bottom: 24px; }
     .persona-badge {
       display: inline-block;
       font-size: 11px;
@@ -513,23 +508,28 @@ export function generateFullReportHtml(r: FullReviewReport): string {
           <span class="score-number" style="${!hasNumericScore ? "font-size: 26px; color: #94A3B8;" : ""}">${scoreLabel}</span>
           <span class="score-label">${isDeskReject ? "Editorial Scope Screening (External Peer Review Bypassed)" : hasNumericScore ? "/ 100 Overall Acceptance Potential" : (r.executionMode === "heuristic_offline" ? "AI scoring offline" : "Acceptance potential bypassed")}</span>
         </div>
-        <button class="btn-print" onclick="window.print()">
-          <span>🖨️ Print / Save as PDF</span>
-        </button>
+        <div style="font-size: 12px; color: #94A3B8; font-weight: 500;">
+          <span>Tip: Save as PDF via browser (Cmd+P / Ctrl+P)</span>
+        </div>
       </div>
     </div>
 
-    <!-- Interactive Navigation Tabs -->
+    <!-- Document Section Index -->
     <div class="tabs-nav">
-      <button class="tab-btn active" onclick="switchTab('overview')">Executive Overview</button>
+      <strong style="font-size: 13px; color: #0F172A;">Sections:</strong>
+      <span style="font-size: 13px; color: #475569; font-weight: 600;">Executive Overview</span>
       ${(r.reviewerPersonas && r.reviewerPersonas.length > 0) ? `
-      <button class="tab-btn" onclick="switchTab('reviewers')">${r.reviewerPersonas.length} Reviewer Personas</button>
+      <span style="color: #CBD5E1;">&bull;</span>
+      <span style="font-size: 13px; color: #475569; font-weight: 600;">${r.reviewerPersonas.length} Reviewer Personas</span>
       ` : ""}
       ${r.dimensions ? `
-      <button class="tab-btn" onclick="switchTab('dimensions')">6 Scoring Dimensions</button>
+      <span style="color: #CBD5E1;">&bull;</span>
+      <span style="font-size: 13px; color: #475569; font-weight: 600;">6 Scoring Dimensions</span>
       ` : ""}
-      <button class="tab-btn" onclick="switchTab('issues')">Priority Action Items (${(r.priorityIssues || []).length})</button>
-      <button class="tab-btn" onclick="switchTab('journals')">Target Journals</button>
+      <span style="color: #CBD5E1;">&bull;</span>
+      <span style="font-size: 13px; color: #475569; font-weight: 600;">Priority Action Items (${(r.priorityIssues || []).length})</span>
+      <span style="color: #CBD5E1;">&bull;</span>
+      <span style="font-size: 13px; color: #475569; font-weight: 600;">Target Journals</span>
     </div>
 
     <!-- Tab 1: Overview -->
@@ -559,7 +559,10 @@ export function generateFullReportHtml(r: FullReviewReport): string {
               : `${r.reportingGuideline.scorePercent}% Compliant`}
           </span>
         </div>
-        <p style="font-size: 12px; color: #64748B; margin-bottom: 12px;">Standard: ${escapeHtml(r.reportingGuideline.standardType)}${r.reportingGuideline.standardUrl ? ` &bull; <a href="${escapeHtml(r.reportingGuideline.standardUrl)}" target="_blank" style="color: #2563EB;">Official Standard</a>` : ""}</p>
+        <p style="font-size: 12px; color: #64748B; margin-bottom: 12px;">Standard: ${escapeHtml(r.reportingGuideline.standardType)}${(() => {
+          const safeUrl = sanitizeHref(r.reportingGuideline.standardUrl);
+          return safeUrl ? ` &bull; <a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" style="color: #2563EB;">Official Standard</a>` : (r.reportingGuideline.standardUrl ? ` &bull; <span>${escapeHtml(r.reportingGuideline.standardUrl)}</span>` : "");
+        })()}</p>
 
         ${(r.reportingGuideline.compliantItems && r.reportingGuideline.compliantItems.length > 0) ? `
           <div style="font-size: 11px; font-weight: 700; color: #166534; margin-bottom: 4px;">COMPLIANT ELEMENTS:</div>
@@ -579,19 +582,13 @@ export function generateFullReportHtml(r: FullReviewReport): string {
     </div>
 
     ${(r.reviewerPersonas && r.reviewerPersonas.length > 0) ? `
-    <!-- Tab 2: Reviewer Personas -->
+    <!-- Section 2: Reviewer Personas -->
     <div id="tab-reviewers" class="tab-content">
       <div class="card">
-        <div class="persona-selector" id="persona-buttons">
-          ${(r.reviewerPersonas || []).map((p, idx) => `
-            <button class="persona-pill ${idx === 0 ? "active" : ""}" onclick="switchPersona(${idx})">
-              ${p.persona === "devils_advocate" ? "⚡ " : ""}${escapeHtml(p.name)}
-            </button>
-          `).join("")}
-        </div>
+        <div class="card-title">Simulated 5-Persona Reviewer Panel (${(r.reviewerPersonas || []).length} Referee Evaluations)</div>
 
         ${(r.reviewerPersonas || []).map((p, idx) => `
-          <div id="persona-panel-${idx}" class="persona-panel ${idx === 0 ? "active" : ""}" ${p.persona === "devils_advocate" ? 'style="border-left: 3px solid #F43F5E; padding-left: 12px;"' : ""}>
+          <div id="persona-panel-${idx}" class="persona-panel" style="border-top: ${idx > 0 ? "1px solid #E2E8F0;" : "none;"} padding-top: ${idx > 0 ? "20px;" : "0;"} margin-top: ${idx > 0 ? "20px;" : "0;"} ${p.persona === "devils_advocate" ? 'border-left: 3px solid #F43F5E; padding-left: 12px;' : ""}">
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
               <div class="persona-badge" ${p.persona === "devils_advocate" ? 'style="background: #FFE4E6; color: #9F1239;"' : ""}>${escapeHtml(p.decisionRecommendation)}</div>
               ${p.persona === "devils_advocate" ? `<span style="font-size: 11px; font-weight: 700; color: #E11D48; background: #FFF1F2; border: 1px solid #FECDD3; border-radius: 4px; padding: 2px 6px;">⚡ Hostile Stress-Test / Adversarial Referee</span>` : ""}
@@ -677,13 +674,10 @@ export function generateFullReportHtml(r: FullReviewReport): string {
     </div>
     ` : ""}
 
-    <!-- Tab 4: Priority Issues -->
+    <!-- Section 4: Priority Issues -->
     <div id="tab-issues" class="tab-content">
-      <div class="filter-pills">
-        <button class="filter-btn active" onclick="filterIssues('all', this)">All Issues</button>
-        <button class="filter-btn" onclick="filterIssues('A', this)">🚨 Priority A (Desk-Reject Risk)</button>
-        <button class="filter-btn" onclick="filterIssues('B', this)">⚠️ Priority B (Major Technical)</button>
-        <button class="filter-btn" onclick="filterIssues('C', this)">💡 Priority C (Presentation)</button>
+      <div style="font-size: 16px; font-weight: 700; color: #0F172A; margin-bottom: 16px;">
+        Priority Action Items (${(r.priorityIssues || []).length} Total Items)
       </div>
 
       <div id="issues-container">
@@ -715,7 +709,7 @@ export function generateFullReportHtml(r: FullReviewReport): string {
       </div>
     </div>
 
-    <!-- Tab 5: Journals -->
+    <!-- Section 5: Journals -->
     <div id="tab-journals" class="tab-content">
       ${r.targetJournalEvaluation ? `
       <div class="card" style="border-left: 5px solid ${r.targetJournalEvaluation.isDisciplinaryMismatch ? "#DC2626" : "#2563EB"}; margin-bottom: 20px;">
@@ -753,39 +747,6 @@ export function generateFullReportHtml(r: FullReviewReport): string {
       </div>
     </div>
   </div>
-
-  <script>
-    function switchTab(tabId, btn) {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      const activeBtn = btn || (window.event && window.event.target);
-      if (activeBtn) activeBtn.classList.add('active');
-      const el = document.getElementById('tab-' + tabId);
-      if (el) el.classList.add('active');
-    }
-
-    function switchPersona(idx, btn) {
-      document.querySelectorAll('.persona-pill').forEach(p => p.classList.remove('active'));
-      document.querySelectorAll('.persona-panel').forEach(p => p.classList.remove('active'));
-      const activeBtn = btn || (window.event && window.event.target);
-      if (activeBtn) activeBtn.classList.add('active');
-      const panel = document.getElementById('persona-panel-' + idx);
-      if (panel) panel.classList.add('active');
-    }
-
-    function filterIssues(level, btn) {
-      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-      const activeBtn = btn || (window.event && window.event.target);
-      if (activeBtn) activeBtn.classList.add('active');
-      document.querySelectorAll('.issue-item').forEach(item => {
-        if (level === 'all' || item.getAttribute('data-priority') === level) {
-          item.style.display = 'block';
-        } else {
-          item.style.display = 'none';
-        }
-      });
-    }
-  </script>
 </body>
 </html>`;
 }
@@ -805,7 +766,7 @@ function generateBriefReportHtml(r: BriefJournalFitReport): string {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; script-src 'none';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ManuView Scope Fit Report: ${title}</title>
   <style>
@@ -827,9 +788,6 @@ function generateBriefReportHtml(r: BriefJournalFitReport): string {
       box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
     h1 { font-family: Georgia, serif; font-size: 24px; margin: 12px 0; color: #0F172A; }
-    .btn-print {
-      background: #0F172A; color: #FFF; border: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
-    }
   </style>
 </head>
 <body>
@@ -837,7 +795,7 @@ function generateBriefReportHtml(r: BriefJournalFitReport): string {
     <div class="card">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <strong style="font-size: 16px;">ManuView Editorial Scope Report</strong>
-        <button class="btn-print" onclick="window.print()">Print / PDF</button>
+        <span style="font-size: 12px; color: #64748B;">Print / Save PDF via Browser (Cmd+P)</span>
       </div>
       <h1>${title}</h1>
       <p style="font-size: 13px; color: #64748B;">Target Journal: <strong>${targetJournal}</strong> • Generated on ${dateStr}</p>
