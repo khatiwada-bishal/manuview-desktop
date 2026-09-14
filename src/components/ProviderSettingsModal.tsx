@@ -439,7 +439,16 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                       rel="noreferrer"
                       className="text-[#0A85EA] dark:text-blue-400 hover:underline font-medium"
                     >
-                      OpenRouter key &rarr;
+                      OpenRouter &rarr;
+                    </a>
+                    <span className="text-[#9B9A97]">·</span>
+                    <a
+                      href="https://build.nvidia.com/"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[#107C10] dark:text-emerald-400 hover:underline font-medium"
+                    >
+                      NVIDIA NIM &rarr;
                     </a>
                   </div>
                 )}
@@ -485,13 +494,23 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                     setApiKeyInput(val);
                     setIsKeyDirty(true);
                     setFetchFeedback(null);
-                    // Auto-detect OpenRouter API key and automatically configure base URL
-                    if (config.provider === "openai" && val.trim().startsWith("sk-or-")) {
-                      if (!config.baseUrl || config.baseUrl.includes("api.openai.com")) {
-                        setConfig((prev) => ({
-                          ...prev,
-                          baseUrl: "https://openrouter.ai/api/v1",
-                        }));
+                    // Auto-detect OpenRouter or NVIDIA API keys
+                    if (config.provider === "openai") {
+                      if (val.trim().startsWith("sk-or-")) {
+                        if (!config.baseUrl || config.baseUrl.includes("api.openai.com") || config.baseUrl.includes("nvidia.com")) {
+                          setConfig((prev) => ({
+                            ...prev,
+                            baseUrl: "https://openrouter.ai/api/v1",
+                          }));
+                        }
+                      } else if (val.trim().startsWith("nvapi-")) {
+                        if (!config.baseUrl || config.baseUrl.includes("api.openai.com") || config.baseUrl.includes("openrouter.ai")) {
+                          setConfig((prev) => ({
+                            ...prev,
+                            baseUrl: "https://integrate.api.nvidia.com/v1",
+                            model: prev.model?.includes("/") ? prev.model : "nvidia/llama-3.1-nemotron-70b-instruct",
+                          }));
+                        }
                       }
                     }
                   }}
@@ -508,7 +527,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                       ? "AIzaSy..."
                       : config.provider === "anthropic"
                       ? "sk-ant-..."
-                      : "sk-... or sk-or-v1-..."
+                      : "sk-... , sk-or-v1-... , or nvapi-..."
                   }
                   className="flex-1 min-w-0 px-3.5 py-2 rounded-xl bg-white dark:bg-[#1E293B] border border-[#EBEBEA] dark:border-[#334155] focus:border-[#2F3437] dark:focus:border-blue-500 focus:outline-none text-xs text-[#2F3437] dark:text-white font-mono transition shadow-2xs placeholder:text-[#9B9A97] dark:placeholder:text-neutral-500"
                 />
@@ -597,6 +616,24 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                       >
                         OpenRouter
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConfig({
+                            ...config,
+                            baseUrl: "https://integrate.api.nvidia.com/v1",
+                            model: config.model?.includes("/") ? config.model : "nvidia/llama-3.1-nemotron-70b-instruct",
+                          });
+                          setBaseUrlError(null);
+                        }}
+                        className={`text-[10px] px-2 py-0.5 rounded transition cursor-pointer ${
+                          config.baseUrl?.includes("nvidia.com")
+                            ? "bg-[#2F3437] text-white dark:bg-emerald-600 font-medium"
+                            : "bg-[#F0EFEA] dark:bg-neutral-800 text-[#787774] dark:text-neutral-400 hover:text-[#2F3437]"
+                        }`}
+                      >
+                        NVIDIA NIM
+                      </button>
                     </div>
                   </div>
                   <input
@@ -619,7 +656,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                         handleFetchModels();
                       }
                     }}
-                    placeholder="https://api.openai.com/v1 (or https://openrouter.ai/api/v1)"
+                    placeholder="https://api.openai.com/v1 (or https://integrate.api.nvidia.com/v1)"
                     className={`w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#1E293B] border ${
                       baseUrlError ? "border-red-500 dark:border-red-500" : "border-[#EBEBEA] dark:border-[#334155]"
                     } focus:border-[#2F3437] dark:focus:border-blue-500 focus:outline-none text-xs text-[#2F3437] dark:text-white font-mono transition shadow-2xs placeholder:text-[#9B9A97] dark:placeholder:text-neutral-500`}
@@ -627,6 +664,11 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                   {config.baseUrl?.includes("openrouter.ai") && (
                     <p className="text-[#1E5A2A] dark:text-emerald-400 text-[11px] mt-1 flex items-center gap-1">
                       <span>✓ OpenRouter endpoint configured (`https://openrouter.ai/api/v1`). Click "Fetch Models" to load models.</span>
+                    </p>
+                  )}
+                  {config.baseUrl?.includes("nvidia.com") && (
+                    <p className="text-[#107C10] dark:text-emerald-400 text-[11px] mt-1 flex items-center gap-1">
+                      <span>✓ NVIDIA NIM endpoint configured (`https://integrate.api.nvidia.com/v1`). Click "Fetch Models" to load Llama, Nemotron & Mistral models.</span>
                     </p>
                   )}
                   {baseUrlError && (

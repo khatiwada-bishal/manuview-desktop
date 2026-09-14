@@ -208,6 +208,7 @@ export function sanitizeErrorMessage(msg: string): string {
     .replace(/Bearer\s+[a-zA-Z0-9_\-\.]+/gi, "Bearer [REDACTED]")
     .replace(/(?:x-api-key|authorization|api[-_]?key)\s*[:=]\s*["']?[a-zA-Z0-9_\-\.]+["']?/gi, "api-key: [REDACTED]")
     .replace(/sk-ant-[a-zA-Z0-9_\-]{20,}/gi, "sk-ant-[REDACTED]")
+    .replace(/nvapi-[a-zA-Z0-9_\-]{15,}/gi, "nvapi-[REDACTED]")
     .replace(/sk-[a-zA-Z0-9_\-]{20,}/gi, "sk-[REDACTED]")
     .replace(/AIza[a-zA-Z0-9_\-]{30,}/gi, "AIza[REDACTED]")
     .replace(/gsk_[a-zA-Z0-9_\-]{20,}/gi, "gsk_[REDACTED]");
@@ -592,13 +593,18 @@ export async function callLLM(
   }
 
   // -----------------------------------------------------------
-  // 2. Groq / OpenAI Compatible API (including OpenRouter)
+  // 2. Groq / OpenAI Compatible API (including OpenRouter & NVIDIA NIM)
   // -----------------------------------------------------------
   if ((provider === "groq" || provider === "openai") && apiKey) {
     let customBase = config?.baseUrl || getEnv('OPENAI_BASE_URL');
-    const isOpenRouter = Boolean(apiKey?.startsWith("sk-or-") || (customBase && customBase.includes("openrouter.ai")));
-    if (!customBase && isOpenRouter) {
-      customBase = "https://openrouter.ai/api/v1";
+    const isNvidia = Boolean(apiKey?.startsWith("nvapi-") || (customBase && customBase.includes("nvidia.com")));
+    const isOpenRouter = !isNvidia && Boolean(apiKey?.startsWith("sk-or-") || (customBase && customBase.includes("openrouter.ai")));
+    if (!customBase) {
+      if (isNvidia) {
+        customBase = "https://integrate.api.nvidia.com/v1";
+      } else if (isOpenRouter) {
+        customBase = "https://openrouter.ai/api/v1";
+      }
     }
 
     let endpoint = "https://api.openai.com/v1/chat/completions";
@@ -612,7 +618,10 @@ export async function callLLM(
       let cleanBase = validated.normalized || customBase.trim().replace(/\/+$/, "");
       endpoint = cleanBase.endsWith("/chat/completions") ? cleanBase : `${cleanBase}/chat/completions`;
     }
-    let chosenModel = (model || getEnv('OPENAI_MODEL') || (provider === "groq" ? "llama-3.3-70b-versatile" : (isOpenRouter ? "openai/gpt-4o-mini" : "gpt-4o-mini"))).trim();
+    let chosenModel = (model || getEnv('OPENAI_MODEL') || (provider === "groq" ? "llama-3.3-70b-versatile" : isNvidia ? "nvidia/llama-3.1-nemotron-70b-instruct" : (isOpenRouter ? "openai/gpt-4o-mini" : "gpt-4o-mini"))).trim();
+    if (isNvidia && (!chosenModel.includes("/") || chosenModel === "gpt-4o" || chosenModel === "gpt-4o-mini")) {
+      chosenModel = "nvidia/llama-3.1-nemotron-70b-instruct";
+    }
     if (chosenModel.startsWith("models/")) {
       chosenModel = chosenModel.replace(/^models\//, "");
     }
@@ -628,7 +637,7 @@ export async function callLLM(
         return m;
       });
 
-      const maxTokens = provider === "groq" ? 4096 : 8192;
+      const maxTokens = provider === "groq" || isNvidia ? 4096 : 8192;
 
       const requestPayload: any = {
         model: chosenModel,
@@ -646,7 +655,7 @@ export async function callLLM(
 
       // Only request native JSON output when the caller actually wants JSON.
       // (Previously Groq forced json_object unconditionally, which broke prose
-      // services such as the cover-letter generator.)
+      // reviews and caused 400 bad request errors).
       if (jsonMode && !isReasoningModel) {
         requestPayload.response_format = { type: "json_object" };
       }
@@ -667,8 +676,8 @@ export async function callLLM(
         signal: controller.signal,
       });
 
-      // 400 Fallback: if json_object response_format was rejected by provider, retry without response_format
-      if (!response.ok && response.status === 400 && requestPayload.response_format) {
+      // 400/422 Fallback: if json_object response_format was rejected by provider, retry without response_format
+      if (!response.ok && (response.status === 400 || response.status === 422) && requestPayload.response_format) {
         console.warn(`${provider} rejected response_format: json_object, retrying without response_format...`);
         delete requestPayload.response_format;
         response = await fetch(endpoint, {
@@ -683,13 +692,14 @@ export async function callLLM(
         let errMessage = `HTTP ${response.status}`;
         try {
           const errJson = await response.json();
-          errMessage = errJson.error?.message || errJson.message || errMessage;
+          errMessage = errJson.detail || errJson.error?.message || errJson.message || errJson.title || errMessage;
         } catch {
           errMessage = (await response.text()) || errMessage;
         }
         const safeErr = sanitizeErrorMessage(errMessage);
-        console.error(`${provider} API error:`, response.status, safeErr);
-        throw new Error(`${provider.toUpperCase()} API error (${response.status}): ${safeErr}`);
+        const providerName = isNvidia ? "NVIDIA NIM" : isOpenRouter ? "OpenRouter" : provider.toUpperCase();
+        console.error(`${providerName} API error:`, response.status, safeErr);
+        throw new Error(`${providerName} API error (${response.status}): ${safeErr}`);
       }
 
       if (onChunk) {
@@ -704,10 +714,7 @@ export async function callLLM(
         const fallbackPayload = { ...requestPayload, stream: false };
         const fallbackRes = await fetch(endpoint, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${apiKey.trim()}`,
-          },
+          headers: requestHeaders,
           body: JSON.stringify(fallbackPayload),
           signal: controller.signal,
         });
@@ -1154,14 +1161,16 @@ export async function fetchAvailableModels(
         throw new Error(`Gemini API error (${res.status}): ${errMessage}`);
       }
     } else if (provider === "openai" && apiKey) {
-      const isOpenRouter = apiKey.startsWith("sk-or-") || (baseUrl && baseUrl.includes("openrouter.ai"));
-      let cleanBase = (baseUrl || (isOpenRouter ? "https://openrouter.ai/api/v1" : "https://api.openai.com/v1")).trim();
+      const isNvidia = apiKey.startsWith("nvapi-") || (baseUrl && baseUrl.includes("nvidia.com"));
+      const isOpenRouter = !isNvidia && (apiKey.startsWith("sk-or-") || (baseUrl && baseUrl.includes("openrouter.ai")));
+      const defaultBase = isNvidia ? "https://integrate.api.nvidia.com/v1" : (isOpenRouter ? "https://openrouter.ai/api/v1" : "https://api.openai.com/v1");
+      let cleanBase = (baseUrl || defaultBase).trim();
       const validated = validateBaseUrl(cleanBase);
       if (!validated.valid) {
         if (options?.throwOnError) {
           throw new Error(validated.error || `Invalid OpenAI base URL: ${cleanBase}`);
         }
-        cleanBase = isOpenRouter ? "https://openrouter.ai/api/v1" : "https://api.openai.com/v1";
+        cleanBase = defaultBase;
       } else if (validated.normalized) {
         cleanBase = validated.normalized;
       }
@@ -1187,6 +1196,21 @@ export async function fetchAvailableModels(
           const chatModels = rawList.filter((m: any) => {
             const id = typeof m === "string" ? m : m.id;
             if (!id || typeof id !== "string") return false;
+            if (isNvidia) {
+              const lower = id.toLowerCase();
+              return (
+                !lower.includes("embed") &&
+                !lower.includes("clip") &&
+                !lower.includes("reward") &&
+                !lower.includes("safety-guard") &&
+                !lower.includes("content-safety") &&
+                !lower.includes("topic-control") &&
+                !lower.includes("rerank") &&
+                !lower.includes("detector") &&
+                !lower.includes("parse") &&
+                !lower.includes("calibration")
+              );
+            }
             if (isOpenRouter) {
               return !id.includes("whisper") && !id.includes("tts") && !id.includes("dall-e") && !id.includes("embedding") && !id.includes("moderation");
             }
@@ -1199,12 +1223,13 @@ export async function fetchAvailableModels(
               const existing = defaultList.find((d) => d.id === id);
               const name = m.name || existing?.name || id;
               const desc = m.description ? `${m.description.slice(0, 100)}...` : existing?.description || `Model ${id}`;
+              const isRecommended = existing?.recommended || id === "gpt-4o" || id.includes("llama-3.3-70b") || id === "nvidia/llama-3.1-nemotron-70b-instruct" || id.includes("nemotron-70b");
               return {
                 id,
                 name,
                 description: desc,
-                tag: existing?.tag || (id.startsWith("o") ? "🧠 Reasoning" : id.includes("free") ? "🎁 Free" : id.includes("mini") ? "⚡ Fast" : undefined),
-                recommended: existing?.recommended || id === "gpt-4o" || id.includes("llama-3.3-70b"),
+                tag: existing?.tag || (id.startsWith("o") ? "🧠 Reasoning" : id.includes("nemotron") ? "⚡ Nemotron" : id.includes("free") ? "🎁 Free" : id.includes("mini") ? "⚡ Fast" : undefined),
+                recommended: isRecommended,
                 isLive: true,
               };
             });
@@ -1215,11 +1240,12 @@ export async function fetchAvailableModels(
         let errMessage = `HTTP ${res.status}`;
         try {
           const errJson = await res.json();
-          errMessage = errJson.error?.message || errJson.message || errMessage;
+          errMessage = errJson.detail || errJson.error?.message || errJson.message || errJson.title || errMessage;
         } catch {
           errMessage = (await res.text()) || errMessage;
         }
-        throw new Error(`${isOpenRouter ? "OpenRouter" : "OpenAI"} API error (${res.status}): ${errMessage}`);
+        const providerName = isNvidia ? "NVIDIA NIM" : isOpenRouter ? "OpenRouter" : "OpenAI";
+        throw new Error(`${providerName} API error (${res.status}): ${errMessage}`);
       }
     } else if (provider === "groq" && apiKey) {
       const controller = new AbortController();
@@ -1507,14 +1533,21 @@ export async function testLLMConnection(
     // -----------------------------------------------------------
     if (provider === "openai" || provider === "groq") {
       let customBase = config?.baseUrl || getEnv('OPENAI_BASE_URL');
-      const isOpenRouter = Boolean(apiKey?.startsWith("sk-or-") || (customBase && customBase.includes("openrouter.ai")));
-      if (!customBase && isOpenRouter) {
-        customBase = "https://openrouter.ai/api/v1";
+      const isNvidia = Boolean(apiKey?.startsWith("nvapi-") || (customBase && customBase.includes("nvidia.com")));
+      const isOpenRouter = !isNvidia && Boolean(apiKey?.startsWith("sk-or-") || (customBase && customBase.includes("openrouter.ai")));
+      if (!customBase) {
+        if (isNvidia) {
+          customBase = "https://integrate.api.nvidia.com/v1";
+        } else if (isOpenRouter) {
+          customBase = "https://openrouter.ai/api/v1";
+        }
       }
 
-      let chosenModel = model || (provider === "groq" ? "llama-3.3-70b-versatile" : (isOpenRouter ? "openai/gpt-4o-mini" : "gpt-4o-mini"));
+      let chosenModel = model || (provider === "groq" ? "llama-3.3-70b-versatile" : isNvidia ? "nvidia/llama-3.1-nemotron-70b-instruct" : (isOpenRouter ? "openai/gpt-4o-mini" : "gpt-4o-mini"));
       if (isOpenRouter && !chosenModel.includes("/")) {
         chosenModel = `openai/${chosenModel}`;
+      } else if (isNvidia && (!chosenModel.includes("/") || chosenModel === "gpt-4o" || chosenModel === "gpt-4o-mini")) {
+        chosenModel = "nvidia/llama-3.1-nemotron-70b-instruct";
       }
 
       let endpoint = "https://api.openai.com/v1/chat/completions";
@@ -1562,6 +1595,7 @@ export async function testLLMConnection(
       clearTimeout(timeoutId);
 
       const latencyMs = Date.now() - startTime;
+      const providerLabel = isNvidia ? "NVIDIA NIM" : isOpenRouter ? "OpenRouter" : provider.toUpperCase();
 
       if (response.ok) {
         return {
@@ -1569,7 +1603,7 @@ export async function testLLMConnection(
           provider,
           model: chosenModel,
           latencyMs,
-          message: `Connected to ${isOpenRouter ? "OpenRouter" : provider.toUpperCase()} (${chosenModel}) in ${latencyMs}ms`,
+          message: `Connected to ${providerLabel} (${chosenModel}) in ${latencyMs}ms`,
           availableModels,
           details: { endpoint, statusCode: response.status },
         };
@@ -1577,7 +1611,7 @@ export async function testLLMConnection(
         let errMessage = `HTTP ${response.status}`;
         try {
           const errJson = await response.json();
-          errMessage = errJson.error?.message || errJson.message || errMessage;
+          errMessage = errJson.detail || errJson.error?.message || errJson.message || errJson.title || errMessage;
         } catch {
           errMessage = await response.text() || errMessage;
         }
@@ -1586,7 +1620,7 @@ export async function testLLMConnection(
           provider,
           model: chosenModel,
           latencyMs,
-          message: `${provider.toUpperCase()} connection failed (${response.status})`,
+          message: `${providerLabel} connection failed (${response.status})`,
           error: sanitizeErrorMessage(errMessage),
           availableModels,
           details: { endpoint, statusCode: response.status },
