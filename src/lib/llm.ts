@@ -592,24 +592,27 @@ export async function callLLM(
   }
 
   // -----------------------------------------------------------
-  // 2. Groq / OpenAI Compatible API
+  // 2. Groq / OpenAI Compatible API (including OpenRouter)
   // -----------------------------------------------------------
   if ((provider === "groq" || provider === "openai") && apiKey) {
+    let customBase = config?.baseUrl || getEnv('OPENAI_BASE_URL');
+    const isOpenRouter = Boolean(apiKey?.startsWith("sk-or-") || (customBase && customBase.includes("openrouter.ai")));
+    if (!customBase && isOpenRouter) {
+      customBase = "https://openrouter.ai/api/v1";
+    }
+
     let endpoint = "https://api.openai.com/v1/chat/completions";
     if (provider === "groq") {
       endpoint = "https://api.groq.com/openai/v1/chat/completions";
-    } else {
-      const customBase = config?.baseUrl || getEnv('OPENAI_BASE_URL');
-      if (customBase) {
-        const validated = validateBaseUrl(customBase);
-        if (!validated.valid) {
-          throw new Error(validated.error || `Invalid OpenAI base URL: ${customBase}`);
-        }
-        let cleanBase = validated.normalized || customBase.trim().replace(/\/+$/, "");
-        endpoint = cleanBase.endsWith("/chat/completions") ? cleanBase : `${cleanBase}/chat/completions`;
+    } else if (customBase) {
+      const validated = validateBaseUrl(customBase);
+      if (!validated.valid) {
+        throw new Error(validated.error || `Invalid OpenAI base URL: ${customBase}`);
       }
+      let cleanBase = validated.normalized || customBase.trim().replace(/\/+$/, "");
+      endpoint = cleanBase.endsWith("/chat/completions") ? cleanBase : `${cleanBase}/chat/completions`;
     }
-    let chosenModel = (model || getEnv('OPENAI_MODEL') || (provider === "groq" ? "llama-3.3-70b-versatile" : "gpt-4o-mini")).trim();
+    let chosenModel = (model || getEnv('OPENAI_MODEL') || (provider === "groq" ? "llama-3.3-70b-versatile" : (isOpenRouter ? "openai/gpt-4o-mini" : "gpt-4o-mini"))).trim();
     if (chosenModel.startsWith("models/")) {
       chosenModel = chosenModel.replace(/^models\//, "");
     }
@@ -648,12 +651,18 @@ export async function callLLM(
         requestPayload.response_format = { type: "json_object" };
       }
 
+      const requestHeaders: Record<string, string> = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey.trim()}`,
+      };
+      if (isOpenRouter) {
+        requestHeaders["HTTP-Referer"] = "https://manuview.app";
+        requestHeaders["X-Title"] = "ManuView";
+      }
+
       let response = await fetch(endpoint, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey.trim()}`,
-        },
+        headers: requestHeaders,
         body: JSON.stringify(requestPayload),
         signal: controller.signal,
       });
@@ -664,10 +673,7 @@ export async function callLLM(
         delete requestPayload.response_format;
         response = await fetch(endpoint, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${apiKey.trim()}`,
-          },
+          headers: requestHeaders,
           body: JSON.stringify(requestPayload),
           signal: controller.signal,
         });
@@ -1148,22 +1154,28 @@ export async function fetchAvailableModels(
         throw new Error(`Gemini API error (${res.status}): ${errMessage}`);
       }
     } else if (provider === "openai" && apiKey) {
-      let cleanBase = (baseUrl || "https://api.openai.com/v1").trim();
+      const isOpenRouter = apiKey.startsWith("sk-or-") || (baseUrl && baseUrl.includes("openrouter.ai"));
+      let cleanBase = (baseUrl || (isOpenRouter ? "https://openrouter.ai/api/v1" : "https://api.openai.com/v1")).trim();
       const validated = validateBaseUrl(cleanBase);
       if (!validated.valid) {
         if (options?.throwOnError) {
           throw new Error(validated.error || `Invalid OpenAI base URL: ${cleanBase}`);
         }
-        cleanBase = "https://api.openai.com/v1";
+        cleanBase = isOpenRouter ? "https://openrouter.ai/api/v1" : "https://api.openai.com/v1";
       } else if (validated.normalized) {
         cleanBase = validated.normalized;
       }
       cleanBase = cleanBase.replace(/\/+$/, "");
       const endpoint = cleanBase.endsWith("/models") ? cleanBase : `${cleanBase}/models`;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const headers: Record<string, string> = { Authorization: `Bearer ${apiKey.trim()}` };
+      if (isOpenRouter) {
+        headers["HTTP-Referer"] = "https://manuview.app";
+        headers["X-Title"] = "ManuView";
+      }
       const res = await fetch(endpoint, {
-        headers: { Authorization: `Bearer ${apiKey.trim()}` },
+        headers,
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
@@ -1171,18 +1183,28 @@ export async function fetchAvailableModels(
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.data)) {
-          const chatIds = data.data
-            .map((m: any) => m.id)
-            .filter((id: string) => id.includes("gpt") || id.startsWith("o1") || id.startsWith("o3") || id.includes("chat") || id.includes("claude"));
-          if (chatIds.length > 0) {
-            const mapped: AvailableModel[] = chatIds.map((id: string) => {
+          const rawList: any[] = data.data;
+          const chatModels = rawList.filter((m: any) => {
+            const id = typeof m === "string" ? m : m.id;
+            if (!id || typeof id !== "string") return false;
+            if (isOpenRouter) {
+              return !id.includes("whisper") && !id.includes("tts") && !id.includes("dall-e") && !id.includes("embedding") && !id.includes("moderation");
+            }
+            return id.includes("gpt") || id.startsWith("o1") || id.startsWith("o3") || id.includes("chat") || id.includes("claude");
+          });
+
+          if (chatModels.length > 0) {
+            const mapped: AvailableModel[] = chatModels.map((m: any) => {
+              const id = typeof m === "string" ? m : m.id;
               const existing = defaultList.find((d) => d.id === id);
+              const name = m.name || existing?.name || id;
+              const desc = m.description ? `${m.description.slice(0, 100)}...` : existing?.description || `Model ${id}`;
               return {
                 id,
-                name: existing?.name || id,
-                description: existing?.description || `OpenAI model ${id}`,
-                tag: existing?.tag || (id.startsWith("o") ? "🧠 Reasoning" : id.includes("mini") ? "⚡ Fast" : undefined),
-                recommended: existing?.recommended || id === "gpt-4o",
+                name,
+                description: desc,
+                tag: existing?.tag || (id.startsWith("o") ? "🧠 Reasoning" : id.includes("free") ? "🎁 Free" : id.includes("mini") ? "⚡ Fast" : undefined),
+                recommended: existing?.recommended || id === "gpt-4o" || id.includes("llama-3.3-70b"),
                 isLive: true,
               };
             });
@@ -1197,7 +1219,7 @@ export async function fetchAvailableModels(
         } catch {
           errMessage = (await res.text()) || errMessage;
         }
-        throw new Error(`OpenAI API error (${res.status}): ${errMessage}`);
+        throw new Error(`${isOpenRouter ? "OpenRouter" : "OpenAI"} API error (${res.status}): ${errMessage}`);
       }
     } else if (provider === "groq" && apiKey) {
       const controller = new AbortController();
@@ -1484,39 +1506,52 @@ export async function testLLMConnection(
     // 2. OpenAI / Compatible Proxy / Groq Ping Probe
     // -----------------------------------------------------------
     if (provider === "openai" || provider === "groq") {
-      const chosenModel = model || (provider === "groq" ? "llama-3.3-70b-versatile" : "gpt-4o-mini");
+      let customBase = config?.baseUrl || getEnv('OPENAI_BASE_URL');
+      const isOpenRouter = Boolean(apiKey?.startsWith("sk-or-") || (customBase && customBase.includes("openrouter.ai")));
+      if (!customBase && isOpenRouter) {
+        customBase = "https://openrouter.ai/api/v1";
+      }
+
+      let chosenModel = model || (provider === "groq" ? "llama-3.3-70b-versatile" : (isOpenRouter ? "openai/gpt-4o-mini" : "gpt-4o-mini"));
+      if (isOpenRouter && !chosenModel.includes("/")) {
+        chosenModel = `openai/${chosenModel}`;
+      }
+
       let endpoint = "https://api.openai.com/v1/chat/completions";
       if (provider === "groq") {
         endpoint = "https://api.groq.com/openai/v1/chat/completions";
-      } else {
-        const customBase = config?.baseUrl || getEnv('OPENAI_BASE_URL');
-        if (customBase) {
-          const validated = validateBaseUrl(customBase);
-          if (!validated.valid) {
-            return {
-              success: false,
-              provider,
-              model: chosenModel,
-              latencyMs: Date.now() - startTime,
-              message: `OpenAI custom base URL rejected: ${validated.error}`,
-              error: validated.error,
-              availableModels,
-            };
-          }
-          let cleanBase = validated.normalized || customBase.trim().replace(/\/+$/, "");
-          endpoint = cleanBase.endsWith("/chat/completions") ? cleanBase : `${cleanBase}/chat/completions`;
+      } else if (customBase) {
+        const validated = validateBaseUrl(customBase);
+        if (!validated.valid) {
+          return {
+            success: false,
+            provider,
+            model: chosenModel,
+            latencyMs: Date.now() - startTime,
+            message: `OpenAI custom base URL rejected: ${validated.error}`,
+            error: validated.error,
+            availableModels,
+          };
         }
+        let cleanBase = validated.normalized || customBase.trim().replace(/\/+$/, "");
+        endpoint = cleanBase.endsWith("/chat/completions") ? cleanBase : `${cleanBase}/chat/completions`;
       }
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
+      const reqHeaders: Record<string, string> = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey.trim()}`,
+      };
+      if (isOpenRouter) {
+        reqHeaders["HTTP-Referer"] = "https://manuview.app";
+        reqHeaders["X-Title"] = "ManuView";
+      }
+
       const response = await fetch(endpoint, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey.trim()}`,
-        },
+        headers: reqHeaders,
         body: JSON.stringify({
           model: chosenModel,
           messages: [{ role: "user", content: "ping" }],
@@ -1534,7 +1569,7 @@ export async function testLLMConnection(
           provider,
           model: chosenModel,
           latencyMs,
-          message: `Connected to ${provider.toUpperCase()} (${chosenModel}) in ${latencyMs}ms`,
+          message: `Connected to ${isOpenRouter ? "OpenRouter" : provider.toUpperCase()} (${chosenModel}) in ${latencyMs}ms`,
           availableModels,
           details: { endpoint, statusCode: response.status },
         };
