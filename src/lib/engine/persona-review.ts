@@ -390,11 +390,6 @@ export function calculateDeterministicPersonas(
 ): ReviewerPersonaFeedback[] {
   const { manuscript, discipline, targetJournal, isScopeMismatch } = params;
 
-  // Out-of-scope papers are declined during editorial screening and never forwarded to reviewers
-  if (isScopeMismatch) {
-    return [];
-  }
-
   const paperProfile = resolveDisciplineProfile(discipline);
   const cleanTitle = manuscript.title.trim();
   const sampleSizes = manuscript.empiricalCues?.sampleSizes || [];
@@ -414,24 +409,49 @@ export function calculateDeterministicPersonas(
     title: `Senior Handling Editor (${targetJournal})`,
     affiliation: `Editorial Advisory Board, ${targetJournal}`,
     expertise: paperProfile.editor.expertise,
-    roleDescription: "Aims & Scope, Readership Fit, and Contribution Triage",
-    decisionRecommendation: "Major Revision",
-    keyChallenge: `Demarcating the conceptual advance and subscriber interest specifically for readers of ${targetJournal}.`,
-    assessment: `As Handling Editor for ${targetJournal}, I have evaluated "${cleanTitle}" for editorial suitability and community interest. The manuscript presents an empirical investigation situated within ${discipline}. Before sending to external referees, the authors must articulate more explicitly how their findings advance core debates in our journal and why this work matters to our primary readership.`,
-    majorCritiques: [
-      `Articulate direct readership interest and theoretical utility for ${targetJournal}.`,
-      `Synthesize practitioner and theoretical takeaways in an expanded discussion section.`,
-    ],
-    missingControlsOrAnalyses: [
-      "Explicit statement of contribution benchmarked against recent publications in this venue.",
-    ],
-    mustAddressItems: [
-      `Refine title and abstract to communicate direct relevance to ${targetJournal}.`,
-    ],
+    roleDescription: isScopeMismatch
+      ? "Editorial Screening, Aims & Scope Triage, and Desk-Rejection Determination"
+      : "Aims & Scope, Readership Fit, and Contribution Triage",
+    decisionRecommendation: isScopeMismatch ? "Desk Reject" : "Major Revision",
+    keyChallenge: isScopeMismatch
+      ? `Disciplinary Scope Mismatch: Manuscript domain (${discipline}) does not match ${targetJournal}'s publication remit.`
+      : `Demarcating the conceptual advance and subscriber interest specifically for readers of ${targetJournal}.`,
+    assessment: isScopeMismatch
+      ? `As Handling Editor for ${targetJournal}, I have conducted preliminary editorial screening for "${cleanTitle}". The manuscript presents an investigation situated within ${discipline}, whereas ${targetJournal} publishes within a different scholarly remit. Under standard editorial policy, out-of-scope submissions cannot proceed to external referees and are desk-rejected at preliminary triage. To provide constructive value prior to resubmission elsewhere, our simulated reviewer panel has completed comprehensive methodological, statistical, and adversarial evaluations below.`
+      : `As Handling Editor for ${targetJournal}, I have evaluated "${cleanTitle}" for editorial suitability and community interest. The manuscript presents an empirical investigation situated within ${discipline}. Before sending to external referees, the authors must articulate more explicitly how their findings advance core debates in our journal and why this work matters to our primary readership.`,
+    majorCritiques: isScopeMismatch
+      ? [
+          `Substantive research focus falls outside the published aims & scope of ${targetJournal}.`,
+          `Retarget the submission to a field-aligned journal in ${discipline} before engaging external peer reviewers.`,
+          `Calibrate the conceptual framing in the abstract and introduction to reflect the norms of the intended target domain.`,
+        ]
+      : [
+          `Articulate direct readership interest and theoretical utility for ${targetJournal}.`,
+          `Synthesize practitioner and theoretical takeaways in an expanded discussion section.`,
+        ],
+    missingControlsOrAnalyses: isScopeMismatch
+      ? [
+          `Alignment with recent publications and editorial debates in ${targetJournal}.`,
+        ]
+      : [
+          "Explicit statement of contribution benchmarked against recent publications in this venue.",
+        ],
+    mustAddressItems: isScopeMismatch
+      ? [
+          `Redirect submission to a journal focused in ${discipline} (see Matching Journals tab).`,
+          `Re-frame the title and introductory rationale to emphasize contributions relevant to the alternative venue.`,
+        ]
+      : [
+          `Refine title and abstract to communicate direct relevance to ${targetJournal}.`,
+        ],
     evidenceAnchors: [`text: §Introduction "${cleanTitle.slice(0, 60)}..."`],
-    counterArguments: [
-      "Ensure findings possess generalizable significance beyond a single localized cohort.",
-    ],
+    counterArguments: isScopeMismatch
+      ? [
+          `Even if the methodology is sound, general-interest and out-of-scope venues will decline this work without peer review due to editorial remit constraints.`,
+        ]
+      : [
+          "Ensure findings possess generalizable significance beyond a single localized cohort.",
+        ],
     source: "heuristic",
   };
 

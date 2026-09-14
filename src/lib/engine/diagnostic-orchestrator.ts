@@ -918,7 +918,7 @@ export async function runManuscriptDiagnostic(
       classification: heuristicClassification,
       dimensions: domainSynthesis.dimensions as Record<ScoreDimension, DimensionScore>,
       priorityIssues: finalPriorityIssues,
-      reviewerPersonas: [], // Out-of-scope papers are never forwarded to external referees!
+      reviewerPersonas: domainSynthesis.personas,
       missingPersonaRoles: [],
       journalRecommendations: domainSynthesis.journalRecommendations,
       citationIntegrity,
@@ -1073,9 +1073,9 @@ export async function runManuscriptDiagnostic(
   }
 
   let finalDimensions: Record<ScoreDimension, DimensionScore> | undefined = undefined;
-  if (executionMode !== "heuristic_offline") {
+  {
     const dims: Partial<Record<ScoreDimension, DimensionScore>> = {};
-    if (dimValidation.isValid && dimValidation.data) {
+    if (executionMode !== "heuristic_offline" && dimValidation.isValid && dimValidation.data) {
       for (const [key, dim] of Object.entries(dimValidation.data)) {
         if (isScoreDimension(key)) {
           dims[key] = {
@@ -1264,59 +1264,61 @@ export async function runManuscriptDiagnostic(
   let finalPersonas: ReviewerPersonaFeedback[] = [];
   const missingPersonaRoles: ReviewerPersonaFeedback["persona"][] = [];
 
-  if (executionMode !== "heuristic_offline") {
-    if (personaValidation.isValid && personaValidation.data) {
-      const llmPersonas: ReviewerPersonaFeedback[] = personaValidation.data.map((p) => ({
-        persona: p.persona || ("domain_expert" as const),
-        name: p.name || "Reviewer",
-        title: p.title || "Senior Peer Reviewer",
-        affiliation: p.affiliation || "Editorial Review Board",
-        expertise: p.expertise || "Domain Specialist",
-        roleDescription: p.roleDescription || "Panel Referee",
-        decisionRecommendation: p.decisionRecommendation || ("Major Revision" as const),
-        keyChallenge: p.keyChallenge || "Methodological rigor and contribution significance",
-        assessment: p.assessment || "Thorough evaluation of manuscript rigor and validity required.",
-        majorCritiques: p.majorCritiques || ["Document methodology and procedural controls systematically."],
-        missingControlsOrAnalyses: p.missingControlsOrAnalyses || [],
-        mustAddressItems: p.mustAddressItems || [],
-        source: "llm" as const,
-        evidenceAnchors: Array.isArray(p.evidenceAnchors)
-          ? p.evidenceAnchors.map((a) => groundEvidenceAnchor(a, manuscript.rawText, manuscript.sections))
-          : [],
-        counterArguments: p.counterArguments || [],
-        confidentialEditorNote: p.confidentialEditorNote,
-      }));
+  if (executionMode !== "heuristic_offline" && personaValidation.isValid && personaValidation.data && !isDeskRejectByScope) {
+    const llmPersonas: ReviewerPersonaFeedback[] = personaValidation.data.map((p) => ({
+      persona: p.persona || ("domain_expert" as const),
+      name: p.name || "Reviewer",
+      title: p.title || "Senior Peer Reviewer",
+      affiliation: p.affiliation || "Editorial Review Board",
+      expertise: p.expertise || "Domain Specialist",
+      roleDescription: p.roleDescription || "Panel Referee",
+      decisionRecommendation: p.decisionRecommendation || ("Major Revision" as const),
+      keyChallenge: p.keyChallenge || "Methodological rigor and contribution significance",
+      assessment: p.assessment || "Thorough evaluation of manuscript rigor and validity required.",
+      majorCritiques: p.majorCritiques || ["Document methodology and procedural controls systematically."],
+      missingControlsOrAnalyses: p.missingControlsOrAnalyses || [],
+      mustAddressItems: p.mustAddressItems || [],
+      source: "llm" as const,
+      evidenceAnchors: Array.isArray(p.evidenceAnchors)
+        ? p.evidenceAnchors.map((a) => groundEvidenceAnchor(a, manuscript.rawText, manuscript.sections))
+        : [],
+      counterArguments: p.counterArguments || [],
+      confidentialEditorNote: p.confidentialEditorNote,
+    }));
 
-      const existingRoles = new Set(llmPersonas.map((p) => p.persona));
-      for (const role of CANONICAL_PERSONA_ROLES) {
-        if (!existingRoles.has(role)) {
-          missingPersonaRoles.push(role);
-        }
+    const existingRoles = new Set(llmPersonas.map((p) => p.persona));
+    for (const role of CANONICAL_PERSONA_ROLES) {
+      if (!existingRoles.has(role)) {
+        missingPersonaRoles.push(role);
       }
-
-      const assembledPersonas = [...llmPersonas];
-      assembledPersonas.sort((a, b) => {
-        const idxA = CANONICAL_PERSONA_ROLES.indexOf(a.persona);
-        const idxB = CANONICAL_PERSONA_ROLES.indexOf(b.persona);
-        return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
-      });
-
-      finalPersonas = assembledPersonas.map((p) => ({
-        ...p,
-        name: CANONICAL_ANONYMOUS_TRACKS[p.persona] || p.name,
-      }));
-    } else {
-      finalPersonas = [];
-      missingPersonaRoles.push(...CANONICAL_PERSONA_ROLES);
     }
+
+    const assembledPersonas = [...llmPersonas];
+    assembledPersonas.sort((a, b) => {
+      const idxA = CANONICAL_PERSONA_ROLES.indexOf(a.persona);
+      const idxB = CANONICAL_PERSONA_ROLES.indexOf(b.persona);
+      return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+    });
+
+    finalPersonas = assembledPersonas.map((p) => ({
+      ...p,
+      name: CANONICAL_ANONYMOUS_TRACKS[p.persona] || p.name,
+    }));
+  } else {
+    // Grounded fallback from domainSynthesis ensures a resilient 5-persona reviewer panel is always available
+    finalPersonas = [...domainSynthesis.personas];
+    missingPersonaRoles.length = 0;
   }
 
-  // Disciplinary scope mismatch: Direct Desk Reject at editorial triage
-  // In scholarly publishing, out-of-scope submissions are declined during initial editorial screening
-  // and never forwarded to external referees. No 5 peer review personas are required.
-  if (isDeskRejectByScope) {
-    finalPersonas = [];
-    missingPersonaRoles.length = 0;
+  // If desk-rejected at editorial triage, ensure Reviewer 1 (Lead Handling Editor) explicitly reflects the Desk Reject determination
+  if (isDeskRejectByScope && finalPersonas.length > 0) {
+    finalPersonas[0] = {
+      ...finalPersonas[0],
+      decisionRecommendation: "Desk Reject",
+      roleDescription: "Editorial Screening, Aims & Scope Triage, and Desk-Rejection Determination",
+      keyChallenge: `Disciplinary Scope Mismatch: Manuscript domain (${detectedDiscipline}) is outside ${targetJournalName}'s remit.`,
+      assessment: `Editorial Desk Reject: "${targetJournalName}" publishes in ${journalMatches.targetJournalEvaluation?.journalDiscipline || "a different discipline"}, whereas this manuscript focuses in ${detectedDiscipline}. Out-of-scope submissions cannot proceed to external referees and are declined at editorial triage. The remaining panel reviews provide constructive methodological and quantitative feedback to assist with revision prior to submission to a field-aligned venue.`,
+    };
   }
 
   const panelConsensus = computePanelConsensus(finalPersonas, finalOverallScore);

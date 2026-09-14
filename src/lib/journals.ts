@@ -2569,7 +2569,8 @@ export function detectDiscipline(
     'carbon emissions', 'emissions reduction', 'air quality', 'soil degradation', 'environmental science',
     'climate finance', 'climate funding', 'carbon finance', 'climate', 'renewable', 'clean energy',
     'solar home', 'biogas', 'cookstove', 'energy access', 'rural energy', 'energy policy',
-    'energy transition', 'off-grid', 'clean cooking', 'firewood', 'energy poverty', 'solar energy'
+    'energy transition', 'off-grid', 'clean cooking', 'firewood', 'energy poverty', 'solar energy',
+    'e-waste', 'electronic waste', 'waste management', 'waste', 'recycling', 'transboundary'
   ];
   const envScore = envTerms.filter(t => manuscriptText.includes(t) || citedText.includes(t)).length;
 

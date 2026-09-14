@@ -182,13 +182,10 @@ export function DesktopDashboard({
   const classification = currentReport?.classification;
   const dimensions = currentReport?.dimensions || {};
   const personas: ReviewerPersonaFeedback[] = useMemo(() => {
-    if (isDeskReject) {
-      return [];
-    }
     if (fullReport?.reviewerPersonas && fullReport.reviewerPersonas.length > 0) {
       return fullReport.reviewerPersonas;
     }
-    if (!isDeskReject && data?.reviewers && data.reviewers.length > 0) {
+    if (data?.reviewers && data.reviewers.length > 0) {
       return data.reviewers.map((r, idx) => ({
         persona: (idx === 0
           ? "journal_editor"
@@ -205,7 +202,7 @@ export function DesktopDashboard({
         expertise: "Scholarly Evaluation",
         roleDescription: r.role || "Peer Reviewer",
         decisionRecommendation: (r.tag === "Critical"
-          ? "Reject / Resubmit"
+          ? (isDeskReject ? "Desk Reject" : "Reject / Resubmit")
           : "Major Revision") as ReviewerPersonaFeedback["decisionRecommendation"],
         keyChallenge: r.quote || "Methodological rigor",
         assessment: r.detail || r.quote || "Detailed evaluation required.",
@@ -217,8 +214,31 @@ export function DesktopDashboard({
         confidentialEditorNote: undefined,
       }));
     }
+    if (isDeskReject && (currentReport?.editorialTriage || data.editorialTriage)) {
+      const triage = currentReport?.editorialTriage || data.editorialTriage;
+      return [{
+        persona: "journal_editor" as const,
+        name: "Reviewer 1: Lead Handling Editor",
+        title: `Senior Handling Editor (${targetJournal})`,
+        affiliation: `Editorial Office, ${targetJournal}`,
+        expertise: "Aims & Scope, Editorial Screening & Desk-Reject Triage",
+        roleDescription: "Preliminary Screening & Scope Triage",
+        decisionRecommendation: "Desk Reject" as const,
+        keyChallenge: "Disciplinary scope mismatch with target journal remit.",
+        assessment: triage?.summary || `The manuscript domain is outside the publication remit of "${targetJournal}". In accordance with editorial policy, out-of-scope submissions cannot proceed to external peer review.`,
+        majorCritiques: [
+          `Substantive research remit falls outside the aims and scope of ${targetJournal}.`,
+          "Redirect submission to a discipline-appropriate journal before engaging external peer reviewers.",
+        ],
+        missingControlsOrAnalyses: [],
+        mustAddressItems: ["Consult the Matching Journals tab and retarget prior to external peer review."],
+        evidenceAnchors: [],
+        counterArguments: [],
+        confidentialEditorNote: undefined,
+      }];
+    }
     return [];
-  }, [fullReport?.reviewerPersonas, fullReport?.editorialTriage?.outcome, data?.reviewers, isDeskReject]);
+  }, [fullReport?.reviewerPersonas, fullReport?.editorialTriage, currentReport?.editorialTriage, data?.reviewers, data?.editorialTriage, isDeskReject, targetJournal]);
   const issues = fullReport?.priorityIssues || [];
   const journals = fullReport?.journalRecommendations || [];
 
@@ -927,8 +947,10 @@ export function DesktopDashboard({
         <div className="rounded-3xl liquid-glass-card p-6 flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400">
           <Users className="w-5 h-5 text-neutral-400" />
           <span>
-            {fullReport?.executionMode === "heuristic_offline"
-              ? "Expert reviewer panel simulation is offline. Connect an AI provider in AI Settings and re-run the scan to generate live simulated peer reviews."
+            {isDeskReject
+              ? "Editorial Triage Decision: Submission is out of scope for the target journal."
+              : fullReport?.executionMode === "heuristic_offline"
+              ? "Expert reviewer panel simulation is running with deterministic academic heuristics. Connect an AI provider in AI Settings and re-run the scan to generate live simulated peer reviews."
               : "Expert reviewer panel simulation is enabled when live AI evaluation is connected."}
           </span>
         </div>
@@ -947,6 +969,8 @@ export function DesktopDashboard({
               <span>
                 {isDeskReject && personas.length <= 1
                   ? "Editorial Triage Decision"
+                  : isDeskReject
+                  ? `${personas.length}-Persona Reviewer Panel (Editorial Scope Triage)`
                   : `${personas.length}-Persona Peer-Review Simulation (Adversarial Panel)`}
               </span>
               <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-2.5 py-0.5 rounded-full border border-neutral-200 dark:border-neutral-700">
@@ -956,6 +980,8 @@ export function DesktopDashboard({
             <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
               {isDeskReject && personas.length <= 1
                 ? "Handling editor desk-rejected the submission — peer reviewers were not engaged"
+                : isDeskReject
+                ? "Handling editor desk-reject triage with domain, methodological, statistical, and adversarial evaluations"
                 : "Multi-disciplinary simulated peer review with domain-specific stress tests"}
             </p>
           </div>
@@ -1839,7 +1865,7 @@ export function DesktopDashboard({
               </button>
               <span className="text-neutral-300 dark:text-neutral-600">/</span>
               <span className="text-xs font-bold text-[#0F172A] dark:text-white">
-                {activeView === "personas" && (isDeskReject ? "Editorial Triage Decision" : `${personas.length || 5} Expert Reviewer Panel`)}
+                {activeView === "personas" && (isDeskReject ? (personas.length <= 1 ? "Editorial Triage Decision" : `${personas.length || 5} Expert Reviewer Panel (Scope Triage)`) : `${personas.length || 5} Expert Reviewer Panel`)}
                 {activeView === "dimensions" && "6 Scoring Dimensions"}
                 {activeView === "issues" && `Priority Action Items (${issues.length})`}
                 {(activeView === "journals" || activeView === "recommendations") &&
@@ -2489,7 +2515,7 @@ export function DesktopDashboard({
         {/* ========================================================= */}
         {/* INELIGIBILITY NOTICE FOR PEER-REVIEW SUBVIEWS            */}
         {/* ========================================================= */}
-        {activeView !== "overview" && activeView !== "citations" && !isReviewEligible && (
+        {activeView !== "overview" && activeView !== "citations" && !isReviewEligible && !isDeskReject && (
           <div className="rounded-3xl liquid-glass-card p-8 sm:p-12 text-center space-y-4 shadow-xs animate-fade-in">
             <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
               <AlertCircle className="w-6 h-6" />
@@ -2525,7 +2551,7 @@ export function DesktopDashboard({
         {/* ========================================================= */}
         {/* TAB 3: 6 SCORING DIMENSIONS                               */}
         {/* ========================================================= */}
-        {activeView === "dimensions" && isReviewEligible && !isDeskReject && renderDimensionsSection()}
+        {activeView === "dimensions" && (isReviewEligible || isDeskReject) && renderDimensionsSection()}
 
         {/* ========================================================= */}
         {/* TAB 4: ACTION PLAN & CRITICAL ISSUES                      */}

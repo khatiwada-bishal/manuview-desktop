@@ -734,25 +734,23 @@ export function DesktopSidebar({
                           )}
                           <span className="truncate">
                             {isDeskReject
-                              ? "Triage Decision (Desk Reject)"
+                              ? "Triage & 5-Persona Reviews"
                               : "5-Persona Reviews"}
                           </span>
                         </button>
 
-                        {!isDeskReject && (
-                          <button
-                            type="button"
-                            onClick={() => onSelectView("dimensions")}
-                            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer ${
-                              activeView === "dimensions"
-                                ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
-                                : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
-                            }`}
-                          >
-                            <BarChart3 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                            <span className="truncate">6 Scoring Dimensions</span>
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => onSelectView("dimensions")}
+                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer ${
+                            activeView === "dimensions"
+                              ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
+                              : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
+                          }`}
+                        >
+                          <BarChart3 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <span className="truncate">6 Scoring Dimensions</span>
+                        </button>
 
                         <button
                           type="button"

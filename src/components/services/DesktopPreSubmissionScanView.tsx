@@ -1482,7 +1482,7 @@ export function DesktopPreSubmissionScanView({
                     <Users className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
                     <span>
                       {report.editorialTriage?.outcome === "desk_reject"
-                        ? "Editorial Triage Decision"
+                        ? (report.reviewerPersonas.length <= 1 ? "Editorial Triage Decision" : "5-Persona Peer-Review Simulation (Editorial Scope Triage)")
                         : "5-Persona Peer-Review Simulation"}
                     </span>
                     <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded border border-neutral-200 dark:border-neutral-700">
@@ -1491,7 +1491,7 @@ export function DesktopPreSubmissionScanView({
                   </div>
                   <span className="text-xs text-neutral-400">
                     {report.editorialTriage?.outcome === "desk_reject"
-                      ? "Handling editor screening only — no peer reviewers engaged"
+                      ? (report.reviewerPersonas.length <= 1 ? "Handling editor screening only — no peer reviewers engaged" : "Editorial scope triage with multi-disciplinary stress tests")
                       : "Independent domain evaluations"}
                   </span>
                 </div>
