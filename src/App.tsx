@@ -21,6 +21,7 @@ import { DesktopResponseBuilderView } from "@/components/services/DesktopRespons
 import { DesktopEmptyDashboard } from "@/components/DesktopEmptyDashboard";
 import { DeleteConfirmationModal } from "@/components/DeleteConfirmationModal";
 import { ProviderSettingsModal } from "@/components/ProviderSettingsModal";
+import { DashboardErrorBoundary } from "@/components/DashboardErrorBoundary";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { useApiConnection } from "@/lib/useApiConnection";
 import { FullReviewReport } from "@/lib/types";
@@ -412,44 +413,46 @@ export default function App() {
     // Default: Article Review Dashboard
     if (currentPaper && (currentDashboardData || (activeTabId && fullReportsStore[activeTabId]))) {
       return (
-        <DesktopDashboard
-          data={
-            currentDashboardData || {
-              paperTitle: currentPaper.title,
-              headlineTitle: currentPaper.title,
-              targetJournal: currentPaper.journal,
-              aiEngine: "Gemini 2.5 Flash",
-              latencyMs: 820,
-              score: currentPaper.score,
-              statusText: "Submission Ready",
-              vulnerabilities: [],
-              reviewers: [],
-              citationAudit: { verifiedCount: 52, totalCount: 52, retractedCount: 0 },
-            }
-          }
-          fullReport={activeTabId ? fullReportsStore[activeTabId] : null}
-          activeView={activeView}
-          isConnected={isConnected}
-          isLoading={isApiLoading}
-          activeModelName={modelName}
-          latencyMs={latencyMs}
-          onSelectView={(view) => setActiveView(view)}
-          onNewScan={() => handleOpenService("ai-review")}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-          onDeleteArticle={() => setPaperToDelete(currentPaper)}
-          onUpdateFullReport={(updatedReport, updatedData) => {
-            if (activeTabId) {
-              setFullReportsStore((prev) => ({ ...prev, [activeTabId]: updatedReport }));
-              if (updatedData) {
-                setDashboardStore((prev) => ({ ...prev, [activeTabId]: updatedData }));
-              }
-              const paper = papers.find((p) => p.id === activeTabId);
-              if (paper) {
-                saveProject(paper, updatedData || currentDashboardData || ({} as any), updatedReport);
+        <DashboardErrorBoundary fallbackTitle="Review Dashboard Display Error">
+          <DesktopDashboard
+            data={
+              currentDashboardData || {
+                paperTitle: currentPaper.title,
+                headlineTitle: currentPaper.title,
+                targetJournal: currentPaper.journal,
+                aiEngine: "Gemini 2.5 Flash",
+                latencyMs: 820,
+                score: currentPaper.score,
+                statusText: "Submission Ready",
+                vulnerabilities: [],
+                reviewers: [],
+                citationAudit: { verifiedCount: 52, totalCount: 52, retractedCount: 0 },
               }
             }
-          }}
-        />
+            fullReport={activeTabId ? fullReportsStore[activeTabId] : null}
+            activeView={activeView}
+            isConnected={isConnected}
+            isLoading={isApiLoading}
+            activeModelName={modelName}
+            latencyMs={latencyMs}
+            onSelectView={(view) => setActiveView(view)}
+            onNewScan={() => handleOpenService("ai-review")}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            onDeleteArticle={() => setPaperToDelete(currentPaper)}
+            onUpdateFullReport={(updatedReport, updatedData) => {
+              if (activeTabId) {
+                setFullReportsStore((prev) => ({ ...prev, [activeTabId]: updatedReport }));
+                if (updatedData) {
+                  setDashboardStore((prev) => ({ ...prev, [activeTabId]: updatedData }));
+                }
+                const paper = papers.find((p) => p.id === activeTabId);
+                if (paper) {
+                  saveProject(paper, updatedData || currentDashboardData || ({} as any), updatedReport);
+                }
+              }
+            }}
+          />
+        </DashboardErrorBoundary>
       );
     }
 

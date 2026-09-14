@@ -79,7 +79,14 @@ export function loadSavedProjects(): SavedProject[] {
     }
     const parsed: SavedProject[] = JSON.parse(raw);
     const cleaned = parsed.filter((p) => !LEGACY_DUMMY_IDS.has(p.paper.id));
-    return cleaned;
+    return cleaned.map((p) => ({
+      ...p,
+      paper: {
+        ...p.paper,
+        createdAt: p.paper.createdAt || p.createdAt,
+        updatedAt: p.paper.updatedAt || p.updatedAt,
+      },
+    }));
   } catch (err) {
     console.error("Error loading saved projects from localStorage:", err);
     return [];
@@ -101,7 +108,17 @@ export async function initIndexedDBStorage(): Promise<SavedProject[]> {
     const idbProjects = await idbGetAll<SavedProject & { id: string }>();
     const validIdb = idbProjects
       .filter((p) => !LEGACY_DUMMY_IDS.has(p.id))
-      .map(({ id, ...rest }) => rest as SavedProject);
+      .map(({ id, ...rest }) => {
+        const proj = rest as SavedProject;
+        return {
+          ...proj,
+          paper: {
+            ...proj.paper,
+            createdAt: proj.paper.createdAt || proj.createdAt,
+            updatedAt: proj.paper.updatedAt || proj.updatedAt,
+          },
+        };
+      });
 
     // Reconcile the two stores by id, keeping whichever copy was updated most
     // recently (ISO timestamps compare lexicographically). This avoids clobbering
@@ -170,12 +187,22 @@ export async function saveProject(
     }
 
     const index = existing.findIndex((p) => p.paper.id === paper.id);
+    const createdAt =
+      paper.createdAt ||
+      (index >= 0 ? existing[index].createdAt || existing[index].paper?.createdAt : undefined) ||
+      now;
+    const updatedAt = now;
+    const paperWithTimestamps: PaperItem = {
+      ...paper,
+      createdAt,
+      updatedAt,
+    };
     const newProject: SavedProject = {
-      paper,
+      paper: paperWithTimestamps,
       dashboardData,
       fullReport,
-      createdAt: index >= 0 ? existing[index].createdAt : now,
-      updatedAt: now,
+      createdAt,
+      updatedAt,
     };
 
     const updated =

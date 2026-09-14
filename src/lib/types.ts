@@ -68,6 +68,9 @@ export interface ReviewerPersonaFeedback {
   minorComments?: string[];
   evidenceAnchors?: string[];
   counterArguments?: string[];
+  confidence?: 'high' | 'medium' | 'low';
+  isAbstained?: boolean;
+  abstentionReason?: string;
   source?: 'llm' | 'heuristic';
   /** Simulated handling editor confidential comments to editorial board (P0-3) */
   confidentialEditorNote?: string;
@@ -207,6 +210,13 @@ export interface ParsedManuscript {
     authorSelfCitationCount?: number;
     authorSelfCitationRatio?: number;
   };
+  injectionSuspicionFlags?: string[];
+  mandatoryDeclarations?: {
+    ethicsStatement?: { present: boolean; excerpt?: string };
+    dataAvailability?: { present: boolean; excerpt?: string };
+    competingInterests?: { present: boolean; excerpt?: string };
+    authorContributions?: { present: boolean; excerpt?: string };
+  };
 }
 
 export interface ReportingGuidelineItem {
@@ -251,6 +261,8 @@ export interface PublishedArticleDetails {
   articleUrl?: string;
   citationCount?: number;
   detectedVia: string;
+  isPreprint?: boolean;
+  preprintServer?: string;
 }
 
 export interface TargetJournalEvaluation {
@@ -287,17 +299,73 @@ export interface ScopeComparisonDetail {
   suggestedVenues?: string[];
 }
 
+export type DeskRejectPillarStatus = 'pass' | 'warning' | 'fatal_barrier';
+
+export interface DeskRejectPillarEvaluation {
+  pillar: 'scope_remit' | 'novelty_scale' | 'methodology_controls' | 'integrity_citations' | 'standards_compliance' | 'presentation_language';
+  title: string;
+  status: DeskRejectPillarStatus;
+  verdict: string;
+  actionablePreSubmissionFix?: string;
+  evidenceSpans?: string[];
+  triggerId?: string;
+  baseRateContext?: string;
+}
+
+export type ExpectedDecisionOutcome =
+  | 'Desk Reject Hazard'
+  | 'High Risk / Substantial Rebuttal Required'
+  | 'Competitive with Major Revisions'
+  | 'Strong Candidate / Likely Acceptance';
+
+export interface DecisionCategoryDistribution {
+  p_desk_reject: number; // e.g. 15 (%)
+  p_reject_after_review: number; // e.g. 35 (%)
+  p_major_revision: number; // e.g. 32 (%)
+  p_minor_revision: number; // e.g. 15 (%)
+  p_accept: number; // e.g. 3 (%)
+  confidence: 'high' | 'medium' | 'low';
+  messy_middle_flag: boolean; // NeurIPS 2014 reality (57% second committee flip)
+  baseRateDisclaimer?: string;
+}
+
+export interface VerificationCoverageSummary {
+  totalCritiques: number;
+  verifiedSpans: number;
+  suppressedCount: number;
+  coveragePercent: number;
+}
+
+export interface CalibratedAcceptanceRating {
+  overallScore: number; // 0-100 composite academic quality score
+  acceptanceProbabilityPercent: number; // e.g. 15 (%)
+  probabilityRange: [number, number]; // e.g. [11, 19] confidence bounds
+  baselineJournalRatePercent: number; // Target journal baseline selectivity, e.g. 7.5 (%)
+  decisionOutcome: ExpectedDecisionOutcome;
+  decisionDistribution: DecisionCategoryDistribution;
+  dimensionalMultiplier: number; // Composite quality multiplier MQ (e.g. 1.85)
+  hazardPenaltyMultiplier: number; // Compounded deficit penalty (e.g. 0.85)
+  primaryHazard?: string; // Leading bottleneck suppressing probability
+  keyOpportunity?: string; // Highest-leverage fix to boost acceptance odds
+  verificationCoverage?: VerificationCoverageSummary;
+}
+
 export interface EditorialTriageOutcome {
   outcome: 'sent_for_review' | 'desk_reject';
+  triageClassification?: 'cleared_for_review' | 'actionable_desk_reject_risk' | 'fatal_desk_reject';
   /** True only when the manuscript cleared triage and reached the reviewer panel. */
   sentToPeerReview: boolean;
-  deskRejectReason?: 'scope_mismatch';
+  deskRejectReason?: 'scope_mismatch' | 'fatal_methodology' | 'retracted_citations' | 'inadequate_novelty' | 'integrity_compliance';
   /** The handling editor's triage decision (present on desk reject). */
   handlingEditorDecision?: ReviewerPersonaFeedback['decisionRecommendation'];
   /** Human-readable explanation of the triage outcome. */
   summary: string;
   /** Detailed comparison of manuscript domain vs. fetched journal scope */
   scopeComparison?: ScopeComparisonDetail;
+  /** 6-Pillar Editorial Screening Evaluation */
+  pillarEvaluations?: DeskRejectPillarEvaluation[];
+  /** Actionable roadmap to overturn or resolve desk reject hazards */
+  salvageRoadmap?: string[];
 }
 
 /**
@@ -348,6 +416,8 @@ export interface FullReviewReport {
   targetJournalEvaluation?: TargetJournalEvaluation;
   /** Editorial desk-review gate result; determines whether peer review occurred. */
   editorialTriage?: EditorialTriageOutcome;
+  /** Calibrated Acceptance Probability & Selectivity Analysis */
+  calibratedAcceptance?: CalibratedAcceptanceRating;
   overallScore?: number; // 0 to 100 (omitted if non-academic, already published, or heuristic-sourced)
   scoreUncertaintyMargin?: number; // e.g., ±3 (unanimous) to ±10 (split panel)
   panelConsensus?: PanelConsensus;
@@ -366,6 +436,8 @@ export interface FullReviewReport {
   reportingGuideline?: ReportingGuidelineCheck;
   executionMode?: 'llm_synthesized' | 'partial_llm' | 'heuristic_offline';
   llmCallError?: string;
+  verificationCoverage?: VerificationCoverageSummary;
+  funnelStageReached?: 'stage0_integrity' | 'stage1_triage' | 'stage2_deep_review' | 'stage3_synthesis';
 }
 
 export interface BriefJournalFitReport {

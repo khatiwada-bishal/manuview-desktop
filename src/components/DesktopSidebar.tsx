@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import {
   Search,
   Sparkles,
@@ -23,6 +23,7 @@ import {
   AlertTriangle,
   Info,
   ShieldAlert,
+  Clock,
 } from "lucide-react";
 import { isDesktopApp } from "@/lib/desktop";
 
@@ -49,6 +50,113 @@ export interface PaperItem {
   publishedJournal?: string;
   editorialTriage?: EditorialTriageOutcome;
   isDeskReject?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type TimeCategory =
+  | "Today"
+  | "Yesterday"
+  | "Previous 7 Days"
+  | "Previous 30 Days"
+  | "Older";
+
+export interface GroupedPapers {
+  category: TimeCategory;
+  papers: PaperItem[];
+}
+
+/**
+ * Categorizes an ISO date string or timestamp into human time buckets:
+ * "Today" | "Yesterday" | "Previous 7 Days" | "Previous 30 Days" | "Older"
+ */
+export function getTimeCategory(dateInput?: string | number | Date, paperId?: string): TimeCategory {
+  let date: Date | null = null;
+  if (dateInput) {
+    const d = new Date(dateInput);
+    if (!isNaN(d.getTime())) {
+      date = d;
+    }
+  }
+  if (!date && paperId) {
+    // Try to extract 13-digit millisecond timestamp from id suffix (e.g. paper-1726300000000)
+    const match = paperId.match(/(\d{13})/);
+    if (match) {
+      const ts = parseInt(match[1], 10);
+      const d = new Date(ts);
+      if (!isNaN(d.getTime())) {
+        date = d;
+      }
+    }
+  }
+  if (!date) return "Today";
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const yesterdayStart = todayStart - 86400000;
+  const sevenDaysAgoStart = todayStart - 6 * 86400000;
+  const thirtyDaysAgoStart = todayStart - 29 * 86400000;
+
+  const itemTime = date.getTime();
+
+  if (itemTime >= todayStart) {
+    return "Today";
+  } else if (itemTime >= yesterdayStart) {
+    return "Yesterday";
+  } else if (itemTime >= sevenDaysAgoStart) {
+    return "Previous 7 Days";
+  } else if (itemTime >= thirtyDaysAgoStart) {
+    return "Previous 30 Days";
+  } else {
+    return "Older";
+  }
+}
+
+/**
+ * Groups a list of PaperItems by their review/creation time in chronological bucket order.
+ * Within each category, papers are sorted newest first.
+ */
+export function groupPapersByTime(papers: PaperItem[]): GroupedPapers[] {
+  const categoriesOrder: TimeCategory[] = [
+    "Today",
+    "Yesterday",
+    "Previous 7 Days",
+    "Previous 30 Days",
+    "Older",
+  ];
+
+  const map = new Map<TimeCategory, PaperItem[]>();
+  for (const cat of categoriesOrder) {
+    map.set(cat, []);
+  }
+
+  for (const paper of papers) {
+    const cat = getTimeCategory(paper.createdAt || paper.updatedAt, paper.id);
+    map.get(cat)!.push(paper);
+  }
+
+  const result: GroupedPapers[] = [];
+  for (const cat of categoriesOrder) {
+    const list = map.get(cat)!;
+    if (list.length > 0) {
+      list.sort((a, b) => {
+        let timeA = new Date(a.createdAt || a.updatedAt || 0).getTime();
+        if (isNaN(timeA) || timeA === 0) {
+          const matchA = a.id?.match(/(\d{13})/);
+          if (matchA) timeA = parseInt(matchA[1], 10);
+        }
+        let timeB = new Date(b.createdAt || b.updatedAt || 0).getTime();
+        if (isNaN(timeB) || timeB === 0) {
+          const matchB = b.id?.match(/(\d{13})/);
+          if (matchB) timeB = parseInt(matchB[1], 10);
+        }
+        return (timeB || 0) - (timeA || 0);
+      });
+      result.push({ category: cat, papers: list });
+    }
+  }
+
+  return result;
 }
 
 interface DesktopSidebarProps {
@@ -135,6 +243,10 @@ export function DesktopSidebar({
       : connectionStatus === "connecting"
       ? "Connecting..."
       : "Connect AI";
+
+  const groupedPapers = useMemo(() => {
+    return groupPapersByTime(papers);
+  }, [papers]);
 
   const isServiceActive = (serviceId: string) => {
     return activePaperId === `tool-${serviceId}` || activePaperId === serviceId;
@@ -291,173 +403,186 @@ export function DesktopSidebar({
                 </button>
               </div>
 
-              <div className="max-h-64 overflow-y-auto space-y-1 [scrollbar-width:thin]">
+              <div className="max-h-64 overflow-y-auto space-y-2 [scrollbar-width:thin]">
                 {papers.length === 0 ? (
                   <div className="text-xs text-neutral-400 dark:text-neutral-500 py-2 text-center">
                     No articles yet
                   </div>
                 ) : (
-                  papers.map((paper) => {
-                    const isSelected = paper.id === activePaperId;
-                    const isDeskReject =
-                      paper.editorialTriage?.outcome === "desk_reject" ||
-                      paper.ineligibilityReason === "scope_mismatch" ||
-                      paper.isDeskReject === true;
-                    return (
-                      <div key={paper.id} className="space-y-0.5">
-                        <div
-                          onClick={() => {
-                            onSelectPaper(paper.id);
-                            onSelectView("overview");
-                          }}
-                          className={`group/item w-full flex items-center justify-between p-2 rounded-lg text-xs text-left transition cursor-pointer ${
-                            isSelected && activeView === "overview"
-                              ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
-                              : isSelected
-                              ? "bg-[#F3F4F6] dark:bg-[#161F30] font-medium text-[#111827] dark:text-white"
-                              : "hover:bg-neutral-50 dark:hover:bg-[#1E293B]/50 text-neutral-700 dark:text-neutral-300"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 min-w-0 pr-2">
-                            <FileText
-                              className={`w-3.5 h-3.5 shrink-0 ${
-                                isSelected ? "text-blue-600 dark:text-blue-400" : "text-neutral-400 dark:text-neutral-500"
+                  groupedPapers.map(({ category, papers: groupPapers }) => (
+                    <div key={category} className="space-y-1">
+                      <div className="flex items-center justify-between px-1.5 pt-1.5 pb-0.5 text-[9px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-2.5 h-2.5 text-neutral-400 dark:text-neutral-500" />
+                          <span>{category}</span>
+                        </div>
+                        <span className="text-[8px] font-medium px-1 py-0.2 rounded-full bg-neutral-100 dark:bg-[#1E293B] text-neutral-500 dark:text-neutral-400">
+                          {groupPapers.length}
+                        </span>
+                      </div>
+                      {groupPapers.map((paper) => {
+                        const isSelected = paper.id === activePaperId;
+                        const isDeskReject =
+                          paper.editorialTriage?.outcome === "desk_reject" ||
+                          paper.ineligibilityReason === "scope_mismatch" ||
+                          paper.isDeskReject === true;
+                        return (
+                          <div key={paper.id} className="space-y-0.5">
+                            <div
+                              onClick={() => {
+                                onSelectPaper(paper.id);
+                                onSelectView("overview");
+                              }}
+                              className={`group/item w-full flex items-center justify-between p-2 rounded-lg text-xs text-left transition cursor-pointer ${
+                                isSelected && activeView === "overview"
+                                  ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
+                                  : isSelected
+                                  ? "bg-[#F3F4F6] dark:bg-[#161F30] font-medium text-[#111827] dark:text-white"
+                                  : "hover:bg-neutral-50 dark:hover:bg-[#1E293B]/50 text-neutral-700 dark:text-neutral-300"
                               }`}
-                            />
-                            <div className="truncate">
-                              <div className="truncate font-medium text-xs text-[#111827] dark:text-neutral-100">
-                                {paper.shortName}
+                            >
+                              <div className="flex items-center gap-2 min-w-0 pr-2">
+                                <FileText
+                                  className={`w-3.5 h-3.5 shrink-0 ${
+                                    isSelected ? "text-blue-600 dark:text-blue-400" : "text-neutral-400 dark:text-neutral-500"
+                                  }`}
+                                />
+                                <div className="truncate">
+                                  <div className="truncate font-medium text-xs text-[#111827] dark:text-neutral-100">
+                                    {paper.shortName}
+                                  </div>
+                                  <div className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate">
+                                    {paper.journal}
+                                  </div>
+                                </div>
                               </div>
-                              <div className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate">
-                                {paper.journal}
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {isDeskReject ? (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20">
+                                    Rejected
+                                  </span>
+                                ) : paper.isEligibleForReview === false ? (
+                                  paper.ineligibilityReason === "already_published" ? (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                                      PUB
+                                    </span>
+                                  ) : (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                      N/A
+                                    </span>
+                                  )
+                                ) : (
+                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-[#1E293B] text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-[#334155]">
+                                    {paper.score ?? 0}%
+                                  </span>
+                                )}
+                                {onDeletePaper && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onDeletePaper(paper, e);
+                                    }}
+                                    title="Delete manuscript project"
+                                    className="p-1 rounded text-neutral-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition opacity-0 group-hover/item:opacity-100 cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                )}
                               </div>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {isDeskReject ? (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20">
-                                Rejected
-                              </span>
-                            ) : paper.isEligibleForReview === false ? (
-                              paper.ineligibilityReason === "already_published" ? (
-                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                                  PUB
-                                </span>
-                              ) : (
-                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
-                                  N/A
-                                </span>
-                              )
-                            ) : (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-[#1E293B] text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-[#334155]">
-                                {paper.score ?? 0}%
-                              </span>
-                            )}
-                            {onDeletePaper && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onDeletePaper(paper, e);
-                                }}
-                                title="Delete manuscript project"
-                                className="p-1 rounded text-neutral-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition opacity-0 group-hover/item:opacity-100 cursor-pointer"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
 
-                        {/* Status notification when selected for ineligible papers */}
-                        {isSelected && paper.isEligibleForReview === false && !isDeskReject && (
-                          <div className="pl-3 pr-1 py-1 space-y-0.5">
-                            {paper.ineligibilityReason === "already_published" ? (
-                              <div className="flex items-center gap-1.5 text-[10px] text-emerald-700 dark:text-emerald-400 font-medium bg-emerald-50/70 dark:bg-emerald-950/40 px-2 py-1 rounded border border-emerald-200/50 dark:border-emerald-800/50">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                                <span className="truncate">Already Published</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1.5 text-[10px] text-amber-700 dark:text-amber-400 font-medium bg-amber-50/70 dark:bg-amber-950/40 px-2 py-1 rounded border border-amber-200/50 dark:border-amber-800/50">
-                                <AlertCircle className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
-                                <span className="truncate">Review Bypassed</span>
+                            {/* Status notification when selected for ineligible papers */}
+                            {isSelected && paper.isEligibleForReview === false && !isDeskReject && (
+                              <div className="pl-3 pr-1 py-1 space-y-0.5">
+                                {paper.ineligibilityReason === "already_published" ? (
+                                  <div className="flex items-center gap-1.5 text-[10px] text-emerald-700 dark:text-emerald-400 font-medium bg-emerald-50/70 dark:bg-emerald-950/40 px-2 py-1 rounded border border-emerald-200/50 dark:border-emerald-800/50">
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                    <span className="truncate">Already Published</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1.5 text-[10px] text-amber-700 dark:text-amber-400 font-medium bg-amber-50/70 dark:bg-amber-950/40 px-2 py-1 rounded border border-amber-200/50 dark:border-amber-800/50">
+                                    <AlertCircle className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                                    <span className="truncate">Review Bypassed</span>
+                                  </div>
+                                )}
                               </div>
                             )}
-                          </div>
-                        )}
 
-                        {/* 4 Sub-menus in flyout when selected (Only for eligible manuscripts) */}
-                        {isSelected && paper.isEligibleForReview !== false && (
-                          <div className="pl-3 space-y-0.5 pt-0.5 pb-1">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onSelectView("personas");
-                              }}
-                              className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-[11px] transition text-left cursor-pointer ${
-                                activeView === "personas"
-                                  ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
-                                  : "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#1E293B]/60 hover:text-neutral-900 dark:hover:text-white"
-                              }`}
-                            >
-                              <Users className="w-3 h-3 text-blue-600 dark:text-blue-400 shrink-0" />
-                              <span className="truncate">
-                                {paper.editorialTriage?.outcome === "desk_reject"
-                                  ? "Editorial Triage (Desk Reject)"
-                                  : "5-Persona Reviews"}
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onSelectView("dimensions");
-                              }}
-                              className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-[11px] transition text-left cursor-pointer ${
-                                activeView === "dimensions"
-                                  ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
-                                  : "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#1E293B]/60 hover:text-neutral-900 dark:hover:text-white"
-                              }`}
-                            >
-                              <BarChart3 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                              <span className="truncate">6 Scoring Dimensions</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onSelectView("issues");
-                              }}
-                              className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-[11px] transition text-left cursor-pointer ${
-                                activeView === "issues"
-                                  ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
-                                  : "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#1E293B]/60 hover:text-neutral-900 dark:hover:text-white"
-                              }`}
-                            >
-                              <AlertCircle className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
-                              <span className="truncate">Priority Action Items</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onSelectView("journals");
-                              }}
-                              className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-[11px] transition text-left cursor-pointer ${
-                                activeView === "journals" || activeView === "recommendations"
-                                  ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
-                                  : "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#1E293B]/60 hover:text-neutral-900 dark:hover:text-white"
-                              }`}
-                            >
-                              <BookOpen className="w-3 h-3 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                              <span className="truncate">Target Journals</span>
-                            </button>
+                            {/* 4 Sub-menus in flyout when selected (Only for eligible manuscripts) */}
+                            {isSelected && paper.isEligibleForReview !== false && (
+                              <div className="pl-3 space-y-0.5 pt-0.5 pb-1">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSelectView("personas");
+                                  }}
+                                  className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-[11px] transition text-left cursor-pointer ${
+                                    activeView === "personas"
+                                      ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
+                                      : "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#1E293B]/60 hover:text-neutral-900 dark:hover:text-white"
+                                  }`}
+                                >
+                                  <Users className="w-3 h-3 text-blue-600 dark:text-blue-400 shrink-0" />
+                                  <span className="truncate">
+                                    {paper.editorialTriage?.outcome === "desk_reject"
+                                      ? "Editorial Triage (Desk Reject)"
+                                      : "5-Persona Reviews"}
+                                  </span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSelectView("dimensions");
+                                  }}
+                                  className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-[11px] transition text-left cursor-pointer ${
+                                    activeView === "dimensions"
+                                      ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
+                                      : "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#1E293B]/60 hover:text-neutral-900 dark:hover:text-white"
+                                  }`}
+                                >
+                                  <BarChart3 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                  <span className="truncate">6 Scoring Dimensions</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSelectView("issues");
+                                  }}
+                                  className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-[11px] transition text-left cursor-pointer ${
+                                    activeView === "issues"
+                                      ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
+                                      : "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#1E293B]/60 hover:text-neutral-900 dark:hover:text-white"
+                                  }`}
+                                >
+                                  <AlertCircle className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                                  <span className="truncate">Priority Action Items</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSelectView("journals");
+                                  }}
+                                  className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-[11px] transition text-left cursor-pointer ${
+                                    activeView === "journals" || activeView === "recommendations"
+                                      ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white"
+                                      : "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-[#1E293B]/60 hover:text-neutral-900 dark:hover:text-white"
+                                  }`}
+                                >
+                                  <BookOpen className="w-3 h-3 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                                  <span className="truncate">Target Journals</span>
+                                </button>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    );
-                  })
+                        );
+                      })}
+                    </div>
+                  ))
                 )}
               </div>
             </div>
@@ -631,157 +756,172 @@ export function DesktopSidebar({
                 </button>
               </div>
             ) : (
-              papers.map((paper) => {
-                const isSelected = paper.id === activePaperId;
-                const isDeskReject =
-                  paper.editorialTriage?.outcome === "desk_reject" ||
-                  paper.ineligibilityReason === "scope_mismatch" ||
-                  paper.isDeskReject === true;
-                return (
-                  <div key={paper.id} className="space-y-0.5 group/article">
-                    <div
-                      onClick={() => {
-                        onSelectPaper(paper.id);
-                        onSelectView("overview");
-                      }}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer ${
-                        isSelected && activeView === "overview"
-                          ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
-                          : isSelected
-                          ? "bg-blue-600/10 dark:bg-blue-500/20 font-medium text-blue-700 dark:text-blue-300 border border-blue-500/20"
-                          : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white border border-transparent"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
-                        <FileText
-                          className={`w-4 h-4 shrink-0 ${
-                            isSelected ? "text-blue-600 dark:text-blue-400" : "text-neutral-500 dark:text-neutral-400"
-                          }`}
-                        />
-                        <span className="truncate">
-                          {paper.shortName}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {isDeskReject ? (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20">
-                            Rejected
-                          </span>
-                        ) : paper.isEligibleForReview === false ? (
-                          paper.ineligibilityReason === "already_published" ? (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
-                              PUB
-                            </span>
-                          ) : (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
-                              N/A
-                            </span>
-                          )
-                        ) : (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-black/[0.04] dark:bg-white/[0.08] text-neutral-600 dark:text-neutral-300 border border-black/[0.06] dark:border-white/[0.1]">
-                            {paper.score ?? 0}%
-                          </span>
-                        )}
-                        {onDeletePaper && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onDeletePaper(paper, e);
-                            }}
-                            title="Delete manuscript project"
-                            className="p-1 rounded text-neutral-400 hover:text-rose-600 hover:bg-rose-500/10 transition opacity-0 group-hover/article:opacity-100 cursor-pointer shrink-0"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
+              groupedPapers.map(({ category, papers: groupPapers }) => (
+                <div key={category} className="space-y-1 mb-3 last:mb-0">
+                  <div className="flex items-center justify-between px-2 pt-1.5 pb-0.5 text-[10px] font-semibold text-[#9CA3AF] dark:text-neutral-400 tracking-wider uppercase">
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="w-3 h-3 text-neutral-400 dark:text-neutral-500" />
+                      <span>{category}</span>
                     </div>
+                    <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-black/[0.04] dark:bg-white/[0.08] text-neutral-500 dark:text-neutral-400">
+                      {groupPapers.length}
+                    </span>
+                  </div>
 
-                    {/* Status notification when selected for ineligible papers */}
-                    {isSelected && paper.isEligibleForReview === false && !isDeskReject && (
-                      <div className="pl-4 pr-2 py-1 space-y-0.5">
-                        {paper.ineligibilityReason === "already_published" ? (
-                          <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400 font-medium bg-emerald-500/10 px-2 py-1.5 rounded-lg border border-emerald-500/20">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                            <span className="truncate">Already Published</span>
+                  {groupPapers.map((paper) => {
+                    const isSelected = paper.id === activePaperId;
+                    const isDeskReject =
+                      paper.editorialTriage?.outcome === "desk_reject" ||
+                      paper.ineligibilityReason === "scope_mismatch" ||
+                      paper.isDeskReject === true;
+                    return (
+                      <div key={paper.id} className="space-y-0.5 group/article">
+                        <div
+                          onClick={() => {
+                            onSelectPaper(paper.id);
+                            onSelectView("overview");
+                          }}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer ${
+                            isSelected && activeView === "overview"
+                              ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
+                              : isSelected
+                              ? "bg-blue-600/10 dark:bg-blue-500/20 font-medium text-blue-700 dark:text-blue-300 border border-blue-500/20"
+                              : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white border border-transparent"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
+                            <FileText
+                              className={`w-4 h-4 shrink-0 ${
+                                isSelected ? "text-blue-600 dark:text-blue-400" : "text-neutral-500 dark:text-neutral-400"
+                              }`}
+                            />
+                            <span className="truncate">
+                              {paper.shortName}
+                            </span>
                           </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 text-[11px] text-amber-700 dark:text-amber-400 font-medium bg-amber-500/10 px-2 py-1.5 rounded-lg border border-amber-500/20">
-                            <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                            <span className="truncate">Ineligible Review Type</span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {isDeskReject ? (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20">
+                                Rejected
+                              </span>
+                            ) : paper.isEligibleForReview === false ? (
+                              paper.ineligibilityReason === "already_published" ? (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                                  PUB
+                                </span>
+                              ) : (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                                  N/A
+                                </span>
+                              )
+                            ) : (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-black/[0.04] dark:bg-white/[0.08] text-neutral-600 dark:text-neutral-300 border border-black/[0.06] dark:border-white/[0.1]">
+                                {paper.score ?? 0}%
+                              </span>
+                            )}
+                            {onDeletePaper && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDeletePaper(paper, e);
+                                }}
+                                title="Delete manuscript project"
+                                className="p-1 rounded text-neutral-400 hover:text-rose-600 hover:bg-rose-500/10 transition opacity-0 group-hover/article:opacity-100 cursor-pointer shrink-0"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Status notification when selected for ineligible papers */}
+                        {isSelected && paper.isEligibleForReview === false && !isDeskReject && (
+                          <div className="pl-4 pr-2 py-1 space-y-0.5">
+                            {paper.ineligibilityReason === "already_published" ? (
+                              <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400 font-medium bg-emerald-500/10 px-2 py-1.5 rounded-lg border border-emerald-500/20">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                <span className="truncate">Already Published</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 text-[11px] text-amber-700 dark:text-amber-400 font-medium bg-amber-500/10 px-2 py-1.5 rounded-lg border border-amber-500/20">
+                                <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                                <span className="truncate">Ineligible Review Type</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Sub-views list for currently selected paper */}
+                        {isSelected && (paper.isEligibleForReview !== false || isDeskReject) && (
+                          <div className="pl-4 pr-2 py-1 space-y-0.5">
+                            <button
+                              type="button"
+                              onClick={() => onSelectView("personas")}
+                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer ${
+                                activeView === "personas"
+                                  ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
+                                  : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
+                              }`}
+                            >
+                              {isDeskReject ? (
+                                <ShieldAlert className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+                              ) : (
+                                <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                              )}
+                              <span className="truncate">
+                                {isDeskReject
+                                  ? "Triage & 5-Persona Reviews"
+                                  : "5-Persona Reviews"}
+                              </span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => onSelectView("dimensions")}
+                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer ${
+                                activeView === "dimensions"
+                                  ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
+                                  : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
+                              }`}
+                            >
+                              <BarChart3 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                              <span className="truncate">6 Scoring Dimensions</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => onSelectView("issues")}
+                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer ${
+                                activeView === "issues"
+                                  ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
+                                  : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
+                              }`}
+                            >
+                              <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                              <span className="truncate">Priority Action Items</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => onSelectView("journals")}
+                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer ${
+                                activeView === "journals" || activeView === "recommendations"
+                                  ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
+                                  : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
+                              }`}
+                            >
+                              <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                              <span className="truncate">Target Journals</span>
+                            </button>
                           </div>
                         )}
                       </div>
-                    )}
-
-                    {/* Sub-views list for currently selected paper */}
-                    {isSelected && (paper.isEligibleForReview !== false || isDeskReject) && (
-                      <div className="pl-4 pr-2 py-1 space-y-0.5">
-                        <button
-                          type="button"
-                          onClick={() => onSelectView("personas")}
-                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer ${
-                            activeView === "personas"
-                              ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
-                              : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
-                          }`}
-                        >
-                          {isDeskReject ? (
-                            <ShieldAlert className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
-                          ) : (
-                            <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                          )}
-                          <span className="truncate">
-                            {isDeskReject
-                              ? "Triage & 5-Persona Reviews"
-                              : "5-Persona Reviews"}
-                          </span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => onSelectView("dimensions")}
-                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer ${
-                            activeView === "dimensions"
-                              ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
-                              : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
-                          }`}
-                        >
-                          <BarChart3 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                          <span className="truncate">6 Scoring Dimensions</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => onSelectView("issues")}
-                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer ${
-                            activeView === "issues"
-                              ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
-                              : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
-                          }`}
-                        >
-                          <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                          <span className="truncate">Priority Action Items</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => onSelectView("journals")}
-                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer ${
-                            activeView === "journals" || activeView === "recommendations"
-                              ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
-                              : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
-                          }`}
-                        >
-                          <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                          <span className="truncate">Target Journals</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              }))}
+                    );
+                  })}
+                </div>
+              ))
+            )}
             </div>
           </div>
         </div>

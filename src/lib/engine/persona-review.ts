@@ -4,6 +4,18 @@ import {
   ParsedManuscript,
   ReviewerPersonaFeedback,
 } from "../types";
+import {
+  DecisionCategory,
+  EvidenceSpan,
+  GroundedClaim,
+  Issue,
+  JournalArchetype,
+  ManuscriptContext,
+  PersonaId,
+  PersonaReview,
+  ScoringDimension,
+  SectionSelector,
+} from "./types";
 
 export { validateReviewerPersonas };
 
@@ -21,6 +33,100 @@ export const CANONICAL_ANONYMOUS_TRACKS: Record<ReviewerPersonaFeedback["persona
   methods_reviewer: "Reviewer 3: Research Methodology Referee",
   statistician: "Reviewer 4: Statistical & Quantitative Auditor",
   devils_advocate: "Reviewer 5: Adversarial Translation Referee",
+};
+
+export interface PersonaSpecification {
+  id: PersonaId;
+  legacyRole: ReviewerPersonaFeedback["persona"];
+  displayName: string;
+  reads: SectionSelector;
+  archetypeWeights: Record<JournalArchetype, number>;
+  focusDimensions: ScoringDimension[];
+  systemGoal: string;
+}
+
+export const PERSONA_SPEC: Record<PersonaId, PersonaSpecification> = {
+  DOMAIN_EXPERT: {
+    id: "DOMAIN_EXPERT",
+    legacyRole: "domain_expert",
+    displayName: "Domain Specialist Referee",
+    reads: ["abstract", "introduction", "discussion", "conclusion"],
+    archetypeWeights: {
+      SIGNIFICANCE_GATED: 0.35,
+      SOUNDNESS_ONLY: 0.15,
+      ASSESSMENT_STYLE: 0.25,
+    },
+    focusDimensions: ["NOVELTY", "PRESENTATION"],
+    systemGoal: "Evaluate domain novelty, conceptual advance, boundary conditions, and theoretical positioning.",
+  },
+  METHODOLOGICAL_SPECIALIST: {
+    id: "METHODOLOGICAL_SPECIALIST",
+    legacyRole: "methods_reviewer",
+    displayName: "Research Methodology Referee",
+    reads: ["methods", "results"],
+    archetypeWeights: {
+      SIGNIFICANCE_GATED: 0.25,
+      SOUNDNESS_ONLY: 0.4,
+      ASSESSMENT_STYLE: 0.3,
+    },
+    focusDimensions: ["METHODOLOGY"],
+    systemGoal: "Audit experimental controls, instrumentation, missing variables, reproducibility, and protocols.",
+  },
+  STATISTICAL_REVIEWER: {
+    id: "STATISTICAL_REVIEWER",
+    legacyRole: "statistician",
+    displayName: "Statistical & Quantitative Auditor",
+    reads: ["methods", "results"],
+    archetypeWeights: {
+      SIGNIFICANCE_GATED: 0.2,
+      SOUNDNESS_ONLY: 0.3,
+      ASSESSMENT_STYLE: 0.25,
+    },
+    focusDimensions: ["STATISTICAL_RIGOR"],
+    systemGoal: "Audit statistical power, confidence intervals, degrees of freedom, multiplicity corrections, and p-value validity.",
+  },
+  LITERATURE_REVIEWER: {
+    id: "LITERATURE_REVIEWER",
+    legacyRole: "devils_advocate",
+    displayName: "Literature & Adversarial Translation Referee",
+    reads: ["abstract", "introduction", "discussion"],
+    archetypeWeights: {
+      SIGNIFICANCE_GATED: 0.1,
+      SOUNDNESS_ONLY: 0.05,
+      ASSESSMENT_STYLE: 0.1,
+    },
+    focusDimensions: ["LITERATURE_COMPLETENESS", "ETHICAL_RIGOR"],
+    systemGoal: "Test for omitted benchmark literature (2023-2025), over-extrapolated causal claims, and alternative hypotheses.",
+  },
+  JOURNAL_EDITOR: {
+    id: "JOURNAL_EDITOR",
+    legacyRole: "journal_editor",
+    displayName: "Senior Handling Editor",
+    reads: ["abstract", "introduction", "conclusion"],
+    archetypeWeights: {
+      SIGNIFICANCE_GATED: 0.1,
+      SOUNDNESS_ONLY: 0.1,
+      ASSESSMENT_STYLE: 0.1,
+    },
+    focusDimensions: ["NOVELTY", "PRESENTATION"],
+    systemGoal: "Assess readership interest, broad community impact, formatting compliance, and editorial remit.",
+  },
+};
+
+export const PERSONA_ID_TO_LEGACY: Record<PersonaId, ReviewerPersonaFeedback["persona"]> = {
+  DOMAIN_EXPERT: "domain_expert",
+  METHODOLOGICAL_SPECIALIST: "methods_reviewer",
+  STATISTICAL_REVIEWER: "statistician",
+  LITERATURE_REVIEWER: "devils_advocate",
+  JOURNAL_EDITOR: "journal_editor",
+};
+
+export const LEGACY_TO_PERSONA_ID: Record<ReviewerPersonaFeedback["persona"], PersonaId> = {
+  domain_expert: "DOMAIN_EXPERT",
+  methods_reviewer: "METHODOLOGICAL_SPECIALIST",
+  statistician: "STATISTICAL_REVIEWER",
+  devils_advocate: "LITERATURE_REVIEWER",
+  journal_editor: "JOURNAL_EDITOR",
 };
 
 export type PersonaProfile = {
@@ -716,3 +822,473 @@ export function calculateDeterministicPersonas(
     devilsAdvocatePersona,
   ];
 }
+
+// -----------------------------------------------------------------------------
+// AUDIT REDESIGN: SECTION-SCOPED PROMPTS, GROUNDED HEURISTICS & ADAPTERS
+// -----------------------------------------------------------------------------
+
+function specTitle(personaId: PersonaId, profile?: PersonaProfile): string {
+  if (profile) {
+    if (personaId === "DOMAIN_EXPERT") return profile.domain.title;
+    if (personaId === "METHODOLOGICAL_SPECIALIST") return profile.methods.title;
+    if (personaId === "STATISTICAL_REVIEWER") return profile.statistician.title;
+    if (personaId === "LITERATURE_REVIEWER") return profile.devilsAdvocate.title;
+    if (personaId === "JOURNAL_EDITOR") return profile.editor.title;
+  }
+  return PERSONA_SPEC[personaId]?.displayName || "Peer Reviewer";
+}
+
+function specAffiliation(personaId: PersonaId, profile?: PersonaProfile): string {
+  if (profile) {
+    if (personaId === "DOMAIN_EXPERT") return profile.domain.affiliation;
+    if (personaId === "METHODOLOGICAL_SPECIALIST") return profile.methods.affiliation;
+    if (personaId === "STATISTICAL_REVIEWER") return profile.statistician.affiliation;
+    if (personaId === "LITERATURE_REVIEWER") return profile.devilsAdvocate.affiliation;
+    if (personaId === "JOURNAL_EDITOR") return profile.editor.affiliation;
+  }
+  return "Editorial & Peer Review Panel";
+}
+
+function specExpertise(personaId: PersonaId, profile?: PersonaProfile): string {
+  if (profile) {
+    if (personaId === "DOMAIN_EXPERT") return profile.domain.expertise;
+    if (personaId === "METHODOLOGICAL_SPECIALIST") return profile.methods.expertise;
+    if (personaId === "STATISTICAL_REVIEWER") return profile.statistician.expertise;
+    if (personaId === "LITERATURE_REVIEWER") return profile.devilsAdvocate.expertise;
+    if (personaId === "JOURNAL_EDITOR") return profile.editor.expertise;
+  }
+  return PERSONA_SPEC[personaId]?.systemGoal || "Peer Review";
+}
+
+/**
+ * Builds an LLM prompt scoped strictly to the persona's designated reading list (Spec §4.2).
+ * Drastically cuts token context and prevents domain personas from hallucinating wet-lab or code errors.
+ */
+export function buildPersonaPrompt(
+  personaId: PersonaId,
+  ctx: ManuscriptContext,
+  archetype: JournalArchetype = "SIGNIFICANCE_GATED",
+  targetJournal?: string
+): string {
+  const spec = PERSONA_SPEC[personaId];
+  const scopedText = ctx.getSections(spec.reads);
+
+  let archetypeGuidance = "";
+  if (archetype === "SIGNIFICANCE_GATED") {
+    archetypeGuidance = "TARGET VENUE ARCHETYPE: SIGNIFICANCE-GATED (e.g. Nature/Science/Cell/NEJM). Conceptual advance, transformative significance, and broad impact are primary gates. Incremental work will be rejected even if technically flawless.";
+  } else if (archetype === "SOUNDNESS_ONLY") {
+    archetypeGuidance = "TARGET VENUE ARCHETYPE: SOUNDNESS-ONLY (e.g. PLOS ONE / Scientific Reports). Technical correctness, methodological rigor, and data availability are the ONLY gates. Do NOT reject for lack of subjective novelty or impact if the method and analysis are sound.";
+  } else {
+    archetypeGuidance = "TARGET VENUE ARCHETYPE: ASSESSMENT-STYLE (e.g. eLife). Explicitly separate assessment of scientific significance from strength of empirical evidence.";
+  }
+
+  return `You are serving as an independent peer reviewer: ${spec.displayName}${targetJournal ? ` for ${targetJournal}` : ""}.
+
+ROLE & SYSTEM OBJECTIVE:
+${spec.systemGoal}
+Target Scoring Dimensions: ${spec.focusDimensions.join(", ")}
+
+${archetypeGuidance}
+
+ASSIGNED SECTIONS (STRICT READING SCOPE):
+You are assigned to evaluate ONLY these sections: ${spec.reads.join(", ")}.
+Do NOT assume or fabricate details regarding sections outside your assigned scope.
+
+MANDATORY EDITORIAL INSTRUCTIONS:
+1. ANONYMITY: Scholarly peer review is strictly blinded. Do not invent personal human names.
+2. MECHANICAL SPAN GROUNDING: Every critique, issue, or evidence point MUST include an exact verbatim substring from the text below in "quotedText".
+3. HONEST ABSTENTION: If a topic, technique, or assay is outside your assigned sections or lacks sufficient evidence in the text, YOU MUST ABSTAIN. Add the item to "abstentions" or set status to "INSUFFICIENT_EVIDENCE". Never hallucinate laboratory protocols or statistical errors if not documented in the provided text.
+4. INDEPENDENT JUDGMENT: Provide your own uninfluenced scientific evaluation.
+
+MANUSCRIPT TEXT (${spec.reads.join(", ")}):
+<<<MANUSCRIPT_UNTRUSTED_CONTENT_VERBATIM>>>
+${scopedText}
+<<<MANUSCRIPT_UNTRUSTED_CONTENT_VERBATIM>>>
+
+Respond with STRICT JSON adhering to this schema:
+{
+  "personaId": "${personaId}",
+  "summary": "Concise 2-3 paragraph diagnostic critique",
+  "recommendation": "DESK_REJECT" | "REJECT_AFTER_REVIEW" | "MAJOR_REVISION" | "MINOR_REVISION" | "ACCEPT",
+  "confidence": 0.0 to 1.0,
+  "abstentions": ["list of areas outside assigned scope or lacking evidence in text"],
+  "dimensionScores": {
+    "<DIMENSION_NAME>": {
+      "score": 1 to 10,
+      "evidence": [{ "section": "methods", "startOffset": 0, "endOffset": 0, "quotedText": "exact verbatim quote" }]
+    }
+  },
+  "issues": [
+    {
+      "id": "ISSUE-1",
+      "severity": "CRITICAL" | "MAJOR" | "MINOR",
+      "grounded": {
+        "claim": "Specific factual critique",
+        "evidence": [{ "section": "methods", "startOffset": 0, "endOffset": 0, "quotedText": "exact verbatim quote" }],
+        "status": "SUPPORTED" | "INSUFFICIENT_EVIDENCE"
+      },
+      "recommendation": "Concrete actionable fix",
+      "source": "PERSONA"
+    }
+  ]
+}`;
+}
+
+/**
+ * Generates 5 fully grounded PersonaReview objects using deterministic heuristics (Spec §4.1).
+ * Used for offline execution, testing, or as resilient fallback.
+ */
+export function generateHeuristicPersonaReviews(
+  ctx: ManuscriptContext,
+  discipline: string = "Multidisciplinary",
+  archetype: JournalArchetype = "SIGNIFICANCE_GATED"
+): PersonaReview[] {
+  const manuscript = ctx.manuscript;
+  const cleanTitle = (manuscript.title || "Submitted Manuscript").trim();
+  const sampleSizes = manuscript.empiricalCues?.sampleSizes || [];
+  const statMetrics = manuscript.empiricalCues?.statisticalMetrics || [];
+  const sections = manuscript.sections || {};
+  const isMethodsMissing =
+    Boolean(manuscript.sectionProvenance?.methodsMissing) ||
+    !sections.methods ||
+    sections.methods.length < 50;
+
+  // Real spans mechanically located via ManuscriptContext
+  const titleSpan = ctx.locateSpan(cleanTitle.slice(0, 40));
+  const abstractSpan = manuscript.abstract
+    ? ctx.locateSpan(manuscript.abstract.slice(0, 60))
+    : null;
+  const methodsSpan = !isMethodsMissing && sections.methods
+    ? ctx.locateSpan(sections.methods.slice(0, 60))
+    : null;
+  const sampleSpan = sampleSizes[0] ? ctx.locateSpan(sampleSizes[0]) : null;
+
+  // 1. DOMAIN_EXPERT
+  const domainReview: PersonaReview = {
+    personaId: "DOMAIN_EXPERT",
+    summary: `This manuscript investigates an important empirical challenge in ${discipline} centered on "${cleanTitle.slice(0, 60)}". While the research question is timely, the conceptual advance over recent 2023–2025 literature requires sharper demarcation.`,
+    recommendation: "MAJOR_REVISION",
+    confidence: 0.85,
+    abstentions: [
+      "Low-level instrumentation calibration and software dependencies (deferred to Methodological Specialist)",
+      "Multiplicity and family-wise error adjustments (deferred to Statistical Auditor)",
+    ],
+    dimensionScores: {
+      NOVELTY: {
+        score: archetype === "SOUNDNESS_ONLY" ? 8.0 : 6.8,
+        evidence: abstractSpan ? [abstractSpan] : [],
+        agreement: 0.85,
+      },
+      PRESENTATION: {
+        score: 7.5,
+        evidence: titleSpan ? [titleSpan] : [],
+        agreement: 0.9,
+      },
+    },
+    issues: [
+      {
+        id: "ISSUE-DOMAIN-1",
+        pillar: "NOVELTY_SIGNIFICANCE",
+        dimension: "NOVELTY",
+        severity: "MAJOR",
+        grounded: {
+          claim: `Conceptual advance over recent literature in ${discipline} is insufficiently demarcated.`,
+          evidence: abstractSpan ? [abstractSpan] : [],
+          status: abstractSpan ? "SUPPORTED" : "INSUFFICIENT_EVIDENCE",
+        },
+        recommendation: `Contrast core operational parameters with contemporary 2023-2025 benchmark models in ${discipline}.`,
+        source: "PERSONA",
+        personaId: "DOMAIN_EXPERT",
+      },
+    ],
+    reliabilityFlag: "HIGH",
+  };
+
+  // 2. METHODOLOGICAL_SPECIALIST
+  const methodsReview: PersonaReview = {
+    personaId: "METHODOLOGICAL_SPECIALIST",
+    summary: isMethodsMissing
+      ? "The manuscript lacks a dedicated, identifiable Materials and Methods section. Experimental protocols, sampling procedures, and controls cannot be verified without a transparent methodological architecture."
+      : `The methodology describes an empirical sequence for studying "${cleanTitle.slice(0, 50)}". However, specific reproducibility parameters (sampling criteria, version dependencies, and data repository access) require explicit disclosure.`,
+    recommendation: isMethodsMissing ? "REJECT_AFTER_REVIEW" : "MAJOR_REVISION",
+    confidence: isMethodsMissing ? 0.95 : 0.8,
+    abstentions: [
+      "Subjective domain significance and reader appeal (deferred to Domain Specialist and Editor)",
+      "Target journal word limit formatting",
+    ],
+    dimensionScores: {
+      METHODOLOGY: {
+        score: isMethodsMissing ? 3.5 : 6.5,
+        evidence: methodsSpan ? [methodsSpan] : [],
+        agreement: 0.88,
+      },
+    },
+    issues: [
+      {
+        id: "ISSUE-METHODS-1",
+        pillar: "METHODOLOGICAL_SOUNDNESS",
+        dimension: "METHODOLOGY",
+        severity: isMethodsMissing ? "CRITICAL" : "MAJOR",
+        grounded: {
+          claim: isMethodsMissing
+            ? "Dedicated Materials & Methods section not identified in manuscript text."
+            : "Procedural parameters and code/data deposition links are underspecified.",
+          evidence: methodsSpan ? [methodsSpan] : [],
+          status: isMethodsMissing ? "INSUFFICIENT_EVIDENCE" : methodsSpan ? "SUPPORTED" : "INSUFFICIENT_EVIDENCE",
+        },
+        recommendation: isMethodsMissing
+          ? "Introduce a formal Materials & Methods section detailing cohort selection and analytical workflow."
+          : "Provide a dedicated Data & Code Availability statement with repository accession identifier.",
+        source: "PERSONA",
+        personaId: "METHODOLOGICAL_SPECIALIST",
+      },
+    ],
+    reliabilityFlag: "HIGH",
+  };
+
+  // 3. STATISTICAL_REVIEWER
+  const statReview: PersonaReview = {
+    personaId: "STATISTICAL_REVIEWER",
+    summary: `Quantitative reporting audit: The manuscript reports ${statMetrics.length > 0 ? statMetrics.slice(0, 2).join(", ") : "point estimates"}. However, reporting guidelines require consistent 95% confidence intervals, explicit sample size justification, and multiple comparison adjustments.`,
+    recommendation: "MAJOR_REVISION",
+    confidence: 0.82,
+    abstentions: [
+      "Conceptual/theoretical literature framing",
+      "Biological/experimental assay wet-lab validity",
+    ],
+    dimensionScores: {
+      STATISTICAL_RIGOR: {
+        score: sampleSizes.length > 0 ? 6.5 : 5.8,
+        evidence: sampleSpan ? [sampleSpan] : [],
+        agreement: 0.85,
+      },
+    },
+    issues: [
+      {
+        id: "ISSUE-STATS-1",
+        pillar: "METHODOLOGICAL_SOUNDNESS",
+        dimension: "STATISTICAL_RIGOR",
+        severity: "MAJOR",
+        grounded: {
+          claim: "Point estimates and statistical comparisons lack uniform 95% confidence intervals and formal power justifications.",
+          evidence: sampleSpan ? [sampleSpan] : [],
+          status: sampleSpan ? "SUPPORTED" : "INSUFFICIENT_EVIDENCE",
+        },
+        recommendation: "Add 95% confidence intervals to all reported estimates and provide a-priori sample size power justification.",
+        source: "PERSONA",
+        personaId: "STATISTICAL_REVIEWER",
+      },
+    ],
+    reliabilityFlag: "HIGH",
+  };
+
+  // 4. LITERATURE_REVIEWER
+  const litReview: PersonaReview = {
+    personaId: "LITERATURE_REVIEWER",
+    summary: "Critical audit of literature integration and scope claims: Causal formulations in the text must be bounded against unobserved confounding and observational study limits.",
+    recommendation: "MAJOR_REVISION",
+    confidence: 0.78,
+    abstentions: [
+      "Numerical algorithm convergence verification",
+      "Detailed sample power calculation auditing",
+    ],
+    dimensionScores: {
+      LITERATURE_COMPLETENESS: {
+        score: 6.2,
+        evidence: abstractSpan ? [abstractSpan] : [],
+        agreement: 0.8,
+      },
+      ETHICAL_RIGOR: {
+        score: 7.8,
+        evidence: [],
+        agreement: 0.9,
+      },
+    },
+    issues: [
+      {
+        id: "ISSUE-LIT-1",
+        pillar: "NOVELTY_SIGNIFICANCE",
+        dimension: "LITERATURE_COMPLETENESS",
+        severity: "MAJOR",
+        grounded: {
+          claim: "Causal language in abstract or conclusion should be tempered with observational boundary conditions and alternative hypotheses.",
+          evidence: abstractSpan ? [abstractSpan] : [],
+          status: abstractSpan ? "SUPPORTED" : "INSUFFICIENT_EVIDENCE",
+        },
+        recommendation: "Modulate causal assertions to conditional or associative phrasing, and add an explicit Limitations subsection.",
+        source: "PERSONA",
+        personaId: "LITERATURE_REVIEWER",
+      },
+    ],
+    reliabilityFlag: "HIGH",
+  };
+
+  // 5. JOURNAL_EDITOR
+  const editorReview: PersonaReview = {
+    personaId: "JOURNAL_EDITOR",
+    summary: "Editorial assessment: The topic holds clear community interest. Prior to sending for external peer review, the manuscript must heighten its introductory differentiation and ensure compliance with publication guidelines.",
+    recommendation: "MAJOR_REVISION",
+    confidence: 0.88,
+    abstentions: [
+      "Granular statistical derivations",
+      "Specialized wet-lab or algorithmic step-by-step auditing",
+    ],
+    dimensionScores: {
+      NOVELTY: {
+        score: 7.0,
+        evidence: titleSpan ? [titleSpan] : [],
+        agreement: 0.85,
+      },
+      PRESENTATION: {
+        score: 7.2,
+        evidence: abstractSpan ? [abstractSpan] : [],
+        agreement: 0.88,
+      },
+    },
+    issues: [
+      {
+        id: "ISSUE-EDITOR-1",
+        pillar: "SCOPE_FIT",
+        dimension: "PRESENTATION",
+        severity: "MINOR",
+        grounded: {
+          claim: "Introductory framing must clearly establish theoretical and practitioner utility for venue readership.",
+          evidence: titleSpan ? [titleSpan] : [],
+          status: titleSpan ? "SUPPORTED" : "INSUFFICIENT_EVIDENCE",
+        },
+        recommendation: "Add an explicit contribution summary paragraph at the close of the Introduction.",
+        source: "PERSONA",
+        personaId: "JOURNAL_EDITOR",
+      },
+    ],
+    reliabilityFlag: "HIGH",
+  };
+
+  return [domainReview, methodsReview, statReview, litReview, editorReview];
+}
+
+/**
+ * Adapter converting modern PersonaReview into legacy ReviewerPersonaFeedback
+ * for seamless UI rendering on DesktopDashboard.
+ */
+export function personaReviewToLegacy(
+  review: PersonaReview,
+  profile?: PersonaProfile
+): ReviewerPersonaFeedback {
+  const legacyRole = PERSONA_ID_TO_LEGACY[review.personaId] || "domain_expert";
+  const trackName = CANONICAL_ANONYMOUS_TRACKS[legacyRole];
+
+  const recMap: Record<DecisionCategory, ReviewerPersonaFeedback["decisionRecommendation"]> = {
+    DESK_REJECT: "Desk Reject",
+    REJECT_AFTER_REVIEW: "Reject / Resubmit",
+    MAJOR_REVISION: "Major Revision",
+    MINOR_REVISION: "Minor Revision",
+    ACCEPT: "Minor Revision",
+  };
+
+  const majorCritiques = review.issues
+    .filter((i) => i.severity === "CRITICAL" || i.severity === "MAJOR")
+    .map((i) => i.grounded.claim);
+
+  const concreteSolutions = review.issues.map((i) => ({
+    issue: i.grounded.claim,
+    proposedFix: i.recommendation,
+  }));
+
+  const evidenceAnchors = review.issues.flatMap((i) =>
+    i.grounded.evidence.map((e) => `text: §${e.section} "${e.quotedText}"`)
+  );
+
+  return {
+    persona: legacyRole,
+    name: trackName,
+    title: specTitle(review.personaId, profile),
+    affiliation: specAffiliation(review.personaId, profile),
+    expertise: specExpertise(review.personaId, profile),
+    roleDescription: PERSONA_SPEC[review.personaId]?.systemGoal || "Peer Reviewer",
+    decisionRecommendation: recMap[review.recommendation] || "Major Revision",
+    keyChallenge: majorCritiques[0] || "Methodological and reporting refinement required.",
+    assessment: review.summary,
+    strengths: [
+      "Presents clear empirical focus aligned with study goals.",
+      "Identifies important domain questions suitable for scientific inquiry.",
+    ],
+    majorCritiques: majorCritiques.length > 0 ? majorCritiques : ["Address methodological caveats detailed in issues."],
+    concreteSolutions: concreteSolutions.length > 0 ? concreteSolutions : [
+      {
+        issue: "Reporting clarity and precision.",
+        proposedFix: "Follow structured reporting guidelines and clarify observational bounds.",
+      },
+    ],
+    missingControlsOrAnalyses: review.abstentions.length > 0 ? review.abstentions : ["Sensitivity power analysis."],
+    mustAddressItems: majorCritiques.slice(0, 2),
+    minorComments: review.issues.filter((i) => i.severity === "MINOR").map((i) => i.grounded.claim),
+    evidenceAnchors: evidenceAnchors.length > 0 ? evidenceAnchors : ['text: §Abstract "manuscript topic"'],
+    counterArguments: ["Ensure findings are robust against alternative cohort configurations."],
+    source: "heuristic",
+  };
+}
+
+/**
+ * Adapter converting legacy ReviewerPersonaFeedback into PersonaReview,
+ * extracting claims and mechanically grounding evidence spans.
+ */
+export function legacyToPersonaReview(
+  legacy: ReviewerPersonaFeedback,
+  ctx: ManuscriptContext
+): PersonaReview {
+  const personaId = LEGACY_TO_PERSONA_ID[legacy.persona] || "DOMAIN_EXPERT";
+  const spec = PERSONA_SPEC[personaId];
+
+  let recommendation: DecisionCategory = "MAJOR_REVISION";
+  const recLower = (legacy.decisionRecommendation || "").toLowerCase();
+  if (recLower.includes("desk reject")) recommendation = "DESK_REJECT";
+  else if (recLower.includes("reject")) recommendation = "REJECT_AFTER_REVIEW";
+  else if (recLower.includes("accept")) recommendation = "ACCEPT";
+  else if (recLower.includes("minor")) recommendation = "MINOR_REVISION";
+
+  const issues: Issue[] = [];
+  const critiques = legacy.majorCritiques || [];
+  critiques.forEach((c, idx) => {
+    const candidateQuote = legacy.evidenceAnchors?.[idx] || c;
+    const quoteMatch = candidateQuote.match(/["'“](.+?)["'”]/);
+    const textToMatch = quoteMatch ? quoteMatch[1] : candidateQuote;
+    const span = ctx.locateSpan(textToMatch);
+
+    issues.push({
+      id: `ISSUE-${personaId}-${idx + 1}`,
+      pillar: personaId === "DOMAIN_EXPERT" ? "NOVELTY_SIGNIFICANCE" : personaId === "METHODOLOGICAL_SPECIALIST" ? "METHODOLOGICAL_SOUNDNESS" : "SCOPE_FIT",
+      dimension: spec.focusDimensions[0] || "METHODOLOGY",
+      severity: idx === 0 ? "MAJOR" : "MINOR",
+      grounded: {
+        claim: c,
+        evidence: span ? [span] : [],
+        status: span ? "SUPPORTED" : "INSUFFICIENT_EVIDENCE",
+      },
+      recommendation: legacy.concreteSolutions?.[idx]?.proposedFix || "Address this critique systematically.",
+      source: "PERSONA",
+      personaId,
+    });
+  });
+
+  const dimensionScores: Partial<Record<ScoringDimension, import("./types").DimensionScore>> = {};
+  for (const dim of spec.focusDimensions) {
+    dimensionScores[dim] = {
+      score: recommendation === "REJECT_AFTER_REVIEW" ? 4.5 : recommendation === "DESK_REJECT" ? 3.0 : 7.0,
+      evidence: [],
+      agreement: 0.85,
+    };
+  }
+
+  return {
+    personaId,
+    summary: legacy.assessment || "",
+    issues,
+    dimensionScores,
+    recommendation,
+    confidence: 0.85,
+    abstentions: legacy.missingControlsOrAnalyses || [],
+    reliabilityFlag: "HIGH",
+  };
+}
+

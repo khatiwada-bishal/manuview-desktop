@@ -48,6 +48,8 @@ import {
   PriorityIssue,
   DimensionScore,
   EditorialTriageOutcome,
+  CalibratedAcceptanceRating,
+  DeskRejectPillarEvaluation,
 } from "@/lib/types";
 import { isSubstantiveReviewerObservation, extractReferencesFromText } from "@/lib/utils";
 import { batchVerifyReferences } from "@/lib/crossref";
@@ -71,6 +73,7 @@ export interface DesktopDashboardData {
   statusText: string;
   isDeskReject?: boolean;
   editorialTriage?: EditorialTriageOutcome;
+  calibratedAcceptance?: CalibratedAcceptanceRating;
   vulnerabilities: Array<{
     type: "overclaim" | "sample_size" | "control" | "generic";
     title: string;
@@ -282,6 +285,10 @@ export function DesktopDashboard({
   const overallScore = isDeskReject
     ? undefined
     : (currentReport ? currentReport.overallScore : (isReviewEligible ? data.score : undefined));
+  const calibratedAcceptance: CalibratedAcceptanceRating | undefined =
+    currentReport?.calibratedAcceptance ||
+    fullReport?.calibratedAcceptance ||
+    data.calibratedAcceptance;
   const targetJournal =
     currentReport?.targetJournal || data.targetJournal || "Target Journal";
   const summary = currentReport?.summary;
@@ -835,12 +842,373 @@ export function DesktopDashboard({
     );
   };
 
+  // --- Calibrated Pre-Submission Acceptance Probability Card ---
+  const renderCalibratedAcceptanceCard = () => {
+    if (!calibratedAcceptance) return null;
+
+    const prob = calibratedAcceptance.acceptanceProbabilityPercent;
+    const isHighRisk = prob < 15 || calibratedAcceptance.decisionOutcome.includes("Hazard");
+    const isModerate = prob >= 15 && prob < 40;
+
+    const outcomeColor =
+      calibratedAcceptance.decisionOutcome === "Desk Reject Hazard"
+        ? "bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800"
+        : calibratedAcceptance.decisionOutcome === "High Risk / Substantial Rebuttal Required"
+        ? "bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+        : calibratedAcceptance.decisionOutcome === "Competitive with Major Revisions"
+        ? "bg-blue-50 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+        : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800";
+
+    return (
+      <div className="rounded-3xl liquid-glass-card p-6 sm:p-7 space-y-5 border border-black/[0.08] dark:border-white/[0.1]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#E2E8F0] dark:border-[#1F2937]">
+          <div>
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-[#2563EB] dark:text-blue-400" />
+              <h3 className="text-base font-bold text-[#0F172A] dark:text-white">
+                Calibrated Acceptance Probability &amp; Selectivity Analysis
+              </h3>
+            </div>
+            <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
+              Grounded against {targetJournal || "target journal"} baseline selectivity, multidimensional review score, and critical hazard penalties
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`px-3 py-1 rounded-full text-xs font-bold border ${outcomeColor}`}>
+              {calibratedAcceptance.decisionOutcome}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Main Probability Metric */}
+          <div className="p-4 rounded-2xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] space-y-1 shadow-2xs">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-neutral-400">
+              Estimated Acceptance Probability
+            </span>
+            <div className="flex items-baseline gap-2">
+              <span className={`text-3xl sm:text-4xl font-black ${
+                isHighRisk
+                  ? "text-rose-600 dark:text-rose-400"
+                  : isModerate
+                  ? "text-amber-600 dark:text-amber-400"
+                  : "text-emerald-600 dark:text-emerald-400"
+              }`}>
+                {prob}%
+              </span>
+              <span className="text-xs font-mono text-neutral-500 dark:text-neutral-400">
+                [{calibratedAcceptance.probabilityRange[0]}% - {calibratedAcceptance.probabilityRange[1]}%]
+              </span>
+            </div>
+            <span className="text-[11px] text-neutral-500 dark:text-neutral-400 block pt-1">
+              Target Baseline Selectivity: {calibratedAcceptance.baselineJournalRatePercent}%
+            </span>
+          </div>
+
+          {/* Quality Multiplier */}
+          <div className="p-4 rounded-2xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] space-y-1 shadow-2xs">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-neutral-400">
+              Academic Quality Multiplier
+            </span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl sm:text-3xl font-bold text-[#0F172A] dark:text-white">
+                {calibratedAcceptance.dimensionalMultiplier}×
+              </span>
+              <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                (Composite: {calibratedAcceptance.overallScore}/100)
+              </span>
+            </div>
+            <span className="text-[11px] text-neutral-500 dark:text-neutral-400 block pt-1">
+              Methodology (26%), Claims (22%), Novelty (18%), Scope (14%), Prior Work (12%), Clarity (8%)
+            </span>
+          </div>
+
+          {/* Deficit / Hazard Factor */}
+          <div className="p-4 rounded-2xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] space-y-1 shadow-2xs">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-neutral-400">
+              Compounded Deficit Factor
+            </span>
+            <div className="flex items-baseline gap-2">
+              <span className={`text-2xl sm:text-3xl font-bold ${
+                calibratedAcceptance.hazardPenaltyMultiplier < 0.5
+                  ? "text-rose-600 dark:text-rose-400"
+                  : calibratedAcceptance.hazardPenaltyMultiplier < 1.0
+                  ? "text-amber-600 dark:text-amber-400"
+                  : "text-emerald-600 dark:text-emerald-400"
+              }`}>
+                {calibratedAcceptance.hazardPenaltyMultiplier}×
+              </span>
+              <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                {calibratedAcceptance.hazardPenaltyMultiplier < 1.0 ? "Hazard Suppressed" : "Zero Fatal Penalties"}
+              </span>
+            </div>
+            <span className="text-[11px] text-neutral-500 dark:text-neutral-400 block pt-1">
+              Penalties: Scope mismatch (0.05×), Missing Methods (0.20×), Retractions (0.35×)
+            </span>
+          </div>
+        </div>
+
+        {/* 5-Category Decision Probability Distribution */}
+        {calibratedAcceptance.decisionDistribution && (
+          <div className="p-4 rounded-2xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] space-y-3 shadow-2xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-neutral-400">
+                  5-Category Decision Outcome Probability Distribution
+                </span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  calibratedAcceptance.decisionDistribution.confidence === "high"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300"
+                    : calibratedAcceptance.decisionDistribution.confidence === "medium"
+                    ? "bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/50 dark:text-blue-300"
+                    : "bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/50 dark:text-amber-300"
+                }`}>
+                  {calibratedAcceptance.decisionDistribution.confidence.toUpperCase()} CONFIDENCE
+                </span>
+              </div>
+              {calibratedAcceptance.verificationCoverage && (
+                <span className="text-[10px] font-mono text-neutral-500 dark:text-neutral-400">
+                  Grounding Coverage: {calibratedAcceptance.verificationCoverage.coveragePercent}%
+                </span>
+              )}
+            </div>
+
+            {/* Horizontal stacked progress bar */}
+            <div className="h-3.5 w-full rounded-full overflow-hidden flex bg-neutral-200 dark:bg-neutral-800">
+              {calibratedAcceptance.decisionDistribution.p_desk_reject > 0 && (
+                <div
+                  style={{ width: `${calibratedAcceptance.decisionDistribution.p_desk_reject}%` }}
+                  className="bg-rose-500 transition-all duration-500"
+                  title={`Desk Reject: ${calibratedAcceptance.decisionDistribution.p_desk_reject}%`}
+                />
+              )}
+              {calibratedAcceptance.decisionDistribution.p_reject_after_review > 0 && (
+                <div
+                  style={{ width: `${calibratedAcceptance.decisionDistribution.p_reject_after_review}%` }}
+                  className="bg-amber-500 transition-all duration-500"
+                  title={`Reject After Review: ${calibratedAcceptance.decisionDistribution.p_reject_after_review}%`}
+                />
+              )}
+              {calibratedAcceptance.decisionDistribution.p_major_revision > 0 && (
+                <div
+                  style={{ width: `${calibratedAcceptance.decisionDistribution.p_major_revision}%` }}
+                  className="bg-blue-500 transition-all duration-500"
+                  title={`Major Revision: ${calibratedAcceptance.decisionDistribution.p_major_revision}%`}
+                />
+              )}
+              {calibratedAcceptance.decisionDistribution.p_minor_revision > 0 && (
+                <div
+                  style={{ width: `${calibratedAcceptance.decisionDistribution.p_minor_revision}%` }}
+                  className="bg-purple-500 transition-all duration-500"
+                  title={`Minor Revision: ${calibratedAcceptance.decisionDistribution.p_minor_revision}%`}
+                />
+              )}
+              {calibratedAcceptance.decisionDistribution.p_accept > 0 && (
+                <div
+                  style={{ width: `${calibratedAcceptance.decisionDistribution.p_accept}%` }}
+                  className="bg-emerald-500 transition-all duration-500"
+                  title={`Direct Accept: ${calibratedAcceptance.decisionDistribution.p_accept}%`}
+                />
+              )}
+            </div>
+
+            {/* Category Labels with percentages */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1 text-[11px]">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0" />
+                <span className="text-neutral-700 dark:text-neutral-300">Desk Reject: <strong>{calibratedAcceptance.decisionDistribution.p_desk_reject}%</strong></span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
+                <span className="text-neutral-700 dark:text-neutral-300">Reject Post-Rev: <strong>{calibratedAcceptance.decisionDistribution.p_reject_after_review}%</strong></span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0" />
+                <span className="text-neutral-700 dark:text-neutral-300">Major Revision: <strong>{calibratedAcceptance.decisionDistribution.p_major_revision}%</strong></span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0" />
+                <span className="text-neutral-700 dark:text-neutral-300">Minor Revision: <strong>{calibratedAcceptance.decisionDistribution.p_minor_revision}%</strong></span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+                <span className="text-neutral-700 dark:text-neutral-300">Direct Accept: <strong>{calibratedAcceptance.decisionDistribution.p_accept}%</strong></span>
+              </div>
+            </div>
+
+            {/* Messy Middle / NeurIPS Disclaimer */}
+            {calibratedAcceptance.decisionDistribution.messy_middle_flag && (
+              <div className="p-2.5 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-[11px] text-purple-900 dark:text-purple-300 flex items-start gap-2 mt-2">
+                <AlertTriangle className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
+                <span>
+                  <strong>NeurIPS 2014 &quot;Messy Middle&quot; Alert:</strong> This submission scores in the competitive 44-70 quality band where real-world peer-review variance is maximal (57% outcome flip rate between independent committees). Substantial reviewer variance is expected.
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Primary Hazard & Key Opportunity Callouts */}
+        {(calibratedAcceptance.primaryHazard || calibratedAcceptance.keyOpportunity) && (
+          <div className="space-y-2 pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937]">
+            {calibratedAcceptance.primaryHazard && (
+              <div className="p-3.5 rounded-xl bg-rose-50/80 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/60 text-xs flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold text-rose-900 dark:text-rose-200 block uppercase tracking-wider text-[10px]">
+                    Primary Bottleneck Suppressing Acceptance:
+                  </span>
+                  <span className="text-rose-800 dark:text-rose-300 font-medium">
+                    {calibratedAcceptance.primaryHazard}
+                  </span>
+                </div>
+              </div>
+            )}
+            {calibratedAcceptance.keyOpportunity && (
+              <div className="p-3.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/60 text-xs flex items-start gap-2.5">
+                <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold text-blue-900 dark:text-blue-200 block uppercase tracking-wider text-[10px]">
+                    Highest-Leverage Pre-Submission Opportunity:
+                  </span>
+                  <span className="text-blue-800 dark:text-blue-300 font-medium">
+                    {calibratedAcceptance.keyOpportunity}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // --- 5-Pillar Editorial Screening Matrix Card ---
+  const renderFivePillarTriageCard = () => {
+    const triage = currentReport?.editorialTriage || fullReport?.editorialTriage || data.editorialTriage;
+    const pillars = triage?.pillarEvaluations;
+    if (!pillars || pillars.length === 0) return null;
+
+    const classification = triage.triageClassification || (isDeskReject ? "fatal_desk_reject" : "cleared_for_review");
+
+    return (
+      <div className="rounded-3xl liquid-glass-card p-6 sm:p-7 space-y-5 border border-black/[0.08] dark:border-white/[0.1]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#E2E8F0] dark:border-[#1F2937]">
+          <div>
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-[#2563EB] dark:text-blue-400" />
+              <h3 className="text-base font-bold text-[#0F172A] dark:text-white">
+                Handling Editor Screening Matrix (6-Pillar Triage)
+              </h3>
+            </div>
+            <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
+              Handling editor pre-review triage evaluating fatal desk-reject barriers vs. actionable submission hazards across empirical base rates
+            </p>
+          </div>
+          <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
+            classification === "fatal_desk_reject"
+              ? "bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800"
+              : classification === "actionable_desk_reject_risk"
+              ? "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
+              : "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
+          }`}>
+            {classification === "fatal_desk_reject"
+              ? "⛔ Fatal Desk Reject Barrier"
+              : classification === "actionable_desk_reject_risk"
+              ? "⚠️ Actionable Desk Reject Risk"
+              : "✅ Cleared Editorial Screening"}
+          </span>
+        </div>
+
+        {/* 6-Pillar Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {pillars.map((p, idx) => {
+            const isFatal = p.status === "fatal_barrier";
+            const isWarn = p.status === "warning";
+            return (
+              <div
+                key={idx}
+                className={`p-4 rounded-2xl border text-xs space-y-2 shadow-2xs ${
+                  isFatal
+                    ? "bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/60"
+                    : isWarn
+                    ? "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/60"
+                    : "bg-emerald-50/30 dark:bg-emerald-950/10 border-emerald-200/70 dark:border-emerald-800/40"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-1">
+                  <span className="font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-1.5">
+                    {isFatal ? (
+                      <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                    ) : isWarn ? (
+                      <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    )}
+                    <span>{p.title}</span>
+                  </span>
+                  <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
+                    isFatal
+                      ? "bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-900/60 dark:text-rose-200"
+                      : isWarn
+                      ? "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/60 dark:text-amber-200"
+                      : "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/60 dark:text-emerald-200"
+                  }`}>
+                    {isFatal ? "Fatal" : isWarn ? "Warning" : "Pass"}
+                  </span>
+                </div>
+                <p className="text-neutral-600 dark:text-neutral-400 text-[11px] leading-relaxed">
+                  {p.verdict}
+                </p>
+                {p.baseRateContext && (
+                  <div className="text-[10px] text-neutral-500 dark:text-neutral-400 italic">
+                    Base Rate: {p.baseRateContext}
+                  </div>
+                )}
+                {p.actionablePreSubmissionFix && (
+                  <div className="pt-2 border-t border-black/[0.06] dark:border-white/[0.08] text-[11px] space-y-0.5">
+                    <span className="font-bold text-[#0F172A] dark:text-white block">Pre-Submission Fix:</span>
+                    <span className="text-neutral-700 dark:text-neutral-300 font-medium">
+                      {p.actionablePreSubmissionFix}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Editorial Salvage Roadmap */}
+        {triage.salvageRoadmap && triage.salvageRoadmap.length > 0 && (
+          <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 space-y-2.5">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <span className="text-xs font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wider">
+                Editorial Salvage Roadmap (Prioritized Action Sequence)
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              {triage.salvageRoadmap.map((step, sIdx) => (
+                <div key={sIdx} className="text-xs text-amber-900 dark:text-amber-300 flex items-start gap-2">
+                  <span className="font-mono font-bold text-amber-700 dark:text-amber-400 shrink-0 mt-0.5">
+                    {sIdx + 1}.
+                  </span>
+                  <span className="leading-relaxed">{step}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // --- Section 3: 5-Persona Peer-Review Simulation (Adversarial Panel) ---
   const renderPersonasSection = () => {
-    const triage = fullReport?.editorialTriage;
+    const triage = fullReport?.editorialTriage || currentReport?.editorialTriage || data.editorialTriage;
     const isDeskReject = triage?.outcome === "desk_reject";
 
-    if (isDeskReject) {
+    if (isDeskReject && personas.length <= 1) {
       const mismatch = matchingJournalsData.targetJournalEvaluation;
       const targetJournalDiscipline = mismatch?.journalDiscipline || "Different Academic Discipline";
       const paperDiscipline = matchingJournalsData.detectedDiscipline || "Scholarly Research";
@@ -1104,6 +1472,8 @@ export function DesktopDashboard({
             </p>
           </div>
         )}
+
+        {isDeskReject && renderFivePillarTriageCard()}
 
         {/* Panel Consensus & Score Uncertainty Card (P0-3) */}
         {fullReport?.panelConsensus && (
@@ -2562,6 +2932,12 @@ export function DesktopDashboard({
                 </div>
               )}
             </div>
+
+            {/* CARD 1B: Calibrated Pre-Submission Acceptance Probability & Selectivity Analysis */}
+            {!isNonAcademic && renderCalibratedAcceptanceCard()}
+
+            {/* CARD 1C: 5-Pillar Editorial Screening Matrix */}
+            {!isNonAcademic && renderFivePillarTriageCard()}
 
             {/* CARD 2: Editorial Synthesis & Triage Assessment Card (Omitted for non-academic documents) */}
             {!isNonAcademic && (

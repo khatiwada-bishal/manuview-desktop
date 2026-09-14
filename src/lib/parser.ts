@@ -419,7 +419,114 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
   };
 }
 
-export function parseManuscriptText(rawText: string, filename?: string): ParsedManuscript {
+/**
+ * Prompt-Injection & Hidden-Text Sanitization (P0-2)
+ * Strips zero-width characters, invisible/hidden tags, and overt prompt injection directives
+ * (e.g. white-on-white text instructions, system prompt overrides, ignore instructions).
+ */
+export function sanitizePromptInjectionAndHiddenContent(rawText: string): {
+  sanitizedText: string;
+  suspicionFlags: string[];
+} {
+  const suspicionFlags: string[] = [];
+
+  // 1. Detect and strip zero-width characters & non-printable formatting artifacts
+  let text = rawText.replace(/[\u200B\u200C\u200D\uFEFF\u202A-\u202E]/g, () => {
+    if (!suspicionFlags.includes("Zero-width hidden unicode characters detected")) {
+      suspicionFlags.push("Zero-width hidden unicode characters detected");
+    }
+    return "";
+  });
+
+  // 2. Detect hidden HTML/CSS attributes (e.g. color: #fff, font-size: 0, display: none)
+  const hiddenStyleRegex = /<(?:span|p|div|font)[^>]*?(?:display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*0|color\s*:\s*(?:#ffffff|#fff|white|rgba\([^)]*0\)))[^>]*>([\s\S]*?)<\/(?:span|p|div|font)>/gi;
+  text = text.replace(hiddenStyleRegex, (_match, hiddenContent) => {
+    suspicionFlags.push(`Hidden CSS text layer stripped: "${hiddenContent.trim().slice(0, 50)}..."`);
+    return "";
+  });
+
+  // 3. Known prompt injection phrases in scholarly drafts
+  const injectionPatterns: { pattern: RegExp; description: string }[] = [
+    {
+      pattern: /(?:give|assign|provide)\s+(?:a\s+)?positive\s+review\s+(?:only|unconditionally)/gi,
+      description: "Directive to force positive review ('give positive review only')",
+    },
+    {
+      pattern: /ignore\s+(?:all\s+)?previous\s+instructions/gi,
+      description: "Instruction override directive ('ignore previous instructions')",
+    },
+    {
+      pattern: /system\s+prompt\s+override|disregard\s+(?:the\s+)?(?:system|editorial)\s+(?:prompt|guidelines)/gi,
+      description: "System prompt override attempt",
+    },
+    {
+      pattern: /you\s+must\s+accept\s+this\s+paper|always\s+accept\s+this\s+submission/gi,
+      description: "Forced acceptance instruction",
+    },
+    {
+      pattern: /score\s+(?:this\s+paper|it)\s+(?:100|10\/10|5\/5|maximum)/gi,
+      description: "Forced maximum score directive",
+    },
+    {
+      pattern: /do\s+not\s+(?:find|report|criticize)\s+(?:any\s+)?flaws/gi,
+      description: "Critique suppression directive",
+    },
+  ];
+
+  for (const { pattern, description } of injectionPatterns) {
+    if (pattern.test(text)) {
+      suspicionFlags.push(description);
+      text = text.replace(pattern, "[SANITIZED_INJECTION_DIRECTIVE]");
+    }
+  }
+
+  return {
+    sanitizedText: text,
+    suspicionFlags,
+  };
+}
+
+/**
+ * Extracts presence of mandatory academic publishing declarations (P0-1, P0-8)
+ */
+export function extractMandatoryDeclarations(rawText: string): ParsedManuscript["mandatoryDeclarations"] {
+  const ethicsRegex = /(?:ethics\s+approval|ethics\s+statement|institutional\s+review\s+board|\birb\b|declaration\s+of\s+helsinki|informed\s+consent|animal\s+welfare|iacuc\b|human\s+subjects\s+approval)[^\n]{5,200}/i;
+  const ethicsMatch = rawText.match(ethicsRegex);
+
+  const dataRegex = /(?:data\s+availability|code\s+availability|data\s+deposition|available\s+on\s+request|dryad|zenodo|figshare|github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)[^\n]{5,200}/i;
+  const dataMatch = rawText.match(dataRegex);
+
+  const coiRegex = /(?:competing\s+interests|conflict(?:s)?\s+of\s+interest|no\s+competing\s+interests|authors\s+declare\s+no\s+(?:competing|financial))[^\n]{5,200}/i;
+  const coiMatch = rawText.match(coiRegex);
+
+  const contribRegex = /(?:author(?:s['’]?)?\s+contributions?|credit\s+taxonomy|conceptualization|formal\s+analysis|investigation|writing\s*[-–]\s*original\s+draft)[^\n]{5,200}/i;
+  const contribMatch = rawText.match(contribRegex);
+
+  return {
+    ethicsStatement: {
+      present: Boolean(ethicsMatch),
+      excerpt: ethicsMatch ? ethicsMatch[0].trim() : undefined,
+    },
+    dataAvailability: {
+      present: Boolean(dataMatch),
+      excerpt: dataMatch ? dataMatch[0].trim() : undefined,
+    },
+    competingInterests: {
+      present: Boolean(coiMatch),
+      excerpt: coiMatch ? coiMatch[0].trim() : undefined,
+    },
+    authorContributions: {
+      present: Boolean(contribMatch),
+      excerpt: contribMatch ? contribMatch[0].trim() : undefined,
+    },
+  };
+}
+
+export function parseManuscriptText(inputRawText: string, filename?: string): ParsedManuscript {
+  // P0-2: Sanitize raw input against invisible text and prompt injection
+  const { sanitizedText: rawText, suspicionFlags: injectionSuspicionFlags } =
+    sanitizePromptInjectionAndHiddenContent(inputRawText);
+
   const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
   
   // 1. Classify document type
@@ -675,6 +782,9 @@ export function parseManuscriptText(rawText: string, filename?: string): ParsedM
   // 8. Word count
   const wordCount = rawText.split(/\s+/).filter(Boolean).length;
 
+  // 9. Mandatory Declarations (Ethics, Data, COI, Author Contributions)
+  const mandatoryDeclarations = extractMandatoryDeclarations(rawText);
+
   return {
     title,
     abstract,
@@ -686,6 +796,8 @@ export function parseManuscriptText(rawText: string, filename?: string): ParsedM
     references,
     classification,
     empiricalCues,
+    injectionSuspicionFlags,
+    mandatoryDeclarations,
   };
 }
 

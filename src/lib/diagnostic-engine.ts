@@ -19,5 +19,8 @@ export * from "./engine/scope-triage-journals";
 export * from "./engine/scoring-dimensions";
 export * from "./engine/priority-action-items";
 export * from "./engine/persona-review";
+export * from "./engine/stage0-integrity";
+export * from "./engine/integrity-gate";
+export * from "./engine/validation-gate";
 export * from "./engine/diagnostic-orchestrator";
 export { sanitizeAuthorText, sanitizeErrorMessage } from "./llm";

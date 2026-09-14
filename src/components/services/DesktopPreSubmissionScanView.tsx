@@ -288,6 +288,8 @@ export function DesktopPreSubmissionScanView({
       isPublished: isPublished,
       publishedJournal: fullReport.publishedDetails?.journalName,
       editorialTriage: fullReport.editorialTriage,
+      createdAt: fullReport.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     const dashboardData: DesktopDashboardData = {
@@ -466,7 +468,7 @@ export function DesktopPreSubmissionScanView({
                 onChange={handleTargetJournalChange}
                 hasError={targetJournalError}
                 showScopeBadge={false}
-                placeholder="Search or select from 1,390+ journals..."
+                placeholder="Search or select from 48,000+ journals..."
               />
               {targetJournalError && (
                 <div className="text-[11px] text-[#991B1B] dark:text-rose-400 font-medium flex items-center gap-1 mt-1.5">

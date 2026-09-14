@@ -28,3 +28,8 @@ pnpm-debug.log*
 # OS Files
 .DS_Store
 Thumbs.db
+
+# Local Tooling & Raw Data
+.claude/
+journals_categorised.json
+

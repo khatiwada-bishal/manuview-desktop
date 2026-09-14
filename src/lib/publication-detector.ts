@@ -5,6 +5,72 @@ const POLITE_USER_AGENT =
   "ManuView-OpenPreSubmission/1.0 (mailto:research@manuview.org; https://github.com/khatiwada-bishal/manuview)";
 
 /**
+ * Detects whether text or a DOI corresponds to a recognized preprint repository
+ * (e.g. arXiv, bioRxiv, medRxiv, ChemRxiv, Research Square, SSRN, Preprints.org).
+ * Preprints are pre-submission works and are explicitly eligible for peer-review simulation.
+ */
+export function extractPreprintMarkers(rawText: string, doi?: string): {
+  isPreprint: boolean;
+  serverName?: string;
+  preprintId?: string;
+} {
+  const headerSlice = rawText.slice(0, 3500);
+
+  // 1. Check DOI prefix
+  if (doi) {
+    if (/10\.48550\/arXiv/i.test(doi)) {
+      return { isPreprint: true, serverName: "arXiv", preprintId: doi };
+    }
+    if (/10\.1101\//i.test(doi)) {
+      const server = /medrxiv/i.test(headerSlice + doi) ? "medRxiv" : "bioRxiv";
+      return { isPreprint: true, serverName: server, preprintId: doi };
+    }
+    if (/10\.26434\/chemrxiv/i.test(doi)) {
+      return { isPreprint: true, serverName: "ChemRxiv", preprintId: doi };
+    }
+    if (/10\.21203\/rs\./i.test(doi)) {
+      return { isPreprint: true, serverName: "Research Square", preprintId: doi };
+    }
+    if (/10\.2139\/ssrn/i.test(doi)) {
+      return { isPreprint: true, serverName: "SSRN", preprintId: doi };
+    }
+    if (/10\.20944\/preprints/i.test(doi)) {
+      return { isPreprint: true, serverName: "Preprints.org", preprintId: doi };
+    }
+    if (/10\.31219\/osf/i.test(doi)) {
+      return { isPreprint: true, serverName: "OSF Preprints", preprintId: doi };
+    }
+  }
+
+  // 2. Check header text markers
+  const arxivMatch = headerSlice.match(/arXiv:\s*(\d{4}\.\d{4,5}(?:v\d+)?)/i);
+  if (arxivMatch) {
+    return { isPreprint: true, serverName: "arXiv", preprintId: arxivMatch[1] };
+  }
+
+  if (/\b(?:bioRxiv|medRxiv)\s+preprint\b/i.test(headerSlice) || /https?:\/\/(?:www\.)?(?:biorxiv|medrxiv)\.org/i.test(headerSlice)) {
+    const isMed = /medrxiv/i.test(headerSlice);
+    return { isPreprint: true, serverName: isMed ? "medRxiv" : "bioRxiv" };
+  }
+
+  if (/\bChemRxiv\s+preprint\b/i.test(headerSlice) || /https?:\/\/chemrxiv\.org/i.test(headerSlice)) {
+    return { isPreprint: true, serverName: "ChemRxiv" };
+  }
+
+  if (/\bResearch\s*Square\b/i.test(headerSlice) && /preprint/i.test(headerSlice)) {
+    return { isPreprint: true, serverName: "Research Square" };
+  }
+
+  if (/this\s+(?:article|paper|manuscript)\s+is\s+a\s+preprint/i.test(headerSlice) ||
+      /not\s+(?:been\s+)?certified\s+by\s+peer\s+review/i.test(headerSlice) ||
+      /preprint\s+under\s+review/i.test(headerSlice)) {
+    return { isPreprint: true, serverName: "Preprint Repository" };
+  }
+
+  return { isPreprint: false };
+}
+
+/**
  * Scans text header for publication indicators and article DOI
  */
 export function extractPublicationMarkers(rawText: string): {
@@ -17,6 +83,8 @@ export function extractPublicationMarkers(rawText: string): {
   pages?: string;
   hasPublishedMarkers: boolean;
   markerCount: number;
+  isPreprint: boolean;
+  preprintServer?: string;
 } {
   // Inspect the first 3,500 characters (page 1 / header) to avoid reference list citations
   const headerSlice = rawText.slice(0, 3500);
@@ -29,6 +97,9 @@ export function extractPublicationMarkers(rawText: string): {
   if (doiMatch && doiMatch[1]) {
     doi = doiMatch[1].trim().replace(/[.,;)]+$/, "");
   }
+
+  // Check preprint classification first
+  const preprintInfo = extractPreprintMarkers(rawText, doi);
 
   // 2. Publication lifecycle dates
   let publicationDate: string | undefined = undefined;
@@ -82,17 +153,19 @@ export function extractPublicationMarkers(rawText: string): {
   }
 
   let markerCount = 0;
-  if (doi) markerCount += 3;
+  if (doi && !preprintInfo.isPreprint) markerCount += 3;
   if (publicationDate) markerCount += 3;
   if (acceptedMatch) markerCount += 2;
   if (volume || issue || pages) markerCount += 2;
   if (publisher || copyrightMatch) markerCount += 2;
   if (journalName) markerCount += 1;
 
+  // If the document is an un-refereed preprint, it must NOT be marked as already published
   const hasPublishedMarkers =
-    (!!doi && (!!publicationDate || acceptedMatch || !!volume || !!publisher || copyrightMatch)) ||
-    (!!publicationDate && (acceptedMatch || !!volume || copyrightMatch)) ||
-    markerCount >= 5;
+    !preprintInfo.isPreprint &&
+    (((!!doi && (!!publicationDate || acceptedMatch || !!volume || !!publisher || copyrightMatch)) ||
+      (!!publicationDate && (acceptedMatch || !!volume || copyrightMatch)) ||
+      markerCount >= 5));
 
   return {
     doi,
@@ -104,6 +177,8 @@ export function extractPublicationMarkers(rawText: string): {
     pages,
     hasPublishedMarkers,
     markerCount,
+    isPreprint: preprintInfo.isPreprint,
+    preprintServer: preprintInfo.serverName,
   };
 }
 
@@ -116,6 +191,17 @@ export async function detectPublishedArticle(
   title?: string
 ): Promise<PublishedArticleDetails | null> {
   const localMarkers = extractPublicationMarkers(rawText);
+
+  // If the document is identified as a preprint, it is explicitly an unpublished pre-submission manuscript
+  if (localMarkers.isPreprint) {
+    return {
+      isPublished: false,
+      isPreprint: true,
+      preprintServer: localMarkers.preprintServer || "Preprint Repository",
+      doi: localMarkers.doi,
+      detectedVia: `${localMarkers.preprintServer || "Preprint Repository"} Pre-Submission Draft`,
+    };
+  }
 
   // Case A: Article DOI was directly found in the header
   if (localMarkers.doi) {
@@ -137,6 +223,26 @@ export async function detectPublishedArticle(
       if (res.ok) {
         const json = await res.json();
         const msg = json.message || {};
+
+        // Crossref records preprints under type: "posted-content" or subtype: "preprint"
+        const isPreprintType =
+          msg.type === "posted-content" ||
+          msg.subtype === "preprint" ||
+          /biorxiv|medrxiv|arxiv|chemrxiv|research\s*square|preprints\.org|ssrn/i.test(
+            (msg.publisher || "") + " " + (msg["container-title"]?.[0] || "") + " " + (msg.institution?.[0]?.name || "")
+          );
+
+        if (isPreprintType) {
+          return {
+            isPublished: false,
+            isPreprint: true,
+            preprintServer: msg.publisher || localMarkers.preprintServer || "Preprint Repository",
+            doi: localMarkers.doi,
+            articleUrl: `https://doi.org/${localMarkers.doi}`,
+            detectedVia: "Scholarly Preprint Registry (Eligible for Review)",
+          };
+        }
+
         const crJournal = Array.isArray(msg["container-title"])
           ? msg["container-title"][0]
           : undefined;
@@ -168,8 +274,8 @@ export async function detectPublishedArticle(
         };
       }
     } catch {
-      // Network failed or offline - fall back to strong local header evidence
-      if (localMarkers.hasPublishedMarkers) {
+      // Network failed or offline - fall back to strong local header evidence (only if NOT a preprint)
+      if (!localMarkers.isPreprint && localMarkers.hasPublishedMarkers) {
         return {
           isPublished: true,
           doi: localMarkers.doi,

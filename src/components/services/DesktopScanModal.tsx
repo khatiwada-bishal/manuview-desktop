@@ -130,6 +130,8 @@ export function DesktopScanModal({
       isPublished: isPublished,
       publishedJournal: fullReport.publishedDetails?.journalName,
       editorialTriage: fullReport.editorialTriage,
+      createdAt: fullReport.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     const savedConfig = getSavedClientConfig();

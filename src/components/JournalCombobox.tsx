@@ -22,6 +22,38 @@ interface JournalComboboxProps {
 
 const STORAGE_KEY = "manuview_custom_journals";
 
+// Module-level pre-indexed master list for ultra-fast searches across ~49k journals
+const PRE_INDEXED_MASTER: { name: string; lower: string }[] = (MASTER_JOURNAL_LIST as string[]).map((name) => ({
+  name,
+  lower: name.toLowerCase(),
+}));
+const PRE_INDEXED_MASTER_SET = new Set<string>(PRE_INDEXED_MASTER.map((item) => item.lower));
+const CATALOG_SET = new Set<string>(JOURNAL_CATALOG.map((j) => j.name.toLowerCase()));
+
+// Pre-computed default browse list (curated first, followed by all journals in master catalog)
+const DEFAULT_BROWSE_LIST: string[] = (() => {
+  const curated = JOURNAL_CATALOG.map((j) => j.name);
+  const seen = new Set<string>();
+  const results: string[] = [];
+  for (const j of curated) {
+    const l = j.toLowerCase();
+    if (!seen.has(l)) {
+      seen.add(l);
+      results.push(j);
+    }
+  }
+  for (let i = 0; i < PRE_INDEXED_MASTER.length; i++) {
+    const item = PRE_INDEXED_MASTER[i];
+    if (!seen.has(item.lower)) {
+      seen.add(item.lower);
+      results.push(item.name);
+    }
+  }
+  return results;
+})();
+
+const PAGE_SIZE = 60;
+
 export default function JournalCombobox({
   value,
   onChange,
@@ -37,6 +69,7 @@ export default function JournalCombobox({
   const [searchQuery, setSearchQuery] = useState("");
   const [customJournals, setCustomJournals] = useState<string[]>([]);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
+  const [visibleCount, setVisibleCount] = useState<number>(PAGE_SIZE);
   const [addedToast, setAddedToast] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [dropdownCoords, setDropdownCoords] = useState<{
@@ -98,67 +131,63 @@ export default function JournalCombobox({
     };
   }, [isOpen, updateCoords]);
 
-  // Set of curated catalog journal names for quick lookup
-  const catalogSet = useMemo(() => {
-    return new Set(JOURNAL_CATALOG.map((j) => j.name.toLowerCase()));
-  }, []);
-
-  // Load custom journals from localStorage on mount
-  useEffect(() => {
-    try {
-      if (typeof window !== "undefined") {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            setCustomJournals(parsed);
-          }
-        }
-      }
-    } catch (e) {
-      console.warn("Could not load custom journals from localStorage", e);
+  // Combined master list + custom journals, indexed for speed
+  const { allJournals, allJournalsIndexed, journalNameSet } = useMemo(() => {
+    if (!customJournals.length) {
+      return {
+        allJournals: MASTER_JOURNAL_LIST as string[],
+        allJournalsIndexed: PRE_INDEXED_MASTER,
+        journalNameSet: PRE_INDEXED_MASTER_SET,
+      };
     }
-  }, []);
-
-  // Synchronize internal search query when external value changes
-  useEffect(() => {
-    setSearchQuery(value || "");
-  }, [value]);
-
-  // Combined master list + custom journals, deduplicated
-  const allJournals = useMemo(() => {
-    const combined = [...customJournals, ...MASTER_JOURNAL_LIST];
-    const seen = new Set<string>();
-    const result: string[] = [];
-
-    for (const item of combined) {
-      const lower = item.trim().toLowerCase();
-      if (lower && !seen.has(lower)) {
-        seen.add(lower);
-        result.push(item.trim());
+    const customIndexed: { name: string; lower: string }[] = [];
+    const customSet = new Set<string>();
+    for (const c of customJournals) {
+      const trimmed = c.trim();
+      const lower = trimmed.toLowerCase();
+      if (lower && !PRE_INDEXED_MASTER_SET.has(lower) && !customSet.has(lower)) {
+        customSet.add(lower);
+        customIndexed.push({ name: trimmed, lower });
       }
     }
-    return result;
+    const combinedIndexed = [...customIndexed, ...PRE_INDEXED_MASTER];
+    const combinedSet = new Set<string>();
+    PRE_INDEXED_MASTER_SET.forEach((val) => combinedSet.add(val));
+    customSet.forEach((val) => combinedSet.add(val));
+    const names = combinedIndexed.map((i) => i.name);
+    return {
+      allJournals: names,
+      allJournalsIndexed: combinedIndexed,
+      journalNameSet: combinedSet,
+    };
   }, [customJournals]);
 
-  // Filtered journals based on user search query (immediate listing, no 3-letter threshold required)
+  // All matched journals based on search query (immediate listing, prioritized matching)
   const trimmedQuery = searchQuery.trim();
   const queryLower = trimmedQuery.toLowerCase();
 
-  const filteredJournals = useMemo(() => {
+  const allMatchedJournals = useMemo(() => {
     if (!queryLower) {
-      // Return curated catalog journals + custom journals first, up to 100 for immediate browsing
-      const curated = JOURNAL_CATALOG.map((j) => j.name);
-      const combined = [...customJournals, ...curated, ...allJournals];
+      if (!customJournals.length) {
+        return DEFAULT_BROWSE_LIST;
+      }
       const seen = new Set<string>();
       const results: string[] = [];
-      for (const j of combined) {
-        const lower = j.toLowerCase();
+      for (const j of customJournals) {
+        const trimmed = j.trim();
+        const lower = trimmed.toLowerCase();
+        if (lower && !seen.has(lower)) {
+          seen.add(lower);
+          results.push(trimmed);
+        }
+      }
+      for (let i = 0; i < DEFAULT_BROWSE_LIST.length; i++) {
+        const name = DEFAULT_BROWSE_LIST[i];
+        const lower = name.toLowerCase();
         if (!seen.has(lower)) {
           seen.add(lower);
-          results.push(j);
+          results.push(name);
         }
-        if (results.length >= 100) break;
       }
       return results;
     }
@@ -168,27 +197,68 @@ export default function JournalCombobox({
     const wordPrefixMatches: string[] = [];
     const containsMatches: string[] = [];
 
-    for (const j of allJournals) {
-      const lower = j.toLowerCase();
+    const spaceQuery = " " + queryLower;
+    const dashQuery = "-" + queryLower;
+    const colonQuery = ":" + queryLower;
+
+    for (let i = 0; i < allJournalsIndexed.length; i++) {
+      const item = allJournalsIndexed[i];
+      const lower = item.lower;
       if (lower === queryLower) {
-        exactMatches.push(j);
+        exactMatches.push(item.name);
       } else if (lower.startsWith(queryLower)) {
-        prefixMatches.push(j);
-      } else if (lower.includes(" " + queryLower) || lower.includes("-" + queryLower) || lower.includes(":" + queryLower)) {
-        wordPrefixMatches.push(j);
+        prefixMatches.push(item.name);
+      } else if (lower.includes(spaceQuery) || lower.includes(dashQuery) || lower.includes(colonQuery)) {
+        wordPrefixMatches.push(item.name);
       } else if (lower.includes(queryLower)) {
-        containsMatches.push(j);
+        containsMatches.push(item.name);
       }
     }
 
-    return [...exactMatches, ...prefixMatches, ...wordPrefixMatches, ...containsMatches].slice(0, 100);
-  }, [allJournals, customJournals, queryLower]);
+    return [...exactMatches, ...prefixMatches, ...wordPrefixMatches, ...containsMatches];
+  }, [allJournalsIndexed, customJournals, queryLower]);
 
-  // Determine if typed query is a brand new journal not in the list
+  // Reset visible count and scroll to top when search query changes
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+    setActiveIndex(-1);
+    if (listRef.current) {
+      listRef.current.scrollTop = 0;
+    }
+  }, [queryLower]);
+
+  // Reset visible count when opening dropdown
+  useEffect(() => {
+    if (isOpen) {
+      setVisibleCount(PAGE_SIZE);
+      setActiveIndex(-1);
+    }
+  }, [isOpen]);
+
+  // Visible subset rendered in the DOM for smooth scrolling
+  const visibleJournals = useMemo(() => {
+    return allMatchedJournals.slice(0, visibleCount);
+  }, [allMatchedJournals, visibleCount]);
+
+  // Handle scrolling near bottom to reveal more journals
+  const handleListScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const scrollBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (scrollBottom < 250) {
+      setVisibleCount((prev) => {
+        if (prev < allMatchedJournals.length) {
+          return Math.min(prev + PAGE_SIZE, allMatchedJournals.length);
+        }
+        return prev;
+      });
+    }
+  }, [allMatchedJournals.length]);
+
+  // Determine if typed query is a brand new journal not in the list (O(1) Set lookup)
   const isExactMatch = useMemo(() => {
     if (!trimmedQuery) return true;
-    return allJournals.some((j) => j.toLowerCase() === queryLower);
-  }, [allJournals, trimmedQuery, queryLower]);
+    return journalNameSet.has(queryLower);
+  }, [journalNameSet, trimmedQuery, queryLower]);
 
   const canAddNew = trimmedQuery.length > 0 && !isExactMatch;
 
@@ -304,11 +374,14 @@ export default function JournalCombobox({
       return;
     }
 
-    const totalItems = filteredJournals.length + (canAddNew ? 1 : 0);
+    const totalItems = visibleJournals.length + (canAddNew ? 1 : 0);
     if (totalItems === 0) return;
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
+      if (activeIndex >= visibleJournals.length - 2 && visibleJournals.length < allMatchedJournals.length) {
+        setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, allMatchedJournals.length));
+      }
       setActiveIndex((prev) => (prev + 1) % totalItems);
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
@@ -319,12 +392,12 @@ export default function JournalCombobox({
         handleAddCustomJournal();
       } else {
         const itemIdx = canAddNew ? activeIndex - 1 : activeIndex;
-        if (itemIdx >= 0 && itemIdx < filteredJournals.length) {
-          handleSelectJournal(filteredJournals[itemIdx]);
+        if (itemIdx >= 0 && itemIdx < visibleJournals.length) {
+          handleSelectJournal(visibleJournals[itemIdx]);
         } else if (canAddNew) {
           handleAddCustomJournal();
-        } else if (filteredJournals.length > 0) {
-          handleSelectJournal(filteredJournals[0]);
+        } else if (visibleJournals.length > 0) {
+          handleSelectJournal(visibleJournals[0]);
         }
       }
     } else if (e.key === "Escape") {
@@ -460,7 +533,14 @@ export default function JournalCombobox({
               <span>{allJournals.length.toLocaleString()} catalogued journals</span>
             </span>
             <span>
-              {trimmedQuery ? `${filteredJournals.length} matches` : `${allJournals.length.toLocaleString()} journals`}
+              {trimmedQuery
+                ? `${allMatchedJournals.length.toLocaleString()} match${allMatchedJournals.length === 1 ? "" : "es"}`
+                : `${allJournals.length.toLocaleString()} journals`}
+              {allMatchedJournals.length > visibleJournals.length && (
+                <span className="text-[9px] text-[#9B9A97] dark:text-neutral-500 ml-1">
+                  (showing {visibleJournals.length.toLocaleString()})
+                </span>
+              )}
             </span>
           </div>
 
@@ -495,9 +575,10 @@ export default function JournalCombobox({
           {/* List of Matching Journals */}
           <div
             ref={listRef}
+            onScroll={handleListScroll}
             className="max-h-64 overflow-y-auto divide-y divide-[#F7F7F5] dark:divide-[#1F2937] overscroll-contain"
           >
-            {filteredJournals.length === 0 && !canAddNew ? (
+            {allMatchedJournals.length === 0 && !canAddNew ? (
               <div className="px-4 py-6 text-center text-[#787774] dark:text-neutral-400">
                 <BookOpen className="w-6 h-6 mx-auto mb-2 text-[#CCCCCC] dark:text-neutral-600" />
                 <p className="font-medium text-xs text-[#2F3437] dark:text-neutral-200">No matching journals found</p>
@@ -506,71 +587,86 @@ export default function JournalCombobox({
                 </p>
               </div>
             ) : (
-              filteredJournals.map((journal, index) => {
-                const itemDomIndex = canAddNew ? index + 1 : index;
-                const isSelected = value.trim().toLowerCase() === journal.toLowerCase();
-                const isItemActive = activeIndex === itemDomIndex;
-                const isCurated = catalogSet.has(journal.toLowerCase());
-                const isCustomAdded = isCustom(journal);
+              <>
+                {visibleJournals.map((journal, index) => {
+                  const itemDomIndex = canAddNew ? index + 1 : index;
+                  const isSelected = value.trim().toLowerCase() === journal.toLowerCase();
+                  const isItemActive = activeIndex === itemDomIndex;
+                  const isCurated = CATALOG_SET.has(journal.toLowerCase());
+                  const isCustomAdded = isCustom(journal);
 
-                return (
-                  <div
-                    key={journal}
-                    data-index={itemDomIndex}
-                    onClick={() => handleSelectJournal(journal)}
-                    className={`px-3 py-2 cursor-pointer flex items-center justify-between transition ${
-                      isSelected
-                        ? "bg-[#F7F7F5] dark:bg-[#1E293B] text-[#2F3437] dark:text-white font-semibold"
-                        : isItemActive
-                        ? "bg-[#FAFAFA] dark:bg-[#1E293B]/60 text-[#2F3437] dark:text-white"
-                        : "hover:bg-[#F9F9F8] dark:hover:bg-[#1E293B]/40 text-[#37352F] dark:text-neutral-200"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 min-w-0 pr-2">
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                          isSelected
-                            ? "bg-[#0075eb]"
-                            : isCurated
-                            ? "bg-[#0F6B43]"
-                            : isCustomAdded
-                            ? "bg-[#9065B0]"
-                            : "bg-[#D3D1CB] dark:bg-neutral-600"
-                        }`}
-                      />
-                      <span className="truncate font-medium text-xs text-[#2F3437] dark:text-neutral-100">
-                        {journal}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {isCurated && (
-                        <span className="text-[9px] font-medium bg-[#EBF8F2] dark:bg-emerald-950/50 text-[#0F6B43] dark:text-emerald-300 border border-[#BDEBD6] dark:border-emerald-800 px-1.5 py-0.5 rounded">
-                          Curated
+                  return (
+                    <div
+                      key={journal}
+                      data-index={itemDomIndex}
+                      onClick={() => handleSelectJournal(journal)}
+                      className={`px-3 py-2 cursor-pointer flex items-center justify-between transition ${
+                        isSelected
+                          ? "bg-[#F7F7F5] dark:bg-[#1E293B] text-[#2F3437] dark:text-white font-semibold"
+                          : isItemActive
+                          ? "bg-[#FAFAFA] dark:bg-[#1E293B]/60 text-[#2F3437] dark:text-white"
+                          : "hover:bg-[#F9F9F8] dark:hover:bg-[#1E293B]/40 text-[#37352F] dark:text-neutral-200"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0 pr-2">
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                            isSelected
+                              ? "bg-[#0075eb]"
+                              : isCurated
+                              ? "bg-[#0F6B43]"
+                              : isCustomAdded
+                              ? "bg-[#9065B0]"
+                              : "bg-[#D3D1CB] dark:bg-neutral-600"
+                          }`}
+                        />
+                        <span className="truncate font-medium text-xs text-[#2F3437] dark:text-neutral-100">
+                          {journal}
                         </span>
-                      )}
-                      {isCustomAdded && (
-                        <div className="flex items-center gap-1">
-                          <span className="text-[9px] font-medium bg-[#F6EEFB] dark:bg-purple-950/50 text-[#783CB3] dark:text-purple-300 border border-[#E9D4F7] dark:border-purple-800 px-1.5 py-0.5 rounded">
-                            Custom
+                      </div>
+
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {isCurated && (
+                          <span className="text-[9px] font-medium bg-[#EBF8F2] dark:bg-emerald-950/50 text-[#0F6B43] dark:text-emerald-300 border border-[#BDEBD6] dark:border-emerald-800 px-1.5 py-0.5 rounded">
+                            Curated
                           </span>
-                          <button
-                            type="button"
-                            onClick={(e) => handleDeleteCustomJournal(e, journal)}
-                            className="p-1 hover:bg-[#FDF0EF] dark:hover:bg-rose-950/40 text-[#9B9A97] dark:text-neutral-400 hover:text-[#7C2D2B] dark:hover:text-rose-300 rounded transition"
-                            title="Remove from custom list"
-                          >
-                            <Trash2 className="w-2.5 h-2.5" />
-                          </button>
-                        </div>
-                      )}
-                      {isSelected && (
-                        <Check className="w-3.5 h-3.5 text-[#0075eb] dark:text-blue-400" />
-                      )}
+                        )}
+                        {isCustomAdded && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[9px] font-medium bg-[#F6EEFB] dark:bg-purple-950/50 text-[#783CB3] dark:text-purple-300 border border-[#E9D4F7] dark:border-purple-800 px-1.5 py-0.5 rounded">
+                              Custom
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteCustomJournal(e, journal)}
+                              className="p-1 hover:bg-[#FDF0EF] dark:hover:bg-rose-950/40 text-[#9B9A97] dark:text-neutral-400 hover:text-[#7C2D2B] dark:hover:text-rose-300 rounded transition"
+                              title="Remove from custom list"
+                            >
+                              <Trash2 className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
+                        )}
+                        {isSelected && (
+                          <Check className="w-3.5 h-3.5 text-[#0075eb] dark:text-blue-400" />
+                        )}
+                      </div>
                     </div>
+                  );
+                })}
+
+                {visibleJournals.length < allMatchedJournals.length && (
+                  <div className="py-2.5 px-3 text-center text-[10px] text-[#787774] dark:text-neutral-400 bg-[#FAF9F7]/90 dark:bg-[#0F141F]/70 flex items-center justify-center gap-1.5 font-mono border-t border-[#F0EFEB] dark:border-[#1F2937]">
+                    <div className="w-2.5 h-2.5 border-2 border-[#0075eb] border-t-transparent rounded-full animate-spin" />
+                    <span>Scroll down to reveal more ({visibleJournals.length.toLocaleString()} of {allMatchedJournals.length.toLocaleString()})</span>
                   </div>
-                );
-              })
+                )}
+
+                {visibleJournals.length >= allMatchedJournals.length && allMatchedJournals.length > PAGE_SIZE && (
+                  <div className="py-2 px-3 text-center text-[10px] text-[#9B9A97] dark:text-neutral-500 bg-[#FAF9F7]/40 dark:bg-[#0F141F]/20 font-mono border-t border-[#F0EFEB] dark:border-[#1F2937]">
+                    Showing all {allMatchedJournals.length.toLocaleString()} journals
+                  </div>
+                )}
+              </>
             )}
           </div>
 

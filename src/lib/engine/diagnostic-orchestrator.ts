@@ -59,11 +59,18 @@ import {
 import {
   buildCatalogJournalRecommendations,
   buildScopeMismatchIssue,
+  evaluateFivePillarDeskRejection,
+  evaluateSixPillarDeskRejection,
   evaluateManuscriptScopeTriage,
   evaluateManuscriptScopeTriageWithLLM,
 } from "./scope-triage-journals";
+import { runStage0Screening } from "./stage0-integrity";
+import { validateEvidenceSpansAndCoverage } from "./validation-gate";
 import { fetchLiveJournalScope, JournalScopeProfile } from "../journal-scope-service";
-import { calculateDeterministicDimensions } from "./scoring-dimensions";
+import {
+  calculateCalibratedAcceptanceProbability,
+  calculateDeterministicDimensions,
+} from "./scoring-dimensions";
 import {
   callLLMForJson,
   clampDeskRejectScore,
@@ -696,17 +703,33 @@ export async function runManuscriptDiagnostic(
     (activeConfig.provider === "ollama" || (typeof activeConfig.apiKey === "string" && activeConfig.apiKey.trim().length > 0))
   );
 
-  // Step 2: Academic Document Classification
+  // ---------------------------------------------------------------------------
+  // STAGE 0: Technical Completeness & Publication Integrity Screening Gate
+  // ---------------------------------------------------------------------------
   onProgress?.({
     stage: "classifying",
-    message: "Analyzing document structure & academic eligibility...",
-    percent: 20,
+    message: "Stage 0: Screening technical completeness & publication integrity...",
+    percent: 15,
   });
+
   const heuristicClassification = manuscript.classification || classifyDocument(manuscript.rawText);
-  if (!heuristicClassification.isAcademicManuscript) {
+  manuscript.classification = heuristicClassification;
+
+  const publishedDetails = await detectPublishedArticle(manuscript.rawText, manuscript.title);
+  const verifiedRefs: ReferenceVerification[] = [];
+
+  const citationIntegrity = computeCitationIntegrity(
+    verifiedRefs,
+    manuscript.references.length,
+    manuscript.authors
+  );
+
+  const stage0 = runStage0Screening(manuscript, publishedDetails, citationIntegrity);
+
+  if (stage0.hardBlock) {
     onProgress?.({
       stage: "completed",
-      message: "Document classification complete (non-academic document bypassed).",
+      message: `Stage 0 Blocked: ${stage0.summary}`,
       percent: 100,
     });
     return {
@@ -715,43 +738,51 @@ export async function runManuscriptDiagnostic(
       createdAt: new Date().toISOString(),
       title: manuscript.title,
       authors: manuscript.authors,
-      targetJournal: targetJournalName,
+      targetJournal: publishedDetails?.journalName || targetJournalName,
+      funnelStageReached: "stage0_integrity",
       isEligibleForReview: false,
-      ineligibilityReason: "non_academic_document",
+      ineligibilityReason: stage0.blockReason as any,
+      publishedDetails: publishedDetails?.isPublished ? publishedDetails : undefined,
       overallScore: undefined,
-      summary:
-        heuristicClassification.advisoryMessage ||
-        `The uploaded document was classified as "${heuristicClassification.categoryLabel}". Pre-submission peer review evaluation has been safely bypassed.`,
+      summary: stage0.summary,
       classification: heuristicClassification,
       reviewerPersonas: [],
-      priorityIssues: [],
+      priorityIssues: stage0.blockers.map((b, idx) => ({
+        id: `iss-stage0-blocker-${idx}`,
+        priority: "A" as const,
+        title: "Stage 0 Technical Screening Blocker",
+        category: "Scope/Fit" as const,
+        description: b,
+        reviewerQuote: "",
+        actionableFix: "Resolve technical and integrity prerequisite before submitting for peer review.",
+        source: "heuristic" as const,
+      })),
       dimensions: undefined,
       journalRecommendations: [],
-      citationIntegrity: {
-        totalReferences: manuscript.references.length,
-        sampledCount: 0,
-        checkedCount: 0,
-        coverageNote: "No bibliography references checked.",
-        verifiedCount: 0,
-        unresolvableCount: 0,
-        uncheckedCount: manuscript.references.length,
-        retractedCount: 0,
-        expressionOfConcernCount: 0,
-        retractionCheckAvailable: false,
-        references: [],
-      },
+      citationIntegrity,
       reportingGuideline: undefined,
       executionMode: "heuristic_offline",
     };
   }
 
+  if (publishedDetails?.isPreprint) {
+    onProgress?.({
+      stage: "classifying",
+      message: `Stage 0 Passed: Identified pre-submission preprint on ${publishedDetails.preprintServer || "scholarly server"}. Proceeding to Stage 1...`,
+      percent: 20,
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // STAGE 1: 10-Minute Editorial Triage & Scope Screening Gate
+  // ---------------------------------------------------------------------------
   // Fetch or use preloaded live journal scope profile
   let liveJournalScope: JournalScopeProfile | null = preloadedScope || null;
   if (!liveJournalScope && targetJournalName && targetJournalName.trim().length >= 2) {
     onProgress?.({
       stage: "matching_journals",
       message: `Fetching live scope for "${targetJournalName}" from scholarly registries...`,
-      percent: 22,
+      percent: 25,
     });
     try {
       liveJournalScope = await fetchLiveJournalScope(targetJournalName);
@@ -760,7 +791,6 @@ export async function runManuscriptDiagnostic(
     }
   }
 
-  // Step 2.5: Early Scope Triage & Target Journal Scope Screening
   const earlyScopeTriage = await evaluateManuscriptScopeTriageWithLLM(
     manuscript.title,
     manuscript.abstract,
@@ -773,7 +803,7 @@ export async function runManuscriptDiagnostic(
       onProgress?.({
         stage: "matching_journals",
         message: msg,
-        percent: 22,
+        percent: 30,
       });
     }
   );
@@ -786,54 +816,8 @@ export async function runManuscriptDiagnostic(
       message: isTargetScopeMismatch
         ? `Scope Triage: Manuscript domain (${detectedDiscipline}) falls outside target journal aims. Direct desk reject flagged.`
         : `Scope Triage: Manuscript domain aligns with ${targetJournalName}. Advancing to review pipeline...`,
-      percent: 25,
+      percent: 35,
     });
-  }
-
-  // Step 3: Parallel Scholarly Pre-Checks (References & Publication)
-  onProgress?.({
-    stage: "verifying_references",
-    message: "Auditing permanent scholarly records...",
-    percent: 35,
-  });
-  // Citation integrity audit bypassed per user directive
-  const publishedDetails = await detectPublishedArticle(manuscript.rawText, manuscript.title);
-  const verifiedRefs: ReferenceVerification[] = [];
-
-  const citationIntegrity = computeCitationIntegrity(
-    verifiedRefs,
-    manuscript.references.length,
-    manuscript.authors
-  );
-
-  if (publishedDetails && publishedDetails.isPublished) {
-    onProgress?.({
-      stage: "completed",
-      message: "Document identified as already published.",
-      percent: 100,
-    });
-    const pubJournal = publishedDetails.journalName || targetJournalName || "an academic journal";
-    return {
-      mode: "full",
-      id: generateReportId("rev_"),
-      createdAt: new Date().toISOString(),
-      title: manuscript.title,
-      authors: manuscript.authors,
-      targetJournal: publishedDetails.journalName || targetJournalName,
-      isEligibleForReview: false,
-      ineligibilityReason: "already_published",
-      publishedDetails,
-      overallScore: undefined,
-      summary: `This article has already been published in ${pubJournal}${publishedDetails.publicationDate ? ` (${publishedDetails.publicationDate})` : ""}${publishedDetails.doi ? ` with official DOI ${publishedDetails.doi}` : ""}. Pre-submission peer review simulation has been safely bypassed.`,
-      classification: heuristicClassification,
-      reviewerPersonas: [],
-      priorityIssues: [],
-      dimensions: undefined,
-      journalRecommendations: [],
-      citationIntegrity,
-      reportingGuideline: undefined,
-      executionMode: "heuristic_offline",
-    };
   }
 
   // Step 4: Refine Journal Matching with Citation Intelligence
@@ -914,6 +898,41 @@ export async function runManuscriptDiagnostic(
       });
     }
 
+    const sixPillarResult = evaluateSixPillarDeskRejection({
+      manuscript,
+      detectedDiscipline,
+      targetJournalName,
+      effectiveJournalDiscipline:
+        earlyScopeTriage.editorialTriage.scopeComparison?.journalDiscipline ||
+        journalMatches.targetJournalEvaluation?.journalDiscipline,
+      isScopeMismatch: true,
+      citationIntegrity,
+      reportingGuideline: domainSynthesis.reportingGuideline,
+    });
+
+    const enrichedEditorialTriage: EditorialTriageOutcome = {
+      ...earlyScopeTriage.editorialTriage,
+      triageClassification: sixPillarResult.triageClassification,
+      pillarEvaluations: sixPillarResult.pillarEvaluations,
+      salvageRoadmap: sixPillarResult.salvageRoadmap,
+    };
+
+    const isMethodsMissing =
+      Boolean(manuscript.sectionProvenance?.methodsMissing) ||
+      !manuscript.sections?.methods ||
+      manuscript.sections.methods.length < 50;
+
+    const calibratedAcceptance = calculateCalibratedAcceptanceProbability({
+      overallScore: deskRejectScore,
+      dimensions: domainSynthesis.dimensions as Record<ScoreDimension, DimensionScore>,
+      targetJournal: targetJournalName,
+      targetJournalEvaluation: journalMatches.targetJournalEvaluation,
+      isScopeMismatch: true,
+      citationIntegrity,
+      isMethodsMissing,
+      empiricalCues: manuscript.empiricalCues,
+    });
+
     const panelConsensus = computePanelConsensus([], deskRejectScore);
 
     onProgress?.({
@@ -930,7 +949,9 @@ export async function runManuscriptDiagnostic(
       authors: manuscript.authors,
       targetJournal: targetJournalName,
       targetJournalEvaluation: journalMatches.targetJournalEvaluation,
-      editorialTriage: earlyScopeTriage.editorialTriage,
+      funnelStageReached: "stage1_triage",
+      editorialTriage: enrichedEditorialTriage,
+      calibratedAcceptance,
       overallScore: undefined,
       scoreUncertaintyMargin: undefined,
       panelConsensus: undefined,
@@ -1319,7 +1340,20 @@ export async function runManuscriptDiagnostic(
       }
     }
 
-    const assembledPersonas = [...llmPersonas];
+    // Resilient Backfill: If any persona role is missing from the LLM response,
+    // backfill with the corresponding grounded persona from domainSynthesis
+    // to guarantee all 5 personas are present and substantive.
+    const backfilledPersonas: ReviewerPersonaFeedback[] = [];
+    if (missingPersonaRoles.length > 0) {
+      for (const missingRole of missingPersonaRoles) {
+        const fallback = domainSynthesis.personas.find((p) => p.persona === missingRole);
+        if (fallback) {
+          backfilledPersonas.push(fallback);
+        }
+      }
+    }
+
+    const assembledPersonas = [...llmPersonas, ...backfilledPersonas];
     assembledPersonas.sort((a, b) => {
       const idxA = CANONICAL_PERSONA_ROLES.indexOf(a.persona);
       const idxB = CANONICAL_PERSONA_ROLES.indexOf(b.persona);
@@ -1347,27 +1381,75 @@ export async function runManuscriptDiagnostic(
     };
   }
 
-  const panelConsensus = computePanelConsensus(finalPersonas, finalOverallScore);
-  const scoreUncertaintyMargin = panelConsensus?.uncertaintyMargin;
+  // ---------------------------------------------------------------------------
+  // STAGE 2: Span Grounding & Validation Gate (Mechanical Hallucination Check)
+  // ---------------------------------------------------------------------------
+  const {
+    validatedPersonas,
+    validatedIssues,
+    coverage: verificationCoverage,
+  } = validateEvidenceSpansAndCoverage(finalPersonas, finalPriorityIssues, manuscript.rawText);
+
+  finalPersonas = validatedPersonas;
+  finalPriorityIssues = validatedIssues;
+
+  // ---------------------------------------------------------------------------
+  // STAGE 3: Decision Synthesis & Calibrated Probability Distribution
+  // ---------------------------------------------------------------------------
+  const sixPillarResult = evaluateSixPillarDeskRejection({
+    manuscript,
+    detectedDiscipline,
+    targetJournalName,
+    effectiveJournalDiscipline: journalMatches.targetJournalEvaluation?.journalDiscipline,
+    isScopeMismatch: isDeskRejectByScope,
+    citationIntegrity,
+    reportingGuideline: domainSynthesis.reportingGuideline,
+  });
 
   const editorialTriage: EditorialTriageOutcome = isDeskRejectByScope
     ? {
         outcome: "desk_reject",
+        triageClassification: sixPillarResult.triageClassification,
         sentToPeerReview: false,
         deskRejectReason: "scope_mismatch",
         handlingEditorDecision: "Desk Reject",
         summary: `Desk rejected at editorial triage: "${targetJournalName}" publishes in ${journalMatches.targetJournalEvaluation?.journalDiscipline}, whereas this manuscript's substantive domain is ${detectedDiscipline}. Out-of-scope submissions are declined by the handling editor during initial screening and do not proceed to peer review. Redirect the work to a ${detectedDiscipline} venue before resubmitting.`,
+        pillarEvaluations: sixPillarResult.pillarEvaluations,
+        salvageRoadmap: sixPillarResult.salvageRoadmap,
       }
     : {
         outcome: "sent_for_review",
+        triageClassification: sixPillarResult.triageClassification,
         sentToPeerReview: true,
         summary: `Cleared editorial triage (aims & scope aligned with ${targetJournalName || "the target field"}) and advanced to the peer-review panel for full evaluation.`,
+        pillarEvaluations: sixPillarResult.pillarEvaluations,
+        salvageRoadmap: sixPillarResult.salvageRoadmap,
       };
+
+  const isMethodsMissing =
+    Boolean(manuscript.sectionProvenance?.methodsMissing) ||
+    !manuscript.sections?.methods ||
+    manuscript.sections.methods.length < 50;
+
+  const calibratedAcceptance = calculateCalibratedAcceptanceProbability({
+    overallScore: finalOverallScore,
+    dimensions: finalDimensions,
+    targetJournal: targetJournalName,
+    targetJournalEvaluation: journalMatches.targetJournalEvaluation,
+    isScopeMismatch: isDeskRejectByScope,
+    citationIntegrity,
+    isMethodsMissing,
+    empiricalCues: manuscript.empiricalCues,
+  });
+  calibratedAcceptance.verificationCoverage = verificationCoverage;
 
   const finalRecommendations: JournalRecommendation[] =
     recsValidation.isValid && recsValidation.data
       ? recsValidation.data
       : domainSynthesis.journalRecommendations;
+
+  const panelConsensus = computePanelConsensus(finalPersonas, finalOverallScore);
+  const scoreUncertaintyMargin = panelConsensus?.uncertaintyMargin;
 
   const report: FullReviewReport = {
     mode: "full",
@@ -1377,7 +1459,10 @@ export async function runManuscriptDiagnostic(
     authors: manuscript.authors,
     targetJournal: targetJournalName,
     targetJournalEvaluation: journalMatches.targetJournalEvaluation,
+    funnelStageReached: "stage3_synthesis",
+    verificationCoverage,
     editorialTriage,
+    calibratedAcceptance,
     isEligibleForReview: !isDeskRejectByScope,
     ineligibilityReason: isDeskRejectByScope ? "scope_mismatch" : undefined,
     overallScore: isDeskRejectByScope ? undefined : finalOverallScore,
