@@ -239,6 +239,23 @@ export function DesktopDashboard({
   const [exportToast, setExportToast] = useState<string | null>(null);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Overview Tab Accordion State (Top card always open; 2nd card onwards collapsible)
+  const [expandedOverviewCards, setExpandedOverviewCards] = useState<Record<string, boolean>>({
+    calibratedAcceptance: false,
+    fivePillars: false,
+    editorialSynthesis: false,
+    documentClassification: false,
+    reportingGuideline: false,
+    complianceAudit: false,
+  });
+
+  const toggleOverviewCard = (cardKey: string) => {
+    setExpandedOverviewCards((prev) => ({
+      ...prev,
+      [cardKey]: !prev[cardKey],
+    }));
+  };
+
   // Citation Section Interactive States
   const [refSearchQuery, setRefSearchQuery] = useState("");
   const [refStatusFilter, setRefStatusFilter] = useState<"all" | "valid" | "retracted" | "unresolvable" | "unchecked">("all");
@@ -860,221 +877,246 @@ export function DesktopDashboard({
         : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800";
 
     return (
-      <div className="rounded-3xl liquid-glass-card p-6 sm:p-7 space-y-5 border border-black/[0.08] dark:border-white/[0.1]">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#E2E8F0] dark:border-[#1F2937]">
-          <div>
-            <div className="flex items-center gap-2">
+      <div className="rounded-3xl liquid-glass-card border border-black/[0.08] dark:border-white/[0.1] overflow-hidden transition-all duration-200">
+        <button
+          type="button"
+          onClick={() => toggleOverviewCard("calibratedAcceptance")}
+          className="w-full text-left p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition select-none"
+          aria-expanded={expandedOverviewCards.calibratedAcceptance}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 flex items-center justify-center shrink-0">
               <BarChart3 className="w-5 h-5 text-[#2563EB] dark:text-blue-400" />
-              <h3 className="text-base font-bold text-[#0F172A] dark:text-white">
-                Calibrated Acceptance Probability &amp; Selectivity Analysis
-              </h3>
             </div>
-            <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
-              Grounded against {targetJournal || "target journal"} baseline selectivity, multidimensional review score, and critical hazard penalties
-            </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-[#0F172A] dark:text-white">
+                  Calibrated Acceptance Probability &amp; Selectivity Analysis
+                </h3>
+              </div>
+              <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
+                Grounded against {targetJournal || "target journal"} baseline selectivity, multidimensional review score, and critical hazard penalties
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
             <span className={`px-3 py-1 rounded-full text-xs font-bold border ${outcomeColor}`}>
               {calibratedAcceptance.decisionOutcome}
             </span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Main Probability Metric */}
-          <div className="p-4 rounded-2xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] space-y-1 shadow-2xs">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-neutral-400">
-              Estimated Acceptance Probability
+            <span className={`text-xs font-extrabold px-2.5 py-1 rounded-full border ${
+              isHighRisk
+                ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800"
+                : isModerate
+                ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800"
+                : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
+            }`}>
+              {prob}%
             </span>
-            <div className="flex items-baseline gap-2">
-              <span className={`text-3xl sm:text-4xl font-black ${
-                isHighRisk
-                  ? "text-rose-600 dark:text-rose-400"
-                  : isModerate
-                  ? "text-amber-600 dark:text-amber-400"
-                  : "text-emerald-600 dark:text-emerald-400"
-              }`}>
-                {prob}%
-              </span>
-              <span className="text-xs font-mono text-neutral-500 dark:text-neutral-400">
-                [{calibratedAcceptance.probabilityRange[0]}% - {calibratedAcceptance.probabilityRange[1]}%]
-              </span>
+            <div className="w-7 h-7 rounded-full bg-neutral-100 dark:bg-[#1E293B] flex items-center justify-center text-neutral-500 dark:text-neutral-400 ml-1 shrink-0">
+              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expandedOverviewCards.calibratedAcceptance ? "rotate-180" : ""}`} />
             </div>
-            <span className="text-[11px] text-neutral-500 dark:text-neutral-400 block pt-1">
-              Target Baseline Selectivity: {calibratedAcceptance.baselineJournalRatePercent}%
-            </span>
           </div>
+        </button>
 
-          {/* Quality Multiplier */}
-          <div className="p-4 rounded-2xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] space-y-1 shadow-2xs">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-neutral-400">
-              Academic Quality Multiplier
-            </span>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl sm:text-3xl font-bold text-[#0F172A] dark:text-white">
-                {calibratedAcceptance.dimensionalMultiplier}×
-              </span>
-              <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                (Composite: {calibratedAcceptance.overallScore}/100)
-              </span>
-            </div>
-            <span className="text-[11px] text-neutral-500 dark:text-neutral-400 block pt-1">
-              Methodology (26%), Claims (22%), Novelty (18%), Scope (14%), Prior Work (12%), Clarity (8%)
-            </span>
-          </div>
-
-          {/* Deficit / Hazard Factor */}
-          <div className="p-4 rounded-2xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] space-y-1 shadow-2xs">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-neutral-400">
-              Compounded Deficit Factor
-            </span>
-            <div className="flex items-baseline gap-2">
-              <span className={`text-2xl sm:text-3xl font-bold ${
-                calibratedAcceptance.hazardPenaltyMultiplier < 0.5
-                  ? "text-rose-600 dark:text-rose-400"
-                  : calibratedAcceptance.hazardPenaltyMultiplier < 1.0
-                  ? "text-amber-600 dark:text-amber-400"
-                  : "text-emerald-600 dark:text-emerald-400"
-              }`}>
-                {calibratedAcceptance.hazardPenaltyMultiplier}×
-              </span>
-              <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                {calibratedAcceptance.hazardPenaltyMultiplier < 1.0 ? "Hazard Suppressed" : "Zero Fatal Penalties"}
-              </span>
-            </div>
-            <span className="text-[11px] text-neutral-500 dark:text-neutral-400 block pt-1">
-              Penalties: Scope mismatch (0.05×), Missing Methods (0.20×), Retractions (0.35×)
-            </span>
-          </div>
-        </div>
-
-        {/* 5-Category Decision Probability Distribution */}
-        {calibratedAcceptance.decisionDistribution && (
-          <div className="p-4 rounded-2xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] space-y-3 shadow-2xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+        {expandedOverviewCards.calibratedAcceptance && (
+          <div className="px-6 pb-6 sm:px-7 sm:pb-7 pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937] space-y-5 animate-fade-in">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Main Probability Metric */}
+              <div className="p-4 rounded-2xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] space-y-1 shadow-2xs">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-neutral-400">
-                  5-Category Decision Outcome Probability Distribution
+                  Estimated Acceptance Probability
                 </span>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                  calibratedAcceptance.decisionDistribution.confidence === "high"
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300"
-                    : calibratedAcceptance.decisionDistribution.confidence === "medium"
-                    ? "bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/50 dark:text-blue-300"
-                    : "bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/50 dark:text-amber-300"
-                }`}>
-                  {calibratedAcceptance.decisionDistribution.confidence.toUpperCase()} CONFIDENCE
-                </span>
-              </div>
-              {calibratedAcceptance.verificationCoverage && (
-                <span className="text-[10px] font-mono text-neutral-500 dark:text-neutral-400">
-                  Grounding Coverage: {calibratedAcceptance.verificationCoverage.coveragePercent}%
-                </span>
-              )}
-            </div>
-
-            {/* Horizontal stacked progress bar */}
-            <div className="h-3.5 w-full rounded-full overflow-hidden flex bg-neutral-200 dark:bg-neutral-800">
-              {calibratedAcceptance.decisionDistribution.p_desk_reject > 0 && (
-                <div
-                  style={{ width: `${calibratedAcceptance.decisionDistribution.p_desk_reject}%` }}
-                  className="bg-rose-500 transition-all duration-500"
-                  title={`Desk Reject: ${calibratedAcceptance.decisionDistribution.p_desk_reject}%`}
-                />
-              )}
-              {calibratedAcceptance.decisionDistribution.p_reject_after_review > 0 && (
-                <div
-                  style={{ width: `${calibratedAcceptance.decisionDistribution.p_reject_after_review}%` }}
-                  className="bg-amber-500 transition-all duration-500"
-                  title={`Reject After Review: ${calibratedAcceptance.decisionDistribution.p_reject_after_review}%`}
-                />
-              )}
-              {calibratedAcceptance.decisionDistribution.p_major_revision > 0 && (
-                <div
-                  style={{ width: `${calibratedAcceptance.decisionDistribution.p_major_revision}%` }}
-                  className="bg-blue-500 transition-all duration-500"
-                  title={`Major Revision: ${calibratedAcceptance.decisionDistribution.p_major_revision}%`}
-                />
-              )}
-              {calibratedAcceptance.decisionDistribution.p_minor_revision > 0 && (
-                <div
-                  style={{ width: `${calibratedAcceptance.decisionDistribution.p_minor_revision}%` }}
-                  className="bg-purple-500 transition-all duration-500"
-                  title={`Minor Revision: ${calibratedAcceptance.decisionDistribution.p_minor_revision}%`}
-                />
-              )}
-              {calibratedAcceptance.decisionDistribution.p_accept > 0 && (
-                <div
-                  style={{ width: `${calibratedAcceptance.decisionDistribution.p_accept}%` }}
-                  className="bg-emerald-500 transition-all duration-500"
-                  title={`Direct Accept: ${calibratedAcceptance.decisionDistribution.p_accept}%`}
-                />
-              )}
-            </div>
-
-            {/* Category Labels with percentages */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1 text-[11px]">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0" />
-                <span className="text-neutral-700 dark:text-neutral-300">Desk Reject: <strong>{calibratedAcceptance.decisionDistribution.p_desk_reject}%</strong></span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
-                <span className="text-neutral-700 dark:text-neutral-300">Reject Post-Rev: <strong>{calibratedAcceptance.decisionDistribution.p_reject_after_review}%</strong></span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0" />
-                <span className="text-neutral-700 dark:text-neutral-300">Major Revision: <strong>{calibratedAcceptance.decisionDistribution.p_major_revision}%</strong></span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0" />
-                <span className="text-neutral-700 dark:text-neutral-300">Minor Revision: <strong>{calibratedAcceptance.decisionDistribution.p_minor_revision}%</strong></span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
-                <span className="text-neutral-700 dark:text-neutral-300">Direct Accept: <strong>{calibratedAcceptance.decisionDistribution.p_accept}%</strong></span>
-              </div>
-            </div>
-
-            {/* Messy Middle / NeurIPS Disclaimer */}
-            {calibratedAcceptance.decisionDistribution.messy_middle_flag && (
-              <div className="p-2.5 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-[11px] text-purple-900 dark:text-purple-300 flex items-start gap-2 mt-2">
-                <AlertTriangle className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
-                <span>
-                  <strong>NeurIPS 2014 &quot;Messy Middle&quot; Alert:</strong> This submission scores in the competitive 44-70 quality band where real-world peer-review variance is maximal (57% outcome flip rate between independent committees). Substantial reviewer variance is expected.
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Primary Hazard & Key Opportunity Callouts */}
-        {(calibratedAcceptance.primaryHazard || calibratedAcceptance.keyOpportunity) && (
-          <div className="space-y-2 pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937]">
-            {calibratedAcceptance.primaryHazard && (
-              <div className="p-3.5 rounded-xl bg-rose-50/80 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/60 text-xs flex items-start gap-2.5">
-                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-bold text-rose-900 dark:text-rose-200 block uppercase tracking-wider text-[10px]">
-                    Primary Bottleneck Suppressing Acceptance:
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-3xl sm:text-4xl font-black ${
+                    isHighRisk
+                      ? "text-rose-600 dark:text-rose-400"
+                      : isModerate
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-emerald-600 dark:text-emerald-400"
+                  }`}>
+                    {prob}%
                   </span>
-                  <span className="text-rose-800 dark:text-rose-300 font-medium">
-                    {calibratedAcceptance.primaryHazard}
+                  <span className="text-xs font-mono text-neutral-500 dark:text-neutral-400">
+                    [{calibratedAcceptance.probabilityRange[0]}% - {calibratedAcceptance.probabilityRange[1]}%]
                   </span>
                 </div>
+                <span className="text-[11px] text-neutral-500 dark:text-neutral-400 block pt-1">
+                  Target Baseline Selectivity: {calibratedAcceptance.baselineJournalRatePercent}%
+                </span>
               </div>
-            )}
-            {calibratedAcceptance.keyOpportunity && (
-              <div className="p-3.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/60 text-xs flex items-start gap-2.5">
-                <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-bold text-blue-900 dark:text-blue-200 block uppercase tracking-wider text-[10px]">
-                    Highest-Leverage Pre-Submission Opportunity:
+
+              {/* Quality Multiplier */}
+              <div className="p-4 rounded-2xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] space-y-1 shadow-2xs">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-neutral-400">
+                  Academic Quality Multiplier
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-bold text-[#0F172A] dark:text-white">
+                    {calibratedAcceptance.dimensionalMultiplier}×
                   </span>
-                  <span className="text-blue-800 dark:text-blue-300 font-medium">
-                    {calibratedAcceptance.keyOpportunity}
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                    (Composite: {calibratedAcceptance.overallScore}/100)
                   </span>
                 </div>
+                <span className="text-[11px] text-neutral-500 dark:text-neutral-400 block pt-1">
+                  Methodology (26%), Claims (22%), Novelty (18%), Scope (14%), Prior Work (12%), Clarity (8%)
+                </span>
+              </div>
+
+              {/* Deficit / Hazard Factor */}
+              <div className="p-4 rounded-2xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] space-y-1 shadow-2xs">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-neutral-400">
+                  Compounded Deficit Factor
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-2xl sm:text-3xl font-bold ${
+                    calibratedAcceptance.hazardPenaltyMultiplier < 0.5
+                      ? "text-rose-600 dark:text-rose-400"
+                      : calibratedAcceptance.hazardPenaltyMultiplier < 1.0
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-emerald-600 dark:text-emerald-400"
+                  }`}>
+                    {calibratedAcceptance.hazardPenaltyMultiplier}×
+                  </span>
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                    {calibratedAcceptance.hazardPenaltyMultiplier < 1.0 ? "Hazard Suppressed" : "Zero Fatal Penalties"}
+                  </span>
+                </div>
+                <span className="text-[11px] text-neutral-500 dark:text-neutral-400 block pt-1">
+                  Penalties: Scope mismatch (0.05×), Missing Methods (0.20×), Retractions (0.35×)
+                </span>
+              </div>
+            </div>
+
+            {/* 5-Category Decision Probability Distribution */}
+            {calibratedAcceptance.decisionDistribution && (
+              <div className="p-4 rounded-2xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] space-y-3 shadow-2xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-neutral-400">
+                      5-Category Decision Outcome Probability Distribution
+                    </span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      calibratedAcceptance.decisionDistribution.confidence === "high"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300"
+                        : calibratedAcceptance.decisionDistribution.confidence === "medium"
+                        ? "bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/50 dark:text-blue-300"
+                        : "bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/50 dark:text-amber-300"
+                    }`}>
+                      {calibratedAcceptance.decisionDistribution.confidence.toUpperCase()} CONFIDENCE
+                    </span>
+                  </div>
+                  {calibratedAcceptance.verificationCoverage && (
+                    <span className="text-[10px] font-mono text-neutral-500 dark:text-neutral-400">
+                      Grounding Coverage: {calibratedAcceptance.verificationCoverage.coveragePercent}%
+                    </span>
+                  )}
+                </div>
+
+                {/* Horizontal stacked progress bar */}
+                <div className="h-3.5 w-full rounded-full overflow-hidden flex bg-neutral-200 dark:bg-neutral-800">
+                  {calibratedAcceptance.decisionDistribution.p_desk_reject > 0 && (
+                    <div
+                      style={{ width: `${calibratedAcceptance.decisionDistribution.p_desk_reject}%` }}
+                      className="bg-rose-500 transition-all duration-500"
+                      title={`Desk Reject: ${calibratedAcceptance.decisionDistribution.p_desk_reject}%`}
+                    />
+                  )}
+                  {calibratedAcceptance.decisionDistribution.p_reject_after_review > 0 && (
+                    <div
+                      style={{ width: `${calibratedAcceptance.decisionDistribution.p_reject_after_review}%` }}
+                      className="bg-amber-500 transition-all duration-500"
+                      title={`Reject After Review: ${calibratedAcceptance.decisionDistribution.p_reject_after_review}%`}
+                    />
+                  )}
+                  {calibratedAcceptance.decisionDistribution.p_major_revision > 0 && (
+                    <div
+                      style={{ width: `${calibratedAcceptance.decisionDistribution.p_major_revision}%` }}
+                      className="bg-blue-500 transition-all duration-500"
+                      title={`Major Revision: ${calibratedAcceptance.decisionDistribution.p_major_revision}%`}
+                    />
+                  )}
+                  {calibratedAcceptance.decisionDistribution.p_minor_revision > 0 && (
+                    <div
+                      style={{ width: `${calibratedAcceptance.decisionDistribution.p_minor_revision}%` }}
+                      className="bg-purple-500 transition-all duration-500"
+                      title={`Minor Revision: ${calibratedAcceptance.decisionDistribution.p_minor_revision}%`}
+                    />
+                  )}
+                  {calibratedAcceptance.decisionDistribution.p_accept > 0 && (
+                    <div
+                      style={{ width: `${calibratedAcceptance.decisionDistribution.p_accept}%` }}
+                      className="bg-emerald-500 transition-all duration-500"
+                      title={`Direct Accept: ${calibratedAcceptance.decisionDistribution.p_accept}%`}
+                    />
+                  )}
+                </div>
+
+                {/* Category Labels with percentages */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1 text-[11px]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0" />
+                    <span className="text-neutral-700 dark:text-neutral-300">Desk Reject: <strong>{calibratedAcceptance.decisionDistribution.p_desk_reject}%</strong></span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
+                    <span className="text-neutral-700 dark:text-neutral-300">Reject Post-Rev: <strong>{calibratedAcceptance.decisionDistribution.p_reject_after_review}%</strong></span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0" />
+                    <span className="text-neutral-700 dark:text-neutral-300">Major Revision: <strong>{calibratedAcceptance.decisionDistribution.p_major_revision}%</strong></span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0" />
+                    <span className="text-neutral-700 dark:text-neutral-300">Minor Revision: <strong>{calibratedAcceptance.decisionDistribution.p_minor_revision}%</strong></span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="text-neutral-700 dark:text-neutral-300">Direct Accept: <strong>{calibratedAcceptance.decisionDistribution.p_accept}%</strong></span>
+                  </div>
+                </div>
+
+                {/* Messy Middle / NeurIPS Disclaimer */}
+                {calibratedAcceptance.decisionDistribution.messy_middle_flag && (
+                  <div className="p-2.5 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-[11px] text-purple-900 dark:text-purple-300 flex items-start gap-2 mt-2">
+                    <AlertTriangle className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
+                    <span>
+                      <strong>NeurIPS 2014 &quot;Messy Middle&quot; Alert:</strong> This submission scores in the competitive 44-70 quality band where real-world peer-review variance is maximal (57% outcome flip rate between independent committees). Substantial reviewer variance is expected.
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Primary Hazard & Key Opportunity Callouts */}
+            {(calibratedAcceptance.primaryHazard || calibratedAcceptance.keyOpportunity) && (
+              <div className="space-y-2 pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937]">
+                {calibratedAcceptance.primaryHazard && (
+                  <div className="p-3.5 rounded-xl bg-rose-50/80 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/60 text-xs flex items-start gap-2.5">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold text-rose-900 dark:text-rose-200 block uppercase tracking-wider text-[10px]">
+                        Primary Bottleneck Suppressing Acceptance:
+                      </span>
+                      <span className="text-rose-800 dark:text-rose-300 font-medium">
+                        {calibratedAcceptance.primaryHazard}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {calibratedAcceptance.keyOpportunity && (
+                  <div className="p-3.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/60 text-xs flex items-start gap-2.5">
+                    <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold text-blue-900 dark:text-blue-200 block uppercase tracking-wider text-[10px]">
+                        Highest-Leverage Pre-Submission Opportunity:
+                      </span>
+                      <span className="text-blue-800 dark:text-blue-300 font-medium">
+                        {calibratedAcceptance.keyOpportunity}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1084,42 +1126,29 @@ export function DesktopDashboard({
   };
 
   // --- 5-Pillar Editorial Screening Matrix Card ---
-  const renderFivePillarTriageCard = () => {
+  const renderFivePillarTriageCard = (isAccordion = true) => {
     const triage = currentReport?.editorialTriage || fullReport?.editorialTriage || data.editorialTriage;
     const pillars = triage?.pillarEvaluations;
     if (!pillars || pillars.length === 0) return null;
 
     const classification = triage.triageClassification || (isDeskReject ? "fatal_desk_reject" : "cleared_for_review");
 
-    return (
-      <div className="rounded-3xl liquid-glass-card p-6 sm:p-7 space-y-5 border border-black/[0.08] dark:border-white/[0.1]">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#E2E8F0] dark:border-[#1F2937]">
-          <div>
-            <div className="flex items-center gap-2">
-              <ShieldAlert className="w-5 h-5 text-[#2563EB] dark:text-blue-400" />
-              <h3 className="text-base font-bold text-[#0F172A] dark:text-white">
-                Handling Editor Screening Matrix (6-Pillar Triage)
-              </h3>
-            </div>
-            <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
-              Handling editor pre-review triage evaluating fatal desk-reject barriers vs. actionable submission hazards across empirical base rates
-            </p>
-          </div>
-          <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
-            classification === "fatal_desk_reject"
-              ? "bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800"
-              : classification === "actionable_desk_reject_risk"
-              ? "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
-              : "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
-          }`}>
-            {classification === "fatal_desk_reject"
-              ? "⛔ Fatal Desk Reject Barrier"
-              : classification === "actionable_desk_reject_risk"
-              ? "⚠️ Actionable Desk Reject Risk"
-              : "✅ Cleared Editorial Screening"}
-          </span>
-        </div>
+    const badgeClasses =
+      classification === "fatal_desk_reject"
+        ? "bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800"
+        : classification === "actionable_desk_reject_risk"
+        ? "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
+        : "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800";
 
+    const badgeLabel =
+      classification === "fatal_desk_reject"
+        ? "⛔ Fatal Desk Reject Barrier"
+        : classification === "actionable_desk_reject_risk"
+        ? "⚠️ Actionable Desk Reject Risk"
+        : "✅ Cleared Editorial Screening";
+
+    const content = (
+      <>
         {/* 6-Pillar Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {pillars.map((p, idx) => {
@@ -1197,6 +1226,69 @@ export function DesktopDashboard({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+      </>
+    );
+
+    if (!isAccordion) {
+      return (
+        <div className="rounded-3xl liquid-glass-card p-6 sm:p-7 space-y-5 border border-black/[0.08] dark:border-white/[0.1]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#E2E8F0] dark:border-[#1F2937]">
+            <div>
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="w-5 h-5 text-[#2563EB] dark:text-blue-400" />
+                <h3 className="text-base font-bold text-[#0F172A] dark:text-white">
+                  Handling Editor Screening Matrix (6-Pillar Triage)
+                </h3>
+              </div>
+              <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
+                Handling editor pre-review triage evaluating fatal desk-reject barriers vs. actionable submission hazards across empirical base rates
+              </p>
+            </div>
+            <span className={`px-3 py-1 rounded-full text-xs font-bold border ${badgeClasses}`}>
+              {badgeLabel}
+            </span>
+          </div>
+          {content}
+        </div>
+      );
+    }
+
+    return (
+      <div className="rounded-3xl liquid-glass-card border border-black/[0.08] dark:border-white/[0.1] overflow-hidden transition-all duration-200">
+        <button
+          type="button"
+          onClick={() => toggleOverviewCard("fivePillars")}
+          className="w-full text-left p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition select-none"
+          aria-expanded={expandedOverviewCards.fivePillars}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 flex items-center justify-center shrink-0">
+              <ShieldAlert className="w-5 h-5 text-[#2563EB] dark:text-blue-400" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-[#0F172A] dark:text-white">
+                Handling Editor Screening Matrix (6-Pillar Triage)
+              </h3>
+              <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
+                Handling editor pre-review triage evaluating fatal desk-reject barriers vs. actionable submission hazards across empirical base rates
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
+            <span className={`px-3 py-1 rounded-full text-xs font-bold border ${badgeClasses}`}>
+              {badgeLabel}
+            </span>
+            <div className="w-7 h-7 rounded-full bg-neutral-100 dark:bg-[#1E293B] flex items-center justify-center text-neutral-500 dark:text-neutral-400 ml-1 shrink-0">
+              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expandedOverviewCards.fivePillars ? "rotate-180" : ""}`} />
+            </div>
+          </div>
+        </button>
+
+        {expandedOverviewCards.fivePillars && (
+          <div className="px-6 pb-6 sm:px-7 sm:pb-7 pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937] space-y-5 animate-fade-in">
+            {content}
           </div>
         )}
       </div>
@@ -1473,7 +1565,7 @@ export function DesktopDashboard({
           </div>
         )}
 
-        {isDeskReject && renderFivePillarTriageCard()}
+        {isDeskReject && renderFivePillarTriageCard(false)}
 
         {/* Panel Consensus & Score Uncertainty Card (P0-3) */}
         {fullReport?.panelConsensus && (
@@ -2933,236 +3025,360 @@ export function DesktopDashboard({
               )}
             </div>
 
+            {/* Overview Diagnostics & Audits Accordion Header */}
+            {!isNonAcademic && (
+              <div className="flex items-center justify-between pt-1 px-1">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-neutral-400">
+                  Detailed Diagnoses &amp; Pre-Submission Audits
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const anyOpen = Object.values(expandedOverviewCards).some(Boolean);
+                    setExpandedOverviewCards({
+                      calibratedAcceptance: !anyOpen,
+                      fivePillars: !anyOpen,
+                      editorialSynthesis: !anyOpen,
+                      documentClassification: !anyOpen,
+                      reportingGuideline: !anyOpen,
+                      complianceAudit: !anyOpen,
+                    });
+                  }}
+                  className="text-xs font-semibold text-[#2563EB] dark:text-blue-400 hover:underline cursor-pointer"
+                >
+                  {Object.values(expandedOverviewCards).some(Boolean) ? "Collapse all" : "Expand all"}
+                </button>
+              </div>
+            )}
+
             {/* CARD 1B: Calibrated Pre-Submission Acceptance Probability & Selectivity Analysis */}
             {!isNonAcademic && renderCalibratedAcceptanceCard()}
 
             {/* CARD 1C: 5-Pillar Editorial Screening Matrix */}
-            {!isNonAcademic && renderFivePillarTriageCard()}
+            {!isNonAcademic && renderFivePillarTriageCard(true)}
 
             {/* CARD 2: Editorial Synthesis & Triage Assessment Card (Omitted for non-academic documents) */}
             {!isNonAcademic && (
-              <div className="rounded-3xl liquid-glass-card p-6 sm:p-7 space-y-3">
-                <h2 className="text-base font-bold text-[#0F172A] dark:text-white">
-                  Editorial Synthesis &amp; Triage Assessment
-                </h2>
-                <p className="text-xs sm:text-sm text-[#334155] dark:text-neutral-300 leading-relaxed font-light whitespace-pre-line">
-                  {summary || data.statusText}
-                </p>
+              <div className="rounded-3xl liquid-glass-card border border-black/[0.08] dark:border-white/[0.1] overflow-hidden transition-all duration-200">
+                <button
+                  type="button"
+                  onClick={() => toggleOverviewCard("editorialSynthesis")}
+                  className="w-full text-left p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition select-none"
+                  aria-expanded={expandedOverviewCards.editorialSynthesis}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 flex items-center justify-center shrink-0">
+                      <FileText className="w-5 h-5 text-[#2563EB] dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-[#0F172A] dark:text-white">
+                        Editorial Synthesis &amp; Triage Assessment
+                      </h2>
+                      <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
+                        High-level summary of editorial decisions, peer readiness, and recommendations
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
+                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-neutral-100 dark:bg-[#1E293B] text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">
+                      Editorial Review
+                    </span>
+                    <div className="w-7 h-7 rounded-full bg-neutral-100 dark:bg-[#1E293B] flex items-center justify-center text-neutral-500 dark:text-neutral-400 ml-1 shrink-0">
+                      <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expandedOverviewCards.editorialSynthesis ? "rotate-180" : ""}`} />
+                    </div>
+                  </div>
+                </button>
+
+                {expandedOverviewCards.editorialSynthesis && (
+                  <div className="px-6 pb-6 sm:px-7 sm:pb-7 pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937] animate-fade-in">
+                    <p className="text-xs sm:text-sm text-[#334155] dark:text-neutral-300 leading-relaxed font-light whitespace-pre-line">
+                      {summary || data.statusText}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
             {/* CARD 3: Document Classification Card (Only for review-eligible manuscripts; omitted for published articles and non-academic documents) */}
             {isReviewEligible && (
-              <div className="rounded-3xl liquid-glass-card border-l-4 border-l-[#2563EB] dark:border-l-blue-500 p-6 sm:p-7 space-y-3">
-                <h2 className="text-base font-bold text-[#0F172A] dark:text-white">
-                  Document Classification: {classification?.categoryLabel || "Academic Research Manuscript"}
-                </h2>
+              <div className="rounded-3xl liquid-glass-card border border-black/[0.08] dark:border-white/[0.1] border-l-4 border-l-[#2563EB] dark:border-l-blue-500 overflow-hidden transition-all duration-200">
+                <button
+                  type="button"
+                  onClick={() => toggleOverviewCard("documentClassification")}
+                  className="w-full text-left p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition select-none"
+                  aria-expanded={expandedOverviewCards.documentClassification}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 flex items-center justify-center shrink-0">
+                      <Tag className="w-5 h-5 text-[#2563EB] dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-[#0F172A] dark:text-white">
+                        Document Classification: {classification?.categoryLabel || "Academic Research Manuscript"}
+                      </h2>
+                      <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
+                        Detected document typology and tailored pre-submission guidance
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
+                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60">
+                      {classification?.categoryLabel || "Research Manuscript"}
+                    </span>
+                    <div className="w-7 h-7 rounded-full bg-neutral-100 dark:bg-[#1E293B] flex items-center justify-center text-neutral-500 dark:text-neutral-400 ml-1 shrink-0">
+                      <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expandedOverviewCards.documentClassification ? "rotate-180" : ""}`} />
+                    </div>
+                  </div>
+                </button>
 
-                <p className="text-xs sm:text-sm text-[#334155] dark:text-neutral-300 leading-relaxed">
-                  <strong className="font-bold text-[#0F172A] dark:text-white">
-                    {classification?.salutation ? (classification.salutation.endsWith(":") ? classification.salutation : `${classification.salutation}:`) : "Dear Author / Contributing Researcher:"}
-                  </strong>{" "}
-                  {classification?.advisoryMessage ||
-                    "This manuscript has undergone rigorous pre-submission peer-review calibration across core methodological, empirical, and bibliographic dimensions against the target journal's editorial standards."}
-                </p>
+                {expandedOverviewCards.documentClassification && (
+                  <div className="px-6 pb-6 sm:px-7 sm:pb-7 pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937] space-y-3 animate-fade-in">
+                    <p className="text-xs sm:text-sm text-[#334155] dark:text-neutral-300 leading-relaxed">
+                      <strong className="font-bold text-[#0F172A] dark:text-white">
+                        {classification?.salutation ? (classification.salutation.endsWith(":") ? classification.salutation : `${classification.salutation}:`) : "Dear Author / Contributing Researcher:"}
+                      </strong>{" "}
+                      {classification?.advisoryMessage ||
+                        "This manuscript has undergone rigorous pre-submission peer-review calibration across core methodological, empirical, and bibliographic dimensions against the target journal's editorial standards."}
+                    </p>
 
-                {/* Detected Academic Features Pills */}
-                {classification?.detectedFeatures && classification.detectedFeatures.length > 0 && (
-                  <div className="pt-1 flex flex-wrap gap-1.5">
-                    {classification.detectedFeatures.map((feat, idx) => (
-                      <span
-                        key={idx}
-                        className="text-[11px] px-2.5 py-0.5 rounded-full font-medium bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60"
-                      >
-                        &bull; {feat}
-                      </span>
-                    ))}
+                    {/* Detected Academic Features Pills */}
+                    {classification?.detectedFeatures && classification.detectedFeatures.length > 0 && (
+                      <div className="pt-1 flex flex-wrap gap-1.5">
+                        {classification.detectedFeatures.map((feat, idx) => (
+                          <span
+                            key={idx}
+                            className="text-[11px] px-2.5 py-0.5 rounded-full font-medium bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60"
+                          >
+                            &bull; {feat}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <p className="text-xs sm:text-sm text-[#64748B] dark:text-neutral-400 leading-relaxed">
+                      {classification?.customGuidance ||
+                        "Review prioritized action items and simulated referee assessments before submitting to your target journal."}
+                    </p>
                   </div>
                 )}
-
-                <p className="text-xs sm:text-sm text-[#64748B] dark:text-neutral-400 leading-relaxed">
-                  {classification?.customGuidance ||
-                    "Review prioritized action items and simulated referee assessments before submitting to your target journal."}
-                </p>
               </div>
             )}
 
             {/* CARD 4: Reporting Guideline Compliance Audit (Only for eligible manuscripts) */}
             {isReviewEligible && fullReport?.reportingGuideline && (
-              <div className="rounded-3xl liquid-glass-card p-6 sm:p-7 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E2E8F0] dark:border-[#1F2937]">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <Scale className="w-4 h-4 text-[#2563EB] dark:text-blue-400 shrink-0" />
-                      <h2 className="text-base font-bold text-[#0F172A] dark:text-white">
-                        Reporting Guideline Compliance: {fullReport.reportingGuideline.guidelineName}
-                      </h2>
+              <div className="rounded-3xl liquid-glass-card border border-black/[0.08] dark:border-white/[0.1] overflow-hidden transition-all duration-200">
+                <button
+                  type="button"
+                  onClick={() => toggleOverviewCard("reportingGuideline")}
+                  className="w-full text-left p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition select-none"
+                  aria-expanded={expandedOverviewCards.reportingGuideline}
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 flex items-center justify-center shrink-0">
+                      <Scale className="w-5 h-5 text-[#2563EB] dark:text-blue-400" />
                     </div>
-                    <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
-                      Standard: {fullReport.reportingGuideline.standardType}
-                      {fullReport.reportingGuideline.standardUrl && (
-                        <>
-                          {" "}&bull;{" "}
-                          <a
-                            href={fullReport.reportingGuideline.standardUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="underline hover:text-blue-600 dark:hover:text-blue-300 text-neutral-600 dark:text-neutral-400"
-                          >
-                            Official Checklist &amp; Guidelines &rarr;
-                          </a>
-                        </>
-                      )}
-                    </p>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-base font-bold text-[#0F172A] dark:text-white truncate">
+                          Reporting Guideline Compliance: {fullReport.reportingGuideline.guidelineName}
+                        </h2>
+                      </div>
+                      <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
+                        Standard: {fullReport.reportingGuideline.standardType}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-                    <span className="text-xs font-semibold text-[#64748B] dark:text-neutral-400 whitespace-nowrap">Audit Score:</span>
-                    <span className="text-sm sm:text-base font-extrabold text-[#2563EB] dark:text-blue-400 bg-[#EFF6FF] dark:bg-blue-950/50 px-3 py-1 rounded-full border border-blue-200 dark:border-blue-800 shrink-0 whitespace-nowrap">
+                  <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
+                    <span className="text-xs font-semibold text-[#64748B] dark:text-neutral-400 whitespace-nowrap hidden sm:inline">Audit Score:</span>
+                    <span className="text-xs sm:text-base font-extrabold text-[#2563EB] dark:text-blue-400 bg-[#EFF6FF] dark:bg-blue-950/50 px-3 py-1 rounded-full border border-blue-200 dark:border-blue-800 shrink-0 whitespace-nowrap">
                       {fullReport.reportingGuideline.itemSetScope === "core_subset"
-                        ? `${fullReport.reportingGuideline.evidencedCount}/${fullReport.reportingGuideline.totalItems} core items evidenced (${fullReport.reportingGuideline.itemSetSize} in full standard; ${fullReport.reportingGuideline.scorePercent}%)`
+                        ? `${fullReport.reportingGuideline.evidencedCount}/${fullReport.reportingGuideline.totalItems} core (${fullReport.reportingGuideline.scorePercent}%)`
                         : fullReport.reportingGuideline.evidencedCount !== undefined && fullReport.reportingGuideline.totalItems !== undefined
-                        ? `${fullReport.reportingGuideline.evidencedCount}/${fullReport.reportingGuideline.totalItems} Evidenced (${fullReport.reportingGuideline.scorePercent}%)`
+                        ? `${fullReport.reportingGuideline.evidencedCount}/${fullReport.reportingGuideline.totalItems} (${fullReport.reportingGuideline.scorePercent}%)`
                         : `${fullReport.reportingGuideline.scorePercent}%`}
                     </span>
+                    <div className="w-7 h-7 rounded-full bg-neutral-100 dark:bg-[#1E293B] flex items-center justify-center text-neutral-500 dark:text-neutral-400 ml-1 shrink-0">
+                      <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expandedOverviewCards.reportingGuideline ? "rotate-180" : ""}`} />
+                    </div>
                   </div>
-                </div>
+                </button>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 rounded-xl bg-[#F0FDF4] dark:bg-emerald-950/30 border border-[#BBF7D0] dark:border-emerald-800/60 space-y-2">
-                    <span className="text-xs font-bold text-[#166534] dark:text-emerald-300 uppercase tracking-wider block">
-                      Compliant Checklist Items:
-                    </span>
-                    <ul className="space-y-2 text-xs text-[#166534] dark:text-emerald-300">
-                      {fullReport.reportingGuideline.compliantItems.map((item, idx) => {
-                        const [heading, ...rest] = item.split(" — ");
-                        const excerpt = rest.join(" — ");
-                        return (
-                          <li key={idx} className="flex items-start gap-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#16A34A] dark:text-emerald-400" />
-                            <div className="space-y-0.5">
-                              <span className="font-semibold">{heading}</span>
-                              {excerpt && (
-                                <p className="text-[11px] text-emerald-800/80 dark:text-emerald-300/80 italic pl-2 border-l-2 border-emerald-300 dark:border-emerald-700">
-                                  {excerpt}
-                                </p>
-                              )}
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
+                {expandedOverviewCards.reportingGuideline && (
+                  <div className="px-6 pb-6 sm:px-7 sm:pb-7 pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937] space-y-4 animate-fade-in">
+                    {fullReport.reportingGuideline.standardUrl && (
+                      <div className="text-xs text-[#64748B] dark:text-neutral-400 pb-1">
+                        <a
+                          href={fullReport.reportingGuideline.standardUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline hover:text-blue-600 dark:hover:text-blue-300 text-neutral-600 dark:text-neutral-400 inline-flex items-center gap-1"
+                        >
+                          Official Checklist &amp; Guidelines &rarr;
+                        </a>
+                      </div>
+                    )}
 
-                  <div className="p-4 rounded-xl bg-[#FFFBEB] dark:bg-amber-950/30 border border-[#FDE68A] dark:border-amber-800/60 space-y-2">
-                    <span className="text-xs font-bold text-[#92400E] dark:text-amber-300 uppercase tracking-wider block">
-                      Missing or Partial Reporting Items:
-                    </span>
-                    <ul className="space-y-2 text-xs text-[#92400E] dark:text-amber-300">
-                      {fullReport.reportingGuideline.missingOrPartialItems.map((item, idx) => {
-                        const [heading, ...rest] = item.split(" — ");
-                        const recommendation = rest.join(" — ");
-                        return (
-                          <li key={idx} className="flex items-start gap-1.5">
-                            <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#D97706] dark:text-amber-400" />
-                            <div className="space-y-0.5">
-                              <span className="font-semibold">{heading}</span>
-                              {recommendation && (
-                                <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 pl-2 border-l-2 border-amber-300 dark:border-amber-700">
-                                  {recommendation}
-                                </p>
-                              )}
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-
-                  {(() => {
-                    const substantiveObservations = (
-                      fullReport.reportingGuideline.additionalReviewerObservations || []
-                    ).filter(isSubstantiveReviewerObservation);
-
-                    if (substantiveObservations.length === 0) return null;
-
-                    return (
-                      <div className="p-4 rounded-xl bg-black/[0.02] dark:bg-white/[0.04] border border-[#E2E8F0] dark:border-[#334155] space-y-2 text-xs md:col-span-2">
-                        <span className="font-semibold text-[#475569] dark:text-neutral-300 uppercase tracking-wider text-[10px] block">
-                          Additional Reviewer Observations:
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 rounded-xl bg-[#F0FDF4] dark:bg-emerald-950/30 border border-[#BBF7D0] dark:border-emerald-800/60 space-y-2">
+                        <span className="text-xs font-bold text-[#166534] dark:text-emerald-300 uppercase tracking-wider block">
+                          Compliant Checklist Items:
                         </span>
-                        <ul className="space-y-1 text-[#334155] dark:text-neutral-300">
-                          {substantiveObservations.map((obs, idx) => (
-                            <li key={idx} className="flex items-start gap-1.5">
-                              <span className="text-gray-400">&bull;</span>
-                              <span>{obs}</span>
-                            </li>
-                          ))}
+                        <ul className="space-y-2 text-xs text-[#166534] dark:text-emerald-300">
+                          {fullReport.reportingGuideline.compliantItems.map((item, idx) => {
+                            const [heading, ...rest] = item.split(" — ");
+                            const excerpt = rest.join(" — ");
+                            return (
+                              <li key={idx} className="flex items-start gap-1.5">
+                                <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#16A34A] dark:text-emerald-400" />
+                                <div className="space-y-0.5">
+                                  <span className="font-semibold">{heading}</span>
+                                  {excerpt && (
+                                    <p className="text-[11px] text-emerald-800/80 dark:text-emerald-300/80 italic pl-2 border-l-2 border-emerald-300 dark:border-emerald-700">
+                                      {excerpt}
+                                    </p>
+                                  )}
+                                </div>
+                              </li>
+                            );
+                          })}
                         </ul>
                       </div>
-                    );
-                  })()}
-                </div>
+
+                      <div className="p-4 rounded-xl bg-[#FFFBEB] dark:bg-amber-950/30 border border-[#FDE68A] dark:border-amber-800/60 space-y-2">
+                        <span className="text-xs font-bold text-[#92400E] dark:text-amber-300 uppercase tracking-wider block">
+                          Missing or Partial Reporting Items:
+                        </span>
+                        <ul className="space-y-2 text-xs text-[#92400E] dark:text-amber-300">
+                          {fullReport.reportingGuideline.missingOrPartialItems.map((item, idx) => {
+                            const [heading, ...rest] = item.split(" — ");
+                            const recommendation = rest.join(" — ");
+                            return (
+                              <li key={idx} className="flex items-start gap-1.5">
+                                <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#D97706] dark:text-amber-400" />
+                                <div className="space-y-0.5">
+                                  <span className="font-semibold">{heading}</span>
+                                  {recommendation && (
+                                    <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80 pl-2 border-l-2 border-amber-300 dark:border-amber-700">
+                                      {recommendation}
+                                    </p>
+                                  )}
+                                </div>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+
+                      {(() => {
+                        const substantiveObservations = (
+                          fullReport.reportingGuideline.additionalReviewerObservations || []
+                        ).filter(isSubstantiveReviewerObservation);
+
+                        if (substantiveObservations.length === 0) return null;
+
+                        return (
+                          <div className="p-4 rounded-xl bg-black/[0.02] dark:bg-white/[0.04] border border-[#E2E8F0] dark:border-[#334155] space-y-2 text-xs md:col-span-2">
+                            <span className="font-semibold text-[#475569] dark:text-neutral-300 uppercase tracking-wider text-[10px] block">
+                              Additional Reviewer Observations:
+                            </span>
+                            <ul className="space-y-1 text-[#334155] dark:text-neutral-300">
+                              {substantiveObservations.map((obs, idx) => (
+                                <li key={idx} className="flex items-start gap-1.5">
+                                  <span className="text-gray-400">&bull;</span>
+                                  <span>{obs}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
             {/* CARD 5: Deterministic Compliance Audit (P0-1) */}
             {fullReport?.complianceAudit && fullReport.complianceAudit.items && fullReport.complianceAudit.items.length > 0 && (
-              <div className="rounded-3xl liquid-glass-card p-6 sm:p-7 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E2E8F0] dark:border-[#1F2937]">
-                  <div className="flex items-center gap-2">
-                    <CheckSquare className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                    <h2 className="text-base font-bold text-[#0F172A] dark:text-white">
-                      Deterministic Compliance Audit
-                    </h2>
-                    <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded border border-neutral-200 dark:border-neutral-700">
-                      Rule-Based
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs font-medium">
-                    <span className="text-emerald-700 dark:text-emerald-400 font-bold">{fullReport.complianceAudit.passedCount} Passed</span>
-                    <span className="text-neutral-300 dark:text-neutral-700">•</span>
-                    <span className="text-amber-700 dark:text-amber-400 font-bold">{fullReport.complianceAudit.warnCount} Warnings</span>
-                    <span className="text-neutral-300 dark:text-neutral-700">•</span>
-                    <span className="text-rose-700 dark:text-rose-400 font-bold">{fullReport.complianceAudit.failedCount} Failures</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {fullReport.complianceAudit.items.map((item) => (
-                    <div
-                      key={item.id}
-                      className={`p-4 rounded-2xl border transition shadow-2xs ${
-                        item.status === "pass"
-                          ? "bg-white border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937]"
-                          : item.status === "warn"
-                          ? "bg-amber-50/50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800/40"
-                          : "bg-rose-50/50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-800/40"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2 mb-1.5">
-                        <span className="text-xs font-bold text-neutral-900 dark:text-white">{item.name}</span>
-                        <span
-                          className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider border shrink-0 ${
-                            item.status === "pass"
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
-                              : item.status === "warn"
-                              ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
-                              : "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800"
-                          }`}
-                        >
-                          {item.status}
+              <div className="rounded-3xl liquid-glass-card border border-black/[0.08] dark:border-white/[0.1] overflow-hidden transition-all duration-200">
+                <button
+                  type="button"
+                  onClick={() => toggleOverviewCard("complianceAudit")}
+                  className="w-full text-left p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition select-none"
+                  aria-expanded={expandedOverviewCards.complianceAudit}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 flex items-center justify-center shrink-0">
+                      <CheckSquare className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-base font-bold text-[#0F172A] dark:text-white">
+                          Deterministic Compliance Audit
+                        </h2>
+                        <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded border border-neutral-200 dark:border-neutral-700">
+                          Rule-Based
                         </span>
                       </div>
-                      <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">{item.detail}</p>
-                      {item.actionableRecommendation && (
-                        <p className="text-[11px] text-neutral-600 dark:text-neutral-400 mt-2 pt-2 border-t border-neutral-100 dark:border-neutral-800 flex items-start gap-1.5">
-                          <span className="font-semibold text-neutral-800 dark:text-neutral-200 shrink-0">Remedy:</span>
-                          <span>{item.actionableRecommendation}</span>
-                        </p>
-                      )}
+                      <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
+                        Automated manuscript checks across structure, ethics, data, and citations
+                      </p>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                  <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
+                    <div className="flex items-center gap-2 text-xs font-medium bg-neutral-50 dark:bg-[#161F30] px-3 py-1.5 rounded-full border border-neutral-200 dark:border-neutral-700">
+                      <span className="text-emerald-700 dark:text-emerald-400 font-bold">{fullReport.complianceAudit.passedCount} Passed</span>
+                      <span className="text-neutral-300 dark:text-neutral-700">•</span>
+                      <span className="text-amber-700 dark:text-amber-400 font-bold">{fullReport.complianceAudit.warnCount} Warn</span>
+                      <span className="text-neutral-300 dark:text-neutral-700">•</span>
+                      <span className="text-rose-700 dark:text-rose-400 font-bold">{fullReport.complianceAudit.failedCount} Fail</span>
+                    </div>
+                    <div className="w-7 h-7 rounded-full bg-neutral-100 dark:bg-[#1E293B] flex items-center justify-center text-neutral-500 dark:text-neutral-400 ml-1 shrink-0">
+                      <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expandedOverviewCards.complianceAudit ? "rotate-180" : ""}`} />
+                    </div>
+                  </div>
+                </button>
+
+                {expandedOverviewCards.complianceAudit && (
+                  <div className="px-6 pb-6 sm:px-7 sm:pb-7 pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937] space-y-4 animate-fade-in">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {fullReport.complianceAudit.items.map((item) => (
+                        <div
+                          key={item.id}
+                          className={`p-4 rounded-2xl border transition shadow-2xs ${
+                            item.status === "pass"
+                              ? "bg-white border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937]"
+                              : item.status === "warn"
+                              ? "bg-amber-50/50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800/40"
+                              : "bg-rose-50/50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-800/40"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-1.5">
+                            <span className="text-xs font-bold text-neutral-900 dark:text-white">{item.name}</span>
+                            <span
+                              className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider border shrink-0 ${
+                                item.status === "pass"
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
+                                  : item.status === "warn"
+                                  ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
+                                  : "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800"
+                              }`}
+                            >
+                              {item.status}
+                            </span>
+                          </div>
+                          <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">{item.detail}</p>
+                          {item.actionableRecommendation && (
+                            <p className="text-[11px] text-neutral-600 dark:text-neutral-400 mt-2 pt-2 border-t border-neutral-100 dark:border-neutral-800 flex items-start gap-1.5">
+                              <span className="font-semibold text-neutral-800 dark:text-neutral-200 shrink-0">Remedy:</span>
+                              <span>{item.actionableRecommendation}</span>
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
