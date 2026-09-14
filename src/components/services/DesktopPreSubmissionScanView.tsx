@@ -35,6 +35,7 @@ import {
   X,
   Lock,
   ArrowRight,
+  Copy,
 } from "lucide-react";
 import {
   FullReviewReport,
@@ -116,6 +117,8 @@ export function DesktopPreSubmissionScanView({
   const [report, setReport] = useState<ReviewReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedPersona, setSelectedPersona] = useState<number>(0);
+  const [copiedScanSnippet, setCopiedScanSnippet] = useState<number | null>(null);
+  const [copiedScanReport, setCopiedScanReport] = useState<boolean>(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [showAllScanRefs, setShowAllScanRefs] = useState(false);
   const [compatibilityMatch, setCompatibilityMatch] = useState<{
@@ -346,14 +349,14 @@ export function DesktopPreSubmissionScanView({
     onComplete(newPaper, dashboardData, fullReport);
   };
 
-  // Step D: Click 'Check compatibility' button
-  const handleCheckCompatibility = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Unified 1-click execution: Run Pre-Submission AI Review & 5-Persona Simulation
+  const handleRunReview = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (apiStatus !== "connected") {
       setError(
         apiStatus === "unconfigured"
-          ? "Pre-submission scan is disabled: No LLM API connection configured. Please set your API key in AI Settings."
-          : "Pre-submission scan is disabled: The configured LLM connection is not working. Please fix your credentials in AI Settings."
+          ? "Pre-submission review is disabled: No LLM API connection configured. Please set your API key in AI Settings."
+          : "Pre-submission review is disabled: The configured LLM connection is not working. Please fix your credentials in AI Settings."
       );
       return;
     }
@@ -375,14 +378,14 @@ export function DesktopPreSubmissionScanView({
     setLoading(true);
     setError(null);
     setReport(null);
-    setLoadingStep("Analyzing paper & journal scope compatibility...");
-    setLoadingPercent(20);
+    setLoadingStep("Extracting manuscript structure & sections...");
+    setLoadingPercent(15);
 
     try {
       let parsed: ParsedManuscript;
       if (isFileScan) {
         setLoadingStep("Extracting sections and parsing bibliography...");
-        setLoadingPercent(15);
+        setLoadingPercent(20);
         const extracted = await extractTextFromFile(file);
         parsed = parseManuscriptText(extracted, file.name || "manuscript.txt");
         if (manuscriptTitle.trim()) parsed.title = manuscriptTitle.trim();
@@ -398,88 +401,30 @@ export function DesktopPreSubmissionScanView({
       setLoadingPercent(35);
       const liveScope = await fetchLiveJournalScope(targetJournal);
 
-      setLoadingStep(`Evaluating scope compatibility for "${targetJournal}" with AI Handling Editor...`);
-      setLoadingPercent(65);
+      setLoadingStep("Commissioning 5-persona peer review panel & running deep diagnostic scan...");
+      setLoadingPercent(50);
       const providerConfig = await resolveActiveConfig();
-      const triageResult = await evaluateManuscriptScopeTriageWithLLM(
-        parsed.title,
-        parsed.abstract,
-        targetJournal,
-        providerConfig,
-        liveScope,
-        manuscriptKeywords,
-        parsed.rawText?.slice(0, 3000),
-        (msg) => setLoadingStep(msg)
-      );
 
-      // Decision F: Does scope match between journal and paper?
-      // Rejection Path: F -- No --> G [Desk Reject] --> H [Display Desk Reject Details] --> I ([End])
-      if (triageResult.isTargetScopeMismatch) {
-        setLoadingStep("Desk Reject flagged: Generating handling editor triage report...");
-        setLoadingPercent(85);
-
-        const deskRejectReport = await runManuscriptDiagnostic(
-          parsed,
-          providerConfig,
-          targetJournal,
-          (update) => {
-            setLoadingStep(update.message);
-            if (update.percent !== undefined) setLoadingPercent(update.percent);
-          },
-          liveScope
-        );
-
-        setReport(deskRejectReport);
-        registerCompletedScan(deskRejectReport);
-        return;
-      }
-
-      // Acceptance Path: F -- Yes --> J [Submit for Review ready]
-      setCompatibilityMatch({
-        journalName: liveScope?.officialName || targetJournal,
-        journalDiscipline: liveScope?.primaryDiscipline || triageResult.detectedDiscipline,
-        manuscriptDiscipline: triageResult.detectedDiscipline,
-        summary: triageResult.editorialTriage.summary,
-        parsed,
-        liveScope,
-      });
-    } catch (err: any) {
-      console.error("Scope compatibility check error:", err);
-      setError(sanitizeErrorMessage(err?.message || "Scope compatibility check failed. Please verify your AI provider credentials."));
-    } finally {
-      setLoading(false);
-      setLoadingStep("");
-      setLoadingPercent(undefined);
-    }
-  };
-
-  // Step J: Click 'Submit for Review' button
-  const handleSubmitForReview = async () => {
-    if (!compatibilityMatch) return;
-
-    setLoading(true);
-    setError(null);
-    setLoadingStep("Commissioning 5-persona peer review panel (Methods, Domain, Editor, Stats, Devil's Advocate)...");
-    setLoadingPercent(30);
-
-    try {
-      const providerConfig = await resolveActiveConfig();
       const fullReport = await runManuscriptDiagnostic(
-        compatibilityMatch.parsed,
+        parsed,
         providerConfig,
         targetJournal,
         (update) => {
           setLoadingStep(update.message);
           if (update.percent !== undefined) setLoadingPercent(update.percent);
         },
-        compatibilityMatch.liveScope
+        liveScope
       );
 
       setReport(fullReport);
       registerCompletedScan(fullReport);
     } catch (err: any) {
       console.error("Diagnostic scan error:", err);
-      setError(sanitizeErrorMessage(err?.message || "Failed to generate diagnostic report. Please verify your AI provider credentials."));
+      setError(
+        sanitizeErrorMessage(
+          err?.message || "Failed to generate diagnostic report. Please verify your AI provider credentials."
+        )
+      );
     } finally {
       setLoading(false);
       setLoadingStep("");
@@ -761,7 +706,7 @@ export function DesktopPreSubmissionScanView({
 
         {/* Input Form Card */}
         {!report && (
-          <form onSubmit={handleCheckCompatibility} className="rounded-3xl liquid-glass-card p-6 space-y-6 relative z-10">
+          <form onSubmit={handleRunReview} className="rounded-3xl liquid-glass-card p-6 space-y-6 relative z-10">
             {/* Header with Load Sample Preprint */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[#E5E7EB] dark:border-[#1F2937]">
               <div>
@@ -962,73 +907,33 @@ export function DesktopPreSubmissionScanView({
               </div>
             </div>
 
-            {compatibilityMatch ? (
-              <div className="flex flex-col sm:flex-row items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setCompatibilityMatch(null)}
-                  disabled={loading}
-                  className="w-full sm:w-auto px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition cursor-pointer"
-                >
-                  Change Journal or Paper
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSubmitForReview}
-                  disabled={loading}
-                  className="flex-1 w-full py-3.5 px-4 rounded-xl font-semibold text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-700 text-white transition-colors duration-150 flex items-center justify-center gap-2 shadow-xs disabled:cursor-not-allowed disabled:bg-emerald-800 disabled:text-white/80 cursor-pointer isolate relative overflow-hidden select-none"
-                >
-                  {loading ? (
-                    <span key="btn-loading-state" className="flex items-center justify-center gap-2 truncate max-w-full">
-                      <RefreshCw className="w-4 h-4 animate-spin text-white shrink-0" />
-                      <span key={loadingStep || "analyzing-step"} className="truncate">
-                        {loadingStep || "Running Peer Review Simulation..."}
-                        {loadingPercent !== undefined ? ` (${loadingPercent}%)` : ""}
-                      </span>
-                    </span>
-                  ) : (
-                    <span key="btn-submit-review-state" className="flex items-center justify-center gap-2 truncate max-w-full">
-                      <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
-                      <span className="truncate">Submit for Review (Run 5-Persona Simulation)</span>
-                      <ArrowRight className="w-4 h-4 shrink-0" />
-                    </span>
-                  )}
-                  {loading && loadingPercent !== undefined && (
-                    <div
-                      className="absolute bottom-0 left-0 h-1 bg-white/40 transition-all duration-300"
-                      style={{ width: `${loadingPercent}%` }}
-                    />
-                  )}
-                </button>
-              </div>
-            ) : (
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3.5 px-4 rounded-xl font-semibold text-xs sm:text-sm bg-[#0F172A] dark:bg-blue-600 hover:bg-[#1E293B] dark:hover:bg-blue-500 text-white transition-colors duration-150 flex items-center justify-center gap-2 shadow-xs disabled:cursor-not-allowed disabled:bg-[#1E293B] disabled:text-white/80 cursor-pointer isolate relative overflow-hidden select-none"
-              >
-                {loading ? (
-                  <span key="btn-loading-state" className="flex items-center justify-center gap-2 truncate max-w-full">
-                    <RefreshCw className="w-4 h-4 animate-spin text-blue-400 shrink-0" />
-                    <span key={loadingStep || "analyzing-step"} className="truncate">
-                      {loadingStep || "Checking Compatibility..."}
-                      {loadingPercent !== undefined ? ` (${loadingPercent}%)` : ""}
-                    </span>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-4 px-6 rounded-2xl font-semibold text-xs sm:text-sm bg-[#0F172A] dark:bg-blue-600 hover:bg-[#1E293B] dark:hover:bg-blue-500 text-white transition-all duration-150 flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg disabled:cursor-not-allowed disabled:bg-[#1E293B] disabled:text-white/70 cursor-pointer isolate relative overflow-hidden select-none"
+            >
+              {loading ? (
+                <span key="btn-loading-state" className="flex items-center justify-center gap-2 truncate max-w-full">
+                  <RefreshCw className="w-4 h-4 animate-spin text-blue-400 shrink-0" />
+                  <span key={loadingStep || "analyzing-step"} className="truncate">
+                    {loadingStep || "Running 5-Persona Peer Review Simulation..."}
+                    {loadingPercent !== undefined ? ` (${loadingPercent}%)` : ""}
                   </span>
-                ) : (
-                  <span key="btn-idle-state" className="flex items-center justify-center gap-2 truncate max-w-full">
-                    <Search className="w-4 h-4 text-blue-400 shrink-0" />
-                    <span className="truncate">Check Compatibility</span>
-                  </span>
-                )}
-                {loading && loadingPercent !== undefined && (
-                  <div
-                    className="absolute bottom-0 left-0 h-1 bg-blue-500 dark:bg-blue-400 transition-all duration-300"
-                    style={{ width: `${loadingPercent}%` }}
-                  />
-                )}
-              </button>
-            )}
+                </span>
+              ) : (
+                <span key="btn-idle-state" className="flex items-center justify-center gap-2.5 truncate max-w-full">
+                  <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
+                  <span className="truncate font-bold">Run Pre-Submission AI Review &amp; 5-Persona Simulation</span>
+                  <ArrowRight className="w-4 h-4 shrink-0" />
+                </span>
+              )}
+              {loading && loadingPercent !== undefined && (
+                <div
+                  className="absolute bottom-0 left-0 h-1.5 bg-blue-500 dark:bg-blue-400 transition-all duration-300"
+                  style={{ width: `${loadingPercent}%` }}
+                />
+              )}
+            </button>
           </form>
         )}
 
@@ -1669,6 +1574,27 @@ export function DesktopPreSubmissionScanView({
                         </div>
                       )}
 
+                      {/* Scholarly Merits & Strengths */}
+                      {active.strengths && active.strengths.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="text-xs font-bold text-[#065F46] dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Scholarly Merits &amp; Recognized Strengths:</span>
+                          </div>
+                          <div className="space-y-1.5">
+                            {active.strengths.map((str: string, sIdx: number) => (
+                              <div
+                                key={sIdx}
+                                className="p-2.5 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0] dark:bg-emerald-950/30 dark:border-emerald-800/60 text-xs text-[#166534] dark:text-emerald-300 flex items-start gap-2 shadow-2xs"
+                              >
+                                <span className="font-mono text-emerald-600 font-bold text-xs mt-0.5">+{sIdx + 1}</span>
+                                <span className="leading-relaxed font-medium">{str}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="p-4 rounded-xl bg-[#FEF2F2] border border-[#FECACA] dark:bg-rose-950/30 dark:border-rose-800/50 text-xs text-[#991B1B] dark:text-rose-300 flex items-start gap-2.5">
                         <span className="text-base select-none">⚠️</span>
                         <div>
@@ -1704,6 +1630,51 @@ export function DesktopPreSubmissionScanView({
                                   [{i + 1}]
                                 </span>
                                 <span className="leading-relaxed">{critique}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Concrete Actionable Solutions & Example Rewrites */}
+                      {active.concreteSolutions && active.concreteSolutions.length > 0 && (
+                        <div className="space-y-2.5">
+                          <div className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Concrete Author Solutions &amp; Suggested Text Rewrites:</span>
+                          </div>
+                          <div className="space-y-2.5">
+                            {active.concreteSolutions.map((sol: any, solIdx: number) => (
+                              <div
+                                key={solIdx}
+                                className="p-3.5 rounded-xl bg-white border border-[#E5E7EB] dark:bg-[#161F30] dark:border-[#334155] text-xs space-y-2 shadow-2xs"
+                              >
+                                <div className="flex items-start gap-2">
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0">
+                                    Issue #{solIdx + 1}
+                                  </span>
+                                  <span className="font-semibold text-neutral-800 dark:text-neutral-200 leading-snug">
+                                    {sol.issue}
+                                  </span>
+                                </div>
+                                <div className="pl-2 border-l-2 border-blue-500/50 space-y-0.5">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 block">
+                                    Recommended Action:
+                                  </span>
+                                  <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed">
+                                    {sol.proposedFix}
+                                  </p>
+                                </div>
+                                {sol.exampleRewrite && (
+                                  <div className="p-2.5 rounded-lg bg-[#F8FAFC] dark:bg-[#0F172A] border border-[#E2E8F0] dark:border-[#1E293B] space-y-1">
+                                    <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">
+                                      Suggested Text Rewrite:
+                                    </span>
+                                    <p className="font-mono text-[11px] text-neutral-800 dark:text-neutral-200 leading-relaxed select-all">
+                                      {sol.exampleRewrite}
+                                    </p>
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -1747,6 +1718,27 @@ export function DesktopPreSubmissionScanView({
                           ))}
                         </div>
                       </div>
+
+                      {/* Minor Comments */}
+                      {active.minorComments && active.minorComments.length > 0 && (
+                        <div className="space-y-1.5 pt-2 border-t border-[#E5E7EB] dark:border-[#1F2937]">
+                          <div className="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>Minor Comments &amp; Formatting:</span>
+                          </div>
+                          <div className="space-y-1">
+                            {active.minorComments.map((mc: string, idx: number) => (
+                              <div
+                                key={idx}
+                                className="p-2 rounded-lg bg-neutral-50 dark:bg-[#161F30] border border-neutral-200 dark:border-[#334155] text-xs text-neutral-700 dark:text-neutral-300 flex items-start gap-2"
+                              >
+                                <span className="text-neutral-400 font-mono text-xs">•</span>
+                                <span className="leading-relaxed">{mc}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })()}

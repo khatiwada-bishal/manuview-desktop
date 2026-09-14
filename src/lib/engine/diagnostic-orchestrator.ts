@@ -101,24 +101,39 @@ CRITICAL ANTI-HALLUCINATION & STRICT GROUNDING MANDATE:
 1. STRICTLY CONFINED TO THIS DOCUMENT: You MUST review ONLY the exact scientific discipline, methodology, datasets, empirical findings, and claims present in the provided manuscript text.
 2. ABSOLUTELY NO CANNED CONTENT: Critiques must focus exclusively on the theories, domains, techniques, and terminology explicitly introduced in the manuscript text. Avoid injecting external research domains, buzzwords, or off-topic methodologies that do not appear in the author's submission.
 3. VERBATIM & CONTENT-DRIVEN CRITIQUES: Every single critique, strength, vulnerability, and reviewer objection MUST cite specific variables, equations, sample sizes (n), p-values, datasets, algorithms, or paragraphs directly from the uploaded text.
-4. JOURNAL-CALIBRATED 5-PERSONA ADVERSARIAL REVIEW PANEL (BLINDED SCHOLARLY TRACKS):
+4. JOURNAL-CALIBRATED 5-PERSONA ADVERSARIAL REVIEW PANEL (AUTHENTIC, LINE-LEVEL REFEREE REPORTS):
    The review panel represents the TARGET JOURNAL's editorial board and reviewer pool evaluating this submission.
-   CRITICAL ANONYMITY MANDATE: Scholarly peer review is strictly BLINDED. NEVER invent or output personal human names (e.g. "Dr. Sarah Johnson", "Dr. John Doe"). Instead, "name" MUST strictly be the formal anonymous reviewer track:
+   CRITICAL ANONYMITY MANDATE: Scholarly peer review is strictly BLINDED. NEVER invent or output personal human names (e.g. "Dr. Sarah Johnson"). Instead, "name" MUST strictly be the formal anonymous reviewer track:
    - "Reviewer 1: Lead Handling Editor"
    - "Reviewer 2: Target Domain Specialist"
    - "Reviewer 3: Research Methodology Referee"
    - "Reviewer 4: Statistical & Quantitative Auditor"
    - "Reviewer 5: Adversarial Translation Referee"
 
-   The 5 distinct roles MUST be distributed as follows (NONE may be omitted when evaluating in-scope papers):
-   - "journal_editor" (name: "Reviewer 1: Lead Handling Editor"): Senior handling/executive editor representing the TARGET JOURNAL's editorial office. Evaluates editorial triage, aims & scope compliance, readership alignment, and desk-rejection risk for the target journal. If the manuscript is out-of-scope for the target journal, this editor MUST recommend "Desk Reject".
-   - "domain_expert" (name: "Reviewer 2: Target Domain Specialist"): Leading researcher in the TARGET JOURNAL's subject discipline. Evaluates whether the submission delivers novel scientific contributions, mechanistic depth, or theoretical value to the target journal's readership.
-   - "methods_reviewer" (name: "Reviewer 3: Research Methodology Referee"): Lead specialist in the paper's actual methodology/empirical models (e.g. experimental protocols, surveys, structural equation modeling, algorithmic convergence, or econometrics). Critiques methodological validity, data collection protocols, and reproducibility.
-   - "statistician" (name: "Reviewer 4: Statistical & Quantitative Auditor"): Senior quantitative methods / applied biostatistics referee. Audits sample power, variance reporting, collinearity (VIF), multiplicity corrections, and data availability.
-   - "devils_advocate" (name: "Reviewer 5: Adversarial Translation Referee"): Adversarial stress-test referee challenging cross-disciplinary utility, translational relevance to the target journal's audience, unruled-out rival hypotheses, and causal overclaims.
-   INDEPENDENT EVALUATION & REALISTIC DISAGREEMENT: Each persona evaluates strictly through their assigned professional role. Do NOT force artificial consensus across reviewers. In scholarly peer review, committees disagree on ~25% of decisions. If evidence warrants divergence, let the panel disagree.
-   CONFIDENTIAL EDITORIAL NOTE: For "journal_editor" (Reviewer 1), you MUST include "confidentialEditorNote": a candid, confidential simulation of the handling editor's private memo to the editor-in-chief / editorial board.
-   Each persona MUST have: persona ("journal_editor" | "domain_expert" | "methods_reviewer" | "statistician" | "devils_advocate"), name (MUST be the anonymous reviewer track e.g. "Reviewer 1: Lead Handling Editor"), title, affiliation, expertise, roleDescription, decisionRecommendation ("Major Revision" | "Reject / Resubmit" | "Desk Reject" | "Minor Revision"), keyChallenge, assessment, majorCritiques, missingControlsOrAnalyses, mustAddressItems, evidenceAnchors, counterArguments, and for Reviewer 1 confidentialEditorNote.
+   The 5 distinct roles MUST be distributed as follows:
+   - "journal_editor" (name: "Reviewer 1: Lead Handling Editor"): Senior handling/executive editor representing the TARGET JOURNAL's editorial office. Evaluates editorial triage, aims & scope compliance, readership alignment, and desk-rejection risk for the target journal. If the manuscript is out-of-scope for the target journal, this editor recommends "Desk Reject" with clear redirection to suitable field-specific venues.
+   - "domain_expert" (name: "Reviewer 2: Target Domain Specialist"): Leading researcher in the manuscript's subject discipline. Evaluates whether the submission delivers novel scientific contributions, mechanistic depth, or theoretical value to the readership.
+   - "methods_reviewer" (name: "Reviewer 3: Research Methodology Referee"): Lead specialist in the paper's actual methodology/empirical models. Critiques methodological validity, data collection protocols, procedural controls, and reproducibility.
+   - "statistician" (name: "Reviewer 4: Statistical & Quantitative Auditor"): Senior quantitative methods / applied biostatistics referee. Audits sample power, variance reporting, collinearity, multiplicity corrections, and statistical test execution.
+   - "devils_advocate" (name: "Reviewer 5: Adversarial Translation Referee"): Adversarial stress-test referee challenging cross-disciplinary utility, translational relevance, unruled-out rival hypotheses, and causal overclaims.
+
+   MANDATE FOR DEEP, GENUINE, ACTIONABLE REFEREE REPORTS:
+   Each reviewer's evaluation must read like an authentic, rigorous, constructive referee report from a top journal. Avoid generic 1-sentence platitudes.
+   Each persona MUST include:
+   - "strengths": 2-3 genuine, positive scholarly merits of the paper that the author can lean into and emphasize.
+   - "keyChallenge": The single most critical challenge/objection raised by this reviewer.
+   - "assessment": A thorough, multi-paragraph scholarly assessment (250-400 words) detailing the paper's objectives, empirical strengths, substantive limitations, and contribution significance.
+   - "majorCritiques": 3-5 distinct, enumerated substantive critiques citing specific lines, variables, equations, or sections.
+   - "concreteSolutions": Array of actionable solutions showing the author EXACTLY how to resolve the issues. Each item MUST have:
+     - "issue": The specific technical weakness, overclaim, or ambiguity identified in the manuscript.
+     - "proposedFix": The exact operational solution (e.g., "Add fixed effects for cohort X, cluster standard errors, and report the resulting t-statistic").
+     - "exampleRewrite": A concrete, ready-to-use sentence, paragraph, or equation rewrite the author can adopt directly into their manuscript.
+   - "missingControlsOrAnalyses": Specific missing baseline experiments, procedural controls, or sensitivity analyses.
+   - "mustAddressItems": 2-4 prioritized tasks the author MUST complete prior to submission.
+   - "minorComments": 2-3 specific suggestions for figure legibility, table formatting, terminology, or reference updates.
+   - "evidenceAnchors": Specific quotes or section references from the text grounding the critique.
+   - "counterArguments": 1-2 points on how the author should frame their rebuttal or defense in a formal response letter.
+   - For Reviewer 1: "confidentialEditorNote" providing a candid editorial board memo.
 5. TYPED EVIDENCE ANCHORS & REBUTTAL STRATEGIES:
    - Every priority issue MUST have a typed "evidenceAnchor": text: §X "<quote up to 25 words>", equation: Eq. Y, or absence: §Z lacks ...
    - Every priority issue MUST have a "rebuttalStrategy" detailing the point-by-point author defense and revision roadmap for the formal journal response letter.
@@ -231,10 +246,9 @@ You MUST strictly reflect this reality:
 1. Overall acceptance score (overallScore) MUST NOT exceed 28 (reflecting realistic desk-reject hazard).
 2. Priority Issues MUST include a Priority A issue with category "Scope/Fit" explicitly flagging this field mismatch and advising submission to a ${detectedDiscipline} venue.
 3. Realistic and Fallback journal recommendations MUST be anchored in ${detectedDiscipline}, NOT in ${targetDiscipline}.
-4. EDITORIAL TRIAGE — DIRECT DESK REJECT BEFORE PEER REVIEW:
-   Because this submission falls outside "${targetJournalName}"'s aims and scope, the handling editor desk-rejects it during initial editorial screening; it does NOT go to peer review.
-   Therefore, "reviewerPersonas" MUST be an empty array [] (no external peer review personas are required or engaged).
-   Focus your summary on the Handling Editor's formal triage statement explaining the scope mismatch and advising redirection to ${detectedDiscipline} venues.`
+4. EDITORIAL TRIAGE & PANEL REVIEW CONDUCT:
+   Reviewer 1 (Lead Handling Editor) MUST issue a "Desk Reject" recommendation and formulate the formal editorial triage notice detailing the scope discrepancy and redirection advice.
+   Reviewers 2 through 5 MUST STILL evaluate the paper's substantive research (domain novelty, methodology, quantitative/statistical analyses, and adversarial stress-testing) as if being revised for a field-appropriate venue. This ensures the author receives deeply actionable scholarly feedback.`
     : targetJournalName ? `Calibrate your Realistic tier to "${targetJournalName}" or direct peer-equivalent journals in this field, Reach to higher-impact venues in this field, and Fallback to accessible specialty journals. Reviewer Personas should represent the editorial board and reviewer pool of "${targetJournalName}".` : ""
 }
 
@@ -286,10 +300,19 @@ Please return your analysis as a JSON object matching this schema:
       "roleDescription": string,
       "decisionRecommendation": "Major Revision" | "Reject / Resubmit" | "Desk Reject" | "Minor Revision",
       "keyChallenge": string,
-      "assessment": string,
-      "majorCritiques": string[],
+      "assessment": string (comprehensive multi-paragraph referee evaluation, 200-350 words),
+      "strengths": string[] (2-3 genuine scholarly merits or novel findings),
+      "majorCritiques": string[] (detailed, specific scholarly criticisms grounded in paper sections),
+      "concreteSolutions": [
+        {
+          "issue": string (specific vulnerability identified),
+          "proposedFix": string (exact technical, methodological, or framing fix),
+          "exampleRewrite": string (concrete sentence rewrite, formula adjustment, or model specification)
+        }
+      ],
       "missingControlsOrAnalyses": string[],
       "mustAddressItems": string[],
+      "minorComments": string[],
       "evidenceAnchors": string[],
       "counterArguments": string[],
       "confidentialEditorNote": string (required for Reviewer 1)
@@ -1264,7 +1287,7 @@ export async function runManuscriptDiagnostic(
   let finalPersonas: ReviewerPersonaFeedback[] = [];
   const missingPersonaRoles: ReviewerPersonaFeedback["persona"][] = [];
 
-  if (executionMode !== "heuristic_offline" && personaValidation.isValid && personaValidation.data && !isDeskRejectByScope) {
+  if (executionMode !== "heuristic_offline" && personaValidation.isValid && personaValidation.data && personaValidation.data.length > 0) {
     const llmPersonas: ReviewerPersonaFeedback[] = personaValidation.data.map((p) => ({
       persona: p.persona || ("domain_expert" as const),
       name: p.name || "Reviewer",
@@ -1275,9 +1298,12 @@ export async function runManuscriptDiagnostic(
       decisionRecommendation: p.decisionRecommendation || ("Major Revision" as const),
       keyChallenge: p.keyChallenge || "Methodological rigor and contribution significance",
       assessment: p.assessment || "Thorough evaluation of manuscript rigor and validity required.",
+      strengths: p.strengths || [],
       majorCritiques: p.majorCritiques || ["Document methodology and procedural controls systematically."],
+      concreteSolutions: p.concreteSolutions || [],
       missingControlsOrAnalyses: p.missingControlsOrAnalyses || [],
       mustAddressItems: p.mustAddressItems || [],
+      minorComments: p.minorComments || [],
       source: "llm" as const,
       evidenceAnchors: Array.isArray(p.evidenceAnchors)
         ? p.evidenceAnchors.map((a) => groundEvidenceAnchor(a, manuscript.rawText, manuscript.sections))

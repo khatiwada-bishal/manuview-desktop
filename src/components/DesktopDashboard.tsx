@@ -38,6 +38,8 @@ import {
   Plus,
   ChevronLeft,
   X,
+  Copy,
+  Check,
 } from "lucide-react";
 import { DesktopActiveView } from "./DesktopSidebar";
 import {
@@ -125,6 +127,110 @@ export function DesktopDashboard({
   }, [fullReport]);
 
   const [selectedPersona, setSelectedPersona] = useState<number>(0);
+  const [copiedReportIndex, setCopiedReportIndex] = useState<number | null>(null);
+  const [copiedSnippetIndex, setCopiedSnippetIndex] = useState<number | null>(null);
+
+  const handleCopyRefereeReport = (p: ReviewerPersonaFeedback, idx: number) => {
+    const fallbackRoleName =
+      p.persona === "journal_editor"
+        ? "Reviewer 1: Lead Handling Editor"
+        : p.persona === "domain_expert"
+        ? "Reviewer 2: Target Domain Specialist"
+        : p.persona === "methods_reviewer"
+        ? "Reviewer 3: Research Methodology Referee"
+        : p.persona === "statistician"
+        ? "Reviewer 4: Statistical & Quantitative Auditor"
+        : "Reviewer 5: Adversarial Translation Referee";
+
+    const roleName = p.name?.startsWith("Reviewer") ? p.name : fallbackRoleName;
+
+    let md = `# REFEREE REPORT: ${roleName}\n\n`;
+    md += `**Role**: ${p.title || "Peer Reviewer"} (${p.affiliation || "Editorial Board"})\n`;
+    if (p.decisionRecommendation) md += `**Recommendation**: ${p.decisionRecommendation}\n`;
+    if (p.expertise) md += `**Scope & Expertise**: ${p.expertise}\n\n`;
+
+    if (p.keyChallenge) {
+      md += `## Primary Objection & Reviewer Challenge\n${p.keyChallenge}\n\n`;
+    }
+
+    if (p.strengths && p.strengths.length > 0) {
+      md += `## Scholarly Merits & Recognized Strengths\n`;
+      p.strengths.forEach((s) => {
+        md += `- ${s}\n`;
+      });
+      md += `\n`;
+    }
+
+    if (p.assessment) {
+      md += `## Detailed Peer-Review Assessment\n${p.assessment}\n\n`;
+    }
+
+    if (p.majorCritiques && p.majorCritiques.length > 0) {
+      md += `## Major Scholarly Critiques\n`;
+      p.majorCritiques.forEach((c, i) => {
+        md += `${i + 1}. ${c}\n`;
+      });
+      md += `\n`;
+    }
+
+    if (p.concreteSolutions && p.concreteSolutions.length > 0) {
+      md += `## Concrete Actionable Solutions & Suggested Rewrites\n`;
+      p.concreteSolutions.forEach((sol, i) => {
+        md += `### ${i + 1}. Issue: ${sol.issue}\n`;
+        md += `- **Proposed Fix**: ${sol.proposedFix}\n`;
+        if (sol.exampleRewrite) {
+          md += `- **Example Text Rewrite**:\n> ${sol.exampleRewrite.replace(/\n/g, "\n> ")}\n`;
+        }
+        md += `\n`;
+      });
+    }
+
+    if (p.missingControlsOrAnalyses && p.missingControlsOrAnalyses.length > 0) {
+      md += `## Missing Controls & Required Analyses\n`;
+      p.missingControlsOrAnalyses.forEach((m) => {
+        md += `- [ ] ${m}\n`;
+      });
+      md += `\n`;
+    }
+
+    if (p.mustAddressItems && p.mustAddressItems.length > 0) {
+      md += `## Must-Address Pre-Submission Punchlist\n`;
+      p.mustAddressItems.forEach((item) => {
+        md += `- [ ] ${item}\n`;
+      });
+      md += `\n`;
+    }
+
+    if (p.minorComments && p.minorComments.length > 0) {
+      md += `## Minor Comments & Presentation Remarks\n`;
+      p.minorComments.forEach((mc) => {
+        md += `- ${mc}\n`;
+      });
+      md += `\n`;
+    }
+
+    if (p.evidenceAnchors && p.evidenceAnchors.length > 0) {
+      md += `## Manuscript Grounding Anchors\n`;
+      p.evidenceAnchors.forEach((ea) => {
+        md += `- \`${ea}\`\n`;
+      });
+      md += `\n`;
+    }
+
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(md);
+      setCopiedReportIndex(idx);
+      setTimeout(() => setCopiedReportIndex(null), 2500);
+    }
+  };
+
+  const handleCopySnippet = (text: string, snippetIdx: number) => {
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text);
+      setCopiedSnippetIndex(snippetIdx);
+      setTimeout(() => setCopiedSnippetIndex(null), 2000);
+    }
+  };
   const [issueFilter, setIssueFilter] = useState<"all" | "A" | "B" | "C">("all");
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
   const [exportToast, setExportToast] = useState<string | null>(null);
@@ -1173,12 +1279,32 @@ export function DesktopDashboard({
                   </p>
                 </div>
 
-                {active.expertise && (
-                  <div className="p-3.5 rounded-xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] text-xs text-[#475569] dark:text-neutral-300 md:max-w-sm shadow-2xs">
-                    <span className="font-bold text-[#0F172A] dark:text-white block mb-0.5">Area of Expertise & Scope:</span>
-                    {active.expertise}
-                  </div>
-                )}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                  {active.expertise && (
+                    <div className="p-3.5 rounded-xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] text-xs text-[#475569] dark:text-neutral-300 md:max-w-sm shadow-2xs">
+                      <span className="font-bold text-[#0F172A] dark:text-white block mb-0.5">Area of Expertise & Scope:</span>
+                      {active.expertise}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleCopyRefereeReport(active, selectedPersona)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-[#1E293B] border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-200 shadow-2xs transition cursor-pointer shrink-0"
+                    title="Copy full referee report in Markdown format for co-authors or response letter"
+                  >
+                    {copiedReportIndex === selectedPersona ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-emerald-700 dark:text-emerald-300">Report Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5 text-neutral-500 dark:text-neutral-400" />
+                        <span>Copy Referee Report</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {active.confidentialEditorNote && (
@@ -1212,6 +1338,29 @@ export function DesktopDashboard({
               </div>
             )}
 
+            {/* Scholarly Merits & Strengths */}
+            {active.strengths && active.strengths.length > 0 && (
+              <div className="space-y-2.5">
+                <div className="text-xs font-bold text-[#16A34A] dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Scholarly Merits &amp; Recognized Strengths:</span>
+                </div>
+                <div className="space-y-2">
+                  {active.strengths.map((str, sIdx) => (
+                    <div
+                      key={sIdx}
+                      className="p-3 rounded-xl bg-[#F0FDF4] dark:bg-emerald-950/30 border border-[#BBF7D0] dark:border-emerald-800/60 text-xs text-[#166534] dark:text-emerald-300 flex items-start gap-2.5 shadow-2xs"
+                    >
+                      <span className="font-mono text-[#16A34A] dark:text-emerald-400 font-bold text-xs mt-0.5">
+                        +{sIdx + 1}
+                      </span>
+                      <span className="leading-relaxed font-medium">{str}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="p-4 rounded-xl bg-[#FEF2F2] dark:bg-rose-950/30 border-l-4 border-[#EF4444] dark:border-rose-600 text-xs text-[#991B1B] dark:text-rose-300 flex items-start gap-2.5">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-[#DC2626] dark:text-rose-400" />
               <div>
@@ -1230,6 +1379,116 @@ export function DesktopDashboard({
                 {active.assessment}
               </div>
             </div>
+
+            {/* Major Scholarly Critiques */}
+            {active.majorCritiques && active.majorCritiques.length > 0 && (
+              <div className="space-y-2.5">
+                <div className="text-xs font-bold text-[#B45309] dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>Major Scholarly Critiques (Grounded in Manuscript):</span>
+                </div>
+                <div className="space-y-2">
+                  {active.majorCritiques.map((critique, cIdx) => (
+                    <div
+                      key={cIdx}
+                      className="p-3.5 rounded-xl bg-[#FFFBEB] dark:bg-amber-950/30 border border-[#FDE68A] dark:border-amber-800/60 text-xs text-[#92400E] dark:text-amber-200 flex items-start gap-2.5 shadow-2xs"
+                    >
+                      <span className="font-mono font-bold text-amber-700 dark:text-amber-400 text-xs mt-0.5">
+                        [{cIdx + 1}]
+                      </span>
+                      <span className="leading-relaxed">{critique}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Concrete Actionable Solutions & Example Rewrites */}
+            {active.concreteSolutions && active.concreteSolutions.length > 0 && (
+              <div className="space-y-3">
+                <div className="text-xs font-bold text-[#2563EB] dark:text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Concrete Author Solutions &amp; Suggested Text Rewrites:</span>
+                </div>
+                <div className="space-y-3">
+                  {active.concreteSolutions.map((sol, solIdx) => (
+                    <div
+                      key={solIdx}
+                      className="p-4 rounded-2xl bg-white dark:bg-[#161F30] border border-[#CBD5E1] dark:border-[#334155] text-xs space-y-2.5 shadow-2xs"
+                    >
+                      <div className="flex items-start gap-2">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0">
+                          Issue #{solIdx + 1}
+                        </span>
+                        <span className="font-semibold text-neutral-800 dark:text-neutral-200 leading-snug">
+                          {sol.issue}
+                        </span>
+                      </div>
+                      <div className="pl-2.5 border-l-2 border-blue-500/50 space-y-1">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 block">
+                          Recommended Action / Fix:
+                        </span>
+                        <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed">
+                          {sol.proposedFix}
+                        </p>
+                      </div>
+                      {sol.exampleRewrite && (
+                        <div className="p-3 rounded-xl bg-[#F8FAFC] dark:bg-[#0F172A] border border-[#E2E8F0] dark:border-[#1E293B] space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                              Suggested Line-Level Text Rewrite / Model Formulation:
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopySnippet(sol.exampleRewrite!, solIdx)}
+                              className="inline-flex items-center gap-1 text-[11px] text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white font-medium cursor-pointer transition"
+                            >
+                              {copiedSnippetIndex === solIdx ? (
+                                <>
+                                  <Check className="w-3 h-3 text-emerald-500" />
+                                  <span className="text-emerald-600 dark:text-emerald-400">Copied</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3 h-3" />
+                                  <span>Copy Snippet</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                          <p className="font-mono text-[11px] text-neutral-800 dark:text-neutral-200 leading-relaxed whitespace-pre-wrap select-all">
+                            {sol.exampleRewrite}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Missing Controls or Analyses */}
+            {active.missingControlsOrAnalyses && active.missingControlsOrAnalyses.length > 0 && (
+              <div className="space-y-2.5">
+                <div className="text-xs font-bold text-[#0284C7] dark:text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <FlaskConical className="w-3.5 h-3.5" />
+                  <span>Missing Empirical Controls &amp; Required Robustness Checks:</span>
+                </div>
+                <div className="space-y-2">
+                  {active.missingControlsOrAnalyses.map((missing, mIdx) => (
+                    <div
+                      key={mIdx}
+                      className="p-3 rounded-xl bg-[#F0F9FF] dark:bg-sky-950/30 border border-[#BAE6FD] dark:border-sky-800/60 text-xs text-[#0369A1] dark:text-sky-300 flex items-start gap-2.5 shadow-2xs"
+                    >
+                      <span className="font-mono font-bold text-sky-600 dark:text-sky-400 text-xs mt-0.5">
+                        •
+                      </span>
+                      <span className="leading-relaxed">{missing}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {active.counterArguments && active.counterArguments.length > 0 && (
               <div className="space-y-2.5">
@@ -1267,6 +1526,27 @@ export function DesktopDashboard({
                     >
                       <CheckCircle2 className="w-4 h-4 text-[#16A34A] dark:text-emerald-400 shrink-0 mt-0.5" />
                       <span className="leading-relaxed font-medium">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Minor Comments */}
+            {active.minorComments && active.minorComments.length > 0 && (
+              <div className="space-y-2.5 pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937]">
+                <div className="text-xs font-bold text-[#64748B] dark:text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Minor Comments, Presentation &amp; Formatting:</span>
+                </div>
+                <div className="space-y-1.5">
+                  {active.minorComments.map((mc, idx) => (
+                    <div
+                      key={idx}
+                      className="p-2.5 rounded-xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] text-xs text-[#475569] dark:text-neutral-300 flex items-start gap-2"
+                    >
+                      <span className="font-mono text-neutral-400 text-xs mt-0.5">•</span>
+                      <span className="leading-relaxed">{mc}</span>
                     </div>
                   ))}
                 </div>

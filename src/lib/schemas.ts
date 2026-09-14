@@ -66,6 +66,12 @@ const StringOrArray = z.union([
   z.string().transform((s) => [s]),
 ]);
 
+export const ReviewerConcreteSolutionSchema = z.object({
+  issue: z.preprocess((val) => (typeof val === "string" ? val.trim() : ""), z.string()).default(""),
+  proposedFix: z.preprocess((val) => (typeof val === "string" ? val.trim() : ""), z.string()).default(""),
+  exampleRewrite: z.preprocess((val) => (typeof val === "string" ? val.trim() : undefined), z.string().optional()),
+});
+
 export const ReviewerPersonaSchema = z.object({
   persona: ReviewerPersonaTypeSchema.default("domain_expert"),
   name: z.preprocess((val) => (typeof val === "string" && val.trim() ? val.trim() : "Reviewer"), z.string()),
@@ -76,9 +82,12 @@ export const ReviewerPersonaSchema = z.object({
   decisionRecommendation: DecisionRecommendationSchema.default("Major Revision"),
   keyChallenge: z.preprocess((val) => (typeof val === "string" && val.trim() ? val.trim() : "Methodological rigor and contribution significance"), z.string()),
   assessment: z.preprocess((val) => (typeof val === "string" && val.trim() ? val.trim() : "Thorough evaluation of manuscript rigor and validity required."), z.string()),
+  strengths: StringOrArray.default([]),
   majorCritiques: StringOrArray.default(["Explicit parameter and control documentation required."]),
+  concreteSolutions: z.array(ReviewerConcreteSolutionSchema).default([]),
   missingControlsOrAnalyses: StringOrArray.default([]),
   mustAddressItems: StringOrArray.default([]),
+  minorComments: StringOrArray.default([]),
   evidenceAnchors: StringOrArray.default([]),
   counterArguments: StringOrArray.default([]),
   confidentialEditorNote: z.string().optional(),

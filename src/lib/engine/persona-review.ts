@@ -417,8 +417,13 @@ export function calculateDeterministicPersonas(
       ? `Disciplinary Scope Mismatch: Manuscript domain (${discipline}) does not match ${targetJournal}'s publication remit.`
       : `Demarcating the conceptual advance and subscriber interest specifically for readers of ${targetJournal}.`,
     assessment: isScopeMismatch
-      ? `As Handling Editor for ${targetJournal}, I have conducted preliminary editorial screening for "${cleanTitle}". The manuscript presents an investigation situated within ${discipline}, whereas ${targetJournal} publishes within a different scholarly remit. Under standard editorial policy, out-of-scope submissions cannot proceed to external referees and are desk-rejected at preliminary triage. To provide constructive value prior to resubmission elsewhere, our simulated reviewer panel has completed comprehensive methodological, statistical, and adversarial evaluations below.`
-      : `As Handling Editor for ${targetJournal}, I have evaluated "${cleanTitle}" for editorial suitability and community interest. The manuscript presents an empirical investigation situated within ${discipline}. Before sending to external referees, the authors must articulate more explicitly how their findings advance core debates in our journal and why this work matters to our primary readership.`,
+      ? `As Handling Editor for ${targetJournal}, I have conducted preliminary editorial screening for "${cleanTitle}".\n\nThe manuscript presents an empirical investigation situated within ${discipline}, whereas ${targetJournal} publishes strictly within a different scholarly remit. Under standard editorial policy, out-of-scope submissions cannot proceed to external referees and are declined at editorial triage.\n\nTo ensure maximum constructive utility for the authors, our simulated panel has nonetheless completed comprehensive methodological, quantitative, and adversarial stress-tests below so you can strengthen the manuscript prior to submitting to a field-aligned journal in ${discipline}.`
+      : `As Handling Editor for ${targetJournal}, I have evaluated "${cleanTitle}" for editorial suitability and community interest.\n\nThe manuscript addresses an active topic in ${discipline}. However, before external reviewers can be commissioned, the manuscript must more clearly articulate its theoretical and practical utility specifically for the readership of ${targetJournal}. The introductory rationale requires sharper differentiation against recently published works in this venue.`,
+    strengths: [
+      `Addresses an empirically consequential problem in ${discipline} with clear real-world relevance.`,
+      `The research question is well-timed and reflects growing interest across the scholarly community.`,
+      `Assembled empirical material provides a solid foundation for substantive investigation.`,
+    ],
     majorCritiques: isScopeMismatch
       ? [
           `Substantive research focus falls outside the published aims & scope of ${targetJournal}.`,
@@ -428,7 +433,21 @@ export function calculateDeterministicPersonas(
       : [
           `Articulate direct readership interest and theoretical utility for ${targetJournal}.`,
           `Synthesize practitioner and theoretical takeaways in an expanded discussion section.`,
+          `Differentiate the core value proposition from baseline literature published over the last two years.`,
         ],
+    concreteSolutions: [
+      {
+        issue: isScopeMismatch
+          ? `Disciplinary misalignment between manuscript focus (${discipline}) and ${targetJournal}.`
+          : `Introductory framing does not establish unique importance for ${targetJournal} subscribers.`,
+        proposedFix: isScopeMismatch
+          ? `Redirect submission to an indexed venue in ${discipline}, re-centering the abstract around disciplinary benchmarks.`
+          : `Add a dedicated paragraph at the end of the Introduction explicitly defining the threshold contribution for ${targetJournal}.`,
+        exampleRewrite: isScopeMismatch
+          ? `Revise opening: "This study investigates [core topic] within ${discipline}, addressing unresolved questions in recent domain literature..."`
+          : `Revise Introduction §1.3: "Whereas recent papers in ${targetJournal} have focused primarily on descriptive surveys, this study provides the first quantitative assessment of..."`,
+      },
+    ],
     missingControlsOrAnalyses: isScopeMismatch
       ? [
           `Alignment with recent publications and editorial debates in ${targetJournal}.`,
@@ -444,6 +463,10 @@ export function calculateDeterministicPersonas(
       : [
           `Refine title and abstract to communicate direct relevance to ${targetJournal}.`,
         ],
+    minorComments: [
+      "Ensure abstract length complies with target journal word limits and structured heading format.",
+      "Expand all abbreviations and acronyms upon first mention in both Abstract and Main Text.",
+    ],
     evidenceAnchors: [`text: §Introduction "${cleanTitle.slice(0, 60)}..."`],
     counterArguments: isScopeMismatch
       ? [
@@ -483,16 +506,35 @@ export function calculateDeterministicPersonas(
     roleDescription: `Domain Novelty & ${discipline} Conceptual Advance`,
     decisionRecommendation: "Major Revision",
     keyChallenge: `Situating the contribution against 2023–2025 benchmark publications in ${discipline}.`,
-    assessment: `This study addresses an important problem in ${discipline}. The empirical analysis provides valuable observations regarding "${cleanTitle}". However, the literature positioning must be updated to engage contemporary debate, and the theoretical mechanisms underlying the observed effects require deeper exploration.`,
+    assessment: `This manuscript investigates a significant empirical question within ${discipline}.\n\nThe author's focus on "${cleanTitle.slice(0, 70)}" addresses a topic of strong ongoing interest. The descriptive findings provide helpful context. However, from a specialist perspective, the manuscript does not sufficiently interact with leading contemporary benchmark frameworks in ${discipline}.\n\nThe theoretical mechanisms linking the observed variables require deeper substantiation, and the discussion should delineate boundary conditions under which these findings may not hold.`,
+    strengths: [
+      `Engages an active and practically relevant research challenge in ${discipline}.`,
+      `Presents valuable empirical evidence relating to ${cleanTitle.slice(0, 50)}.`,
+      `Provides clear data tables and descriptive summaries of the primary study variables.`,
+    ],
     majorCritiques: [
-      `Differentiate findings more clearly from recent benchmark papers in ${discipline}.`,
-      `Elaborate the mechanistic pathway connecting inputs to observed outcomes.`,
+      `Differentiate findings more clearly from recent benchmark papers (2023–2025) in ${discipline}.`,
+      `Elaborate the mechanistic pathway connecting inputs to observed outcomes rather than relying on correlational descriptions.`,
+      `Address potential confounding variables unique to this domain context.`,
+    ],
+    concreteSolutions: [
+      {
+        issue: `Literature engagement lacks direct comparison with contemporary 2023–2025 ${discipline} frameworks.`,
+        proposedFix: `Add a comparative table or dedicated literature paragraph contrasting your operational parameters with recent standard models.`,
+        exampleRewrite: `Revise Discussion: "Whereas conventional ${discipline} models assume homogeneous responses across cohorts, our empirical observations demonstrate substantial variance (mean difference = 0.34, p < 0.01), reconciling the divergent conclusions of recent studies."`,
+      },
     ],
     missingControlsOrAnalyses: [
       "Subgroup sensitivity analyses examining heterogeneity across project cohorts.",
+      "Comparison with standard baseline models in recent discipline literature.",
     ],
     mustAddressItems: [
       "Update literature review with relevant 2023–2025 citations from leading field journals.",
+      "Explicitly state boundary conditions and external validity limitations.",
+    ],
+    minorComments: [
+      "Standardize terminology for key variables throughout Sections 2 and 4.",
+      "Check citation formatting for accuracy against journal guidelines.",
     ],
     evidenceAnchors: [
       abstractCore
@@ -517,16 +559,47 @@ export function calculateDeterministicPersonas(
       ? "Absence of identifiable formal Methods / Experimental section."
       : "Providing full step-by-step procedural parameters and data access specifications.",
     assessment: isMethodsMissing
-      ? "The manuscript lacks a dedicated Materials and Methods section. Reviewers cannot audit experimental protocols, data selection criteria, or procedural controls."
-      : "The methodology presents a structured empirical workflow. However, complete reproducibility requires depositing raw data and code in a persistent repository.",
+      ? `The manuscript lacks an identifiable, dedicated Materials and Methods section.\n\nWithout explicit documentation of sampling procedures, instrument calibrations, control conditions, and computational pipelines, external referees cannot evaluate experimental integrity or replicate the findings. An academic submission cannot proceed to publication without a transparent methodological architecture.`
+      : `The methodology outlines a sequential empirical workflow for studying "${cleanTitle.slice(0, 60)}".\n\nWhile the general design is clear, crucial procedural parameters remain underspecified. To meet high-impact reproducibility standards, the authors must specify exact sampling criteria, instrument settings, missing data handling, and public repository deposition for analysis scripts.`,
+    strengths: [
+      `The empirical design aligns logically with the primary exploratory aims.`,
+      `Structured workflow allows straightforward tracking from data ingestion to reported outputs.`,
+      `Identifies relevant observational units and measurement metrics.`,
+    ],
     majorCritiques: isMethodsMissing
-      ? ["Add an explicit Materials & Methods section detailing all experimental specifications."]
-      : ["Document complete instrumentation parameters and software dependencies."],
+      ? [
+          "Add an explicit Materials & Methods section detailing all experimental specifications and protocols.",
+          "Document data provenance, filtering criteria, and cohort exclusions systematically.",
+        ]
+      : [
+          "Document complete instrumentation parameters, software dependencies, and exact version numbers.",
+          "Provide an explicit protocol for outlier exclusion and missing data imputation.",
+          "Clarify pre-registration status and deposit reproducible computational scripts.",
+        ],
+    concreteSolutions: [
+      {
+        issue: isMethodsMissing
+          ? "No formal Materials & Methods section detected in manuscript."
+          : "Reproducibility parameters (software version, seeds, raw data repository) are omitted.",
+        proposedFix: isMethodsMissing
+          ? "Introduce a structured §Methods section covering: (1) Sample / Cohort Selection, (2) Experimental Setup, (3) Analytical Pipeline."
+          : "Include a 'Reproducibility and Code Availability' paragraph detailing computational environments and permanent DOI archives.",
+        exampleRewrite: `Add to Methods: "All analyses were performed in Python (v3.11) and R (v4.3). Code pipelines and anonymized data matrices are openly archived via Zenodo (DOI: 10.5281/zenodo.XXXXXXX). Random seeds were set to 42 for all non-deterministic steps."`,
+      },
+    ],
     missingControlsOrAnalyses: [
       "Robustness checks testing sensitivity to alternative model specifications.",
+      "Negative control tests or baseline sanity checks verifying measurement stability.",
     ],
     mustAddressItems: [
-      "Provide public replication code and data accession link.",
+      isMethodsMissing
+        ? "Draft a comprehensive Materials & Methods section before submitting."
+        : "Provide public replication code and data accession link.",
+      "Explicitly report inclusion and exclusion criteria for all cohorts.",
+    ],
+    minorComments: [
+      "Specify manufacturer, model, and city/country for all proprietary hardware/software used.",
+      "Include a flow diagram illustrating cohort inclusion/exclusion if applicable.",
     ],
     evidenceAnchors: [
       isMethodsMissing
@@ -547,17 +620,36 @@ export function calculateDeterministicPersonas(
     expertise: paperProfile.statistician.expertise,
     roleDescription: "Statistical Power, Inference Validity, and Variance Reporting",
     decisionRecommendation: "Major Revision",
-    keyChallenge: "Statistical power reporting and multi-testing multiplicity control.",
-    assessment: `The quantitative framework incorporates ${statCount > 0 ? statMetrics.slice(0, 2).join(", ") : "standard statistical tests"}. However, explicit statistical power calculations (1 - beta >= 0.80) are absent, and 95% confidence intervals should accompany all point estimates.`,
+    keyChallenge: "Statistical power reporting, uncertainty quantification, and multiplicity control.",
+    assessment: `I have reviewed the quantitative and statistical procedures reported in the manuscript.\n\nThe empirical presentation incorporates ${statCount > 0 ? statMetrics.slice(0, 2).join(", ") : "statistical testing"}. However, the reporting does not adhere to contemporary statistical reporting guidelines (e.g. ASA, SAMPL).\n\nSpecifically: (1) Point estimates are frequently presented without 95% confidence intervals; (2) Sample size justification via a-priori power calculations is absent; (3) When multiple hypotheses are evaluated, family-wise error rate or False Discovery Rate (FDR) corrections are not clearly documented.`,
+    strengths: [
+      `Quantitative framework is directly aligned with the stated research questions.`,
+      `Data presentation includes clear tabular summaries of point estimates and test statistics.`,
+      `Analytical procedures appear appropriate for the declared study design.`,
+    ],
     majorCritiques: [
-      "Report exact p-values, test statistics, and 95% confidence intervals throughout.",
-      "Justify sample size with formal a-priori or post-hoc statistical power calculations.",
+      "Report exact p-values, test statistics, degrees of freedom, and 95% confidence intervals throughout.",
+      "Justify sample size with formal a-priori or sensitivity power calculations (target 1 - beta >= 0.80).",
+      "Apply and document multiple testing corrections (e.g., Benjamini-Hochberg FDR) where multiple parameters are tested.",
+    ],
+    concreteSolutions: [
+      {
+        issue: "Solitary p-values and point estimates reported without confidence intervals or effect sizes.",
+        proposedFix: "Replace bare p-value reporting with standardized effect sizes (Cohen's d, partial eta squared, or odds ratios) accompanied by 95% CIs.",
+        exampleRewrite: `Revise results sentences: "The intervention produced a significant effect (beta = 0.42, 95% CI [0.18, 0.66], t(142) = 3.48, p = 0.0007, Cohen's d = 0.58). Post-hoc power analysis indicated 88% power to detect an effect of this magnitude at alpha = 0.05."`,
+      },
     ],
     missingControlsOrAnalyses: [
       "Multiple hypothesis testing corrections (Bonferroni or Benjamini-Hochberg FDR).",
+      "Model diagnostics testing assumptions of normality and homoscedasticity of residuals.",
     ],
     mustAddressItems: [
       "Add 95% confidence intervals to all graphical and tabular data summaries.",
+      "State exact numerical p-values rather than inequality thresholds (except p < 0.001).",
+    ],
+    minorComments: [
+      "Define all error bars in figure captions (indicate whether they represent SD, SEM, or 95% CI).",
+      "Do not report p-values as 'p = 0.000'; use 'p < 0.001'.",
     ],
     evidenceAnchors: [
       sampleCount > 0
@@ -579,17 +671,35 @@ export function calculateDeterministicPersonas(
     roleDescription: "Hostile Audit, Unmeasured Confounders, and Stress-Testing",
     decisionRecommendation: "Reject / Resubmit",
     keyChallenge: "Observational confounding and over-extrapolation of causal claims.",
-    assessment: "Examining this work with an adversarial lens: what alternative mechanism could generate these exact empirical patterns? The study observes correlations, but the leap to strong causal recommendations requires much more rigorous control of unmeasured confounders.",
+    assessment: `Examining this work through an adversarial audit: what rival hypotheses could produce these exact empirical patterns without the author's preferred explanation?\n\nThe manuscript demonstrates noteworthy associations, but the text frequently slips into causal assertions that exceed the evidentiary design.\n\nWithout rigorous falsification tests, sensitivity bounds for unobserved confounders (e.g., Oster bounds or E-values), and explicit discussion of selection bias, the strongest conclusions remain vulnerable to skeptical readers and referees.`,
+    strengths: [
+      `Tackles an ambitious question and formulates clear, testable assertions.`,
+      `Exposes potentially impactful patterns that provoke meaningful debate in ${discipline}.`,
+      `Provides an open target for rigorous empirical interrogation and replication.`,
+    ],
     majorCritiques: [
-      "Causal language is excessive given the observational nature of the dataset.",
-      "Selection bias and survivorship effects in project cohorts have not been eliminated.",
+      "Causal language is overly strong given the observational or non-randomized dataset.",
+      "Selection bias, survivorship effects, or reverse causality have not been rigorously ruled out.",
+      "Absence of placebo checks or falsification tests to establish counterfactual validity.",
+    ],
+    concreteSolutions: [
+      {
+        issue: "Causal claims in Abstract and Conclusion exceed the observational design.",
+        proposedFix: "Modulate causal verbs ('proves', 'causes', 'demonstrates') to associative or conditional framing, and introduce an honest Limitations subsection.",
+        exampleRewrite: `Revise Abstract conclusion: "Our empirical findings indicate a strong positive association between [Variable A] and [Variable B] across the sampled cohorts. While these results suggest a potential mechanism, establishing definitive causality will require longitudinal or randomized experimental designs."`,
+      },
     ],
     missingControlsOrAnalyses: [
       "Falsification / placebo tests to verify that the estimated effect vanishes under randomized counterfactuals.",
+      "Quantification of sensitivity to unobserved confounding (e.g., E-values or Rosenbaum bounds).",
     ],
     mustAddressItems: [
       "Tone down causal assertions throughout the Abstract, Results, and Conclusion.",
       "Add a dedicated Limitations subsection acknowledging observational boundary conditions.",
+    ],
+    minorComments: [
+      "Explicitly discuss at least two rival interpretations of your primary empirical findings.",
+      "Acknowledge demographic or cohort boundary conditions in the final summary.",
     ],
     evidenceAnchors: [`text: §Abstract "${cleanTitle.slice(0, 60)}..."`],
     counterArguments: [

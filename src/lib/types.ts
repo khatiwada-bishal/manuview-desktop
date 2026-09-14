@@ -44,6 +44,12 @@ export interface PriorityIssue {
   source?: 'llm' | 'heuristic' | 'crossref';
 }
 
+export interface ReviewerConcreteSolution {
+  issue: string;
+  proposedFix: string;
+  exampleRewrite?: string;
+}
+
 export interface ReviewerPersonaFeedback {
   persona: 'methods_reviewer' | 'domain_expert' | 'journal_editor' | 'statistician' | 'devils_advocate';
   name: string;
@@ -54,9 +60,12 @@ export interface ReviewerPersonaFeedback {
   decisionRecommendation: 'Major Revision' | 'Reject / Resubmit' | 'Desk Reject' | 'Minor Revision';
   keyChallenge: string;
   assessment: string;
+  strengths?: string[];
   majorCritiques: string[];
+  concreteSolutions?: ReviewerConcreteSolution[];
   missingControlsOrAnalyses: string[];
   mustAddressItems: string[];
+  minorComments?: string[];
   evidenceAnchors?: string[];
   counterArguments?: string[];
   source?: 'llm' | 'heuristic';

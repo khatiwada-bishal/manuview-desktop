@@ -2641,11 +2641,7 @@ export function detectDiscipline(
 
   scores.sort((a, b) => b.score - a.score);
 
-  if (scores[0].score >= 2.0) {
-    return scores[0].discipline;
-  }
-
-  // 2. Cited Journals Check (strong empirical signal from references)
+  // 1. Check cited journals (highest empirical evidence of discourse community)
   if (citedJournals && citedJournals.length > 0) {
     const disciplineCitationCounts: Partial<Record<Discipline, number>> = {};
     for (const cited of citedJournals) {
@@ -2658,13 +2654,16 @@ export function detectDiscipline(
       }
     }
     const sortedCitations = Object.entries(disciplineCitationCounts).sort((a, b) => (b[1] || 0) - (a[1] || 0));
-    if (sortedCitations.length > 0 && (sortedCitations[0][1] || 0) >= 2) {
-      return sortedCitations[0][0] as Discipline;
+    if (sortedCitations.length > 0 && (sortedCitations[0][1] || 0) >= 1) {
+      // If cited journals agree with a top keyword score, or strong citation signal, return it
+      if ((sortedCitations[0][1] || 0) >= 2 || scores[0].score >= 2.0) {
+        return sortedCitations[0][0] as Discipline;
+      }
     }
   }
 
-  // Moderate keyword signal fallback
-  if (scores[0].score > 1.5) {
+  // 2. High or moderate keyword score from title/abstract
+  if (scores[0].score > 0) {
     return scores[0].discipline;
   }
 
@@ -2674,7 +2673,7 @@ export function detectDiscipline(
     const catalogDirect = JOURNAL_CATALOG.find(
       j => j.name.toLowerCase() === targetNorm || targetNorm.includes(j.name.toLowerCase()) || j.name.toLowerCase().includes(targetNorm)
     );
-    if (catalogDirect) {
+    if (catalogDirect && catalogDirect.discipline !== 'Multidisciplinary') {
       return catalogDirect.discipline;
     }
   }
