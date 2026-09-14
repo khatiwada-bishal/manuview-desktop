@@ -54,7 +54,7 @@ import { extractTextFromFile, parseManuscriptText } from "@/lib/parser";
 import { runManuscriptDiagnostic, runBriefJournalFitAnalysis } from "@/lib/diagnostic-engine";
 import { fetchLiveJournalScope, JournalScopeProfile } from "@/lib/journal-scope-service";
 import { evaluateManuscriptScopeTriage, evaluateManuscriptScopeTriageWithLLM } from "@/lib/engine/scope-triage-journals";
-import { callLLM, sanitizeErrorMessage, getSavedClientConfig } from "@/lib/llm";
+import { callLLM, sanitizeErrorMessage, getSavedClientConfig, resolveActiveConfig } from "@/lib/llm";
 import { useApiConnection } from "@/lib/useApiConnection";
 import { PaperItem } from "@/components/DesktopSidebar";
 import { DesktopDashboardData } from "@/components/DesktopDashboard";
@@ -400,7 +400,7 @@ export function DesktopPreSubmissionScanView({
 
       setLoadingStep(`Evaluating scope compatibility for "${targetJournal}" with AI Handling Editor...`);
       setLoadingPercent(65);
-      const providerConfig = getSavedClientConfig();
+      const providerConfig = await resolveActiveConfig();
       const triageResult = await evaluateManuscriptScopeTriageWithLLM(
         parsed.title,
         parsed.abstract,
@@ -418,7 +418,6 @@ export function DesktopPreSubmissionScanView({
         setLoadingStep("Desk Reject flagged: Generating handling editor triage report...");
         setLoadingPercent(85);
 
-        const providerConfig = getSavedClientConfig();
         const deskRejectReport = await runManuscriptDiagnostic(
           parsed,
           providerConfig,
@@ -464,7 +463,7 @@ export function DesktopPreSubmissionScanView({
     setLoadingPercent(30);
 
     try {
-      const providerConfig = getSavedClientConfig();
+      const providerConfig = await resolveActiveConfig();
       const fullReport = await runManuscriptDiagnostic(
         compatibilityMatch.parsed,
         providerConfig,

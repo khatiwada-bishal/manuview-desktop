@@ -9,7 +9,7 @@ import {
 import { EditorialTriageOutcome, JournalRecommendation, PriorityIssue, ProviderConfig } from "../types";
 import { JournalScopeProfile } from "../journal-scope-service";
 import { callLLMForJson } from "./shared-utils";
-import { LLMMessage, getSavedClientConfig } from "../llm";
+import { LLMMessage, getSavedClientConfig, resolveActiveConfig } from "../llm";
 
 /**
  * Extracts salient domain topics and keywords from manuscript title and abstract.
@@ -195,7 +195,7 @@ export async function evaluateManuscriptScopeTriageWithLLM(
     return baseResult;
   }
 
-  const resolvedConfig = providerConfig || getSavedClientConfig();
+  const resolvedConfig = await resolveActiveConfig(providerConfig);
   const hasKey = Boolean(resolvedConfig?.apiKey || resolvedConfig?.provider === "ollama");
 
   if (!hasKey) {

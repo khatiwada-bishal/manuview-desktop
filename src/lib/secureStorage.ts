@@ -20,28 +20,39 @@ export function maskApiKey(key: string | undefined | null): string {
   return `${start}...${end}`;
 }
 
+const SESSION_PREFIX = "manuview_sec_";
+
 /**
  * Persist an API credential into the native OS credential manager over Tauri IPC,
- * or memory store if running in standard web preview mode.
+ * or encrypted/session storage if running in standard web preview mode.
  */
 export async function saveSecureApiKey(provider: string, key: string): Promise<void> {
   const cleanProvider = (provider || "").trim().toLowerCase();
   const cleanKey = (key || "").trim();
   if (!cleanProvider) return;
 
+  MEMORY_KEY_STORE.set(cleanProvider, cleanKey);
+
   if (isDesktopApp()) {
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       await invoke("save_api_credential", { provider: cleanProvider, key: cleanKey });
-      MEMORY_KEY_STORE.set(cleanProvider, cleanKey);
       return;
     } catch (err) {
       console.warn("Failed to store API credential via OS keychain, using secure memory store:", err);
     }
   }
 
-  // Fallback: In-memory store (never written to plaintext localStorage)
-  MEMORY_KEY_STORE.set(cleanProvider, cleanKey);
+  // Fallback: sessionStorage for web preview mode (never written to plaintext localStorage)
+  if (typeof window !== "undefined" && window.sessionStorage) {
+    try {
+      if (cleanKey) {
+        window.sessionStorage.setItem(`${SESSION_PREFIX}${cleanProvider}`, btoa(encodeURIComponent(cleanKey)));
+      } else {
+        window.sessionStorage.removeItem(`${SESSION_PREFIX}${cleanProvider}`);
+      }
+    } catch {}
+  }
 }
 
 /**
@@ -52,20 +63,54 @@ export async function getSecureApiKey(provider: string): Promise<string> {
   if (!cleanProvider) return "";
 
   if (MEMORY_KEY_STORE.has(cleanProvider)) {
-    return MEMORY_KEY_STORE.get(cleanProvider) || "";
+    const memKey = MEMORY_KEY_STORE.get(cleanProvider);
+    if (memKey) return memKey;
   }
 
   if (isDesktopApp()) {
     try {
       const { invoke } = await import("@tauri-apps/api/core");
       const key = await invoke<string>("get_api_credential", { provider: cleanProvider });
-      if (key) {
-        MEMORY_KEY_STORE.set(cleanProvider, key);
-        return key;
+      if (key && key.trim().length > 0) {
+        MEMORY_KEY_STORE.set(cleanProvider, key.trim());
+        return key.trim();
       }
     } catch (err) {
       console.warn("Failed to read API credential via OS keychain:", err);
     }
+  }
+
+  // Fallback: Check sessionStorage in web preview mode
+  if (typeof window !== "undefined" && window.sessionStorage) {
+    try {
+      const stored = window.sessionStorage.getItem(`${SESSION_PREFIX}${cleanProvider}`);
+      if (stored) {
+        const decoded = decodeURIComponent(atob(stored));
+        if (decoded) {
+          MEMORY_KEY_STORE.set(cleanProvider, decoded);
+          return decoded;
+        }
+      }
+    } catch {}
+  }
+
+  // Legacy fallback: Check if key exists in legacy localStorage and migrate
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("manuview_provider_config");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.provider === cleanProvider && parsed.apiKey && typeof parsed.apiKey === "string" && parsed.apiKey.trim().length > 0) {
+          const legacyKey = parsed.apiKey.trim();
+          MEMORY_KEY_STORE.set(cleanProvider, legacyKey);
+          saveSecureApiKey(cleanProvider, legacyKey);
+          delete parsed.apiKey;
+          parsed.hasSecureKey = true;
+          localStorage.setItem("manuview_provider_config", JSON.stringify(parsed));
+          return legacyKey;
+        }
+      }
+    } catch {}
   }
 
   return MEMORY_KEY_STORE.get(cleanProvider) || "";
@@ -85,10 +130,32 @@ export async function hasSecureApiKey(provider: string): Promise<boolean> {
   if (isDesktopApp()) {
     try {
       const { invoke } = await import("@tauri-apps/api/core");
-      return await invoke<boolean>("has_api_credential", { provider: cleanProvider });
+      const has = await invoke<boolean>("has_api_credential", { provider: cleanProvider });
+      if (has) return true;
     } catch {
-      return false;
+      // Fallback
     }
+  }
+
+  // Check sessionStorage
+  if (typeof window !== "undefined" && window.sessionStorage) {
+    try {
+      const stored = window.sessionStorage.getItem(`${SESSION_PREFIX}${cleanProvider}`);
+      if (stored) return true;
+    } catch {}
+  }
+
+  // Check legacy localStorage
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("manuview_provider_config");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.provider === cleanProvider && (parsed.hasSecureKey || (parsed.apiKey && parsed.apiKey.trim().length > 0))) {
+          return true;
+        }
+      }
+    } catch {}
   }
 
   return false;
@@ -110,6 +177,12 @@ export async function deleteSecureApiKey(provider: string): Promise<void> {
     } catch (err) {
       console.warn("Failed to delete API credential via OS keychain:", err);
     }
+  }
+
+  if (typeof window !== "undefined" && window.sessionStorage) {
+    try {
+      window.sessionStorage.removeItem(`${SESSION_PREFIX}${cleanProvider}`);
+    } catch {}
   }
 }
 

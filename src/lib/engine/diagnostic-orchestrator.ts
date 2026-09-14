@@ -6,7 +6,7 @@ import {
   MatchedJournalItem,
   TargetJournalTierResults,
 } from "../journals";
-import { getSavedClientConfig, LLMMessage, sanitizeAuthorText, sanitizeErrorMessage } from "../llm";
+import { getSavedClientConfig, resolveActiveConfig, LLMMessage, sanitizeAuthorText, sanitizeErrorMessage } from "../llm";
 import { evaluateOpenAlexScopeFit, OpenAlexSource, searchJournalInOpenAlex } from "../openalex";
 import { classifyDocument } from "../parser";
 import { auditReportingGuidelines } from "../guidelines";
@@ -667,7 +667,7 @@ export async function runManuscriptDiagnostic(
   onProgress?: (update: DiagnosticProgressUpdate) => void,
   preloadedScope?: JournalScopeProfile | null
 ): Promise<FullReviewReport> {
-  const activeConfig = config || getSavedClientConfig();
+  const activeConfig = await resolveActiveConfig(config);
   const isConfigUsable = Boolean(
     activeConfig?.provider &&
     (activeConfig.provider === "ollama" || (typeof activeConfig.apiKey === "string" && activeConfig.apiKey.trim().length > 0))
@@ -1483,7 +1483,7 @@ export async function runBriefJournalFitAnalysis(
     heuristicScore = Math.max(0, heuristicScore - 8);
   }
 
-  const activeConfig = input.providerConfig || getSavedClientConfig();
+  const activeConfig = await resolveActiveConfig(input.providerConfig);
   const isConfigUsable = Boolean(
     activeConfig?.provider &&
     (activeConfig.provider === "ollama" || (typeof activeConfig.apiKey === "string" && activeConfig.apiKey.trim().length > 0))

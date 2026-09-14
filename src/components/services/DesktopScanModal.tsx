@@ -25,7 +25,7 @@ import { DesktopDashboardData } from "@/components/DesktopDashboard";
 import { PaperItem } from "@/components/DesktopSidebar";
 import { FullReviewReport, ProviderConfig, ParsedManuscript } from "@/lib/types";
 import { useApiConnection } from "@/lib/useApiConnection";
-import { sanitizeErrorMessage, getSavedClientConfig } from "@/lib/llm";
+import { sanitizeErrorMessage, getSavedClientConfig, resolveActiveConfig } from "@/lib/llm";
 
 interface DesktopScanModalProps {
   isOpen: boolean;
@@ -223,7 +223,7 @@ export function DesktopScanModal({
 
       setLoadingStep(`Evaluating scope compatibility for "${journal}" with AI Handling Editor...`);
       setLoadingPercent(65);
-      const savedConfig = getSavedClientConfig();
+      const savedConfig = await resolveActiveConfig();
       const triageResult = await evaluateManuscriptScopeTriageWithLLM(
         parsed.title,
         parsed.abstract,
@@ -241,7 +241,6 @@ export function DesktopScanModal({
         setLoadingStep("Desk Reject flagged: Generating handling editor triage report...");
         setLoadingPercent(85);
 
-        const savedConfig = getSavedClientConfig();
         const deskRejectReport = await runManuscriptDiagnostic(
           parsed,
           savedConfig,
@@ -285,7 +284,7 @@ export function DesktopScanModal({
     setLoadingPercent(40);
 
     try {
-      const savedConfig = getSavedClientConfig();
+      const savedConfig = await resolveActiveConfig();
       const fullReport = await runManuscriptDiagnostic(
         compatibilityMatch.parsed,
         savedConfig,

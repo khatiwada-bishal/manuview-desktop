@@ -13,7 +13,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { fetchWorkByDOI } from "@/lib/openalex";
-import { callLLM, sanitizeAuthorText, sanitizeErrorMessage, getSavedClientConfig } from "@/lib/llm";
+import { callLLM, sanitizeAuthorText, sanitizeErrorMessage, getSavedClientConfig, resolveActiveConfig } from "@/lib/llm";
 import { cleanAndRepairJson } from "@/lib/json-repair";
 import { ProviderConfig } from "@/lib/types";
 
@@ -91,7 +91,7 @@ Return a JSON object with:
   "suggestedRewrite": "an accurate rephrasing of the sentence that strictly aligns with the cited evidence"
 }`;
 
-      const providerConfig = getSavedClientConfig();
+      const providerConfig = await resolveActiveConfig();
 
       const raw = await callLLM([{ role: "user", content: prompt }], providerConfig);
 

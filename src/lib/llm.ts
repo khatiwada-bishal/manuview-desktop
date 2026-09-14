@@ -157,6 +157,47 @@ export function getSavedClientConfig(): ProviderConfig | undefined {
 }
 
 /**
+ * Resolves full client configuration including API credentials asynchronously
+ * from native OS Keychain, secure storage, or environment variables.
+ */
+export async function resolveActiveConfig(config?: ProviderConfig): Promise<ProviderConfig> {
+  const base = config || getSavedClientConfig() || { provider: "gemini", model: "gemini-2.0-flash", baseUrl: "http://localhost:11434" };
+  let provider: LLMProvider = base.provider || "gemini";
+  let apiKey = (base.apiKey || "").trim();
+  let model = (base.model || "").trim();
+  let baseUrl = (base.baseUrl || "").trim();
+
+  // 1. If no apiKey provided by caller, query native OS Keychain / secure memory store
+  if (!apiKey && provider !== "ollama") {
+    try {
+      const secureKey = await getSecureApiKey(provider);
+      if (secureKey && secureKey.trim().length > 0) {
+        apiKey = secureKey.trim();
+      }
+    } catch (e) {
+      console.warn(`Failed to retrieve secure key for ${provider}:`, e);
+    }
+  }
+
+  // 2. If still no apiKey, query environment variables
+  if (!apiKey && provider !== "ollama") {
+    if (provider === "gemini") apiKey = getEnv('GEMINI_API_KEY') || getEnv('GOOGLE_API_KEY');
+    else if (provider === "groq") apiKey = getEnv('GROQ_API_KEY');
+    else if (provider === "openai") apiKey = getEnv('OPENAI_API_KEY');
+    else if (provider === "anthropic") apiKey = getEnv('ANTHROPIC_API_KEY');
+  }
+
+  return {
+    ...base,
+    provider,
+    apiKey,
+    model: model || (provider === "gemini" ? "gemini-2.0-flash" : provider === "groq" ? "llama-3.3-70b-versatile" : provider === "openai" ? "gpt-4o-mini" : "claude-3-5-sonnet-20241022"),
+    baseUrl: baseUrl || (provider === "openai" ? "https://api.openai.com/v1" : "http://localhost:11434"),
+    hasSecureKey: Boolean(apiKey),
+  };
+}
+
+/**
  * Sanitizes sensitive credentials (API keys, authorization tokens) from error strings (REQ-SEC-01)
  */
 export function sanitizeErrorMessage(msg: string): string {
@@ -223,7 +264,7 @@ export function getServerConfigStatus(): {
   }
 
   const hasServerKey = serverProviders.length > 0;
-  const hasClientKey = Boolean(saved && saved.apiKey);
+  const hasClientKey = Boolean(saved && (saved.apiKey || saved.hasSecureKey || saved.provider === "ollama"));
 
   if (hasClientKey && saved) {
     return {
@@ -384,64 +425,11 @@ export async function callLLM(
   // the prompt with a guard against prose prompts that say "Do NOT return JSON".
   const jsonMode = options?.jsonMode ?? inferJsonMode(messages);
   // 1. Resolve Provider and Credentials
-  const resolvedConfig = config || getSavedClientConfig();
-  let provider: LLMProvider = resolvedConfig?.provider || "ollama";
-  let apiKey: string = resolvedConfig?.apiKey || "";
-  let model: string = resolvedConfig?.model || "";
-  let baseUrl: string = resolvedConfig?.baseUrl || "http://localhost:11434";
-
-  // If no apiKey provided by client, first query native OS Keychain / secure storage
-  if (!apiKey && provider !== "ollama") {
-    try {
-      const secureKey = await getSecureApiKey(provider);
-      if (secureKey) {
-        apiKey = secureKey;
-      }
-    } catch (e) {
-      console.warn(`Failed to retrieve secure key for ${provider}:`, e);
-    }
-  }
-
-  // If still no apiKey provided by client, auto-detect from server environment variables
-  if (!apiKey) {
-    if (provider === "gemini" || (!config && (getEnv('GEMINI_API_KEY') || getEnv('GOOGLE_API_KEY')))) {
-      apiKey = getEnv('GEMINI_API_KEY') || getEnv('GOOGLE_API_KEY');
-      if (apiKey) {
-        provider = "gemini";
-        model = model || getEnv('GEMINI_MODEL') || "gemini-1.5-flash";
-      }
-    } else if (provider === "groq" || (!config && getEnv('GROQ_API_KEY'))) {
-      apiKey = getEnv('GROQ_API_KEY');
-      if (apiKey) {
-        provider = "groq";
-        model = model || getEnv('GROQ_MODEL') || "llama-3.3-70b-versatile";
-      }
-    } else if (provider === "openai" || (!config && getEnv('OPENAI_API_KEY'))) {
-      apiKey = getEnv('OPENAI_API_KEY');
-      if (apiKey) {
-        provider = "openai";
-        model = model || getEnv('OPENAI_MODEL') || "gpt-4o-mini";
-      }
-    } else if (provider === "anthropic" || (!config && getEnv('ANTHROPIC_API_KEY'))) {
-      apiKey = getEnv('ANTHROPIC_API_KEY');
-      if (apiKey) {
-        provider = "anthropic";
-        model = model || getEnv('ANTHROPIC_MODEL') || "claude-3-5-sonnet-20241022";
-      }
-    }
-  }
-
-  // If still no API key and provider was not explicitly set to Ollama, check any available env key
-  if (!apiKey && provider !== "ollama") {
-    const serverStatus = getServerConfigStatus();
-    if (serverStatus.hasServerKey && serverStatus.activeProvider !== 'none') {
-      provider = serverStatus.activeProvider;
-      if (provider === "gemini") apiKey = getEnv('GEMINI_API_KEY') || getEnv('GOOGLE_API_KEY');
-      else if (provider === "groq") apiKey = getEnv('GROQ_API_KEY');
-      else if (provider === "openai") apiKey = getEnv('OPENAI_API_KEY');
-      else if (provider === "anthropic") apiKey = getEnv('ANTHROPIC_API_KEY');
-    }
-  }
+  const resolvedConfig = await resolveActiveConfig(config);
+  let provider: LLMProvider = resolvedConfig.provider || "gemini";
+  let apiKey: string = resolvedConfig.apiKey || "";
+  let model: string = resolvedConfig.model || "";
+  let baseUrl: string = resolvedConfig.baseUrl || "http://localhost:11434";
 
   if (!apiKey && provider !== "ollama") {
     throw new Error(`No API key configured for ${provider.toUpperCase()}. Please configure your API key in AI Settings.`);

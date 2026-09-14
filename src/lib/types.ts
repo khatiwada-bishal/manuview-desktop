@@ -412,6 +412,7 @@ export interface ProviderConfig {
   model: string;
   baseUrl?: string; // e.g. http://localhost:11434 for Ollama
   apiKey?: string;
+  hasSecureKey?: boolean;
 }
 
 export interface AvailableModel {
