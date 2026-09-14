@@ -423,34 +423,14 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                   2. {config.provider === "openai" ? "API Key" : `${config.provider === "gemini" ? "Google" : config.provider.toUpperCase()} API Key`}
                 </label>
                 {config.provider === "openai" && (
-                  <div className="flex items-center gap-1.5 text-[11px]">
-                    <a
-                      href="https://platform.openai.com/api-keys"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[#78510E] dark:text-amber-400 hover:underline font-medium"
-                    >
-                      OpenAI key &rarr;
-                    </a>
-                    <span className="text-[#9B9A97]">·</span>
-                    <a
-                      href="https://openrouter.ai/keys"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[#0A85EA] dark:text-blue-400 hover:underline font-medium"
-                    >
-                      OpenRouter &rarr;
-                    </a>
-                    <span className="text-[#9B9A97]">·</span>
-                    <a
-                      href="https://build.nvidia.com/"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[#107C10] dark:text-emerald-400 hover:underline font-medium"
-                    >
-                      NVIDIA NIM &rarr;
-                    </a>
-                  </div>
+                  <a
+                    href="https://platform.openai.com/api-keys"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[11px] text-[#78510E] dark:text-amber-400 hover:underline font-medium"
+                  >
+                    Get OpenAI key &rarr;
+                  </a>
                 )}
                 {config.provider === "gemini" && (
                   <a
@@ -490,29 +470,9 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                   type="password"
                   value={apiKeyInput}
                   onChange={(e) => {
-                    const val = e.target.value;
-                    setApiKeyInput(val);
+                    setApiKeyInput(e.target.value);
                     setIsKeyDirty(true);
                     setFetchFeedback(null);
-                    // Auto-detect OpenRouter or NVIDIA API keys
-                    if (config.provider === "openai") {
-                      if (val.trim().startsWith("sk-or-")) {
-                        if (!config.baseUrl || config.baseUrl.includes("api.openai.com") || config.baseUrl.includes("nvidia.com")) {
-                          setConfig((prev) => ({
-                            ...prev,
-                            baseUrl: "https://openrouter.ai/api/v1",
-                          }));
-                        }
-                      } else if (val.trim().startsWith("nvapi-")) {
-                        if (!config.baseUrl || config.baseUrl.includes("api.openai.com") || config.baseUrl.includes("openrouter.ai")) {
-                          setConfig((prev) => ({
-                            ...prev,
-                            baseUrl: "https://integrate.api.nvidia.com/v1",
-                            model: prev.model?.includes("/") ? prev.model : "nvidia/llama-3.1-nemotron-70b-instruct",
-                          }));
-                        }
-                      }
-                    }
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -527,7 +487,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                       ? "AIzaSy..."
                       : config.provider === "anthropic"
                       ? "sk-ant-..."
-                      : "sk-... , sk-or-v1-... , or nvapi-..."
+                      : "Enter your API key..."
                   }
                   className="flex-1 min-w-0 px-3.5 py-2 rounded-xl bg-white dark:bg-[#1E293B] border border-[#EBEBEA] dark:border-[#334155] focus:border-[#2F3437] dark:focus:border-blue-500 focus:outline-none text-xs text-[#2F3437] dark:text-white font-mono transition shadow-2xs placeholder:text-[#9B9A97] dark:placeholder:text-neutral-500"
                 />
@@ -583,59 +543,9 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
 
               {config.provider === "openai" && (
                 <div className="mt-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-semibold text-[#2F3437] dark:text-white">
-                      API Base URL (Optional for Proxies / Custom Endpoints)
-                    </label>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setConfig({ ...config, baseUrl: "" });
-                          setBaseUrlError(null);
-                        }}
-                        className={`text-[10px] px-2 py-0.5 rounded transition cursor-pointer ${
-                          !config.baseUrl || config.baseUrl.includes("api.openai.com")
-                            ? "bg-[#2F3437] text-white dark:bg-blue-600 font-medium"
-                            : "bg-[#F0EFEA] dark:bg-neutral-800 text-[#787774] dark:text-neutral-400 hover:text-[#2F3437]"
-                        }`}
-                      >
-                        OpenAI
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setConfig({ ...config, baseUrl: "https://openrouter.ai/api/v1" });
-                          setBaseUrlError(null);
-                        }}
-                        className={`text-[10px] px-2 py-0.5 rounded transition cursor-pointer ${
-                          config.baseUrl?.includes("openrouter.ai")
-                            ? "bg-[#2F3437] text-white dark:bg-blue-600 font-medium"
-                            : "bg-[#F0EFEA] dark:bg-neutral-800 text-[#787774] dark:text-neutral-400 hover:text-[#2F3437]"
-                        }`}
-                      >
-                        OpenRouter
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setConfig({
-                            ...config,
-                            baseUrl: "https://integrate.api.nvidia.com/v1",
-                            model: config.model?.includes("/") ? config.model : "nvidia/llama-3.1-nemotron-70b-instruct",
-                          });
-                          setBaseUrlError(null);
-                        }}
-                        className={`text-[10px] px-2 py-0.5 rounded transition cursor-pointer ${
-                          config.baseUrl?.includes("nvidia.com")
-                            ? "bg-[#2F3437] text-white dark:bg-emerald-600 font-medium"
-                            : "bg-[#F0EFEA] dark:bg-neutral-800 text-[#787774] dark:text-neutral-400 hover:text-[#2F3437]"
-                        }`}
-                      >
-                        NVIDIA NIM
-                      </button>
-                    </div>
-                  </div>
+                  <label className="block text-xs font-semibold text-[#2F3437] dark:text-white mb-1">
+                    API Base URL (Optional)
+                  </label>
                   <input
                     type="text"
                     value={config.baseUrl || ""}
@@ -656,21 +566,14 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                         handleFetchModels();
                       }
                     }}
-                    placeholder="https://api.openai.com/v1 (or https://integrate.api.nvidia.com/v1)"
+                    placeholder="https://api.openai.com/v1 (leave blank for official OpenAI)"
                     className={`w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#1E293B] border ${
                       baseUrlError ? "border-red-500 dark:border-red-500" : "border-[#EBEBEA] dark:border-[#334155]"
                     } focus:border-[#2F3437] dark:focus:border-blue-500 focus:outline-none text-xs text-[#2F3437] dark:text-white font-mono transition shadow-2xs placeholder:text-[#9B9A97] dark:placeholder:text-neutral-500`}
                   />
-                  {config.baseUrl?.includes("openrouter.ai") && (
-                    <p className="text-[#1E5A2A] dark:text-emerald-400 text-[11px] mt-1 flex items-center gap-1">
-                      <span>✓ OpenRouter endpoint configured (`https://openrouter.ai/api/v1`). Click "Fetch Models" to load models.</span>
-                    </p>
-                  )}
-                  {config.baseUrl?.includes("nvidia.com") && (
-                    <p className="text-[#107C10] dark:text-emerald-400 text-[11px] mt-1 flex items-center gap-1">
-                      <span>✓ NVIDIA NIM endpoint configured (`https://integrate.api.nvidia.com/v1`). Click "Fetch Models" to load Llama, Nemotron & Mistral models.</span>
-                    </p>
-                  )}
+                  <p className="text-[11px] text-[#787774] dark:text-neutral-400 mt-1">
+                    Optional. Leave blank for official OpenAI, or provide a custom base URL for any OpenAI-compatible provider.
+                  </p>
                   {baseUrlError && (
                     <p className="text-red-500 dark:text-red-400 text-xs mt-1.5 flex items-center gap-1">
                       <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />

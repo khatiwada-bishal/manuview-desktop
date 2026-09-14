@@ -697,7 +697,7 @@ export async function callLLM(
           errMessage = (await response.text()) || errMessage;
         }
         const safeErr = sanitizeErrorMessage(errMessage);
-        const providerName = isNvidia ? "NVIDIA NIM" : isOpenRouter ? "OpenRouter" : provider.toUpperCase();
+        const providerName = customBase && !customBase.includes("api.openai.com") ? "OpenAI Compatible" : provider.toUpperCase();
         console.error(`${providerName} API error:`, response.status, safeErr);
         throw new Error(`${providerName} API error (${response.status}): ${safeErr}`);
       }
@@ -1161,16 +1161,22 @@ export async function fetchAvailableModels(
         throw new Error(`Gemini API error (${res.status}): ${errMessage}`);
       }
     } else if (provider === "openai" && apiKey) {
-      const isNvidia = apiKey.startsWith("nvapi-") || (baseUrl && baseUrl.includes("nvidia.com"));
-      const isOpenRouter = !isNvidia && (apiKey.startsWith("sk-or-") || (baseUrl && baseUrl.includes("openrouter.ai")));
-      const defaultBase = isNvidia ? "https://integrate.api.nvidia.com/v1" : (isOpenRouter ? "https://openrouter.ai/api/v1" : "https://api.openai.com/v1");
-      let cleanBase = (baseUrl || defaultBase).trim();
+      let cleanBase = (baseUrl || "").trim();
+      const isOfficialOpenAI = !cleanBase || cleanBase.includes("api.openai.com");
+
+      // Optional Base URL fallback if user left it empty:
+      if (!cleanBase) {
+        if (apiKey.startsWith("nvapi-")) cleanBase = "https://integrate.api.nvidia.com/v1";
+        else if (apiKey.startsWith("sk-or-")) cleanBase = "https://openrouter.ai/api/v1";
+        else cleanBase = "https://api.openai.com/v1";
+      }
+
       const validated = validateBaseUrl(cleanBase);
       if (!validated.valid) {
         if (options?.throwOnError) {
-          throw new Error(validated.error || `Invalid OpenAI base URL: ${cleanBase}`);
+          throw new Error(validated.error || `Invalid API base URL: ${cleanBase}`);
         }
-        cleanBase = defaultBase;
+        cleanBase = "https://api.openai.com/v1";
       } else if (validated.normalized) {
         cleanBase = validated.normalized;
       }
@@ -1179,7 +1185,7 @@ export async function fetchAvailableModels(
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
       const headers: Record<string, string> = { Authorization: `Bearer ${apiKey.trim()}` };
-      if (isOpenRouter) {
+      if (cleanBase.includes("openrouter.ai") || apiKey.startsWith("sk-or-")) {
         headers["HTTP-Referer"] = "https://manuview.app";
         headers["X-Title"] = "ManuView";
       }
@@ -1196,25 +1202,27 @@ export async function fetchAvailableModels(
           const chatModels = rawList.filter((m: any) => {
             const id = typeof m === "string" ? m : m.id;
             if (!id || typeof id !== "string") return false;
-            if (isNvidia) {
-              const lower = id.toLowerCase();
-              return (
-                !lower.includes("embed") &&
-                !lower.includes("clip") &&
-                !lower.includes("reward") &&
-                !lower.includes("safety-guard") &&
-                !lower.includes("content-safety") &&
-                !lower.includes("topic-control") &&
-                !lower.includes("rerank") &&
-                !lower.includes("detector") &&
-                !lower.includes("parse") &&
-                !lower.includes("calibration")
-              );
+            if (isOfficialOpenAI) {
+              return id.includes("gpt") || id.startsWith("o1") || id.startsWith("o3") || id.includes("chat");
             }
-            if (isOpenRouter) {
-              return !id.includes("whisper") && !id.includes("tts") && !id.includes("dall-e") && !id.includes("embedding") && !id.includes("moderation");
-            }
-            return id.includes("gpt") || id.startsWith("o1") || id.startsWith("o3") || id.includes("chat") || id.includes("claude");
+            // For custom/compatible endpoints: filter out non-generative tasks
+            const lower = id.toLowerCase();
+            return (
+              !lower.includes("embed") &&
+              !lower.includes("clip") &&
+              !lower.includes("reward") &&
+              !lower.includes("safety-guard") &&
+              !lower.includes("content-safety") &&
+              !lower.includes("topic-control") &&
+              !lower.includes("rerank") &&
+              !lower.includes("detector") &&
+              !lower.includes("parse") &&
+              !lower.includes("calibration") &&
+              !lower.includes("whisper") &&
+              !lower.includes("tts") &&
+              !lower.includes("dall-e") &&
+              !lower.includes("moderation")
+            );
           });
 
           if (chatModels.length > 0) {
@@ -1223,7 +1231,7 @@ export async function fetchAvailableModels(
               const existing = defaultList.find((d) => d.id === id);
               const name = m.name || existing?.name || id;
               const desc = m.description ? `${m.description.slice(0, 100)}...` : existing?.description || `Model ${id}`;
-              const isRecommended = existing?.recommended || id === "gpt-4o" || id.includes("llama-3.3-70b") || id === "nvidia/llama-3.1-nemotron-70b-instruct" || id.includes("nemotron-70b");
+              const isRecommended = existing?.recommended || id === "gpt-4o" || id.includes("llama-3.3-70b") || id.includes("nemotron-70b");
               return {
                 id,
                 name,
@@ -1244,7 +1252,7 @@ export async function fetchAvailableModels(
         } catch {
           errMessage = (await res.text()) || errMessage;
         }
-        const providerName = isNvidia ? "NVIDIA NIM" : isOpenRouter ? "OpenRouter" : "OpenAI";
+        const providerName = isOfficialOpenAI ? "OpenAI" : "OpenAI Compatible";
         throw new Error(`${providerName} API error (${res.status}): ${errMessage}`);
       }
     } else if (provider === "groq" && apiKey) {
@@ -1533,21 +1541,19 @@ export async function testLLMConnection(
     // -----------------------------------------------------------
     if (provider === "openai" || provider === "groq") {
       let customBase = config?.baseUrl || getEnv('OPENAI_BASE_URL');
-      const isNvidia = Boolean(apiKey?.startsWith("nvapi-") || (customBase && customBase.includes("nvidia.com")));
-      const isOpenRouter = !isNvidia && Boolean(apiKey?.startsWith("sk-or-") || (customBase && customBase.includes("openrouter.ai")));
       if (!customBase) {
-        if (isNvidia) {
-          customBase = "https://integrate.api.nvidia.com/v1";
-        } else if (isOpenRouter) {
-          customBase = "https://openrouter.ai/api/v1";
-        }
+        if (apiKey?.startsWith("nvapi-")) customBase = "https://integrate.api.nvidia.com/v1";
+        else if (apiKey?.startsWith("sk-or-")) customBase = "https://openrouter.ai/api/v1";
       }
+      const isCustomEndpoint = Boolean(customBase && !customBase.includes("api.openai.com"));
 
-      let chosenModel = model || (provider === "groq" ? "llama-3.3-70b-versatile" : isNvidia ? "nvidia/llama-3.1-nemotron-70b-instruct" : (isOpenRouter ? "openai/gpt-4o-mini" : "gpt-4o-mini"));
-      if (isOpenRouter && !chosenModel.includes("/")) {
-        chosenModel = `openai/${chosenModel}`;
-      } else if (isNvidia && (!chosenModel.includes("/") || chosenModel === "gpt-4o" || chosenModel === "gpt-4o-mini")) {
-        chosenModel = "nvidia/llama-3.1-nemotron-70b-instruct";
+      let chosenModel = model || (provider === "groq" ? "llama-3.3-70b-versatile" : "gpt-4o-mini");
+      if (isCustomEndpoint && (!chosenModel || chosenModel === "gpt-4o-mini" || chosenModel === "gpt-4o")) {
+        if (apiKey?.startsWith("nvapi-") || customBase?.includes("nvidia.com")) {
+          chosenModel = "nvidia/llama-3.1-nemotron-70b-instruct";
+        } else if (apiKey?.startsWith("sk-or-") || customBase?.includes("openrouter.ai")) {
+          chosenModel = "openai/gpt-4o-mini";
+        }
       }
 
       let endpoint = "https://api.openai.com/v1/chat/completions";
@@ -1561,7 +1567,7 @@ export async function testLLMConnection(
             provider,
             model: chosenModel,
             latencyMs: Date.now() - startTime,
-            message: `OpenAI custom base URL rejected: ${validated.error}`,
+            message: `Custom base URL rejected: ${validated.error}`,
             error: validated.error,
             availableModels,
           };
@@ -1577,7 +1583,7 @@ export async function testLLMConnection(
         "Content-Type": "application/json",
         "Authorization": `Bearer ${apiKey.trim()}`,
       };
-      if (isOpenRouter) {
+      if (customBase?.includes("openrouter.ai") || apiKey?.startsWith("sk-or-")) {
         reqHeaders["HTTP-Referer"] = "https://manuview.app";
         reqHeaders["X-Title"] = "ManuView";
       }
@@ -1595,7 +1601,7 @@ export async function testLLMConnection(
       clearTimeout(timeoutId);
 
       const latencyMs = Date.now() - startTime;
-      const providerLabel = isNvidia ? "NVIDIA NIM" : isOpenRouter ? "OpenRouter" : provider.toUpperCase();
+      const providerLabel = isCustomEndpoint ? "OpenAI Compatible" : provider.toUpperCase();
 
       if (response.ok) {
         return {
