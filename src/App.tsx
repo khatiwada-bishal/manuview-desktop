@@ -547,6 +547,11 @@ export default function App() {
         <ProviderSettingsModal
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
+          onOpenLocalModel={() => setIsLocalModelOpen(true)}
+        />
+        <LocalModelManagerModal
+          isOpen={isLocalModelOpen}
+          onClose={() => setIsLocalModelOpen(false)}
         />
       </ThemeProvider>
     );
@@ -635,6 +640,7 @@ export default function App() {
         <ProviderSettingsModal
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
+          onOpenLocalModel={() => setIsLocalModelOpen(true)}
         />
 
         <LocalModelManagerModal

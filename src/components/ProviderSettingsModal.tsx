@@ -14,13 +14,15 @@ import {
   deleteSecureApiKey,
   maskApiKey,
 } from "@/lib/secureStorage";
-import { Settings, ShieldCheck, X, CheckCircle2, Activity, RefreshCw, AlertCircle, Zap, Check, ChevronDown, Sparkles, Search, KeyRound, Cpu } from "lucide-react";
+import { isModelCached, SUPPORTED_LOCAL_MODELS } from "@/lib/webllm/webllm-service";
+import { Settings, ShieldCheck, X, CheckCircle2, Activity, RefreshCw, AlertCircle, Zap, Check, ChevronDown, Sparkles, Search, KeyRound, Cpu, Download } from "lucide-react";
 import { GeminiLogo, OpenAILogo, GroqLogo, AnthropicLogo, OllamaLogo } from "./BrandLogos";
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSave?: (config: ProviderConfig) => void;
+  onOpenLocalModel?: () => void;
 }
 
 export const DEFAULT_CONFIG: ProviderConfig = {
@@ -30,8 +32,10 @@ export const DEFAULT_CONFIG: ProviderConfig = {
   apiKey: "",
 };
 
-export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
+export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalModel }: Props) {
   const [config, setConfig] = useState<ProviderConfig>(DEFAULT_CONFIG);
+  const [providerCategory, setProviderCategory] = useState<"cloud" | "local">("cloud");
+  const [cachedModels, setCachedModels] = useState<Record<string, boolean>>({});
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [testing, setTesting] = useState(false);
   const [loadingModels, setLoadingModels] = useState(false);
@@ -78,6 +82,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
     setApiKeyInput("");
     setIsKeyDirty(false);
     setBaseUrlError(null);
+    setProviderCategory(currentConfig.provider === "webllm" || currentConfig.provider === "ollama" ? "local" : "cloud");
 
     hasSecureApiKey(currentConfig.provider).then(setHasSecureKey);
 
@@ -98,6 +103,18 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
   const loadModelsForProvider = async (targetConfig: ProviderConfig) => {
     setLoadingModels(true);
     try {
+      if (targetConfig.provider === "webllm") {
+        const cacheStatus: Record<string, boolean> = {};
+        for (const m of SUPPORTED_LOCAL_MODELS) {
+          try {
+            cacheStatus[m.id] = await isModelCached(m.id);
+          } catch {
+            cacheStatus[m.id] = false;
+          }
+        }
+        setCachedModels(cacheStatus);
+      }
+
       const models = await fetchAvailableModels(targetConfig);
       if (Array.isArray(models) && models.length > 0) {
         setAvailableModels(models);
@@ -189,6 +206,8 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
         ? "claude-3-7-sonnet-20250219"
         : newProvider === "groq"
         ? "llama-3.3-70b-versatile"
+        : newProvider === "webllm"
+        ? "Qwen2.5-0.5B-Instruct-q4f16_1-MLC"
         : "llama3.3";
 
     const updated = {
@@ -198,6 +217,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
     };
     delete (updated as any).apiKey;
     setConfig(updated);
+    setProviderCategory(newProvider === "webllm" || newProvider === "ollama" ? "local" : "cloud");
     setTestResult(null);
     setFetchFeedback(null);
     setHasFetchedLive(false);
@@ -237,6 +257,17 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
     try {
       const result = await testLLMConnection({ ...config, apiKey: effectiveKey });
       setTestResult(result);
+      if (config.provider === "webllm") {
+        const cacheStatus: Record<string, boolean> = {};
+        for (const m of SUPPORTED_LOCAL_MODELS) {
+          try {
+            cacheStatus[m.id] = await isModelCached(m.id);
+          } catch {
+            cacheStatus[m.id] = false;
+          }
+        }
+        setCachedModels(cacheStatus);
+      }
       if (Array.isArray(result.availableModels) && result.availableModels.length > 0) {
         setAvailableModels(result.availableModels);
         if (result.availableModels.some((m: AvailableModel) => m.isLive)) {
@@ -335,120 +366,221 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
         </div>
 
         <div className="space-y-5">
-          {/* 1. Provider Selection Grid (Compact buttons with Logo & Main Name) */}
+          {/* 1. Provider Selection Grid with Cloud vs Local Tabs */}
           <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#787774] dark:text-neutral-400 mb-2">
-              1. Select AI Provider
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
-              {/* Google */}
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[#787774] dark:text-neutral-400">
+                1. Select AI Provider
+              </label>
+              <span className="text-[10px] text-neutral-400 font-medium">
+                {providerCategory === "cloud" ? "Cloud API Execution" : "On-Device / Local Execution"}
+              </span>
+            </div>
+
+            {/* Category Tabs: Cloud vs Local / Self-Hosted */}
+            <div className="flex items-center p-1 rounded-2xl bg-black/[0.04] dark:bg-white/[0.05] border border-black/5 dark:border-white/5 mb-3">
               <button
                 type="button"
-                onClick={() => handleProviderChange("gemini")}
-                className={`flex items-center justify-center gap-2 px-2.5 py-2 rounded-xl border text-xs font-semibold transition cursor-pointer ${
-                  config.provider === "gemini"
-                    ? "bg-[#F7F7F5] dark:bg-[#1E293B] border-[#2F3437] dark:border-blue-500 ring-1 ring-[#2F3437] dark:ring-blue-500 text-[#2F3437] dark:text-white shadow-2xs"
-                    : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
+                onClick={() => {
+                  setProviderCategory("cloud");
+                  if (config.provider === "webllm" || config.provider === "ollama") {
+                    handleProviderChange("gemini");
+                  }
+                }}
+                className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                  providerCategory === "cloud"
+                    ? "bg-white dark:bg-[#1E293B] text-neutral-900 dark:text-white shadow-xs border border-black/5 dark:border-white/10"
+                    : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
                 }`}
               >
-                <GeminiLogo className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>Google</span>
+                <Zap className="w-3.5 h-3.5 text-blue-500" />
+                <span>Cloud Providers (API-based)</span>
               </button>
 
-              {/* OpenAI */}
               <button
                 type="button"
-                onClick={() => handleProviderChange("openai")}
-                className={`flex items-center justify-center gap-2 px-2.5 py-2 rounded-xl border text-xs font-semibold transition cursor-pointer ${
-                  config.provider === "openai"
-                    ? "bg-[#F7F7F5] dark:bg-[#1E293B] border-[#2F3437] dark:border-blue-500 ring-1 ring-[#2F3437] dark:ring-blue-500 text-[#2F3437] dark:text-white shadow-2xs"
-                    : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
+                onClick={() => {
+                  setProviderCategory("local");
+                  if (config.provider !== "webllm" && config.provider !== "ollama") {
+                    handleProviderChange("webllm");
+                  }
+                }}
+                className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                  providerCategory === "local"
+                    ? "bg-white dark:bg-[#1E293B] text-neutral-900 dark:text-white shadow-xs border border-black/5 dark:border-white/10"
+                    : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
                 }`}
               >
-                <div className="p-0.5 rounded bg-[#000000] text-white flex items-center justify-center flex-shrink-0">
-                  <OpenAILogo className="w-2.5 h-2.5 text-white" />
-                </div>
-                <span>OpenAI</span>
-              </button>
-
-              {/* Anthropic */}
-              <button
-                type="button"
-                onClick={() => handleProviderChange("anthropic")}
-                className={`flex items-center justify-center gap-2 px-2.5 py-2 rounded-xl border text-xs font-semibold transition cursor-pointer ${
-                  config.provider === "anthropic"
-                    ? "bg-[#F7F7F5] dark:bg-[#1E293B] border-[#2F3437] dark:border-blue-500 ring-1 ring-[#2F3437] dark:ring-blue-500 text-[#2F3437] dark:text-white shadow-2xs"
-                    : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
-                }`}
-              >
-                <AnthropicLogo className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>Anthropic</span>
-              </button>
-
-              {/* Groq */}
-              <button
-                type="button"
-                onClick={() => handleProviderChange("groq")}
-                className={`flex items-center justify-center gap-2 px-2.5 py-2 rounded-xl border text-xs font-semibold transition cursor-pointer ${
-                  config.provider === "groq"
-                    ? "bg-[#F7F7F5] dark:bg-[#1E293B] border-[#2F3437] dark:border-blue-500 ring-1 ring-[#2F3437] dark:ring-blue-500 text-[#2F3437] dark:text-white shadow-2xs"
-                    : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
-                }`}
-              >
-                <GroqLogo className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>Groq</span>
-              </button>
-
-              {/* Ollama */}
-              <button
-                type="button"
-                onClick={() => handleProviderChange("ollama")}
-                className={`flex items-center justify-center gap-2 px-2.5 py-2 rounded-xl border text-xs font-semibold transition cursor-pointer ${
-                  config.provider === "ollama"
-                    ? "bg-[#F7F7F5] dark:bg-[#1E293B] border-[#2F3437] dark:border-blue-500 ring-1 ring-[#2F3437] dark:ring-blue-500 text-[#2F3437] dark:text-white shadow-2xs"
-                    : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
-                }`}
-              >
-                <OllamaLogo className="w-3.5 h-3.5 text-[#1E5A2A] dark:text-emerald-400 flex-shrink-0" />
-                <span>Ollama</span>
-              </button>
-
-              {/* Local SLM (WebGPU) */}
-              <button
-                type="button"
-                onClick={() => handleProviderChange("webllm")}
-                className={`flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl border text-xs font-semibold transition cursor-pointer ${
-                  config.provider === "webllm"
-                    ? "bg-purple-50 dark:bg-purple-950/40 border-purple-500 ring-1 ring-purple-500 text-purple-700 dark:text-purple-300 shadow-2xs"
-                    : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
-                }`}
-              >
-                <Cpu className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
-                <span>Local SLM</span>
+                <Cpu className="w-3.5 h-3.5 text-purple-500" />
+                <span>Local / Self-Hosted</span>
               </button>
             </div>
+
+            {/* Provider Grid */}
+            {providerCategory === "cloud" ? (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {/* Google */}
+                <button
+                  type="button"
+                  onClick={() => handleProviderChange("gemini")}
+                  className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                    config.provider === "gemini"
+                      ? "bg-[#F7F7F5] dark:bg-[#1E293B] border-[#2F3437] dark:border-blue-500 ring-1 ring-[#2F3437] dark:ring-blue-500 text-[#2F3437] dark:text-white shadow-2xs"
+                      : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
+                  }`}
+                >
+                  <GeminiLogo className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>Google (Gemini)</span>
+                </button>
+
+                {/* OpenAI */}
+                <button
+                  type="button"
+                  onClick={() => handleProviderChange("openai")}
+                  className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                    config.provider === "openai"
+                      ? "bg-[#F7F7F5] dark:bg-[#1E293B] border-[#2F3437] dark:border-blue-500 ring-1 ring-[#2F3437] dark:ring-blue-500 text-[#2F3437] dark:text-white shadow-2xs"
+                      : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
+                  }`}
+                >
+                  <div className="p-0.5 rounded bg-[#000000] text-white flex items-center justify-center flex-shrink-0">
+                    <OpenAILogo className="w-2.5 h-2.5 text-white" />
+                  </div>
+                  <span>OpenAI</span>
+                </button>
+
+                {/* Anthropic */}
+                <button
+                  type="button"
+                  onClick={() => handleProviderChange("anthropic")}
+                  className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                    config.provider === "anthropic"
+                      ? "bg-[#F7F7F5] dark:bg-[#1E293B] border-[#2F3437] dark:border-blue-500 ring-1 ring-[#2F3437] dark:ring-blue-500 text-[#2F3437] dark:text-white shadow-2xs"
+                      : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
+                  }`}
+                >
+                  <AnthropicLogo className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>Anthropic</span>
+                </button>
+
+                {/* Groq */}
+                <button
+                  type="button"
+                  onClick={() => handleProviderChange("groq")}
+                  className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                    config.provider === "groq"
+                      ? "bg-[#F7F7F5] dark:bg-[#1E293B] border-[#2F3437] dark:border-blue-500 ring-1 ring-[#2F3437] dark:ring-blue-500 text-[#2F3437] dark:text-white shadow-2xs"
+                      : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
+                  }`}
+                >
+                  <GroqLogo className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>Groq</span>
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* Local SLM (WebGPU) */}
+                <button
+                  type="button"
+                  onClick={() => handleProviderChange("webllm")}
+                  className={`flex items-center justify-between p-3 rounded-2xl border text-left transition cursor-pointer ${
+                    config.provider === "webllm"
+                      ? "bg-purple-500/10 border-purple-500 ring-1 ring-purple-500/50 text-neutral-900 dark:text-white shadow-xs"
+                      : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="p-2 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400">
+                      <Cpu className="w-4 h-4" />
+                    </span>
+                    <div>
+                      <div className="font-semibold text-xs text-neutral-900 dark:text-white">
+                        Local SLM (WebGPU)
+                      </div>
+                      <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
+                        100% on-device &bull; Zero API &bull; Confidential
+                      </div>
+                    </div>
+                  </div>
+                  {config.provider === "webllm" && (
+                    <CheckCircle2 className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                  )}
+                </button>
+
+                {/* Ollama */}
+                <button
+                  type="button"
+                  onClick={() => handleProviderChange("ollama")}
+                  className={`flex items-center justify-between p-3 rounded-2xl border text-left transition cursor-pointer ${
+                    config.provider === "ollama"
+                      ? "bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500/50 text-neutral-900 dark:text-white shadow-xs"
+                      : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="p-2 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                      <OllamaLogo className="w-4 h-4" />
+                    </span>
+                    <div>
+                      <div className="font-semibold text-xs text-neutral-900 dark:text-white">
+                        Ollama (Self-Hosted)
+                      </div>
+                      <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
+                        Local server &bull; http://localhost:11434
+                      </div>
+                    </div>
+                  </div>
+                  {config.provider === "ollama" && (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  )}
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* 2. API Key / Endpoint Configuration with in-line Fetch Models Button */}
+          {/* 2. Provider Configuration & Authentication */}
           {config.provider === "webllm" ? (
-            <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-900 dark:text-purple-200 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 font-semibold">
-                  <Cpu className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                  <span>On-Device Execution (WebGPU)</span>
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[#787774] dark:text-neutral-400">
+                2. On-Device Execution &amp; Storage
+              </label>
+              <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-900 dark:text-purple-200 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-semibold">
+                    <Cpu className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                    <span>On-Device GPU Execution (WebGPU)</span>
+                  </div>
+                  <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-700 dark:text-purple-300">
+                    Zero External API
+                  </span>
                 </div>
-                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-purple-500/20 text-purple-700 dark:text-purple-300">
-                  Zero External API
-                </span>
+                <p className="text-[11px] opacity-90 leading-relaxed">
+                  Small Language Models execute completely offline on your device&apos;s GPU via WebGPU. No API key or cloud network connection required.
+                </p>
+                {onOpenLocalModel && (
+                  <div className="pt-2 flex items-center justify-between border-t border-purple-500/20">
+                    <span className="text-[11px] text-purple-800 dark:text-purple-300 font-medium">
+                      Model weights storage &amp; download:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onOpenLocalModel();
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs transition shadow-xs cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Manage Local Models</span>
+                    </button>
+                  </div>
+                )}
               </div>
-              <p className="text-[11px] opacity-90 leading-relaxed">
-                Small Language Models run completely on your device&apos;s GPU via WebGPU. No API key or cloud network connection required.
-              </p>
             </div>
           ) : config.provider !== "ollama" ? (
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-semibold text-[#2F3437] dark:text-white">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#787774] dark:text-neutral-400">
                   2. {config.provider === "openai" ? "API Key" : `${config.provider === "gemini" ? "Google" : config.provider.toUpperCase()} API Key`}
                 </label>
                 {config.provider === "openai" && (
@@ -614,7 +746,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
             </div>
           ) : (
             <div>
-              <label className="block text-xs font-semibold text-[#2F3437] dark:text-white mb-1.5">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[#787774] dark:text-neutral-400 mb-1.5">
                 2. Local Ollama Server URL
               </label>
               <div className="flex items-center gap-2">
@@ -698,7 +830,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
           <div ref={dropdownRef} className="relative z-20">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <label className="text-xs font-semibold text-[#2F3437] dark:text-white">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-[#787774] dark:text-neutral-400">
                   3. Select Model
                 </label>
                 {hasFetchedLive ? (
@@ -755,9 +887,20 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                       <span className="font-mono text-xs font-semibold text-[#2F3437] dark:text-white">
                         {config.model || "Select a model..."}
                       </span>
+                      {config.provider === "webllm" && (
+                        cachedModels[config.model] ? (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                            <Check className="w-3 h-3" /> Downloaded &amp; Ready
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                            <Download className="w-3 h-3" /> Not Downloaded
+                          </span>
+                        )
+                      )}
                       {(() => {
                         const cur = availableModels.find((m) => m.id === config.model);
-                        if (cur?.tag) {
+                        if (cur?.tag && config.provider !== "webllm") {
                           return (
                             <span
                               className={`text-[10px] font-semibold px-2 py-0.2 rounded-md border ${
@@ -861,12 +1004,23 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                                   <span className="font-mono text-xs font-semibold text-[#2F3437] dark:text-white">
                                     {m.id}
                                   </span>
+                                  {config.provider === "webllm" && (
+                                    cachedModels[m.id] ? (
+                                      <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded-md border bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 flex items-center gap-1">
+                                        <Check className="w-2.5 h-2.5" /> Downloaded
+                                      </span>
+                                    ) : (
+                                      <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded-md border bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 flex items-center gap-1">
+                                        <Download className="w-2.5 h-2.5" /> Not Downloaded
+                                      </span>
+                                    )
+                                  )}
                                   {m.isLive && (
                                     <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded-md border bg-[#EDF6EE] dark:bg-emerald-950/50 text-[#1E5A2A] dark:text-emerald-400 border-[#CBE7CE] dark:border-emerald-800">
                                       Live
                                     </span>
                                   )}
-                                  {m.tag && (
+                                  {m.tag && config.provider !== "webllm" && (
                                     <span
                                       className={`text-[9px] font-semibold px-1.5 py-0.2 rounded-md border ${
                                         m.recommended
@@ -895,6 +1049,31 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
                       })()}
                     </div>
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* If Local SLM model is not downloaded, display actionable download banner */}
+            {config.provider === "webllm" && cachedModels[config.model] === false && (
+              <div className="mt-2.5 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-900 dark:text-amber-200 flex items-center justify-between gap-3 animate-fadeIn">
+                <div className="flex items-center gap-2 min-w-0">
+                  <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <span className="truncate">
+                    Model <strong>{config.model}</strong> is not stored locally on this machine yet.
+                  </span>
+                </div>
+                {onOpenLocalModel && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenLocalModel();
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs shrink-0 transition shadow-xs cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download Model</span>
+                  </button>
                 )}
               </div>
             )}
@@ -961,17 +1140,17 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
               type="button"
               onClick={handleCheckConnection}
               disabled={testing}
-              className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl liquid-glass-btn-secondary disabled:opacity-50 text-[#2F3437] dark:text-neutral-300 font-medium text-xs transition"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl liquid-glass-btn-secondary disabled:opacity-50 text-[#2F3437] dark:text-neutral-300 font-medium text-xs transition cursor-pointer"
             >
               {testing ? (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#0A85EA] dark:text-blue-400" />
-                  <span>Pinging API &amp; Fetching Models...</span>
+                  <span>{config.provider === "webllm" ? "Checking WebGPU & Cache..." : "Pinging API & Fetching Models..."}</span>
                 </>
               ) : (
                 <>
                   <Activity className="w-3.5 h-3.5 text-[#0A85EA] dark:text-blue-400" />
-                  <span>Check Connection &amp; Refresh Models</span>
+                  <span>{config.provider === "webllm" ? "Check WebGPU & Cache Status" : "Check Connection & Refresh Models"}</span>
                 </>
               )}
             </button>
