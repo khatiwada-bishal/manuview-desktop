@@ -19,6 +19,8 @@ import {
   SUPPORTED_LOCAL_MODELS,
   LocalModelInfo,
   isWebGPUSupported,
+  checkWebGPUCapabilities,
+  type WebGPUCapabilityCheck,
   isModelCached,
   deleteModelFromCache,
   initLocalModel,
@@ -36,7 +38,7 @@ interface LocalModelManagerModalProps {
 
 export function LocalModelManagerModal({ isOpen, onClose }: LocalModelManagerModalProps) {
   const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_LOCAL_MODEL);
-  const [hasWebGPU, setHasWebGPU] = useState<boolean>(true);
+  const [gpuCapability, setGpuCapability] = useState<WebGPUCapabilityCheck | null>(null);
   const [isCached, setIsCached] = useState<boolean>(false);
   const [checkingCache, setCheckingCache] = useState<boolean>(true);
   const [status, setStatus] = useState<LocalModelProgress>(getLocalModelStatus());
@@ -48,7 +50,17 @@ export function LocalModelManagerModal({ isOpen, onClose }: LocalModelManagerMod
   const [testStats, setTestStats] = useState<{ durationSec: number; tokenCount: number } | null>(null);
 
   useEffect(() => {
-    setHasWebGPU(isWebGPUSupported());
+    let active = true;
+    async function audit() {
+      const cap = await checkWebGPUCapabilities();
+      if (active) {
+        setGpuCapability(cap);
+      }
+    }
+    audit();
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -75,6 +87,9 @@ export function LocalModelManagerModal({ isOpen, onClose }: LocalModelManagerMod
       cancelled = true;
     };
   }, [selectedModel, isOpen, status.state]);
+
+  const isBufferConstrained = Boolean(gpuCapability?.supported && !gpuCapability?.meetsBufferRequirement);
+  const isWebGPUAvailable = gpuCapability ? Boolean(gpuCapability.supported && gpuCapability.meetsBufferRequirement) : true;
 
   if (!isOpen) return null;
 
@@ -162,32 +177,66 @@ export function LocalModelManagerModal({ isOpen, onClose }: LocalModelManagerMod
         </div>
 
         {/* WebGPU Status Check */}
-        <div className={`p-4 rounded-2xl border text-xs flex items-center justify-between ${
-          hasWebGPU
-            ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300"
-            : "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-300"
-        }`}>
-          <div className="flex items-center gap-2.5">
-            {hasWebGPU ? (
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-            ) : (
-              <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
-            )}
-            <div>
-              <div className="font-semibold">
-                {hasWebGPU ? "WebGPU Hardware Acceleration Supported" : "WebGPU Not Detected"}
+        {isBufferConstrained ? (
+          <div className="p-4 rounded-2xl border text-xs bg-amber-500/10 border-amber-500/25 text-amber-900 dark:text-amber-200 space-y-2.5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                <div>
+                  <div className="font-semibold text-amber-950 dark:text-amber-100">
+                    Browser WebGPU Storage Buffer Limit Detected ({gpuCapability?.storageBufferLimit ?? 9}/10 Buffers)
+                  </div>
+                  <div className="opacity-90 text-[11px] mt-0.5 leading-relaxed">
+                    Your current browser (Safari / WebKit) restricts WebGPU storage buffers to {gpuCapability?.storageBufferLimit ?? 9} for privacy fingerprinting protection. WebLLM requires 10 storage buffers to run model shaders.
+                  </div>
+                </div>
               </div>
-              <div className="opacity-80 text-[11px]">
-                {hasWebGPU
-                  ? "Your browser and graphics hardware can execute local models at high speeds."
-                  : "Requires Chrome, Edge, Brave, or Safari 18+. Deterministic offline engines remain active."}
+              <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-800 dark:text-amber-200 font-semibold shrink-0">
+                Buffer Limit
+              </span>
+            </div>
+
+            <div className="pl-6 pt-1 border-t border-amber-500/15 text-[11px] flex flex-col sm:flex-row sm:items-center gap-2">
+              <span className="font-medium text-neutral-700 dark:text-neutral-300">How to run offline SLM:</span>
+              <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
+                <span className="px-2 py-0.5 rounded-md bg-white dark:bg-black/30 border border-amber-500/30 text-amber-900 dark:text-amber-100 font-sans font-medium">
+                  Open in Google Chrome or Edge
+                </span>
+                <span className="text-neutral-400">or</span>
+                <span className="px-2 py-0.5 rounded-md bg-white dark:bg-black/30 border border-amber-500/30 text-amber-900 dark:text-amber-100 font-sans font-medium">
+                  Use ManuView Desktop
+                </span>
               </div>
             </div>
           </div>
-          <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/5 font-semibold">
-            {hasWebGPU ? "Active" : "Unavailable"}
-          </span>
-        </div>
+        ) : (
+          <div className={`p-4 rounded-2xl border text-xs flex items-center justify-between ${
+            isWebGPUAvailable
+              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+              : "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-300"
+          }`}>
+            <div className="flex items-center gap-2.5">
+              {isWebGPUAvailable ? (
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              ) : (
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              )}
+              <div>
+                <div className="font-semibold">
+                  {isWebGPUAvailable ? "WebGPU Hardware Acceleration Supported" : "WebGPU Not Detected"}
+                </div>
+                <div className="opacity-80 text-[11px]">
+                  {isWebGPUAvailable
+                    ? "Your browser and graphics hardware can execute local models at high speeds."
+                    : "Requires Chrome, Edge, Brave, or Safari 18+. Deterministic offline engines remain active."}
+                </div>
+              </div>
+            </div>
+            <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/5 font-semibold">
+              {isWebGPUAvailable ? "Active" : "Unavailable"}
+            </span>
+          </div>
+        )}
 
         {/* Model Selection */}
         <div className="space-y-3">
@@ -301,13 +350,27 @@ export function LocalModelManagerModal({ isOpen, onClose }: LocalModelManagerMod
                 <button
                   type="button"
                   onClick={handleDownload}
-                  disabled={!hasWebGPU || isDownloading}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white shadow-xs transition cursor-pointer"
+                  disabled={!isWebGPUAvailable || isDownloading}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer ${
+                    !isWebGPUAvailable
+                      ? "bg-black/5 dark:bg-white/5 text-neutral-400 dark:text-neutral-500 border border-black/10 dark:border-white/10 cursor-not-allowed"
+                      : "bg-purple-600 hover:bg-purple-700 text-white"
+                  }`}
+                  title={
+                    isBufferConstrained
+                      ? "Safari / WebKit limits WebGPU storage buffers to 9. Please open in Google Chrome or ManuView Desktop to run local models."
+                      : undefined
+                  }
                 >
                   {isDownloading ? (
                     <>
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                       <span>{status.state === "compiling" ? "Compiling Shaders..." : "Downloading Weights..."}</span>
+                    </>
+                  ) : isBufferConstrained ? (
+                    <>
+                      <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Requires Chrome / Desktop App</span>
                     </>
                   ) : (
                     <>

@@ -104,11 +104,78 @@ export function getLocalModelStatus(): LocalModelProgress {
 }
 
 /**
+ * Comprehensive WebGPU capability status
+ */
+export interface WebGPUCapabilityCheck {
+  supported: boolean;
+  adapterAvailable: boolean;
+  storageBufferLimit?: number;
+  meetsBufferRequirement: boolean;
+  reason?: string;
+}
+
+/**
  * Checks whether WebGPU is available in the current runtime environment.
  */
 export function isWebGPUSupported(): boolean {
   if (typeof navigator === "undefined") return false;
   return "gpu" in navigator && Boolean((navigator as any).gpu);
+}
+
+/**
+ * Audits WebGPU hardware and shader stage buffer limits.
+ * WebLLM requires at least 10 maxStorageBuffersPerShaderStage.
+ * Safari / WebKit clamps this to 9 by default, causing runtime failures.
+ */
+export async function checkWebGPUCapabilities(): Promise<WebGPUCapabilityCheck> {
+  if (!isWebGPUSupported()) {
+    return {
+      supported: false,
+      adapterAvailable: false,
+      meetsBufferRequirement: false,
+      reason: "WebGPU is not supported by your current browser or platform.",
+    };
+  }
+
+  try {
+    const gpu = (navigator as any).gpu;
+    const adapter = await gpu.requestAdapter();
+    if (!adapter) {
+      return {
+        supported: true,
+        adapterAvailable: false,
+        meetsBufferRequirement: false,
+        reason: "No compatible WebGPU graphics adapter found.",
+      };
+    }
+
+    const maxStorageBuffers = adapter.limits?.maxStorageBuffersPerShaderStage ?? 0;
+    const meetsBufferRequirement = maxStorageBuffers >= 10;
+
+    if (!meetsBufferRequirement) {
+      return {
+        supported: true,
+        adapterAvailable: true,
+        storageBufferLimit: maxStorageBuffers,
+        meetsBufferRequirement: false,
+        reason: `Your browser limits maxStorageBuffersPerShaderStage to ${maxStorageBuffers} (WebLLM requires 10). Please use Google Chrome, Edge, or the native ManuView Desktop app.`,
+      };
+    }
+
+    return {
+      supported: true,
+      adapterAvailable: true,
+      storageBufferLimit: maxStorageBuffers,
+      meetsBufferRequirement: true,
+    };
+  } catch (err: any) {
+    return {
+      supported: false,
+      adapterAvailable: false,
+      meetsBufferRequirement: false,
+      reason: err?.message || "Failed to query WebGPU adapter.",
+    };
+  }
 }
 
 /**
@@ -192,14 +259,30 @@ export async function initLocalModel(
   modelId: string = DEFAULT_LOCAL_MODEL,
   onProgress?: (progress: number, text: string) => void
 ): Promise<MLCEngineInterface> {
-  if (!isWebGPUSupported()) {
+  const gpuAudit = await checkWebGPUCapabilities();
+  if (!gpuAudit.supported) {
+    const reason = gpuAudit.reason || "WebGPU is not supported by your current browser or platform.";
     notifyListeners({
       state: "unsupported",
       modelId,
-      statusText: "WebGPU is not supported by your current browser or platform.",
-      error: "WebGPU not supported",
+      statusText: reason,
+      error: reason,
     });
-    throw new Error("WebGPU is not supported in this environment.");
+    throw new Error(reason);
+  }
+
+  if (!gpuAudit.meetsBufferRequirement) {
+    const errorMsg =
+      gpuAudit.reason ||
+      `Browser WebGPU storage buffer limit too low (${gpuAudit.storageBufferLimit ?? "unknown"} < 10). Please use Google Chrome, Edge, or the native ManuView Desktop app.`;
+    notifyListeners({
+      state: "error",
+      modelId,
+      progress: 0,
+      statusText: "WebGPU Storage Buffer Limit Exceeded",
+      error: errorMsg,
+    });
+    throw new Error(errorMsg);
   }
 
   // If already loaded with the same model, return existing engine
@@ -255,14 +338,19 @@ export async function initLocalModel(
     return activeEngine;
   } catch (err: any) {
     console.error("Failed to initialize WebLLM engine:", err);
+    let errorMessage = err?.message || String(err);
+    if (errorMessage.includes("maxStorageBuffersPerShaderStage")) {
+      errorMessage =
+        "Your browser (Safari/WebKit) restricts WebGPU storage buffers to 9 (WebLLM requires 10). For offline GPU SLM execution, please open ManuView in Google Chrome / Edge or use the native ManuView Desktop application.";
+    }
     notifyListeners({
       state: "error",
       modelId,
       progress: 0,
       statusText: "Failed to initialize local model",
-      error: err.message || String(err),
+      error: errorMessage,
     });
-    throw err;
+    throw new Error(errorMessage);
   }
 }
 
