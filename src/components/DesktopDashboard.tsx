@@ -248,6 +248,9 @@ export function DesktopDashboard({
     documentClassification: false,
     reportingGuideline: false,
     complianceAudit: false,
+    statcheck: false,
+    hedgingAudit: false,
+    citationHealth: false,
   });
 
   const toggleOverviewCard = (cardKey: string) => {
@@ -3095,6 +3098,9 @@ export function DesktopDashboard({
                       documentClassification: !anyOpen,
                       reportingGuideline: !anyOpen,
                       complianceAudit: !anyOpen,
+                      statcheck: !anyOpen,
+                      hedgingAudit: !anyOpen,
+                      citationHealth: !anyOpen,
                     });
                   }}
                   className="text-xs font-semibold text-[#2563EB] dark:text-blue-400 hover:underline cursor-pointer"
@@ -3429,6 +3435,250 @@ export function DesktopDashboard({
                           )}
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* CARD 7: Statistical Integrity & P-Value Audit (statcheck) */}
+            {!isNonAcademic && fullReport?.statcheck && fullReport.statcheck.totalTestsFound > 0 && (
+              <div className="rounded-3xl liquid-glass-card border border-black/[0.08] dark:border-white/[0.1] overflow-hidden transition-all duration-200">
+                <button
+                  type="button"
+                  onClick={() => toggleOverviewCard("statcheck")}
+                  className="w-full text-left p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition select-none"
+                  aria-expanded={expandedOverviewCards.statcheck}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center shrink-0">
+                      <Scale className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-base font-bold text-[#0F172A] dark:text-white">
+                          Statistical Integrity &amp; P-Value Audit (Statcheck)
+                        </h2>
+                        <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded border border-neutral-200 dark:border-neutral-700">
+                          Mathematical Verification
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
+                        Theoretical distribution recalculation of reported test statistics (t, F, χ², Z, r)
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
+                    <div className="flex items-center gap-2 text-xs font-medium bg-neutral-50 dark:bg-[#161F30] px-3 py-1.5 rounded-full border border-neutral-200 dark:border-neutral-700">
+                      <span className="text-emerald-700 dark:text-emerald-400 font-bold">{fullReport.statcheck.consistentCount} Consistent</span>
+                      {fullReport.statcheck.inconsistentCount > 0 && (
+                        <>
+                          <span className="text-neutral-300 dark:text-neutral-700">•</span>
+                          <span className="text-amber-700 dark:text-amber-400 font-bold">{fullReport.statcheck.inconsistentCount} Rounding Diff</span>
+                        </>
+                      )}
+                      {fullReport.statcheck.grossInconsistencyCount > 0 && (
+                        <>
+                          <span className="text-neutral-300 dark:text-neutral-700">•</span>
+                          <span className="text-rose-700 dark:text-rose-400 font-bold">{fullReport.statcheck.grossInconsistencyCount} Gross Conflict</span>
+                        </>
+                      )}
+                    </div>
+                    <div className="w-7 h-7 rounded-full bg-neutral-100 dark:bg-[#1E293B] flex items-center justify-center text-neutral-500 dark:text-neutral-400 ml-1 shrink-0">
+                      <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expandedOverviewCards.statcheck ? "rotate-180" : ""}`} />
+                    </div>
+                  </div>
+                </button>
+
+                {expandedOverviewCards.statcheck && (
+                  <div className="px-6 pb-6 sm:px-7 sm:pb-7 pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937] space-y-4 animate-fade-in">
+                    <p className="text-xs text-[#64748B] dark:text-neutral-400 leading-relaxed">
+                      {fullReport.statcheck.summary}
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {fullReport.statcheck.tests.map((test) => (
+                        <div
+                          key={test.id}
+                          className={`p-4 rounded-2xl border transition shadow-2xs ${
+                            test.isGrossInconsistency
+                              ? "bg-rose-50/50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-800/40"
+                              : !test.isConsistent
+                              ? "bg-amber-50/50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800/40"
+                              : "bg-white border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937]"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-1.5">
+                            <span className="font-mono text-xs font-bold text-neutral-900 dark:text-white">{test.rawText}</span>
+                            <span
+                              className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider border shrink-0 ${
+                                test.isGrossInconsistency
+                                  ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800"
+                                  : !test.isConsistent
+                                  ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
+                                  : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
+                              }`}
+                            >
+                              {test.isGrossInconsistency ? "Gross Conflict" : !test.isConsistent ? "Rounding Diff" : "Consistent"}
+                            </span>
+                          </div>
+                          <div className="text-[11px] space-y-1 text-neutral-600 dark:text-neutral-300">
+                            <p>Reported p: <strong className="font-mono">{test.reportedOperator} {test.reportedP}</strong> | Theoretical computed p: <strong className="font-mono text-indigo-600 dark:text-indigo-400">{test.computedP}</strong></p>
+                            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed">{test.explanation}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* CARD 8: Causal Overclaim & Epistemic Hedging Balance */}
+            {!isNonAcademic && fullReport?.hedgingAudit && fullReport.hedgingAudit.totalOverclaimsFound > 0 && (
+              <div className="rounded-3xl liquid-glass-card border border-black/[0.08] dark:border-white/[0.1] overflow-hidden transition-all duration-200">
+                <button
+                  type="button"
+                  onClick={() => toggleOverviewCard("hedgingAudit")}
+                  className="w-full text-left p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition select-none"
+                  aria-expanded={expandedOverviewCards.hedgingAudit}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 flex items-center justify-center shrink-0">
+                      <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-base font-bold text-[#0F172A] dark:text-white">
+                          Causal Claims &amp; Epistemic Hedging Audit
+                        </h2>
+                        <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded border border-neutral-200 dark:border-neutral-700">
+                          Hyland Corpus
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
+                        Detection of unhedged causal assertions, superlatives, and observational overclaiming
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
+                    <div className="flex items-center gap-2 text-xs font-medium bg-neutral-50 dark:bg-[#161F30] px-3 py-1.5 rounded-full border border-neutral-200 dark:border-neutral-700">
+                      <span className="font-bold text-neutral-700 dark:text-neutral-300">Hedging Index: <strong className="text-indigo-600 dark:text-indigo-400 font-extrabold">{fullReport.hedgingAudit.epistemicBalanceIndex}/100</strong></span>
+                      {fullReport.hedgingAudit.criticalCount > 0 && (
+                        <>
+                          <span className="text-neutral-300 dark:text-neutral-700">•</span>
+                          <span className="text-rose-700 dark:text-rose-400 font-bold">{fullReport.hedgingAudit.criticalCount} Critical</span>
+                        </>
+                      )}
+                      {fullReport.hedgingAudit.warningCount > 0 && (
+                        <>
+                          <span className="text-neutral-300 dark:text-neutral-700">•</span>
+                          <span className="text-amber-700 dark:text-amber-400 font-bold">{fullReport.hedgingAudit.warningCount} Warning</span>
+                        </>
+                      )}
+                    </div>
+                    <div className="w-7 h-7 rounded-full bg-neutral-100 dark:bg-[#1E293B] flex items-center justify-center text-neutral-500 dark:text-neutral-400 ml-1 shrink-0">
+                      <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expandedOverviewCards.hedgingAudit ? "rotate-180" : ""}`} />
+                    </div>
+                  </div>
+                </button>
+
+                {expandedOverviewCards.hedgingAudit && (
+                  <div className="px-6 pb-6 sm:px-7 sm:pb-7 pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937] space-y-4 animate-fade-in">
+                    <p className="text-xs text-[#64748B] dark:text-neutral-400 leading-relaxed">
+                      {fullReport.hedgingAudit.summary}
+                    </p>
+                    <div className="space-y-2.5">
+                      {fullReport.hedgingAudit.matches.map((item) => (
+                        <div
+                          key={item.id}
+                          className="p-3.5 rounded-2xl bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1F2937] shadow-2xs space-y-1.5"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-bold text-rose-600 dark:text-rose-400 font-mono">&ldquo;{item.matchedPhrase}&rdquo;</span>
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider border shrink-0 ${
+                              item.severity === "critical"
+                                ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800"
+                                : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
+                            }`}>
+                              {item.category.replace(/_/g, " ")}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-neutral-600 dark:text-neutral-400 italic leading-relaxed">&ldquo;...{item.sentenceSnippet}...&rdquo;</p>
+                          <div className="text-[11px] pt-1.5 border-t border-neutral-100 dark:border-neutral-800/80 flex items-start gap-1.5">
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400 shrink-0">Hedged Rewrite:</span>
+                            <span className="text-neutral-800 dark:text-neutral-200 font-medium">&ldquo;{item.suggestedRewrite}&rdquo;</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* CARD 9: Citation Recency & Half-Life Profile */}
+            {!isNonAcademic && fullReport?.citationHealth && fullReport.citationHealth.totalReferences > 0 && (
+              <div className="rounded-3xl liquid-glass-card border border-black/[0.08] dark:border-white/[0.1] overflow-hidden transition-all duration-200">
+                <button
+                  type="button"
+                  onClick={() => toggleOverviewCard("citationHealth")}
+                  className="w-full text-left p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition select-none"
+                  aria-expanded={expandedOverviewCards.citationHealth}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800 flex items-center justify-center shrink-0">
+                      <BookOpen className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-base font-bold text-[#0F172A] dark:text-white">
+                          Citation Recency &amp; Half-Life Profile
+                        </h2>
+                        <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded border border-neutral-200 dark:border-neutral-700">
+                          Bibliometric Age
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
+                        Publication year distribution, literature recency benchmarks, and orphan citation audit
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
+                    <div className="flex items-center gap-2 text-xs font-medium bg-neutral-50 dark:bg-[#161F30] px-3 py-1.5 rounded-full border border-neutral-200 dark:border-neutral-700">
+                      <span className="text-neutral-700 dark:text-neutral-300">Median: <strong className="font-bold text-[#0F172A] dark:text-white">{fullReport.citationHealth.medianYear || "N/A"}</strong></span>
+                      <span className="text-neutral-300 dark:text-neutral-700">•</span>
+                      <span className="text-teal-700 dark:text-teal-400 font-bold">{fullReport.citationHealth.last5YearsPercent}% Last 5 Yrs</span>
+                    </div>
+                    <div className="w-7 h-7 rounded-full bg-neutral-100 dark:bg-[#1E293B] flex items-center justify-center text-neutral-500 dark:text-neutral-400 ml-1 shrink-0">
+                      <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expandedOverviewCards.citationHealth ? "rotate-180" : ""}`} />
+                    </div>
+                  </div>
+                </button>
+
+                {expandedOverviewCards.citationHealth && (
+                  <div className="px-6 pb-6 sm:px-7 sm:pb-7 pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937] space-y-4 animate-fade-in">
+                    <p className="text-xs text-[#64748B] dark:text-neutral-400 leading-relaxed">
+                      {fullReport.citationHealth.summary}
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="p-3 rounded-xl bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1F2937]">
+                        <span className="text-[10px] text-neutral-400 uppercase tracking-wider block">Citation Half-Life</span>
+                        <span className="text-base font-bold text-neutral-900 dark:text-white">{fullReport.citationHealth.citationHalfLifeYears ?? "N/A"} yrs</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1F2937]">
+                        <span className="text-[10px] text-neutral-400 uppercase tracking-wider block">Last 3 Years</span>
+                        <span className="text-base font-bold text-teal-600 dark:text-teal-400">{fullReport.citationHealth.last3YearsPercent}% ({fullReport.citationHealth.last3YearsCount})</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1F2937]">
+                        <span className="text-[10px] text-neutral-400 uppercase tracking-wider block">Self-Citation Rate</span>
+                        <span className="text-base font-bold text-neutral-900 dark:text-white">{fullReport.citationHealth.selfCitationPercent}%</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-white dark:bg-[#111827] border border-[#E5E7EB] dark:border-[#1F2937]">
+                        <span className="text-[10px] text-neutral-400 uppercase tracking-wider block">Orphan Citations</span>
+                        <span className={`text-base font-bold ${fullReport.citationHealth.orphanReferencesCount > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                          {fullReport.citationHealth.orphanReferencesCount}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}

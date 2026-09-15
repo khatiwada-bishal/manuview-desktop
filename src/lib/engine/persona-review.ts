@@ -4,6 +4,9 @@ import {
   ParsedManuscript,
   ReviewerPersonaFeedback,
 } from "../types";
+import { StatcheckReport } from "../statcheck";
+import { HedgingAuditReport } from "../hedging-overclaims";
+import { CitationHealthReport } from "../citation-recency";
 import {
   DecisionCategory,
   EvidenceSpan,
@@ -484,6 +487,9 @@ export interface DeterministicPersonasParams {
   discipline: string;
   targetJournal: string;
   isScopeMismatch: boolean;
+  statcheckReport?: StatcheckReport;
+  hedgingReport?: HedgingAuditReport;
+  citationHealth?: CitationHealthReport;
 }
 
 /**
@@ -494,7 +500,15 @@ export interface DeterministicPersonasParams {
 export function calculateDeterministicPersonas(
   params: DeterministicPersonasParams
 ): ReviewerPersonaFeedback[] {
-  const { manuscript, discipline, targetJournal, isScopeMismatch } = params;
+  const {
+    manuscript,
+    discipline,
+    targetJournal,
+    isScopeMismatch,
+    statcheckReport,
+    hedgingReport,
+    citationHealth,
+  } = params;
 
   const paperProfile = resolveDisciplineProfile(discipline);
   const cleanTitle = manuscript.title.trim();
@@ -583,6 +597,19 @@ export function calculateDeterministicPersonas(
         ],
     source: "heuristic",
   };
+
+  if (citationHealth && citationHealth.totalReferences > 0) {
+    if (citationHealth.isStaleLiterature) {
+      editorPersona.majorCritiques.unshift(
+        `Literature Recency Alert: Only ${citationHealth.last5YearsPercent}% of cited references were published in the last 5 years (median citation year: ${citationHealth.medianYear}). Reviewers and editors may penalize omission of contemporary peer-reviewed work.`
+      );
+    }
+    if (citationHealth.orphanReferencesCount > 0) {
+      editorPersona.minorComments.unshift(
+        `Orphan Reference Discrepancy: ${citationHealth.orphanReferencesCount} reference(s) listed in the bibliography have no matching in-text citation callouts.`
+      );
+    }
+  }
 
   let abstractCore = "";
   if (manuscript.abstract && manuscript.abstract.length > 25) {
@@ -768,6 +795,31 @@ export function calculateDeterministicPersonas(
     source: "heuristic",
   };
 
+  if (statcheckReport && statcheckReport.totalTestsFound > 0) {
+    if (statcheckReport.grossInconsistencyCount > 0) {
+      statisticianPersona.decisionRecommendation = "Reject / Resubmit";
+      statisticianPersona.majorCritiques.unshift(
+        `Critical Statistical Discrepancy (Statcheck): Flagged ${statcheckReport.grossInconsistencyCount} gross statistical inconsistency(ies) where reported p-values conflict with theoretical test distributions across the α = 0.05 threshold.`
+      );
+      const grossTest = statcheckReport.tests.find((t) => t.isGrossInconsistency);
+      if (grossTest) {
+        statisticianPersona.concreteSolutions.unshift({
+          issue: `Reported statistic '${grossTest.rawText}' is mathematically inconsistent with theoretical distribution.`,
+          proposedFix: `Re-compute the exact test: ${grossTest.explanation}`,
+          exampleRewrite: `Correct to: "${grossTest.testType}(${grossTest.df1}${grossTest.df2 !== undefined ? `, ${grossTest.df2}` : ""}) = ${grossTest.testValue}, p = ${grossTest.computedP.toFixed(4)}"`,
+        });
+      }
+    } else if (statcheckReport.inconsistentCount > 0) {
+      statisticianPersona.majorCritiques.push(
+        `Minor Rounding Inconsistencies: Detected ${statcheckReport.inconsistentCount} minor p-value rounding discrepancy(ies) across reported test statistics.`
+      );
+    } else {
+      statisticianPersona.strengths.unshift(
+        `All ${statcheckReport.totalTestsFound} reported statistical test(s) (t, F, χ², Z, r) were verified with 100% mathematical consistency against theoretical sampling distributions.`
+      );
+    }
+  }
+
   const devilsAdvocatePersona: ReviewerPersonaFeedback = {
     persona: "devils_advocate",
     name: CANONICAL_ANONYMOUS_TRACKS.devils_advocate,
@@ -813,6 +865,22 @@ export function calculateDeterministicPersonas(
     ],
     source: "heuristic",
   };
+
+  if (hedgingReport && hedgingReport.totalOverclaimsFound > 0) {
+    if (hedgingReport.criticalCount > 0) {
+      devilsAdvocatePersona.majorCritiques.unshift(
+        `Causal Overclaiming & Epistemic Hyperbole: Flagged ${hedgingReport.criticalCount} assertive causal claim(s) (e.g. "${hedgingReport.matches[0]?.matchedPhrase}"). Replace with calibrated, hedged scientific framing.`
+      );
+      const topMatch = hedgingReport.matches[0];
+      if (topMatch) {
+        devilsAdvocatePersona.concreteSolutions.unshift({
+          issue: `Assertive overclaim in text: "${topMatch.matchedPhrase}"`,
+          proposedFix: topMatch.explanation,
+          exampleRewrite: `Replace phrase with: "${topMatch.suggestedRewrite}" in context: "${topMatch.sentenceSnippet}"`,
+        });
+      }
+    }
+  }
 
   return [
     editorPersona,

@@ -71,6 +71,9 @@ import {
   calculateCalibratedAcceptanceProbability,
   calculateDeterministicDimensions,
 } from "./scoring-dimensions";
+import { runStatcheckAudit, StatcheckReport } from "../statcheck";
+import { runHedgingAndOverclaimAudit, HedgingAuditReport } from "../hedging-overclaims";
+import { analyzeCitationRecency, CitationHealthReport } from "../citation-recency";
 import {
   callLLMForJson,
   clampDeskRejectScore,
@@ -529,6 +532,9 @@ export function synthesizeGroundedAcademicReview(
   journalRecommendations: JournalRecommendation[];
   reportingGuideline?: ReportingGuidelineCheck;
   complianceAudit: DeterministicComplianceAudit;
+  statcheck: StatcheckReport;
+  hedgingAudit: HedgingAuditReport;
+  citationHealth: CitationHealthReport;
 } {
   const isAcademic = classification?.isAcademicManuscript ?? true;
   if (!isAcademic) {
@@ -546,6 +552,42 @@ export function synthesizeGroundedAcademicReview(
         warnCount: 0,
         failedCount: 0,
         summary: "Compliance audit skipped for non-academic document.",
+      },
+      statcheck: {
+        totalTestsFound: 0,
+        consistentCount: 0,
+        inconsistentCount: 0,
+        grossInconsistencyCount: 0,
+        tests: [],
+        summary: "Statcheck skipped for non-academic document.",
+        hasCriticalErrors: false,
+      },
+      hedgingAudit: {
+        totalOverclaimsFound: 0,
+        criticalCount: 0,
+        warningCount: 0,
+        epistemicBalanceIndex: 100,
+        matches: [],
+        summary: "Hedging audit skipped for non-academic document.",
+        hasCausalVulnerabilities: false,
+      },
+      citationHealth: {
+        totalReferences: 0,
+        medianYear: null,
+        citationHalfLifeYears: null,
+        last3YearsCount: 0,
+        last3YearsPercent: 0,
+        last5YearsCount: 0,
+        last5YearsPercent: 0,
+        classicCount: 0,
+        classicPercent: 0,
+        selfCitationCount: 0,
+        selfCitationPercent: 0,
+        orphanReferencesCount: 0,
+        orphanReferenceSamples: [],
+        yearDistribution: [],
+        summary: "Citation health analysis skipped for non-academic document.",
+        isStaleLiterature: false,
       },
     };
   }
@@ -569,6 +611,10 @@ export function synthesizeGroundedAcademicReview(
     catalogMatches.targetJournalEvaluation,
     discipline
   );
+
+  const statcheck = runStatcheckAudit(manuscript.rawText);
+  const hedgingAudit = runHedgingAndOverclaimAudit(manuscript.rawText);
+  const citationHealth = analyzeCitationRecency(manuscript.references, manuscript.rawText, manuscript.authors);
 
   const dimensions = calculateDeterministicDimensions({
     manuscript,
@@ -598,11 +644,55 @@ export function synthesizeGroundedAcademicReview(
     );
   }
 
+  if (statcheck.grossInconsistencyCount > 0) {
+    const grossTest = statcheck.tests.find((t) => t.isGrossInconsistency);
+    priorityIssues.unshift({
+      id: "iss-statcheck-gross",
+      priority: "A",
+      title: `Statistical Reporting Inconsistency (${statcheck.grossInconsistencyCount} flagged)`,
+      category: "Statistics",
+      description: `Exact theoretical recalculation of test statistic '${grossTest?.rawText}' found a conflict across α = 0.05: reported p ${grossTest?.reportedOperator} ${grossTest?.reportedP}, but exact sampling distribution yields computed p = ${grossTest?.computedP}.`,
+      reviewerQuote: "",
+      actionableFix: `Re-evaluate model output and report accurate test parameters: ${grossTest?.explanation}`,
+      source: "heuristic",
+    });
+  }
+
+  if (hedgingAudit.criticalCount > 0) {
+    const topOverclaim = hedgingAudit.matches[0];
+    priorityIssues.unshift({
+      id: "iss-overclaim-critical",
+      priority: "A",
+      title: `Causal Overclaim & Epistemic Hyperbole (${hedgingAudit.criticalCount} flagged)`,
+      category: "Causal Claims",
+      description: `Assertive unhedged assertion flagged in text: "${topOverclaim.matchedPhrase}" in context: "${topOverclaim.sentenceSnippet}". In peer review, sweeping causal claims trigger intense skepticism.`,
+      reviewerQuote: "",
+      actionableFix: `Hedge your claim: Replace with "${topOverclaim.suggestedRewrite}". ${topOverclaim.explanation}`,
+      source: "heuristic",
+    });
+  }
+
+  if (citationHealth.isStaleLiterature) {
+    priorityIssues.push({
+      id: "iss-citation-stale",
+      priority: "B",
+      title: "Literature Staleness Alert (Low 5-Year Citation Share)",
+      category: "Citations",
+      description: `Only ${citationHealth.last5YearsPercent}% of cited references were published in the last 5 years (median citation year: ${citationHealth.medianYear}). Fast-moving academic journals require substantive benchmarking against contemporary literature.`,
+      reviewerQuote: "",
+      actionableFix: "Incorporate recent peer-reviewed studies (last 2–3 years) in the Introduction and Discussion.",
+      source: "heuristic",
+    });
+  }
+
   const personas = calculateDeterministicPersonas({
     manuscript,
     discipline,
     targetJournal,
     isScopeMismatch,
+    statcheckReport: statcheck,
+    hedgingReport: hedgingAudit,
+    citationHealth,
   });
 
   const journalRecommendations = buildCatalogJournalRecommendations(catalogMatches, discipline);
@@ -684,6 +774,9 @@ export function synthesizeGroundedAcademicReview(
     journalRecommendations,
     reportingGuideline,
     complianceAudit,
+    statcheck,
+    hedgingAudit,
+    citationHealth,
   };
 }
 
@@ -967,6 +1060,9 @@ export async function runManuscriptDiagnostic(
       journalRecommendations: domainSynthesis.journalRecommendations,
       citationIntegrity,
       reportingGuideline: domainSynthesis.reportingGuideline,
+      statcheck: domainSynthesis.statcheck,
+      hedgingAudit: domainSynthesis.hedgingAudit,
+      citationHealth: domainSynthesis.citationHealth,
       executionMode: isConfigUsable ? "llm_synthesized" : "heuristic_offline",
     };
   }
@@ -1492,6 +1588,9 @@ export async function runManuscriptDiagnostic(
           ),
         }
       : undefined,
+    statcheck: domainSynthesis.statcheck,
+    hedgingAudit: domainSynthesis.hedgingAudit,
+    citationHealth: domainSynthesis.citationHealth,
     executionMode,
     llmCallError: llmCallError || undefined,
   };

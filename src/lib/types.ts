@@ -434,6 +434,9 @@ export interface FullReviewReport {
   journalRecommendations: JournalRecommendation[];
   citationIntegrity: CitationIntegritySummary;
   reportingGuideline?: ReportingGuidelineCheck;
+  statcheck?: import('./statcheck').StatcheckReport;
+  hedgingAudit?: import('./hedging-overclaims').HedgingAuditReport;
+  citationHealth?: import('./citation-recency').CitationHealthReport;
   executionMode?: 'llm_synthesized' | 'partial_llm' | 'heuristic_offline';
   llmCallError?: string;
   verificationCoverage?: VerificationCoverageSummary;

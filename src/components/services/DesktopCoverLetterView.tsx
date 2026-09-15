@@ -10,10 +10,13 @@ import {
   Sparkles,
   AlertCircle,
   BookOpen,
+  ShieldCheck,
+  Cpu,
 } from "lucide-react";
 import JournalCombobox from "@/components/JournalCombobox";
 import { callLLM, sanitizeAuthorText, sanitizeErrorMessage, getSavedClientConfig, resolveActiveConfig } from "@/lib/llm";
 import { ProviderConfig } from "@/lib/types";
+import { generateOfflineCoverLetter, CoverLetterFormat } from "@/lib/offline-templates";
 
 export function formatCoverLetterText(raw: string, targetJournal: string, title: string): string {
   let cleaned = (raw || "").trim();
@@ -81,14 +84,18 @@ export function DesktopCoverLetterView() {
   const [keywords, setKeywords] = useState("");
   const [mainFindings, setMainFindings] = useState("");
   const [broadSignificance, setBroadSignificance] = useState("");
+  const [format, setFormat] = useState<CoverLetterFormat>("standard");
+  const [offlineMode, setOfflineMode] = useState<boolean>(true);
   const [loading, setLoading] = useState(false);
   const [letter, setLetter] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [infoNotice, setInfoNotice] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const handleSample = () => {
     setTitle("Single-cell transcriptional profiling of DLL3 activation in neuroendocrine lung carcinoma");
     setTargetJournal("Nature Communications");
+    setFormat("nature");
     setAbstract(
       "Small cell lung cancer (SCLC) exhibits rapid recurrence and therapy resistance. Delta-like ligand 3 (DLL3) is an established cell-surface target for antibody-drug conjugates. Here we perform marker-based CRISPR-Cas9 screens and identify transcription factor POU2F1 as a primary driver of DLL3 expression. We demonstrate that POU2F1 directly binds the DLL3 distal enhancer element to drive chemoresistance across 8 patient-derived organoid lines."
     );
@@ -106,15 +113,51 @@ export function DesktopCoverLetterView() {
 
     setLoading(true);
     setError(null);
+    setInfoNotice(null);
     setLetter(null);
 
+    const safeTargetJournal = sanitizeAuthorText(targetJournal);
+    const safeTitle = sanitizeAuthorText(title);
+    const safeAbstract = sanitizeAuthorText(abstract);
+    const safeKeywords = sanitizeAuthorText(keywords);
+    const safeFindings = sanitizeAuthorText(mainFindings);
+    const safeSignificance = sanitizeAuthorText(broadSignificance);
+
+    // 1. If offline mode is toggled, generate instantaneously with deterministic template
+    if (offlineMode) {
+      const generated = generateOfflineCoverLetter({
+        title: safeTitle,
+        targetJournal: safeTargetJournal,
+        abstract: safeAbstract,
+        keywords: safeKeywords,
+        mainFindings: safeFindings,
+        broadSignificance: safeSignificance,
+        format,
+      });
+      setLetter(generated);
+      setLoading(false);
+      return;
+    }
+
+    // 2. Try LLM generation with seamless fallback if no API key is set
     try {
-      const safeTargetJournal = sanitizeAuthorText(targetJournal);
-      const safeTitle = sanitizeAuthorText(title);
-      const safeAbstract = sanitizeAuthorText(abstract);
-      const safeKeywords = sanitizeAuthorText(keywords);
-      const safeFindings = sanitizeAuthorText(mainFindings);
-      const safeSignificance = sanitizeAuthorText(broadSignificance);
+      const providerConfig = await resolveActiveConfig();
+
+      if (!providerConfig.hasSecureKey && providerConfig.provider !== "ollama") {
+        const generated = generateOfflineCoverLetter({
+          title: safeTitle,
+          targetJournal: safeTargetJournal,
+          abstract: safeAbstract,
+          keywords: safeKeywords,
+          mainFindings: safeFindings,
+          broadSignificance: safeSignificance,
+          format,
+        });
+        setLetter(generated);
+        setOfflineMode(true);
+        setInfoNotice("No external API key detected. Generated with the publication-grade Offline Academic Template engine.");
+        return;
+      }
 
       const prompt = `You are an expert Senior Academic Editor. Write a formal, compelling, high-impact journal submission cover letter addressed to the Senior Editor-in-Chief of "${safeTargetJournal}".
 
@@ -150,8 +193,6 @@ IMPORTANT OUTPUT INSTRUCTIONS:
 - Do NOT wrap in markdown code blocks.
 - Do NOT include conversational greetings before or after the letter.`;
 
-      const providerConfig = await resolveActiveConfig();
-
       setLetter("");
       const generated = await callLLM(
         [{ role: "user", content: prompt }],
@@ -163,7 +204,18 @@ IMPORTANT OUTPUT INSTRUCTIONS:
       const cleanFormatted = formatCoverLetterText(generated, safeTargetJournal, safeTitle);
       setLetter(cleanFormatted);
     } catch (err: any) {
-      setError(sanitizeErrorMessage(err.message || "Failed to generate cover letter."));
+      console.warn("LLM generation failed, switching to offline template fallback:", err);
+      const generated = generateOfflineCoverLetter({
+        title: safeTitle,
+        targetJournal: safeTargetJournal,
+        abstract: safeAbstract,
+        keywords: safeKeywords,
+        mainFindings: safeFindings,
+        broadSignificance: safeSignificance,
+        format,
+      });
+      setLetter(generated);
+      setInfoNotice("Cloud AI service unavailable. Generated via Offline Academic Template Engine.");
     } finally {
       setLoading(false);
     }
@@ -253,6 +305,56 @@ IMPORTANT OUTPUT INSTRUCTIONS:
             />
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+                Editorial Template Standard
+              </label>
+              <select
+                value={format}
+                onChange={(e) => setFormat(e.target.value as CoverLetterFormat)}
+                className="h-[42px] w-full px-3.5 py-2 rounded-xl liquid-glass-input text-xs sm:text-sm focus:outline-none bg-white dark:bg-[#13192B]"
+              >
+                <option value="standard">Standard Top-Tier Journal (Universal)</option>
+                <option value="nature">Nature Portfolio / Science Format</option>
+                <option value="elsevier">Elsevier / Cell Press Format</option>
+                <option value="ieee">IEEE / Engineering Transactions Format</option>
+                <option value="plos">PLOS / Open Access Format</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+                Generation Mode
+              </label>
+              <div className="flex items-center h-[42px] p-1 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setOfflineMode(true)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 h-full rounded-lg text-xs font-medium transition cursor-pointer ${
+                    offlineMode
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+                  }`}
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Offline (0 MB, Instant)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOfflineMode(false)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 h-full rounded-lg text-xs font-medium transition cursor-pointer ${
+                    !offlineMode
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+                  }`}
+                >
+                  <Cpu className="w-3.5 h-3.5" />
+                  <span>Cloud LLM Stream</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-1">
             <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Key Conceptual Advance (Optional)</label>
             <input
@@ -263,6 +365,13 @@ IMPORTANT OUTPUT INSTRUCTIONS:
               className="w-full px-3.5 py-2.5 rounded-xl liquid-glass-input text-xs sm:text-sm focus:outline-none"
             />
           </div>
+
+          {infoNotice && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20 text-xs backdrop-blur-xs">
+              <ShieldCheck className="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400" />
+              <span>{infoNotice}</span>
+            </div>
+          )}
 
           {error && (
             <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 text-red-700 dark:text-rose-300 border border-red-500/20 text-xs backdrop-blur-xs">
@@ -284,8 +393,8 @@ IMPORTANT OUTPUT INSTRUCTIONS:
                 </>
               ) : (
                 <>
-                  <FileText className="w-4 h-4" />
-                  <span>Generate Formal Cover Letter</span>
+                  {offlineMode ? <ShieldCheck className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                  <span>{offlineMode ? "Generate Instant Offline Letter" : "Generate AI Editorial Cover Letter"}</span>
                 </>
               )}
             </button>
