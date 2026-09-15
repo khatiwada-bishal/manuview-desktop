@@ -118,16 +118,9 @@ export function DesktopEmptyDashboard({
         {papers.length > 0 && (
           <div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-              <div className="flex items-center gap-2.5">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                  Your Manuscripts ({papers.length})
-                </h2>
-                {selectedPaperIds.size > 0 && (
-                  <span className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
-                    {selectedPaperIds.size} selected
-                  </span>
-                )}
-              </div>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                Your Manuscripts ({papers.length})
+              </h2>
 
               <div className="flex items-center gap-2">
                 {selectedPaperIds.size > 0 && (

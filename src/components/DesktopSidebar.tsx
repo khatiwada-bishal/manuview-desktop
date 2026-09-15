@@ -733,16 +733,9 @@ export function DesktopSidebar({
         {/* 1. ARTICLES LIST */}
         <div>
           <div className="flex items-center justify-between px-2 mb-1.5">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-bold text-[#9CA3AF] dark:text-neutral-400 uppercase tracking-wider">
-                ARTICLES
-              </span>
-              {selectedPaperIds.size > 0 && (
-                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-                  {selectedPaperIds.size}
-                </span>
-              )}
-            </div>
+            <span className="text-[11px] font-bold text-[#9CA3AF] dark:text-neutral-400 uppercase tracking-wider">
+              ARTICLES
+            </span>
             <div className="flex items-center gap-1">
               {/* Trash can icon button in place of text "Select" */}
               {papers.length > 0 && (
