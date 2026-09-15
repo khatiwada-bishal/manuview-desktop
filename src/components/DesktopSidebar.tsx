@@ -204,7 +204,6 @@ export function DesktopSidebar({
   onDeleteMultiplePapers,
   onGoHome,
 }: DesktopSidebarProps) {
-  const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedPaperIds, setSelectedPaperIds] = useState<Set<string>>(new Set());
   const [servicesExpanded, setServicesExpanded] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -734,75 +733,70 @@ export function DesktopSidebar({
         {/* 1. ARTICLES LIST */}
         <div>
           <div className="flex items-center justify-between px-2 mb-1.5">
-            <span className="text-[11px] font-bold text-[#9CA3AF] dark:text-neutral-400 uppercase tracking-wider">
-              {isSelectMode ? `SELECTED (${selectedPaperIds.size}/${papers.length})` : "ARTICLES"}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-bold text-[#9CA3AF] dark:text-neutral-400 uppercase tracking-wider">
+                ARTICLES
+              </span>
+              {selectedPaperIds.size > 0 && (
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                  {selectedPaperIds.size}
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-1">
-              {papers.length > 1 && (
+              {/* Trash can icon button in place of text "Select" */}
+              {papers.length > 0 && (
                 <button
                   type="button"
+                  disabled={selectedPaperIds.size === 0}
                   onClick={() => {
-                    setIsSelectMode(!isSelectMode);
-                    setSelectedPaperIds(new Set());
+                    if (selectedPaperIds.size > 0) {
+                      const targets = papers.filter((p) => selectedPaperIds.has(p.id));
+                      if (onDeleteMultiplePapers) {
+                        onDeleteMultiplePapers(targets);
+                      }
+                    }
                   }}
-                  title={isSelectMode ? "Cancel selection" : "Select multiple articles"}
-                  className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium transition cursor-pointer ${
-                    isSelectMode
-                      ? "text-neutral-500 hover:bg-black/[0.05] dark:hover:bg-white/[0.05]"
-                      : "text-neutral-600 dark:text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50"
+                  title={
+                    selectedPaperIds.size > 0
+                      ? `Delete ${selectedPaperIds.size} selected article${selectedPaperIds.size > 1 ? "s" : ""}`
+                      : "Hover over file icon to select and delete"
+                  }
+                  className={`p-1 rounded text-xs transition cursor-pointer flex items-center gap-1 ${
+                    selectedPaperIds.size > 0
+                      ? "text-rose-600 dark:text-rose-400 hover:bg-rose-500/15 bg-rose-500/10 cursor-pointer active:scale-95 animate-in fade-in"
+                      : "text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 opacity-40 hover:opacity-75 cursor-default"
                   }`}
                 >
-                  <CheckSquare className="w-3 h-3" />
-                  <span>{isSelectMode ? "Cancel" : "Select"}</span>
+                  <Trash2 className="w-3.5 h-3.5" />
+                  {selectedPaperIds.size > 0 && (
+                    <span className="text-[10px] font-bold leading-none">
+                      {selectedPaperIds.size}
+                    </span>
+                  )}
                 </button>
               )}
-              {!isSelectMode && (
+              {selectedPaperIds.size > 0 && (
                 <button
                   type="button"
-                  onClick={onNewReview}
-                  title="Add new manuscript review"
-                  className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition cursor-pointer"
+                  onClick={() => setSelectedPaperIds(new Set())}
+                  title="Clear selection"
+                  className="p-1 rounded text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition cursor-pointer"
                 >
-                  <Plus className="w-3 h-3" />
-                  <span>New</span>
+                  <X className="w-3.5 h-3.5" />
                 </button>
               )}
+              <button
+                type="button"
+                onClick={onNewReview}
+                title="Add new manuscript review"
+                className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition cursor-pointer"
+              >
+                <Plus className="w-3 h-3" />
+                <span>New</span>
+              </button>
             </div>
           </div>
-
-          {/* Batch Selection Action Strip */}
-          {isSelectMode && (
-            <div className="mx-1 mb-2 p-1.5 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-between gap-1 text-xs">
-              <button
-                type="button"
-                onClick={() => {
-                  if (selectedPaperIds.size === papers.length) {
-                    setSelectedPaperIds(new Set());
-                  } else {
-                    setSelectedPaperIds(new Set(papers.map((p) => p.id)));
-                  }
-                }}
-                className="px-2 py-0.5 rounded-lg text-[10px] font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-500/20 transition cursor-pointer"
-              >
-                {selectedPaperIds.size === papers.length ? "Deselect All" : "Select All"}
-              </button>
-              <button
-                type="button"
-                disabled={selectedPaperIds.size === 0}
-                onClick={() => {
-                  if (selectedPaperIds.size === 0) return;
-                  const targets = papers.filter((p) => selectedPaperIds.has(p.id));
-                  if (onDeleteMultiplePapers) {
-                    onDeleteMultiplePapers(targets);
-                  }
-                }}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold text-white bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed shadow-xs transition cursor-pointer"
-              >
-                <Trash2 className="w-3 h-3" />
-                <span>Delete ({selectedPaperIds.size})</span>
-              </button>
-            </div>
-          )}
 
           <div className="space-y-1">
             {papers.length === 0 ? (
@@ -843,7 +837,7 @@ export function DesktopSidebar({
                       <div key={paper.id} className="space-y-0.5 group/article">
                         <div
                           onClick={() => {
-                            if (isSelectMode) {
+                            if (selectedPaperIds.size > 0) {
                               setSelectedPaperIds((prev) => {
                                 const next = new Set(prev);
                                 if (next.has(paper.id)) next.delete(paper.id);
@@ -856,33 +850,55 @@ export function DesktopSidebar({
                             }
                           }}
                           className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer ${
-                            isSelectMode && isSelectedInBatch
+                            isSelectedInBatch
                               ? "bg-blue-600/15 dark:bg-blue-500/25 border border-blue-500/40 text-blue-700 dark:text-blue-300 font-semibold"
-                              : !isSelectMode && isSelected && activeView === "overview"
+                              : isSelected && activeView === "overview"
                               ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
-                              : !isSelectMode && isSelected
+                              : isSelected
                               ? "bg-blue-600/10 dark:bg-blue-500/20 font-medium text-blue-700 dark:text-blue-300 border border-blue-500/20"
                               : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white border border-transparent"
                           }`}
                         >
                           <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
-                            {isSelectMode ? (
+                            {/* Hover-to-reveal checkbox on file icon */}
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedPaperIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(paper.id)) next.delete(paper.id);
+                                  else next.add(paper.id);
+                                  return next;
+                                });
+                              }}
+                              className="relative w-4 h-4 shrink-0 flex items-center justify-center cursor-pointer"
+                              title={isSelectedInBatch ? "Deselect article" : "Select article"}
+                            >
+                              {/* Checkbox: visible when selected OR on article hover */}
                               <div
-                                className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 transition ${
+                                className={`w-4 h-4 rounded flex items-center justify-center transition-all ${
                                   isSelectedInBatch
-                                    ? "bg-blue-600 text-white"
-                                    : "border border-neutral-300 dark:border-neutral-600 bg-black/[0.02] dark:bg-white/[0.04]"
+                                    ? "bg-blue-600 text-white opacity-100 scale-100 shadow-xs"
+                                    : "border border-neutral-400 dark:border-neutral-500 hover:border-blue-500 bg-white dark:bg-[#1e293b] opacity-0 group-hover/article:opacity-100 scale-95 hover:scale-100 shadow-xs"
                                 }`}
                               >
-                                {isSelectedInBatch && <Check className="w-3 h-3 stroke-[3]" />}
+                                {isSelectedInBatch ? (
+                                  <Check className="w-3 h-3 stroke-[3]" />
+                                ) : (
+                                  <Square className="w-2.5 h-2.5 opacity-30 text-neutral-400 hover:text-blue-600" />
+                                )}
                               </div>
-                            ) : (
-                              <FileText
-                                className={`w-4 h-4 shrink-0 ${
-                                  isSelected ? "text-blue-600 dark:text-blue-400" : "text-neutral-500 dark:text-neutral-400"
-                                }`}
-                              />
-                            )}
+
+                              {/* File icon: visible when NOT selected and NOT hovered */}
+                              {!isSelectedInBatch && (
+                                <FileText
+                                  className={`w-4 h-4 absolute inset-0 transition-opacity group-hover/article:opacity-0 ${
+                                    isSelected ? "text-blue-600 dark:text-blue-400" : "text-neutral-500 dark:text-neutral-400"
+                                  }`}
+                                />
+                              )}
+                            </div>
+
                             <span className="truncate">
                               {paper.shortName}
                             </span>
@@ -907,24 +923,12 @@ export function DesktopSidebar({
                                 {paper.score ?? 0}%
                               </span>
                             )}
-                            {!isSelectMode && onDeletePaper && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onDeletePaper(paper, e);
-                                }}
-                                title="Delete manuscript project"
-                                className="p-1 rounded text-neutral-400 hover:text-rose-600 hover:bg-rose-500/10 transition opacity-0 group-hover/article:opacity-100 cursor-pointer shrink-0"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
+                            {/* Note: Delete icon at the end of the article after the pill is intentionally omitted per requirements */}
                           </div>
                         </div>
 
                         {/* Status notification when selected for ineligible papers */}
-                        {!isSelectMode && isSelected && paper.isEligibleForReview === false && !isDeskReject && (
+                        {selectedPaperIds.size === 0 && isSelected && paper.isEligibleForReview === false && !isDeskReject && (
                           <div className="pl-4 pr-2 py-1 space-y-0.5">
                             {paper.ineligibilityReason === "already_published" ? (
                               <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400 font-medium bg-emerald-500/10 px-2 py-1.5 rounded-lg border border-emerald-500/20">
