@@ -15,8 +15,7 @@ import {
 } from "lucide-react";
 import { findMatchingJournals, JournalEntry, JOURNAL_CATALOG, TargetJournalTierResults } from "@/lib/journals";
 import JournalCombobox from "@/components/JournalCombobox";
-import { useJournalScope } from "@/lib/journal-scope-service";
-import JournalDetailsModal from "@/components/JournalDetailsModal";
+import { useJournalScope, openJournalWebsite } from "@/lib/journal-scope-service";
 
 export function DesktopJournalFitView() {
   const [title, setTitle] = useState("");
@@ -24,7 +23,6 @@ export function DesktopJournalFitView() {
   const [targetJournal, setTargetJournal] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<TargetJournalTierResults | null>(null);
-  const [modalJournal, setModalJournal] = useState<string | null>(null);
 
   const { scope: targetScope, isLoading: isTargetScopeLoading } = useJournalScope(targetJournal);
 
@@ -140,10 +138,10 @@ export function DesktopJournalFitView() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => setModalJournal(targetJournal)}
+                      onClick={() => openJournalWebsite(targetJournal, targetScope.homepageUrl)}
                       className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:underline inline-flex items-center gap-1 cursor-pointer ml-auto"
                     >
-                      <span>View OpenAlex Details</span>
+                      <span>Visit Journal Website</span>
                       <ExternalLink className="w-3 h-3" />
                     </button>
                   </div>
@@ -248,10 +246,10 @@ export function DesktopJournalFitView() {
                   <div className="pt-2 flex justify-end">
                     <button
                       type="button"
-                      onClick={() => setModalJournal(results.reach.name)}
+                      onClick={() => openJournalWebsite(results.reach.name)}
                       className="text-[11px] font-bold text-purple-600 hover:text-purple-700 dark:text-purple-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
                     >
-                      <span>OpenAlex Details</span>
+                      <span>Visit Journal Website</span>
                       <ExternalLink className="w-2.5 h-2.5" />
                     </button>
                   </div>
@@ -294,10 +292,10 @@ export function DesktopJournalFitView() {
                   <div className="pt-2 flex justify-end">
                     <button
                       type="button"
-                      onClick={() => setModalJournal(results.realistic.name)}
+                      onClick={() => openJournalWebsite(results.realistic.name)}
                       className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
                     >
-                      <span>OpenAlex Details</span>
+                      <span>Visit Journal Website</span>
                       <ExternalLink className="w-2.5 h-2.5" />
                     </button>
                   </div>
@@ -340,10 +338,10 @@ export function DesktopJournalFitView() {
                   <div className="pt-2 flex justify-end">
                     <button
                       type="button"
-                      onClick={() => setModalJournal(results.fallback.name)}
+                      onClick={() => openJournalWebsite(results.fallback.name)}
                       className="text-[11px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
                     >
-                      <span>OpenAlex Details</span>
+                      <span>Visit Journal Website</span>
                       <ExternalLink className="w-2.5 h-2.5" />
                     </button>
                   </div>
@@ -365,7 +363,7 @@ export function DesktopJournalFitView() {
                       <th className="px-4 py-3">Impact Factor</th>
                       <th className="px-4 py-3">Acceptance</th>
                       <th className="px-4 py-3">Turnaround</th>
-                      <th className="px-4 py-3 text-right">Venue Details</th>
+                      <th className="px-4 py-3 text-right">Venue Website</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#E5E7EB] dark:divide-[#1F2937]">
@@ -392,10 +390,10 @@ export function DesktopJournalFitView() {
                         <td className="px-4 py-3 text-right">
                           <button
                             type="button"
-                            onClick={() => setModalJournal(match.journal.name)}
+                            onClick={() => openJournalWebsite(match.journal.name)}
                             className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium cursor-pointer"
                           >
-                            <span>OpenAlex</span>
+                            <span>Website</span>
                             <ExternalLink className="w-3 h-3" />
                           </button>
                         </td>
@@ -408,13 +406,6 @@ export function DesktopJournalFitView() {
           </div>
         )}
       </div>
-
-      {/* Full OpenAlex Journal Details Modal */}
-      <JournalDetailsModal
-        isOpen={!!modalJournal}
-        onClose={() => setModalJournal(null)}
-        journalName={modalJournal || ""}
-      />
     </div>
   );
 }

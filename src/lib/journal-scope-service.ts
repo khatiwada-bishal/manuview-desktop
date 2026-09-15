@@ -315,3 +315,30 @@ export function useJournalScope(journalName: string) {
 
   return { scope, isLoading, error };
 }
+
+/**
+ * Resolves the official journal homepage (from OpenAlex or scope cache) and opens it in the default browser
+ */
+export async function openJournalWebsite(journalName: string, knownHomepage?: string): Promise<void> {
+  const { openExternalLink } = await import("./desktop");
+
+  if (knownHomepage && /^https?:\/\//i.test(knownHomepage.trim())) {
+    await openExternalLink(knownHomepage.trim());
+    return;
+  }
+
+  const clean = (journalName || "").trim();
+  if (!clean) return;
+
+  try {
+    const scope = await fetchLiveJournalScope(clean);
+    if (scope?.homepageUrl && /^https?:\/\//i.test(scope.homepageUrl.trim())) {
+      await openExternalLink(scope.homepageUrl.trim());
+      return;
+    }
+  } catch {
+    // Fallback
+  }
+
+  await openExternalLink(`https://www.google.com/search?q=${encodeURIComponent(clean + " journal official website")}`);
+}

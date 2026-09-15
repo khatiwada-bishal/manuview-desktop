@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { ExternalLink, Search, BookOpen, Sparkles, Filter, Globe } from "lucide-react";
 import { JournalEntry, MatchedJournalItem } from "@/lib/journals";
-import JournalDetailsModal from "./JournalDetailsModal";
+import { openJournalWebsite } from "@/lib/journal-scope-service";
 
 export interface DesktopJournalMatchesListViewProps {
   otherJournals: MatchedJournalItem[];
@@ -18,7 +18,6 @@ export function DesktopJournalMatchesListView({
 }: DesktopJournalMatchesListViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterAccess, setFilterAccess] = useState<string>("all");
-  const [selectedJournal, setSelectedJournal] = useState<string | null>(null);
 
   const filtered = otherJournals.filter((item) => {
     const j = item.journal;
@@ -140,8 +139,9 @@ export function DesktopJournalMatchesListView({
                       <div className="font-bold text-[#0F172A] dark:text-white flex items-center gap-1.5 flex-wrap">
                         <button
                           type="button"
-                          onClick={() => setSelectedJournal(j.name)}
+                          onClick={() => openJournalWebsite(j.name)}
                           className="group-hover:text-[#2563EB] dark:group-hover:text-blue-400 transition-colors text-left cursor-pointer hover:underline"
+                          title={`Visit official website for ${j.name}`}
                         >
                           {j.name}
                         </button>
@@ -195,12 +195,12 @@ export function DesktopJournalMatchesListView({
                       <div className="inline-flex items-center gap-1.5 justify-end">
                         <button
                           type="button"
-                          onClick={() => setSelectedJournal(j.name)}
+                          onClick={() => openJournalWebsite(j.name)}
                           className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800 transition cursor-pointer"
-                          title={`View ${j.name} details from OpenAlex`}
+                          title={`Visit official website for ${j.name}`}
                         >
                           <Globe className="w-3 h-3" />
-                          <span>OpenAlex</span>
+                          <span>Website</span>
                         </button>
                         <a
                           href={`https://scholar.google.com/scholar?q=${encodeURIComponent(j.name)}`}
@@ -228,16 +228,9 @@ export function DesktopJournalMatchesListView({
           Showing {filtered.length} of {otherJournals.length} qualified journals
         </span>
         <span className="text-[10px] text-neutral-400">
-          Click &ldquo;OpenAlex&rdquo; to view verified acceptance metrics, APC fees, and taxonomy
+          Click &ldquo;Website&rdquo; to open the verified official journal homepage via OpenAlex
         </span>
       </div>
-
-      {/* Full OpenAlex Journal Details Modal */}
-      <JournalDetailsModal
-        isOpen={!!selectedJournal}
-        onClose={() => setSelectedJournal(null)}
-        journalName={selectedJournal || ""}
-      />
     </div>
   );
 }
