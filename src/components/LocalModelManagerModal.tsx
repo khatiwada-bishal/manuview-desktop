@@ -267,6 +267,17 @@ export function LocalModelManagerModal({ isOpen, onClose }: LocalModelManagerMod
             </div>
           )}
 
+          {/* Error Banner */}
+          {status.state === "error" && (
+            <div className="flex items-start gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-700 dark:text-rose-300">
+              <AlertCircle className="w-4 h-4 shrink-0 text-red-600 dark:text-rose-400 mt-0.5" />
+              <div className="space-y-0.5">
+                <div className="font-semibold">Download Failed</div>
+                <div className="opacity-90">{status.error || status.statusText || "An error occurred during model download."}</div>
+              </div>
+            </div>
+          )}
+
           {/* Action buttons */}
           <div className="flex items-center justify-between pt-1">
             <p className="text-[11px] text-neutral-500 dark:text-neutral-400">

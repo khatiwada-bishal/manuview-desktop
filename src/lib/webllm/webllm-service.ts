@@ -237,27 +237,11 @@ export async function initLocalModel(
   };
 
   try {
-    // Attempt to load via Web Worker
-    try {
-      if (!activeWorker) {
-        activeWorker = new Worker(new URL("./webllm-worker.ts", import.meta.url), {
-          type: "module",
-        });
-      }
-      activeEngine = await CreateWebWorkerMLCEngine(activeWorker, modelId, {
-        initProgressCallback: progressCallback,
-      });
-    } catch (workerErr) {
-      console.warn("Web Worker WebLLM initialization failed, attempting main thread fallback:", workerErr);
-      if (activeWorker) {
-        activeWorker.terminate();
-        activeWorker = null;
-      }
-      // Main-thread fallback if Worker instantiation fails
-      activeEngine = await CreateMLCEngine(modelId, {
-        initProgressCallback: progressCallback,
-      });
-    }
+    // Load WebLLM engine with direct WebGPU access
+    // Bypasses Web Worker messaging issues in Tauri / WKWebView and connects directly to GPU
+    activeEngine = await CreateMLCEngine(modelId, {
+      initProgressCallback: progressCallback,
+    });
 
     activeModelId = modelId;
 
