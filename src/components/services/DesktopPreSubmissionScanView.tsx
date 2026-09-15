@@ -354,14 +354,6 @@ export function DesktopPreSubmissionScanView({
   // Unified 1-click execution: Run Pre-Submission AI Review & 5-Persona Simulation
   const handleRunReview = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (apiStatus !== "connected") {
-      setError(
-        apiStatus === "unconfigured"
-          ? "Pre-submission review is disabled: No LLM API connection configured. Please set your API key in AI Settings."
-          : "Pre-submission review is disabled: The configured LLM connection is not working. Please fix your credentials in AI Settings."
-      );
-      return;
-    }
 
     if (!targetJournal.trim()) {
       setTargetJournalError(true);
