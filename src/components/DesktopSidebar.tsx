@@ -182,6 +182,9 @@ interface DesktopSidebarProps {
   onDeletePaper?: (paper: PaperItem, e: React.MouseEvent) => void;
   onDeleteMultiplePapers?: (papers: PaperItem[]) => void;
   onGoHome?: () => void;
+  selectedPaperIds?: Set<string>;
+  onToggleSelectPaper?: (id: string) => void;
+  onClearSelectedPapers?: () => void;
 }
 
 export function DesktopSidebar({
@@ -203,8 +206,48 @@ export function DesktopSidebar({
   onDeletePaper,
   onDeleteMultiplePapers,
   onGoHome,
+  selectedPaperIds: controlledSelectedPaperIds,
+  onToggleSelectPaper,
+  onClearSelectedPapers,
 }: DesktopSidebarProps) {
-  const [selectedPaperIds, setSelectedPaperIds] = useState<Set<string>>(new Set());
+  const [localSelectedPaperIds, setLocalSelectedPaperIds] = useState<Set<string>>(new Set());
+  const selectedPaperIds = controlledSelectedPaperIds ?? localSelectedPaperIds;
+
+  const handleToggleSelect = (paperId: string) => {
+    if (onToggleSelectPaper) {
+      onToggleSelectPaper(paperId);
+    } else {
+      setLocalSelectedPaperIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(paperId)) next.delete(paperId);
+        else next.add(paperId);
+        return next;
+      });
+    }
+  };
+
+  const handleClearSelection = () => {
+    if (onClearSelectedPapers) {
+      onClearSelectedPapers();
+    } else {
+      setLocalSelectedPaperIds(new Set());
+    }
+  };
+
+  // Auto-prune any selected IDs when papers are removed or deleted
+  useEffect(() => {
+    const validIds = new Set(papers.map((p) => p.id));
+    setLocalSelectedPaperIds((prev) => {
+      if (prev.size === 0) return prev;
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (validIds.has(id)) next.add(id);
+      }
+      if (next.size === prev.size) return prev;
+      return next;
+    });
+  }, [papers]);
+
   const [servicesExpanded, setServicesExpanded] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
@@ -772,7 +815,7 @@ export function DesktopSidebar({
               {selectedPaperIds.size > 0 && (
                 <button
                   type="button"
-                  onClick={() => setSelectedPaperIds(new Set())}
+                  onClick={handleClearSelection}
                   title="Clear selection"
                   className="p-1 rounded text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition cursor-pointer"
                 >
@@ -831,12 +874,7 @@ export function DesktopSidebar({
                         <div
                           onClick={() => {
                             if (selectedPaperIds.size > 0) {
-                              setSelectedPaperIds((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(paper.id)) next.delete(paper.id);
-                                else next.add(paper.id);
-                                return next;
-                              });
+                              handleToggleSelect(paper.id);
                             } else {
                               onSelectPaper(paper.id);
                               onSelectView("overview");
@@ -857,12 +895,7 @@ export function DesktopSidebar({
                             <div
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setSelectedPaperIds((prev) => {
-                                  const next = new Set(prev);
-                                  if (next.has(paper.id)) next.delete(paper.id);
-                                  else next.add(paper.id);
-                                  return next;
-                                });
+                                handleToggleSelect(paper.id);
                               }}
                               className="relative w-4 h-4 shrink-0 flex items-center justify-center cursor-pointer"
                               title={isSelectedInBatch ? "Deselect article" : "Select article"}

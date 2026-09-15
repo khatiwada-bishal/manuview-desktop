@@ -27,6 +27,10 @@ interface DesktopEmptyDashboardProps {
   onOpenService: (serviceId: string) => void;
   onDeletePaper?: (paper: PaperItem) => void;
   onDeleteMultiplePapers?: (papers: PaperItem[]) => void;
+  selectedPaperIds?: Set<string>;
+  onToggleSelectPaper?: (id: string) => void;
+  onSelectAllPapers?: () => void;
+  onClearSelectedPapers?: () => void;
 }
 
 export function DesktopEmptyDashboard({
@@ -35,32 +39,63 @@ export function DesktopEmptyDashboard({
   onOpenService,
   onDeletePaper,
   onDeleteMultiplePapers,
+  selectedPaperIds: controlledSelectedPaperIds,
+  onToggleSelectPaper,
+  onSelectAllPapers,
+  onClearSelectedPapers,
 }: DesktopEmptyDashboardProps) {
-  const [selectedPaperIds, setSelectedPaperIds] = useState<Set<string>>(new Set());
+  const [localSelectedPaperIds, setLocalSelectedPaperIds] = useState<Set<string>>(new Set());
+  const selectedPaperIds = controlledSelectedPaperIds ?? localSelectedPaperIds;
+
+  // Auto-prune any selected IDs when papers are removed or deleted
+  useEffect(() => {
+    const validIds = new Set(papers.map((p) => p.id));
+    setLocalSelectedPaperIds((prev) => {
+      if (prev.size === 0) return prev;
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (validIds.has(id)) next.add(id);
+      }
+      if (next.size === prev.size) return prev;
+      return next;
+    });
+  }, [papers]);
 
   const toggleSelectPaper = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    setSelectedPaperIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
+    if (onToggleSelectPaper) {
+      onToggleSelectPaper(id);
+    } else {
+      setLocalSelectedPaperIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+    }
   };
 
   const handleSelectAll = () => {
-    if (selectedPaperIds.size === papers.length) {
-      setSelectedPaperIds(new Set());
+    if (onSelectAllPapers) {
+      onSelectAllPapers();
     } else {
-      setSelectedPaperIds(new Set(papers.map((p) => p.id)));
+      if (selectedPaperIds.size === papers.length) {
+        setLocalSelectedPaperIds(new Set());
+      } else {
+        setLocalSelectedPaperIds(new Set(papers.map((p) => p.id)));
+      }
     }
   };
 
   const handleCancelSelect = () => {
-    setSelectedPaperIds(new Set());
+    if (onClearSelectedPapers) {
+      onClearSelectedPapers();
+    } else {
+      setLocalSelectedPaperIds(new Set());
+    }
   };
 
   const handleDeleteSelected = () => {

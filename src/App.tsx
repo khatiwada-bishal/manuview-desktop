@@ -200,6 +200,45 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLocalModelOpen, setIsLocalModelOpen] = useState(false);
   const [papersToDelete, setPapersToDelete] = useState<PaperItem[] | null>(null);
+  const [selectedPaperIds, setSelectedPaperIds] = useState<Set<string>>(new Set());
+
+  // Auto-prune any selected IDs when papers are removed or deleted
+  useEffect(() => {
+    const validIds = new Set(papers.map((p) => p.id));
+    setSelectedPaperIds((prev) => {
+      if (prev.size === 0) return prev;
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (validIds.has(id)) next.add(id);
+      }
+      if (next.size === prev.size) return prev;
+      return next;
+    });
+  }, [papers]);
+
+  const handleToggleSelectPaper = (id: string) => {
+    setSelectedPaperIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleClearSelectedPapers = () => {
+    setSelectedPaperIds(new Set());
+  };
+
+  const handleSelectAllPapers = () => {
+    if (selectedPaperIds.size === papers.length) {
+      setSelectedPaperIds(new Set());
+    } else {
+      setSelectedPaperIds(new Set(papers.map((p) => p.id)));
+    }
+  };
 
   // Automatically persist user session state (open tabs, active tab, active view)
   useEffect(() => {
@@ -343,6 +382,15 @@ export default function App() {
       return remaining;
     });
 
+    // 4. Prune/clear deleted IDs from selectedPaperIds
+    setSelectedPaperIds((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) {
+        next.delete(id);
+      }
+      return next;
+    });
+
     setPapersToDelete(null);
   };
 
@@ -468,6 +516,10 @@ export default function App() {
         onOpenService={handleOpenService}
         onDeletePaper={(paper) => setPapersToDelete([paper])}
         onDeleteMultiplePapers={(targets) => setPapersToDelete(targets)}
+        selectedPaperIds={selectedPaperIds}
+        onToggleSelectPaper={handleToggleSelectPaper}
+        onSelectAllPapers={handleSelectAllPapers}
+        onClearSelectedPapers={handleClearSelectedPapers}
       />
     );
   };
@@ -542,6 +594,9 @@ export default function App() {
             onDeletePaper={(paper) => setPapersToDelete([paper])}
             onDeleteMultiplePapers={(targets) => setPapersToDelete(targets)}
             onGoHome={!isDesktopApp() ? () => setViewMode("landing") : undefined}
+            selectedPaperIds={selectedPaperIds}
+            onToggleSelectPaper={handleToggleSelectPaper}
+            onClearSelectedPapers={handleClearSelectedPapers}
           />
 
           {/* View Content */}
