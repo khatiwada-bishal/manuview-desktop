@@ -168,7 +168,7 @@ export async function resolveActiveConfig(config?: ProviderConfig): Promise<Prov
   let baseUrl = (base.baseUrl || "").trim();
 
   // 1. If no apiKey provided by caller, query native OS Keychain / secure memory store
-  if (!apiKey && provider !== "ollama") {
+  if (!apiKey && provider !== "ollama" && provider !== "webllm") {
     try {
       const secureKey = await getSecureApiKey(provider);
       if (secureKey && secureKey.trim().length > 0) {
@@ -180,7 +180,7 @@ export async function resolveActiveConfig(config?: ProviderConfig): Promise<Prov
   }
 
   // 2. If still no apiKey, query environment variables
-  if (!apiKey && provider !== "ollama") {
+  if (!apiKey && provider !== "ollama" && provider !== "webllm") {
     if (provider === "gemini") apiKey = getEnv('GEMINI_API_KEY') || getEnv('GOOGLE_API_KEY');
     else if (provider === "groq") apiKey = getEnv('GROQ_API_KEY');
     else if (provider === "openai") apiKey = getEnv('OPENAI_API_KEY');
@@ -191,9 +191,15 @@ export async function resolveActiveConfig(config?: ProviderConfig): Promise<Prov
     ...base,
     provider,
     apiKey,
-    model: model || (provider === "gemini" ? "gemini-2.0-flash" : provider === "groq" ? "llama-3.3-70b-versatile" : provider === "openai" ? "gpt-4o-mini" : "claude-3-5-sonnet-20241022"),
+    model: model || (
+      provider === "webllm" ? "Qwen2.5-0.5B-Instruct-q4f16_1-MLC" :
+      provider === "gemini" ? "gemini-2.0-flash" :
+      provider === "groq" ? "llama-3.3-70b-versatile" :
+      provider === "openai" ? "gpt-4o-mini" :
+      "claude-3-5-sonnet-20241022"
+    ),
     baseUrl: baseUrl || (provider === "openai" ? "https://api.openai.com/v1" : "http://localhost:11434"),
-    hasSecureKey: Boolean(apiKey),
+    hasSecureKey: provider === "webllm" || provider === "ollama" || Boolean(apiKey),
   };
 }
 
@@ -432,8 +438,17 @@ export async function callLLM(
   let model: string = resolvedConfig.model || "";
   let baseUrl: string = resolvedConfig.baseUrl || "http://localhost:11434";
 
-  if (!apiKey && provider !== "ollama") {
+  if (!apiKey && provider !== "ollama" && provider !== "webllm") {
     throw new Error(`No API key configured for ${provider.toUpperCase()}. Please configure your API key in AI Settings.`);
+  }
+
+  // -----------------------------------------------------------
+  // 0. On-Device WebGPU SLM (WebLLM)
+  // -----------------------------------------------------------
+  if (provider === "webllm") {
+    const { generateWithLocalSLM, DEFAULT_LOCAL_MODEL } = await import("./webllm/webllm-service");
+    const targetModel = model || DEFAULT_LOCAL_MODEL;
+    return await generateWithLocalSLM(messages, targetModel, onChunk);
   }
 
   // -----------------------------------------------------------
@@ -1076,6 +1091,29 @@ export const CURATED_MODELS: Record<LLMProvider, AvailableModel[]> = {
       recommended: false,
     },
   ],
+  webllm: [
+    {
+      id: "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+      name: "Qwen 2.5 (0.5B Instruct)",
+      description: "Smallest, fastest on-device SLM (~380 MB). Runs on WebGPU.",
+      tag: "⚡ Recommended / 0.5B",
+      recommended: true,
+    },
+    {
+      id: "Llama-3.2-1B-Instruct-q4f32_1-MLC",
+      name: "Llama 3.2 (1B Instruct)",
+      description: "Meta's compact model (~750 MB) with strong academic reasoning.",
+      tag: "Balanced / 1B",
+      recommended: false,
+    },
+    {
+      id: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC",
+      name: "Qwen 2.5 (1.5B Instruct)",
+      description: "Highest accuracy scientific reasoning in the compact class (~980 MB).",
+      tag: "Reasoning / 1.5B",
+      recommended: false,
+    },
+  ],
 };
 
 export async function fetchAvailableModels(
@@ -1367,6 +1405,31 @@ export async function fetchAvailableModels(
       } else if (options?.throwOnError) {
         throw new Error(`Ollama server returned HTTP ${res.status}. Check that 'ollama serve' is running.`);
       }
+    } else if (provider === "webllm") {
+      return [
+        {
+          id: "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+          name: "Qwen 2.5 (0.5B Instruct)",
+          description: "Smallest, fastest local SLM (~380 MB)",
+          tag: "Recommended / 0.5B",
+          recommended: true,
+          isLive: true,
+        },
+        {
+          id: "Llama-3.2-1B-Instruct-q4f32_1-MLC",
+          name: "Llama 3.2 (1B Instruct)",
+          description: "Meta's compact model (~750 MB)",
+          tag: "Balanced / 1B",
+          isLive: true,
+        },
+        {
+          id: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC",
+          name: "Qwen 2.5 (1.5B Instruct)",
+          description: "High-accuracy scientific reasoning (~980 MB)",
+          tag: "Reasoning / 1.5B",
+          isLive: true,
+        },
+      ];
     }
   } catch (err: any) {
     if (options?.throwOnError) {
@@ -1403,7 +1466,7 @@ export async function testLLMConnection(
   let baseUrl: string = (config?.baseUrl || (provider === 'openai' ? getEnv('OPENAI_BASE_URL') : undefined) || getEnv('OLLAMA_BASE_URL') || "http://localhost:11434").trim();
 
   // If no apiKey provided, query secure storage first
-  if (!apiKey && provider !== "ollama") {
+  if (!apiKey && provider !== "ollama" && provider !== "webllm") {
     try {
       const secureKey = await getSecureApiKey(provider);
       if (secureKey) {
@@ -1415,7 +1478,7 @@ export async function testLLMConnection(
   }
 
   // If still no apiKey provided, resolve from environment
-  if (!apiKey && provider !== "ollama") {
+  if (!apiKey && provider !== "ollama" && provider !== "webllm") {
     if (provider === "gemini") {
       apiKey = getEnv('GEMINI_API_KEY') || getEnv('GOOGLE_API_KEY');
       model = model || getEnv('GEMINI_MODEL') || "gemini-1.5-flash";
@@ -1432,6 +1495,32 @@ export async function testLLMConnection(
       apiKey = getEnv('ANTHROPIC_API_KEY');
       model = model || getEnv('ANTHROPIC_MODEL') || "claude-3-5-sonnet-20241022";
     }
+  }
+
+  // On-Device WebGPU SLM (WebLLM)
+  if (provider === "webllm") {
+    const { isWebGPUSupported, isModelCached, DEFAULT_LOCAL_MODEL } = await import("./webllm/webllm-service");
+    const targetModel = model || DEFAULT_LOCAL_MODEL;
+    if (!isWebGPUSupported()) {
+      return {
+        success: false,
+        provider: "webllm",
+        model: targetModel,
+        latencyMs: 0,
+        message: "WebGPU is not supported on this device/browser.",
+        error: "Hardware acceleration via WebGPU is required for on-device SLMs.",
+        availableModels: CURATED_MODELS.webllm,
+      };
+    }
+    const cached = await isModelCached(targetModel);
+    return {
+      success: true,
+      provider: "webllm",
+      model: targetModel,
+      latencyMs: 0,
+      message: cached ? "Model is cached and ready for offline execution." : "WebGPU supported. Model requires one-time download.",
+      availableModels: CURATED_MODELS.webllm,
+    };
   }
 
   // If still no API key and provider requires one:

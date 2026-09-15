@@ -489,7 +489,7 @@ export interface BriefJournalFitReport {
 
 export type ReviewReport = FullReviewReport | BriefJournalFitReport;
 
-export type LLMProvider = 'ollama' | 'gemini' | 'groq' | 'openai' | 'anthropic';
+export type LLMProvider = 'ollama' | 'gemini' | 'groq' | 'openai' | 'anthropic' | 'webllm';
 
 export interface ProviderConfig {
   provider: LLMProvider;

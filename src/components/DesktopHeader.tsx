@@ -17,6 +17,7 @@ import {
   PanelLeft,
   ChevronDown,
   Download,
+  Cpu,
 } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTheme } from "@/context/ThemeContext";
@@ -48,6 +49,7 @@ interface DesktopHeaderProps {
   activeModelName?: string | null;
   latencyMs?: number | null;
   onOpenSettings?: () => void;
+  onOpenLocalModel?: () => void;
   onToggleSidebar?: () => void;
   sidebarOpen?: boolean;
   onGoHome?: () => void;
@@ -76,6 +78,7 @@ export function DesktopHeader({
   activeTabId,
   onSelectTab,
   onCloseTab,
+  onOpenLocalModel,
   onToggleSidebar,
   sidebarOpen = true,
   onGoHome,
@@ -377,6 +380,19 @@ export function DesktopHeader({
 
       {/* Top Right: Dark / Light Mode Toggle Button + OS Download Button (Exact match with screenshot) */}
       <div className="flex items-center gap-2 h-full pl-2 pr-3 shrink-0 z-10">
+        {onOpenLocalModel && (
+          <button
+            type="button"
+            data-no-drag
+            onClick={onOpenLocalModel}
+            title="Local On-Device AI (WebGPU SLM)"
+            className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-purple-500/30 bg-purple-500/10 text-purple-700 dark:text-purple-300 hover:bg-purple-500/20 transition cursor-pointer text-xs font-semibold"
+          >
+            <Cpu className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+            <span className="hidden sm:inline">Local AI</span>
+          </button>
+        )}
+
         <button
           type="button"
           data-no-drag

@@ -21,6 +21,7 @@ import { DesktopResponseBuilderView } from "@/components/services/DesktopRespons
 import { DesktopEmptyDashboard } from "@/components/DesktopEmptyDashboard";
 import { DeleteConfirmationModal } from "@/components/DeleteConfirmationModal";
 import { ProviderSettingsModal } from "@/components/ProviderSettingsModal";
+import { LocalModelManagerModal } from "@/components/LocalModelManagerModal";
 import { DashboardErrorBoundary } from "@/components/DashboardErrorBoundary";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { useApiConnection } from "@/lib/useApiConnection";
@@ -196,6 +197,7 @@ export default function App() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isScanOpen, setIsScanOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isLocalModelOpen, setIsLocalModelOpen] = useState(false);
   const [paperToDelete, setPaperToDelete] = useState<PaperItem | null>(null);
 
   // Automatically persist user session state (open tabs, active tab, active view)
@@ -509,6 +511,7 @@ export default function App() {
           activeModelName={modelName}
           latencyMs={latencyMs}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenLocalModel={() => setIsLocalModelOpen(true)}
           onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
           sidebarOpen={sidebarOpen}
           onGoHome={!isDesktopApp() ? () => setViewMode("landing") : undefined}
@@ -572,6 +575,11 @@ export default function App() {
         <ProviderSettingsModal
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
+        />
+
+        <LocalModelManagerModal
+          isOpen={isLocalModelOpen}
+          onClose={() => setIsLocalModelOpen(false)}
         />
       </div>
     </ThemeProvider>
