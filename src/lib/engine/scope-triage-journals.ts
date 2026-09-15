@@ -119,28 +119,46 @@ export function evaluateManuscriptScopeTriage(
   const detectedDiscipline = journalMatches.detectedDiscipline || "Scholarly Research";
   const targetEval = journalMatches.targetJournalEvaluation;
 
+  const catalogEntry = targetJournalName
+    ? JOURNAL_CATALOG.find((j) => j.name.toLowerCase() === targetJournalName.toLowerCase())
+    : undefined;
+
   // Determine effective target discipline from live scope profile, catalog evaluation, or name inference
   const effectiveJournalDiscipline =
     liveJournalScope?.primaryDiscipline ||
     targetEval?.journalDiscipline ||
+    (catalogEntry?.discipline) ||
     (targetJournalName ? inferJournalDiscipline(targetJournalName) : undefined);
 
   // Check disciplinary alignment
   let isTargetScopeMismatch = false;
-  if (effectiveJournalDiscipline) {
-    const matchRes = isDisciplineMatch(detectedDiscipline, effectiveJournalDiscipline);
-    isTargetScopeMismatch = !matchRes.isMatch;
-  } else if (targetEval?.isDisciplinaryMismatch !== undefined) {
-    isTargetScopeMismatch = targetEval.isDisciplinaryMismatch;
+  if (targetJournalName) {
+    const targetNorm = targetJournalName.trim().toLowerCase();
+    const isRecommendedTier =
+      targetNorm === journalMatches.reach.name.toLowerCase() ||
+      targetNorm === journalMatches.realistic.name.toLowerCase() ||
+      targetNorm === journalMatches.fallback.name.toLowerCase();
+    const inOtherMatches = journalMatches.otherMatches?.some(
+      (m) => m.journal.name.toLowerCase() === targetNorm && m.matchScore >= 45
+    );
+    const isTargetMulti =
+      effectiveJournalDiscipline === "Multidisciplinary" ||
+      (catalogEntry && catalogEntry.discipline === "Multidisciplinary") ||
+      inferJournalDiscipline(targetJournalName) === "Multidisciplinary";
+
+    if (isRecommendedTier || inOtherMatches || isTargetMulti) {
+      isTargetScopeMismatch = false;
+    } else if (effectiveJournalDiscipline) {
+      const matchRes = isDisciplineMatch(detectedDiscipline, effectiveJournalDiscipline);
+      isTargetScopeMismatch = !matchRes.isMatch;
+    } else if (targetEval?.isDisciplinaryMismatch !== undefined) {
+      isTargetScopeMismatch = targetEval.isDisciplinaryMismatch;
+    }
   }
 
   const cleanJournalName = liveJournalScope?.officialName || targetJournalName || "Target Journal";
   const manuscriptTopics = extractManuscriptTopics(title, abstract);
   const journalDisciplineLabel = effectiveJournalDiscipline || "a different discipline";
-
-  const catalogEntry = targetJournalName
-    ? JOURNAL_CATALOG.find((j) => j.name.toLowerCase() === targetJournalName.toLowerCase())
-    : undefined;
 
   const editorialTriage: EditorialTriageOutcome = isTargetScopeMismatch
     ? {
@@ -239,33 +257,25 @@ export async function evaluateManuscriptScopeTriageWithLLM(
     const concepts = liveJournalScope?.keyConcepts?.join(", ") || discipline;
     const impact = liveJournalScope?.impactMetric ? `Impact: ${liveJournalScope.impactMetric}` : "";
 
-    const systemPrompt = `You are the Senior Handling Editor and Scope Triage Chair for the academic journal "${cleanJournalName}".
-Your task is preliminary editorial screening (triage) before peer review to determine if this manuscript should be DESK REJECTED at the editorial office or if it is SUITABLE FOR EXTERNAL REVIEW.
+    const isHeuristicallyCompatible = !baseResult.isTargetScopeMismatch;
 
-CRITICAL EDITORIAL SCOPE POLICIES:
-1. Multidisciplinary & Broad Journals (CRITICAL RULE):
-   - A journal being "Multidisciplinary" (e.g., Nature, Science, PNAS, Nature Communications, PLOS ONE, Scientific Reports, Cell Reports) does NOT automatically make every paper compatible.
-   - Elite general-interest journals (e.g. Nature, Science, PNAS) ONLY accept work of extraordinary, transformative general scientific significance commanding readership across multiple scientific fields. Routine, narrow, specialized, single-locality, or incremental disciplinary studies (e.g., standard case reports, localized surveys, narrow engineering optimization, incremental laboratory assays) MUST BE DESK REJECTED for lack of broad general interest, even if the methodology is sound.
-   - Broad open-access multidisciplinary journals (e.g. PLOS ONE, Scientific Reports) focus on technical execution and data soundness, but still reject papers that lack primary empirical data, are purely speculative hypotheses/essays, or fail publication criteria.
-2. Domain-Specific Journals:
-   - Specialized journals (e.g. Nature Medicine, IEEE TPAMI, Journal of Financial Economics, Cancer Discovery) require direct relevance to their specific domain. A paper whose core methodology or findings do not address the journal's domain MUST BE DESK REJECTED.
-3. Decisive Triage:
-   - If the manuscript does not genuinely match the journal's remit or standard of general/field significance, you must issue an immediate "Desk Reject".
-   - If the manuscript has clear scope compatibility and appropriate breadth, approve it as "Suitable for Review".
+    const systemPrompt = `You are the Senior Handling Editor evaluating aims & scope fit for "${cleanJournalName}" (${discipline}).
+Your task is preliminary editorial screening to assess thematic relevance before peer review.
 
-You must respond with a strict JSON object following this exact schema:
+EDITORIAL SCOPE PRINCIPLES:
+1. Substantive Relevance:
+   - Manuscripts investigating topics in ${discipline}, related applied fields, or methodological crossover should be approved as "Suitable for Review".
+   - Multidisciplinary or broad journals accept rigorous studies across the natural, applied, formal, and social sciences.
+2. Genuine Out-of-Scope Detection:
+   - Only issue a "Desk Reject" if the submission has a total, irreconcilable domain mismatch with zero relevance to the journal's discourse.
+
+Return strictly valid JSON matching this schema:
 {
   "isScopeMatch": boolean,
-  "decision": "Desk Reject" | "Suitable for Review",
-  "deskRejectReason": "scope_mismatch" | "lacks_broad_multidisciplinary_interest" | "insufficient_general_significance" | "format_ineligible" | "none",
-  "detectedDiscipline": "e.g. Operations Research & Management",
-  "editorialSummary": "Professional 2-3 sentence editorial justification explaining the decision to the author.",
-  "scopeContrast": {
-    "journalRemit": "1-2 sentences on this journal's actual scope and readership criteria.",
-    "manuscriptFocus": "1-2 sentences on this paper's substantive research topic.",
-    "mismatchExplanation": "Detailed explanation of why the paper's scope or level of generality conflicts with the journal.",
-    "suggestedVenues": ["3-4 specific journals that are a better thematic match"]
-  }
+  "decision": "Suitable for Review" | "Desk Reject",
+  "deskRejectReason": "scope_mismatch" | "none",
+  "detectedDiscipline": "${discipline}",
+  "editorialSummary": "Professional 2-3 sentence editorial assessment of aims & scope fit."
 }`;
 
     const userPrompt = `TARGET JOURNAL:
@@ -280,7 +290,7 @@ MANUSCRIPT DETAILS:
 - Title: ${title}
 - Abstract: ${abstract}
 ${keywords ? `- Keywords: ${keywords}` : ""}
-${sampleSnippet ? `- Excerpt:\n${sampleSnippet.slice(0, 2000)}` : ""}
+${sampleSnippet ? `- Excerpt:\n${sampleSnippet.slice(0, 1500)}` : ""}
 
 Please evaluate scope compatibility and return valid JSON.`;
 
@@ -304,7 +314,9 @@ Please evaluate scope compatibility and return valid JSON.`;
     }>(messages, resolvedConfig);
 
     if (llmRes && typeof llmRes.isScopeMatch === "boolean") {
-      const isTargetScopeMismatch = !llmRes.isScopeMatch;
+      // Ground-truth consistency: If baseline heuristic already confirmed compatibility,
+      // never allow small SLM variance to flip it into a false desk-reject.
+      const isTargetScopeMismatch = isHeuristicallyCompatible ? false : !llmRes.isScopeMatch;
       const detectedDiscipline = llmRes.detectedDiscipline || baseResult.detectedDiscipline;
       const manuscriptTopics = extractManuscriptTopics(title, abstract);
 
@@ -575,7 +587,21 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
   const causalAssertions = manuscript.empiricalCues?.causalAssertions || [];
   const statMetrics = manuscript.empiricalCues?.statisticalMetrics || [];
 
-  if (isMethodsMissing) {
+  // Detect if scan is an abstract-only or short frontmatter submission
+  const isAbstractOnly =
+    (manuscript.wordCount > 0 && manuscript.wordCount < 1200) ||
+    (!manuscript.sections?.results && !manuscript.sections?.discussion && Boolean(manuscript.abstract));
+
+  if (isAbstractOnly) {
+    pillarEvaluations.push({
+      pillar: "methodology_controls",
+      title: "Methodological & Procedural Controls",
+      status: "pass",
+      verdict:
+        "Abstract-level pre-submission screening. Full experimental protocol and procedural controls will be validated upon complete manuscript submission.",
+      baseRateContext: DESK_REJECT_BASE_RATES.methodology_controls,
+    });
+  } else if (isMethodsMissing) {
     const fix =
       "Add a dedicated 'Materials and Methods' section detailing experimental protocols, sample selection, and model specifications.";
     pillarEvaluations.push({
@@ -743,7 +769,15 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
   }
 
   // 6. Presentation & Language Clarity
-  if (manuscript.wordCount > 0 && manuscript.wordCount < 1200) {
+  if (isAbstractOnly) {
+    pillarEvaluations.push({
+      pillar: "presentation_language",
+      title: "Presentation & Language Clarity",
+      status: "pass",
+      verdict: `Abstract/frontmatter pre-submission scan (${manuscript.wordCount} words). Full monograph length will be audited upon complete manuscript submission.`,
+      baseRateContext: DESK_REJECT_BASE_RATES.presentation_language,
+    });
+  } else if (manuscript.wordCount > 0 && manuscript.wordCount < 1200) {
     const fix = "Expand manuscript with complete literature review, methodology subsections, and in-depth discussion.";
     pillarEvaluations.push({
       pillar: "presentation_language",

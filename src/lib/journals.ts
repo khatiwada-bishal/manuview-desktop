@@ -2792,9 +2792,19 @@ export interface DisciplineMatchResult {
 
 function normalizeDisciplineInput(d: string): Discipline {
   const norm = d.trim();
-  if (norm === "Clinical Medicine" || norm === "Medicine") return "Clinical";
-  if (norm === "Biomedical Sciences") return "Biomedicine";
-  if (norm === "Machine Learning" || norm === "Artificial Intelligence") return "Computer Science";
+  if (/clinical|medicine|surgery|pediatric|cardio|hospital|health sciences?/i.test(norm)) return "Clinical";
+  if (/biomed|biological|biology|genetics|genomics|molecular|biochem/i.test(norm)) return "Biomedicine";
+  if (/machine learning|artificial intelligence|computer science|software|computing|data science|information systems?/i.test(norm)) return "Computer Science";
+  if (/operations research|management science|supply chain|logistics|industrial engineering/i.test(norm)) return "Operations Research & Management";
+  if (/finance|economics|econometric|business|accounting|banking/i.test(norm)) return "Economics, Finance & Business";
+  if (/environment|ecology|sustainability|climate|earth science|planetary/i.test(norm)) return "Environmental Science & Sustainability";
+  if (/physics|mathematics|astronomy|applied math/i.test(norm)) return "Physical Sciences & Mathematics";
+  if (/materials science|chemical|chemistry|polymers/i.test(norm)) return "Chemistry & Materials Science";
+  if (/engineering|applied sciences?/i.test(norm)) return "Engineering & Applied Sciences";
+  if (/psychology|social sciences?|education|sociology/i.test(norm)) return "Social Sciences, Psychology & Education";
+  if (/oncolog|cancer|carcinoma/i.test(norm)) return "Oncology";
+  if (/neuro/i.test(norm)) return "Neuroscience";
+  if (/multidisciplinary|general|interdisciplinary/i.test(norm)) return "Multidisciplinary";
   return norm as Discipline;
 }
 
@@ -2830,21 +2840,76 @@ export function isDisciplineMatch(
 
   // Interdisciplinary domain pairings that share substantive crossover
   const COMPATIBLE_CROSS_FIELDS: Record<string, Set<Discipline>> = {
-    "Computer Science": new Set(["Operations Research & Management", "Engineering & Applied Sciences", "Physical Sciences & Mathematics"]),
-    "Operations Research & Management": new Set(["Computer Science", "Economics, Finance & Business", "Engineering & Applied Sciences"]),
-    "Economics, Finance & Business": new Set(["Operations Research & Management", "Social Sciences, Psychology & Education"]),
+    "Computer Science": new Set([
+      "Operations Research & Management",
+      "Engineering & Applied Sciences",
+      "Physical Sciences & Mathematics",
+      "Biomedicine",
+      "Clinical",
+      "Economics, Finance & Business",
+      "Environmental Science & Sustainability",
+      "Neuroscience",
+    ]),
+    "Operations Research & Management": new Set([
+      "Computer Science",
+      "Economics, Finance & Business",
+      "Engineering & Applied Sciences",
+      "Environmental Science & Sustainability",
+    ]),
+    "Economics, Finance & Business": new Set([
+      "Operations Research & Management",
+      "Social Sciences, Psychology & Education",
+      "Environmental Science & Sustainability",
+      "Computer Science",
+    ]),
     "Oncology": new Set(["Biomedicine", "Clinical"]),
-    "Clinical": new Set(["Oncology", "Biomedicine", "Neuroscience"]),
-    "Biomedicine": new Set(["Oncology", "Clinical", "Neuroscience", "Chemistry & Materials Science"]),
-    "Neuroscience": new Set(["Biomedicine", "Clinical", "Social Sciences, Psychology & Education"]),
-    "Environmental Science & Sustainability": new Set(["Engineering & Applied Sciences", "Economics, Finance & Business"]),
-    "Engineering & Applied Sciences": new Set(["Computer Science", "Operations Research & Management", "Physical Sciences & Mathematics", "Chemistry & Materials Science"]),
-    "Physical Sciences & Mathematics": new Set(["Engineering & Applied Sciences", "Chemistry & Materials Science", "Computer Science"]),
-    "Chemistry & Materials Science": new Set(["Physical Sciences & Mathematics", "Engineering & Applied Sciences", "Biomedicine"]),
-    "Social Sciences, Psychology & Education": new Set(["Economics, Finance & Business", "Neuroscience"]),
+    "Clinical": new Set(["Oncology", "Biomedicine", "Neuroscience", "Computer Science"]),
+    "Biomedicine": new Set([
+      "Oncology",
+      "Clinical",
+      "Neuroscience",
+      "Chemistry & Materials Science",
+      "Computer Science",
+    ]),
+    "Neuroscience": new Set([
+      "Biomedicine",
+      "Clinical",
+      "Social Sciences, Psychology & Education",
+      "Computer Science",
+    ]),
+    "Environmental Science & Sustainability": new Set([
+      "Engineering & Applied Sciences",
+      "Economics, Finance & Business",
+      "Operations Research & Management",
+      "Chemistry & Materials Science",
+      "Physical Sciences & Mathematics",
+    ]),
+    "Engineering & Applied Sciences": new Set([
+      "Computer Science",
+      "Operations Research & Management",
+      "Physical Sciences & Mathematics",
+      "Chemistry & Materials Science",
+      "Environmental Science & Sustainability",
+    ]),
+    "Physical Sciences & Mathematics": new Set([
+      "Engineering & Applied Sciences",
+      "Chemistry & Materials Science",
+      "Computer Science",
+      "Economics, Finance & Business",
+    ]),
+    "Chemistry & Materials Science": new Set([
+      "Physical Sciences & Mathematics",
+      "Engineering & Applied Sciences",
+      "Biomedicine",
+      "Environmental Science & Sustainability",
+    ]),
+    "Social Sciences, Psychology & Education": new Set([
+      "Economics, Finance & Business",
+      "Neuroscience",
+    ]),
   };
 
-  if (COMPATIBLE_CROSS_FIELDS[mDisc]?.has(jDisc)) {
+  if (COMPATIBLE_CROSS_FIELDS[mDisc]?.has(jDisc) || COMPATIBLE_CROSS_FIELDS[jDisc]?.has(mDisc)) {
     return {
       isMatch: true,
       isCrossDisciplinary: true,
@@ -3154,7 +3219,17 @@ export function findMatchingJournals(
   // Target journal evaluation (calibrated for field match or out-of-scope mismatch)
   let targetJournalEvaluation: TargetJournalTierResults['targetJournalEvaluation'] = undefined;
   if (targetEntry) {
-    const isMismatch = !isDisciplineMatch(discipline, targetEntry.discipline).isMatch;
+    const targetNorm = targetEntry.name.toLowerCase();
+    const isRecommendedTier =
+      targetNorm === reach.name.toLowerCase() ||
+      targetNorm === realistic.name.toLowerCase() ||
+      targetNorm === fallback.name.toLowerCase();
+    const inOtherMatches = otherMatches.some(
+      (m) => m.journal.name.toLowerCase() === targetNorm && m.matchScore >= 45
+    );
+    const discMatch = isDisciplineMatch(discipline, targetEntry.discipline);
+    const isMismatch = !(isRecommendedTier || inOtherMatches || discMatch.isMatch || targetEntry.discipline === 'Multidisciplinary');
+
     const targetScore = calculateDynamicFitScore(
       targetEntry,
       'Realistic',
@@ -3169,7 +3244,7 @@ export function findMatchingJournals(
       journalName: targetEntry.name,
       foundInCatalog: true,
       tier: (targetEntry.name === reach.name ? 'Reach' : targetEntry.name === fallback.name ? 'Fallback' : 'Realistic') as 'Reach' | 'Realistic' | 'Fallback',
-      fitScore: targetScore,
+      fitScore: isMismatch ? 22 : Math.max(targetScore, 65),
       impactFactor: targetEntry.impactFactor,
       discipline: targetEntry.discipline,
       journalDiscipline: targetEntry.discipline,
@@ -3180,10 +3255,19 @@ export function findMatchingJournals(
         : undefined,
     };
   } else if (targetJournal) {
+    const targetNorm = targetJournal.trim().toLowerCase();
+    const isRecommendedTier =
+      targetNorm === reach.name.toLowerCase() ||
+      targetNorm === realistic.name.toLowerCase() ||
+      targetNorm === fallback.name.toLowerCase();
+    const inOtherMatches = otherMatches.some(
+      (m) => m.journal.name.toLowerCase() === targetNorm && m.matchScore >= 45
+    );
     const inferredDiscipline = inferJournalDiscipline(targetJournal);
     const effectiveTargetDiscipline = inferredDiscipline || discipline;
-    const isMismatch = inferredDiscipline ? !isDisciplineMatch(discipline, inferredDiscipline).isMatch : false;
-    const targetScore = isMismatch ? 22 : realisticFitScore;
+    const discMatch = isDisciplineMatch(discipline, effectiveTargetDiscipline);
+    const isMismatch = !(isRecommendedTier || inOtherMatches || discMatch.isMatch || effectiveTargetDiscipline === 'Multidisciplinary');
+    const targetScore = isMismatch ? 22 : Math.max(realisticFitScore, 65);
 
     targetJournalEvaluation = {
       name: targetJournal,

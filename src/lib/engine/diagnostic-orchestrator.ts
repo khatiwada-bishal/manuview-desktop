@@ -350,6 +350,77 @@ Please return your analysis as a JSON object matching this schema:
 }`;
 }
 
+export function buildLocalSLMSystemPrompt(boundaryDelimiter = BOUNDARY_DELIMITER): string {
+  return `You are the lead academic handling editor and pre-submission diagnostic engine for ManuView running locally on-device via WebGPU.
+You are evaluating an authentic scholarly submission to provide an objective pre-submission peer-review calibration.
+
+CRITICAL INSTRUCTIONS:
+1. Grounded Evaluation: Review strictly the manuscript domain, methodology, and empirical evidence provided.
+2. Scientific Rigor: Assess methodological validity, evidence strength, clarity, and contribution.
+3. Realistic Scoring: Score the manuscript objectively on a 0-100 overall scale (solid empirical paper: 68-82; minor revisions: 78-88; major limitations: 45-60; severe mismatch: 25-35).
+4. Output strictly valid JSON matching the requested schema.`;
+}
+
+export function buildLocalSLMUserPrompt(
+  manuscript: ParsedManuscript,
+  heuristicClassification: DocumentClassification,
+  citationIntegrity: CitationIntegritySummary,
+  targetJournalName?: string,
+  topCitedJournals: string[] = [],
+  maxBodyChars = 8000,
+  boundaryDelimiter = BOUNDARY_DELIMITER,
+  detectedDiscipline?: string
+): string {
+  const sections = manuscript.sections || {};
+  const safeTitle = sanitizeAuthorText(manuscript.title);
+  const safeAbstract = sanitizeAuthorText(manuscript.abstract);
+  const safeTargetJournal = targetJournalName ? sanitizeAuthorText(targetJournalName) : undefined;
+
+  const sectionBudget = Math.floor(maxBodyChars / 3);
+  const bodyText = [
+    sections.introduction ? `[INTRODUCTION]\n${sanitizeAuthorText(sections.introduction.slice(0, sectionBudget))}` : "",
+    sections.methods ? `[METHODS]\n${sanitizeAuthorText(sections.methods.slice(0, sectionBudget))}` : "",
+    sections.results ? `[RESULTS]\n${sanitizeAuthorText(sections.results.slice(0, sectionBudget))}` : "",
+  ].filter(Boolean).join("\n\n") || sanitizeAuthorText((manuscript.rawText || "").slice(0, maxBodyChars));
+
+  return `Perform an objective pre-submission editorial review of this scholarly manuscript:
+
+[METADATA]
+Title: ${safeTitle}
+Target Journal: ${safeTargetJournal || "Peer-Reviewed Field Journal"}
+Field: ${detectedDiscipline || "Scholarly Research"}
+Word Count: ${manuscript.wordCount} words
+References: ${citationIntegrity.totalReferences} (Verified via Crossref: ${citationIntegrity.verifiedCount}, Retracted: ${citationIntegrity.retractedCount})
+
+[MANUSCRIPT CONTENT]
+<untrusted_author_document>
+<<<<${boundaryDelimiter}>>>>
+[ABSTRACT]
+${safeAbstract || "Extracted from text"}
+
+${bodyText}
+<<<<END_${boundaryDelimiter}>>>>
+</untrusted_author_document>
+
+Return strictly valid JSON matching this schema:
+{
+  "overallScore": number,
+  "summary": "Detailed, multi-paragraph scholarly editorial synthesis (150-250 words) evaluating the core contribution, findings, methodology, and submission readiness.",
+  "dimensions": {
+    "originality": { "score": 1-5, "label": "Originality & Novelty", "verdict": "string", "strengths": ["string"], "vulnerabilities": ["string"] },
+    "broad_interest": { "score": 1-5, "label": "Importance & Broad Interest", "verdict": "string", "strengths": ["string"], "vulnerabilities": ["string"] },
+    "claims_vs_evidence": { "score": 1-5, "label": "Strength of Claims vs. Evidence", "verdict": "string", "strengths": ["string"], "vulnerabilities": ["string"] },
+    "methodology": { "score": 1-5, "label": "Methodological & Statistical Soundness", "verdict": "string", "strengths": ["string"], "vulnerabilities": ["string"] },
+    "clarity": { "score": 1-5, "label": "Clarity & Presentation", "verdict": "string", "strengths": ["string"], "vulnerabilities": ["string"] },
+    "prior_work": { "score": 1-5, "label": "Prior Work & Reference Integrity", "verdict": "string", "strengths": ["string"], "vulnerabilities": ["string"] }
+  },
+  "handlingEditorCritique": "Editorial assessment of publication readiness, aims & scope fit, and main hurdle.",
+  "methodologyCritique": "Critical referee review of experimental protocols, sample design, and procedural controls.",
+  "statisticianCritique": "Quantitative review of sample sizes, effect sizes, variance reporting, and statistical inference.",
+  "adversarialCritique": "Adversarial stress-test challenging unruled-out confounders, boundary conditions, and causal claims."
+}`;
+}
+
 export function buildDeterministicComplianceAudit(
   manuscript: ParsedManuscript,
   citationIntegrity: CitationIntegritySummary,
@@ -935,7 +1006,22 @@ export async function runManuscriptDiagnostic(
   const citedJournalNamesOnly = Array.from(journalCitationCounts.keys());
 
   const journalMatches = findMatchingJournals(manuscript.title, manuscript.abstract, targetJournalName, citedJournalNamesOnly);
-  const isDeskRejectByScope = isTargetScopeMismatch || Boolean(journalMatches.targetJournalEvaluation?.isDisciplinaryMismatch);
+
+  const isRecommendedVenue = Boolean(
+    targetJournalName &&
+    (
+      targetJournalName.toLowerCase() === journalMatches.reach.name.toLowerCase() ||
+      targetJournalName.toLowerCase() === journalMatches.realistic.name.toLowerCase() ||
+      targetJournalName.toLowerCase() === journalMatches.fallback.name.toLowerCase() ||
+      journalMatches.otherMatches?.some((m) => m.journal.name.toLowerCase() === targetJournalName.toLowerCase() && m.matchScore >= 45) ||
+      journalMatches.targetJournalEvaluation?.journalDiscipline === "Multidisciplinary" ||
+      journalMatches.targetJournalEvaluation?.isDisciplinaryMismatch === false
+    )
+  );
+
+  const isDeskRejectByScope = !isRecommendedVenue && Boolean(
+    isTargetScopeMismatch && journalMatches.targetJournalEvaluation?.isDisciplinaryMismatch
+  );
 
   // In academic publishing, if a submission does not meet the journal's scope, the handling editor
   // issues a direct Desk Reject during preliminary screening. The paper NEVER goes to peer review,
@@ -1069,19 +1155,33 @@ export async function runManuscriptDiagnostic(
 
   // Step 5: Multi-Stage LLM Evaluation Simulation & Micro-Repair
   const provider = activeConfig?.provider || "gemini";
+  const isLocalSLM = provider === "webllm";
   const maxBodyChars = PROVIDER_CONTEXT_CHAR_LIMITS[provider] || DEFAULT_CONTEXT_CHAR_LIMIT;
 
-  const systemPrompt = buildPreSubmissionSystemPrompt(BOUNDARY_DELIMITER);
-  const userPrompt = buildPreSubmissionUserPrompt(
-    manuscript,
-    heuristicClassification,
-    citationIntegrity,
-    targetJournalName,
-    topCitedJournals,
-    maxBodyChars,
-    BOUNDARY_DELIMITER,
-    detectedDiscipline
-  );
+  const systemPrompt = isLocalSLM
+    ? buildLocalSLMSystemPrompt(BOUNDARY_DELIMITER)
+    : buildPreSubmissionSystemPrompt(BOUNDARY_DELIMITER);
+  const userPrompt = isLocalSLM
+    ? buildLocalSLMUserPrompt(
+        manuscript,
+        heuristicClassification,
+        citationIntegrity,
+        targetJournalName,
+        topCitedJournals,
+        maxBodyChars,
+        BOUNDARY_DELIMITER,
+        detectedDiscipline
+      )
+    : buildPreSubmissionUserPrompt(
+        manuscript,
+        heuristicClassification,
+        citationIntegrity,
+        targetJournalName,
+        topCitedJournals,
+        maxBodyChars,
+        BOUNDARY_DELIMITER,
+        detectedDiscipline
+      );
 
   let parsedLLM: RawLLMDiagnosticResponse | null = null;
   let llmCallError: string | null = null;
@@ -1179,24 +1279,27 @@ export async function runManuscriptDiagnostic(
 
   const dimensionSource = dimValidation.isValid ? "llm" : "heuristic";
   const issueSource = issuesValidation.isValid ? "llm" : "heuristic";
-  const personaSource = personaValidation.isValid ? "llm" : "heuristic";
+  const personaSource = personaValidation.isValid
+    ? "llm"
+    : isLocalSLM && parsedLLM?.handlingEditorCritique
+    ? "llm"
+    : "heuristic";
 
   const usedLlm = [dimensionSource, issueSource, personaSource].filter((s) => s === "llm").length;
   const executionMode: "llm_synthesized" | "partial_llm" | "heuristic_offline" =
-    usedLlm === 3
+    usedLlm === 3 || (isLocalSLM && parsedLLM && (typeof parsedLLM.overallScore === "number" || dimValidation.isValid))
       ? "llm_synthesized"
       : usedLlm > 0
       ? "partial_llm"
       : "heuristic_offline";
 
   let finalOverallScore: number | undefined = undefined;
-  if (executionMode !== "heuristic_offline" && dimensionSource === "llm") {
-    if (typeof parsedLLM?.overallScore === "number" && !isNaN(parsedLLM.overallScore)) {
-      finalOverallScore = Math.min(100, Math.max(0, Math.round(parsedLLM.overallScore)));
-    }
-    if (isDeskRejectByScope) {
-      finalOverallScore = undefined;
-    }
+  if (isDeskRejectByScope) {
+    finalOverallScore = undefined;
+  } else if (typeof parsedLLM?.overallScore === "number" && !isNaN(parsedLLM.overallScore)) {
+    finalOverallScore = Math.min(100, Math.max(0, Math.round(parsedLLM.overallScore)));
+  } else if (domainSynthesis.overallScore !== undefined) {
+    finalOverallScore = domainSynthesis.overallScore;
   }
 
   let finalSummary =
@@ -1464,6 +1567,24 @@ export async function runManuscriptDiagnostic(
     // Grounded fallback from domainSynthesis ensures a resilient 5-persona reviewer panel is always available
     finalPersonas = [...domainSynthesis.personas];
     missingPersonaRoles.length = 0;
+
+    // Seamlessly enrich grounded personas with on-device Local SLM critiques
+    if (parsedLLM?.handlingEditorCritique && finalPersonas[0]) {
+      finalPersonas[0].assessment = `${parsedLLM.handlingEditorCritique}\n\n${finalPersonas[0].assessment}`;
+      finalPersonas[0].majorCritiques = [parsedLLM.handlingEditorCritique, ...finalPersonas[0].majorCritiques.slice(0, 3)];
+    }
+    if (parsedLLM?.methodologyCritique && finalPersonas[2]) {
+      finalPersonas[2].assessment = `${parsedLLM.methodologyCritique}\n\n${finalPersonas[2].assessment}`;
+      finalPersonas[2].majorCritiques = [parsedLLM.methodologyCritique, ...finalPersonas[2].majorCritiques.slice(0, 3)];
+    }
+    if (parsedLLM?.statisticianCritique && finalPersonas[3]) {
+      finalPersonas[3].assessment = `${parsedLLM.statisticianCritique}\n\n${finalPersonas[3].assessment}`;
+      finalPersonas[3].majorCritiques = [parsedLLM.statisticianCritique, ...finalPersonas[3].majorCritiques.slice(0, 3)];
+    }
+    if (parsedLLM?.adversarialCritique && finalPersonas[4]) {
+      finalPersonas[4].assessment = `${parsedLLM.adversarialCritique}\n\n${finalPersonas[4].assessment}`;
+      finalPersonas[4].majorCritiques = [parsedLLM.adversarialCritique, ...finalPersonas[4].majorCritiques.slice(0, 3)];
+    }
   }
 
   // If desk-rejected at editorial triage, ensure Reviewer 1 (Lead Handling Editor) explicitly reflects the Desk Reject determination

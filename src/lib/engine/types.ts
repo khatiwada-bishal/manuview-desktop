@@ -24,6 +24,7 @@ export const PROVIDER_CONTEXT_CHAR_LIMITS: Record<string, number> = {
   openai: 55000,
   groq: 20000,
   ollama: 22000,
+  webllm: 8000,
 };
 export const DEFAULT_CONTEXT_CHAR_LIMIT = 45000;
 
@@ -100,6 +101,10 @@ export interface RawLLMDiagnosticResponse {
     missingOrPartialItems?: string[];
   };
   journalRecommendations?: RawJournalRecommendation[];
+  handlingEditorCritique?: string;
+  methodologyCritique?: string;
+  statisticianCritique?: string;
+  adversarialCritique?: string;
 }
 
 export interface RawLLMBriefFitResponse {

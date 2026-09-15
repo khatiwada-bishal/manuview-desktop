@@ -375,8 +375,8 @@ export async function generateWithLocalSLM(
     const completion = await engine.chat.completions.create({
       messages: messages as any,
       stream: true,
-      temperature: 0.6,
-      max_tokens: 1500,
+      temperature: 0.5,
+      max_tokens: 2500,
     });
 
     let accumulated = "";
