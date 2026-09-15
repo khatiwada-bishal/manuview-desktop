@@ -7,6 +7,9 @@ export interface JournalScopeProfile {
   officialName: string;
   publisher?: string;
   issn?: string[];
+  issnL?: string;
+  countryCode?: string;
+  type?: string;
   impactMetric?: string;
   primaryDiscipline: string;
   keyConcepts: string[];
@@ -16,9 +19,22 @@ export interface JournalScopeProfile {
   deskRejectHazards?: string[];
   source: "openalex" | "catalog" | "inferred";
   fetchedAt: number;
+
+  // Rich OpenAlex scholarly fields
+  openAlexId?: string;
+  isOa?: boolean;
+  isInDoaj?: boolean;
+  apcUsd?: number | null;
+  twoYearMeanCitedness?: number;
+  hIndex?: number;
+  i10Index?: number;
+  worksCount?: number;
+  citedByCount?: number;
+  homepageUrl?: string;
+  topicsDetailed?: { id: string; displayName: string; subfield?: string; field?: string; domain?: string }[];
 }
 
-const CACHE_KEY = "manuview_journal_scope_cache_v1";
+const CACHE_KEY = "manuview_journal_scope_cache_v2";
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 // In-memory runtime cache
@@ -181,6 +197,9 @@ export async function fetchLiveJournalScope(journalName: string): Promise<Journa
       officialName: openAlexSource.displayName,
       publisher: openAlexSource.hostOrganization || catalogEntry?.publisher || "Academic Publisher",
       issn: openAlexSource.issn,
+      issnL: openAlexSource.issnL,
+      countryCode: openAlexSource.countryCode,
+      type: openAlexSource.type,
       impactMetric: citedness,
       primaryDiscipline: detectedDiscipline,
       keyConcepts,
@@ -190,6 +209,18 @@ export async function fetchLiveJournalScope(journalName: string): Promise<Journa
       deskRejectHazards: catalogEntry?.deskRejectHazards,
       source: "openalex",
       fetchedAt: Date.now(),
+      // Rich OpenAlex metrics
+      openAlexId: openAlexSource.id,
+      isOa: openAlexSource.isOa,
+      isInDoaj: openAlexSource.isInDoaj,
+      apcUsd: openAlexSource.apcUsd,
+      twoYearMeanCitedness: openAlexSource.twoYearMeanCitedness,
+      hIndex: openAlexSource.hIndex,
+      i10Index: openAlexSource.i10Index,
+      worksCount: openAlexSource.worksCount,
+      citedByCount: openAlexSource.citedByCount,
+      homepageUrl: openAlexSource.homepageUrl,
+      topicsDetailed: openAlexSource.topics,
     };
   } else if (catalogEntry) {
     profile = {

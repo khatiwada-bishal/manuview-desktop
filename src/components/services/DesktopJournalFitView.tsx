@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { findMatchingJournals, JournalEntry, JOURNAL_CATALOG, TargetJournalTierResults } from "@/lib/journals";
 import JournalCombobox from "@/components/JournalCombobox";
+import { useJournalScope } from "@/lib/journal-scope-service";
+import JournalDetailsModal from "@/components/JournalDetailsModal";
 
 export function DesktopJournalFitView() {
   const [title, setTitle] = useState("");
@@ -22,6 +24,9 @@ export function DesktopJournalFitView() {
   const [targetJournal, setTargetJournal] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<TargetJournalTierResults | null>(null);
+  const [modalJournal, setModalJournal] = useState<string | null>(null);
+
+  const { scope: targetScope, isLoading: isTargetScopeLoading } = useJournalScope(targetJournal);
 
   const handleSample = () => {
     setTitle("Single-cell transcriptional profiling of DLL3 activation in neuroendocrine lung carcinoma");
@@ -97,6 +102,54 @@ export function DesktopJournalFitView() {
               placeholder="Search or enter target journal (e.g. Cancer Discovery, TPAMI, JACS)..."
               inputClassName="w-full px-3.5 py-2.5 rounded-xl liquid-glass-input text-xs sm:text-sm focus:outline-none h-[42px]"
             />
+            {targetJournal.trim().length >= 2 && (
+              <div className="pt-1">
+                {isTargetScopeLoading && !targetScope ? (
+                  <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 py-1">
+                    <span className="inline-block w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin shrink-0" />
+                    <span>Querying OpenAlex scholarly registry for {targetJournal}...</span>
+                  </div>
+                ) : targetScope ? (
+                  <div className="p-3 rounded-2xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] flex flex-wrap items-center justify-between gap-3 text-xs animate-fadeIn">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="inline-flex items-center gap-1 font-bold text-[#0F172A] dark:text-white">
+                        <BookOpen className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <span>{targetScope.officialName || targetJournal}</span>
+                      </span>
+                      <span className="text-neutral-400">•</span>
+                      <span className="text-[#64748B] dark:text-neutral-400">{targetScope.publisher}</span>
+                      {targetScope.twoYearMeanCitedness !== undefined ? (
+                        <span className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[10px] font-bold border border-blue-200/60 dark:border-blue-800/60">
+                          2-Yr Cited: {targetScope.twoYearMeanCitedness.toFixed(1)}
+                        </span>
+                      ) : targetScope.impactMetric ? (
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold border border-emerald-200/60 dark:border-emerald-800/60">
+                          {targetScope.impactMetric}
+                        </span>
+                      ) : null}
+                      {targetScope.hIndex !== undefined && (
+                        <span className="px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-[10px] font-semibold border border-purple-200/60 dark:border-purple-800/60">
+                          H: {targetScope.hIndex}
+                        </span>
+                      )}
+                      {targetScope.apcUsd !== undefined && (
+                        <span className="px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 text-[10px] font-medium border border-amber-200/60 dark:border-amber-800/60">
+                          APC: {targetScope.apcUsd ? `$${targetScope.apcUsd.toLocaleString()}` : "Free"}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setModalJournal(targetJournal)}
+                      className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:underline inline-flex items-center gap-1 cursor-pointer ml-auto"
+                    >
+                      <span>View OpenAlex Details</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            )}
           </div>
 
           <div className="space-y-1">
@@ -192,6 +245,16 @@ export function DesktopJournalFitView() {
                     <span>Access Model:</span>
                     <span className="font-medium text-neutral-800 dark:text-neutral-200">{results.reach.openAccess}</span>
                   </div>
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setModalJournal(results.reach.name)}
+                      className="text-[11px] font-bold text-purple-600 hover:text-purple-700 dark:text-purple-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>OpenAlex Details</span>
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -227,6 +290,16 @@ export function DesktopJournalFitView() {
                   <div className="flex justify-between">
                     <span>Access Model:</span>
                     <span className="font-medium text-neutral-800 dark:text-neutral-200">{results.realistic.openAccess}</span>
+                  </div>
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setModalJournal(results.realistic.name)}
+                      className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>OpenAlex Details</span>
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -264,6 +337,16 @@ export function DesktopJournalFitView() {
                     <span>Access Model:</span>
                     <span className="font-medium text-neutral-800 dark:text-neutral-200">{results.fallback.openAccess}</span>
                   </div>
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setModalJournal(results.fallback.name)}
+                      className="text-[11px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>OpenAlex Details</span>
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -282,7 +365,7 @@ export function DesktopJournalFitView() {
                       <th className="px-4 py-3">Impact Factor</th>
                       <th className="px-4 py-3">Acceptance</th>
                       <th className="px-4 py-3">Turnaround</th>
-                      <th className="px-4 py-3 text-right">Venue Search</th>
+                      <th className="px-4 py-3 text-right">Venue Details</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#E5E7EB] dark:divide-[#1F2937]">
@@ -307,15 +390,14 @@ export function DesktopJournalFitView() {
                           {match.journal.reviewSpeed}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <a
-                            href={`https://www.google.com/search?q=${encodeURIComponent(match.journal.name + " journal")}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                          <button
+                            type="button"
+                            onClick={() => setModalJournal(match.journal.name)}
+                            className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium cursor-pointer"
                           >
-                            <span>Scope</span>
+                            <span>OpenAlex</span>
                             <ExternalLink className="w-3 h-3" />
-                          </a>
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -326,6 +408,13 @@ export function DesktopJournalFitView() {
           </div>
         )}
       </div>
+
+      {/* Full OpenAlex Journal Details Modal */}
+      <JournalDetailsModal
+        isOpen={!!modalJournal}
+        onClose={() => setModalJournal(null)}
+        journalName={modalJournal || ""}
+      />
     </div>
   );
 }

@@ -19,13 +19,21 @@ export interface OpenAlexSource {
   displayName: string;
   hostOrganization?: string;
   issn?: string[];
+  issnL?: string;
+  type?: string;
+  countryCode?: string;
   isOa: boolean;
+  isInDoaj?: boolean;
+  apcUsd?: number | null;
+  apcPrices?: { price: number; currency: string }[];
   twoYearMeanCitedness?: number;
   hIndex?: number;
+  i10Index?: number;
   concepts: { id: string; displayName: string; score: number }[];
   topics: { id: string; displayName: string; subfield?: string; field?: string; domain?: string }[];
   homepageUrl?: string;
   worksCount?: number;
+  citedByCount?: number;
 }
 
 // OpenAlex inverted abstract reconstructor
@@ -39,6 +47,49 @@ function reconstructAbstract(invertedIndex?: Record<string, number[]>): string {
   }
   words.sort((a, b) => a.pos - b.pos);
   return words.map(w => w.word).join(" ");
+}
+
+export function parseOpenAlexSource(hit: any): OpenAlexSource {
+  const concepts = (hit.x_concepts || []).map((c: { id: string; display_name: string; score?: number }) => ({
+    id: c.id,
+    displayName: c.display_name,
+    score: c.score || 0,
+  }));
+
+  const topics = (hit.topics || []).map((t: { id: string; display_name: string; subfield?: { display_name?: string }; field?: { display_name?: string }; domain?: { display_name?: string } }) => ({
+    id: t.id,
+    displayName: t.display_name,
+    subfield: t.subfield?.display_name,
+    field: t.field?.display_name,
+    domain: t.domain?.display_name,
+  }));
+
+  return {
+    id: hit.id,
+    displayName: hit.display_name,
+    hostOrganization: hit.host_organization_name,
+    issn: hit.issn,
+    issnL: hit.issn_l,
+    type: hit.type,
+    countryCode: hit.country_code,
+    isOa: Boolean(hit.is_oa),
+    isInDoaj: Boolean(hit.is_in_doaj),
+    apcUsd: hit.apc_usd !== undefined && hit.apc_usd !== null ? Number(hit.apc_usd) : null,
+    apcPrices: Array.isArray(hit.apc_prices)
+      ? hit.apc_prices.map((p: any) => ({ price: Number(p.price), currency: String(p.currency) }))
+      : undefined,
+    twoYearMeanCitedness:
+      hit.summary_stats?.["2yr_mean_citedness"] !== undefined
+        ? Number(hit.summary_stats["2yr_mean_citedness"])
+        : undefined,
+    hIndex: hit.summary_stats?.["h_index"] !== undefined ? Number(hit.summary_stats["h_index"]) : undefined,
+    i10Index: hit.summary_stats?.["i10_index"] !== undefined ? Number(hit.summary_stats["i10_index"]) : undefined,
+    concepts,
+    topics,
+    homepageUrl: hit.homepage_url,
+    worksCount: hit.works_count,
+    citedByCount: hit.cited_by_count,
+  };
 }
 
 export async function fetchWorkByDOI(doi: string): Promise<OpenAlexWork | null> {
@@ -126,34 +177,7 @@ export async function searchJournalInOpenAlex(journalName: string): Promise<Open
       return { outcome: 'low_confidence', candidate: hit.display_name, similarity: sim };
     }
 
-    const concepts = (hit.x_concepts || []).map((c: { id: string; display_name: string; score?: number }) => ({
-      id: c.id,
-      displayName: c.display_name,
-      score: c.score || 0,
-    }));
-
-    const topics = (hit.topics || []).map((t: { id: string; display_name: string; subfield?: { display_name?: string }; field?: { display_name?: string }; domain?: { display_name?: string } }) => ({
-      id: t.id,
-      displayName: t.display_name,
-      subfield: t.subfield?.display_name,
-      field: t.field?.display_name,
-      domain: t.domain?.display_name,
-    }));
-
-    const source: OpenAlexSource = {
-      id: hit.id,
-      displayName: hit.display_name,
-      hostOrganization: hit.host_organization_name,
-      issn: hit.issn,
-      isOa: Boolean(hit.is_oa),
-      twoYearMeanCitedness: hit.summary_stats?.["2yr_mean_citedness"] !== undefined ? Number(hit.summary_stats["2yr_mean_citedness"]) : undefined,
-      hIndex: hit.summary_stats?.["h_index"] !== undefined ? Number(hit.summary_stats["h_index"]) : undefined,
-      concepts,
-      topics,
-      homepageUrl: hit.homepage_url,
-      worksCount: hit.works_count,
-    };
-
+    const source = parseOpenAlexSource(hit);
     return { outcome: 'found', source };
   } catch (err: any) {
     if (err?.name === 'AbortError') {
@@ -161,6 +185,77 @@ export async function searchJournalInOpenAlex(journalName: string): Promise<Open
     }
     return { outcome: 'unavailable', reason: err?.message || 'OpenAlex service unreachable' };
   }
+}
+
+/**
+ * Live search multiple journal candidates from OpenAlex /sources (e.g. for autocomplete or discovery)
+ */
+export async function searchJournalsInOpenAlex(query: string, limit: number = 10): Promise<OpenAlexSource[]> {
+  const clean = query.trim();
+  if (!clean || clean.length < 2) return [];
+
+  const url = `https://api.openalex.org/sources?search=${encodeURIComponent(clean)}&per-page=${limit}&mailto=${encodeURIComponent(POLITE_MAILTO)}`;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": POLITE_USER_AGENT,
+        "Accept": "application/json",
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (!res.ok) return [];
+
+    const data = await res.json();
+    const results = data.results || [];
+    return results.map((hit: any) => parseOpenAlexSource(hit));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Fetches comprehensive journal details by OpenAlex ID or direct name
+ */
+export async function fetchJournalDetails(journalNameOrId: string): Promise<OpenAlexSource | null> {
+  const clean = journalNameOrId.trim();
+  if (!clean) return null;
+
+  // If it is an OpenAlex ID (e.g. "https://openalex.org/S137773608" or "S137773608")
+  const idMatch = clean.match(/([sS]\d+)$/);
+  if (idMatch) {
+    const rawId = idMatch[1].toUpperCase();
+    const url = `https://api.openalex.org/sources/${rawId}?mailto=${encodeURIComponent(POLITE_MAILTO)}`;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent": POLITE_USER_AGENT,
+          "Accept": "application/json",
+        },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const hit = await res.json();
+        return parseOpenAlexSource(hit);
+      }
+    } catch {
+      // fallback to search
+    }
+  }
+
+  const lookup = await searchJournalInOpenAlex(clean);
+  if (lookup.outcome === "found") {
+    return lookup.source;
+  }
+  return null;
 }
 
 /**

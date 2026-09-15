@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { ExternalLink, Search, BookOpen, Sparkles, Filter } from "lucide-react";
+import { ExternalLink, Search, BookOpen, Sparkles, Filter, Globe } from "lucide-react";
 import { JournalEntry, MatchedJournalItem } from "@/lib/journals";
+import JournalDetailsModal from "./JournalDetailsModal";
 
 export interface DesktopJournalMatchesListViewProps {
   otherJournals: MatchedJournalItem[];
@@ -17,6 +18,7 @@ export function DesktopJournalMatchesListView({
 }: DesktopJournalMatchesListViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterAccess, setFilterAccess] = useState<string>("all");
+  const [selectedJournal, setSelectedJournal] = useState<string | null>(null);
 
   const filtered = otherJournals.filter((item) => {
     const j = item.journal;
@@ -136,9 +138,13 @@ export function DesktopJournalMatchesListView({
                     </td>
                     <td className="py-3.5 px-4">
                       <div className="font-bold text-[#0F172A] dark:text-white flex items-center gap-1.5 flex-wrap">
-                        <span className="group-hover:text-[#2563EB] dark:group-hover:text-blue-400 transition-colors">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedJournal(j.name)}
+                          className="group-hover:text-[#2563EB] dark:group-hover:text-blue-400 transition-colors text-left cursor-pointer hover:underline"
+                        >
                           {j.name}
-                        </span>
+                        </button>
                         {j.isCrossDisciplinary && (
                           <span className="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
                             Cross-Field
@@ -186,16 +192,27 @@ export function DesktopJournalMatchesListView({
                       </p>
                     </td>
                     <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                      <a
-                        href={`https://scholar.google.com/scholar?q=${encodeURIComponent(j.name)}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-[#2563EB] dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/80 transition cursor-pointer"
-                        title={`Search ${j.name} on Google Scholar`}
-                      >
-                        <span>Explore</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
+                      <div className="inline-flex items-center gap-1.5 justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedJournal(j.name)}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800 transition cursor-pointer"
+                          title={`View ${j.name} details from OpenAlex`}
+                        >
+                          <Globe className="w-3 h-3" />
+                          <span>OpenAlex</span>
+                        </button>
+                        <a
+                          href={`https://scholar.google.com/scholar?q=${encodeURIComponent(j.name)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-[#2563EB] dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/80 transition cursor-pointer"
+                          title={`Search ${j.name} on Google Scholar`}
+                        >
+                          <span>Scholar</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -211,9 +228,16 @@ export function DesktopJournalMatchesListView({
           Showing {filtered.length} of {otherJournals.length} qualified journals
         </span>
         <span className="text-[10px] text-neutral-400">
-          Click &ldquo;Explore&rdquo; to review recent publications and citation velocity on Google Scholar
+          Click &ldquo;OpenAlex&rdquo; to view verified acceptance metrics, APC fees, and taxonomy
         </span>
       </div>
+
+      {/* Full OpenAlex Journal Details Modal */}
+      <JournalDetailsModal
+        isOpen={!!selectedJournal}
+        onClose={() => setSelectedJournal(null)}
+        journalName={selectedJournal || ""}
+      />
     </div>
   );
 }
