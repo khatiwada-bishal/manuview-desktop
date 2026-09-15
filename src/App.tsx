@@ -32,6 +32,7 @@ import {
   loadSavedProjects,
   saveProject,
   deleteProject,
+  deleteProjects,
   loadSession,
   saveSession,
   purgeLegacyDummyData,
@@ -198,7 +199,7 @@ export default function App() {
   const [isScanOpen, setIsScanOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLocalModelOpen, setIsLocalModelOpen] = useState(false);
-  const [paperToDelete, setPaperToDelete] = useState<PaperItem | null>(null);
+  const [papersToDelete, setPapersToDelete] = useState<PaperItem[] | null>(null);
 
   // Automatically persist user session state (open tabs, active tab, active view)
   useEffect(() => {
@@ -313,35 +314,36 @@ export default function App() {
 
   // Handle project deletion confirmed by user
   const handleDeleteProjectConfirm = () => {
-    if (!paperToDelete) return;
-    const id = paperToDelete.id;
+    if (!papersToDelete || papersToDelete.length === 0) return;
+    const ids = papersToDelete.map((p) => p.id);
+    const idSet = new Set(ids);
 
-    // 1. Delete from local persistent storage on user's computer
-    deleteProject(id);
+    // 1. Delete from local persistent storage on user's computer in batch
+    deleteProjects(ids);
 
     // 2. Remove from React state
-    setPapers((prev) => prev.filter((p) => p.id !== id));
+    setPapers((prev) => prev.filter((p) => !idSet.has(p.id)));
     setDashboardStore((prev) => {
       const copy = { ...prev };
-      delete copy[id];
+      for (const id of ids) delete copy[id];
       return copy;
     });
     setFullReportsStore((prev) => {
       const copy = { ...prev };
-      delete copy[id];
+      for (const id of ids) delete copy[id];
       return copy;
     });
 
-    // 3. Close open tab if present
+    // 3. Close open tabs if present
     setOpenTabs((prev) => {
-      const remaining = prev.filter((t) => t.id !== id);
-      if (activeTabId === id) {
+      const remaining = prev.filter((t) => !idSet.has(t.id));
+      if (idSet.has(activeTabId || "")) {
         setActiveTabId(remaining.length > 0 ? remaining[remaining.length - 1].id : null);
       }
       return remaining;
     });
 
-    setPaperToDelete(null);
+    setPapersToDelete(null);
   };
 
   // When live scan completes
@@ -380,7 +382,8 @@ export default function App() {
           papers={papers}
           onOpenArticle={handleOpenArticle}
           onOpenService={handleOpenService}
-          onDeletePaper={(paper) => setPaperToDelete(paper)}
+          onDeletePaper={(paper) => setPapersToDelete([paper])}
+          onDeleteMultiplePapers={(targets) => setPapersToDelete(targets)}
         />
       );
     }
@@ -440,7 +443,7 @@ export default function App() {
             onSelectView={(view) => setActiveView(view)}
             onNewScan={() => handleOpenService("ai-review")}
             onOpenSettings={() => setIsSettingsOpen(true)}
-            onDeleteArticle={() => setPaperToDelete(currentPaper)}
+            onDeleteArticle={() => setPapersToDelete(currentPaper ? [currentPaper] : null)}
             onUpdateFullReport={(updatedReport, updatedData) => {
               if (activeTabId) {
                 setFullReportsStore((prev) => ({ ...prev, [activeTabId]: updatedReport }));
@@ -463,7 +466,8 @@ export default function App() {
         papers={papers}
         onOpenArticle={handleOpenArticle}
         onOpenService={handleOpenService}
-        onDeletePaper={(paper) => setPaperToDelete(paper)}
+        onDeletePaper={(paper) => setPapersToDelete([paper])}
+        onDeleteMultiplePapers={(targets) => setPapersToDelete(targets)}
       />
     );
   };
@@ -535,7 +539,8 @@ export default function App() {
             onNewReview={() => handleOpenService("ai-review")}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onSelectService={handleOpenService}
-            onDeletePaper={(paper) => setPaperToDelete(paper)}
+            onDeletePaper={(paper) => setPapersToDelete([paper])}
+            onDeleteMultiplePapers={(targets) => setPapersToDelete(targets)}
             onGoHome={!isDesktopApp() ? () => setViewMode("landing") : undefined}
           />
 
@@ -566,9 +571,9 @@ export default function App() {
 
         {/* Project Deletion Confirmation Modal */}
         <DeleteConfirmationModal
-          paper={paperToDelete}
-          isOpen={Boolean(paperToDelete)}
-          onClose={() => setPaperToDelete(null)}
+          papers={papersToDelete}
+          isOpen={Boolean(papersToDelete && papersToDelete.length > 0)}
+          onClose={() => setPapersToDelete(null)}
           onConfirm={handleDeleteProjectConfirm}
         />
 

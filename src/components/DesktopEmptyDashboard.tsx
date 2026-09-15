@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Sparkles,
   Compass,
@@ -14,6 +14,10 @@ import {
   MessageSquare,
   AlertTriangle,
   ShieldAlert,
+  CheckSquare,
+  Square,
+  Check,
+  X,
 } from "lucide-react";
 import { PaperItem } from "./DesktopSidebar";
 
@@ -22,6 +26,7 @@ interface DesktopEmptyDashboardProps {
   onOpenArticle: (id: string) => void;
   onOpenService: (serviceId: string) => void;
   onDeletePaper?: (paper: PaperItem) => void;
+  onDeleteMultiplePapers?: (papers: PaperItem[]) => void;
 }
 
 export function DesktopEmptyDashboard({
@@ -29,7 +34,47 @@ export function DesktopEmptyDashboard({
   onOpenArticle,
   onOpenService,
   onDeletePaper,
+  onDeleteMultiplePapers,
 }: DesktopEmptyDashboardProps) {
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedPaperIds, setSelectedPaperIds] = useState<Set<string>>(new Set());
+
+  const toggleSelectPaper = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedPaperIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedPaperIds.size === papers.length) {
+      setSelectedPaperIds(new Set());
+    } else {
+      setSelectedPaperIds(new Set(papers.map((p) => p.id)));
+    }
+  };
+
+  const handleCancelSelect = () => {
+    setIsSelectMode(false);
+    setSelectedPaperIds(new Set());
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedPaperIds.size === 0) return;
+    const targets = papers.filter((p) => selectedPaperIds.has(p.id));
+    if (onDeleteMultiplePapers) {
+      onDeleteMultiplePapers(targets);
+    } else if (onDeletePaper && targets.length === 1) {
+      onDeletePaper(targets[0]);
+    }
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC]">
       <div className="max-w-5xl mx-auto space-y-8">
@@ -74,44 +119,125 @@ export function DesktopEmptyDashboard({
         {/* SAVED MANUSCRIPTS SECTION (if any exist) */}
         {papers.length > 0 && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between px-1">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                Your Manuscripts ({papers.length})
-              </h2>
+            <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                  Your Manuscripts ({papers.length})
+                </h2>
+                {isSelectMode && (
+                  <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
+                    {selectedPaperIds.size} of {papers.length} selected
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                {isSelectMode ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleSelectAll}
+                      className="px-2.5 py-1 rounded-xl text-xs font-medium text-neutral-600 dark:text-neutral-300 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition cursor-pointer"
+                    >
+                      {selectedPaperIds.size === papers.length ? "Deselect All" : "Select All"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={selectedPaperIds.size === 0}
+                      onClick={handleDeleteSelected}
+                      className="inline-flex items-center gap-1 px-3 py-1 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed shadow-xs transition cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>Delete ({selectedPaperIds.size})</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancelSelect}
+                      className="p-1 rounded-xl text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition cursor-pointer"
+                      title="Exit select mode"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </>
+                ) : (
+                  papers.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setIsSelectMode(true)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold text-neutral-600 dark:text-neutral-300 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] transition cursor-pointer"
+                    >
+                      <CheckSquare className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      <span>Select Multiple</span>
+                    </button>
+                  )
+                )}
+              </div>
             </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {papers.map((paper) => {
                 const isDeskReject =
                   paper.isDeskReject === true ||
                   paper.editorialTriage?.outcome === "desk_reject" ||
                   paper.ineligibilityReason === "scope_mismatch";
+                const isSelected = selectedPaperIds.has(paper.id);
+
                 return (
                   <div
                     key={paper.id}
-                    onClick={() => onOpenArticle(paper.id)}
+                    onClick={() => {
+                      if (isSelectMode) {
+                        toggleSelectPaper(paper.id);
+                      } else {
+                        onOpenArticle(paper.id);
+                      }
+                    }}
                     className={`group relative rounded-2xl liquid-glass-card liquid-glass-card-interactive p-4 transition cursor-pointer flex flex-col justify-between ${
-                      isDeskReject ? "border-rose-500/30 bg-rose-500/5 dark:bg-rose-950/20" : ""
+                      isSelected
+                        ? "border-blue-500/80 bg-blue-500/10 dark:bg-blue-950/30 ring-2 ring-blue-500/30 shadow-sm"
+                        : isDeskReject
+                        ? "border-rose-500/30 bg-rose-500/5 dark:bg-rose-950/20"
+                        : ""
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3 min-w-0">
-                        <div
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                            isDeskReject
-                              ? "bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400"
-                              : "bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400"
-                          }`}
-                        >
-                          {isDeskReject ? (
-                            <ShieldAlert className="w-4 h-4" />
-                          ) : (
-                            <FileText className="w-4 h-4" />
-                          )}
-                        </div>
+                        {isSelectMode ? (
+                          <div
+                            onClick={(e) => toggleSelectPaper(paper.id, e)}
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition cursor-pointer ${
+                              isSelected
+                                ? "bg-blue-600 text-white shadow-xs"
+                                : "bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.08] dark:border-white/[0.1] text-neutral-400 hover:border-blue-500"
+                            }`}
+                          >
+                            {isSelected ? (
+                              <Check className="w-4 h-4 stroke-[3]" />
+                            ) : (
+                              <Square className="w-4 h-4 opacity-50" />
+                            )}
+                          </div>
+                        ) : (
+                          <div
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                              isDeskReject
+                                ? "bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400"
+                                : "bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400"
+                            }`}
+                          >
+                            {isDeskReject ? (
+                              <ShieldAlert className="w-4 h-4" />
+                            ) : (
+                              <FileText className="w-4 h-4" />
+                            )}
+                          </div>
+                        )}
                         <div className="min-w-0">
                           <h3
                             className={`font-bold text-xs truncate transition ${
-                              isDeskReject
+                              isSelected
+                                ? "text-blue-700 dark:text-blue-300"
+                                : isDeskReject
                                 ? "text-rose-950 dark:text-rose-200 group-hover:text-rose-600 dark:group-hover:text-rose-400"
                                 : "text-[#111827] dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400"
                             }`}
@@ -123,7 +249,8 @@ export function DesktopEmptyDashboard({
                           </p>
                         </div>
                       </div>
-                      {onDeletePaper && (
+
+                      {!isSelectMode && onDeletePaper && (
                         <button
                           type="button"
                           onClick={(e) => {
@@ -140,7 +267,9 @@ export function DesktopEmptyDashboard({
                     <div className="flex items-center justify-between pt-3 mt-3 border-t border-black/[0.04] dark:border-white/[0.06] text-[11px]">
                       <span
                         className={`font-semibold ${
-                          isDeskReject
+                          isSelected
+                            ? "text-blue-600 dark:text-blue-400"
+                            : isDeskReject
                             ? "text-rose-700 dark:text-rose-400"
                             : "text-neutral-600 dark:text-neutral-400"
                         }`}
@@ -155,12 +284,14 @@ export function DesktopEmptyDashboard({
                       </span>
                       <span
                         className={`inline-flex items-center gap-1 font-semibold ${
-                          isDeskReject
+                          isSelected
+                            ? "text-blue-600 dark:text-blue-400"
+                            : isDeskReject
                             ? "text-rose-600 dark:text-rose-400"
                             : "text-blue-600 dark:text-blue-400"
                         } group-hover:translate-x-0.5 transition-transform`}
                       >
-                        <span>Open Workspace</span>
+                        <span>{isSelectMode ? (isSelected ? "Selected" : "Select") : "Open Workspace"}</span>
                         <ArrowRight className="w-3 h-3" />
                       </span>
                     </div>

@@ -269,6 +269,47 @@ export function deleteProject(projectId: string): void {
 }
 
 /**
+ * Delete multiple projects permanently from the user's computer in batch
+ */
+export function deleteProjects(projectIds: string[]): void {
+  if (typeof window === "undefined" || !projectIds || projectIds.length === 0) return;
+  const idSet = new Set(projectIds);
+  try {
+    const existing = loadSavedProjects();
+    const filtered = existing.filter((p) => !idSet.has(p.paper.id));
+
+    // Delete from localStorage
+    try {
+      localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(filtered));
+    } catch {}
+
+    // Delete from IndexedDB in parallel
+    for (const id of projectIds) {
+      idbDelete(id).catch((err) => {
+        console.warn("Failed to delete project from IndexedDB:", err);
+      });
+    }
+
+    // Also remove from saved session if open
+    const session = loadSession();
+    if (session) {
+      const remainingTabs = session.openTabs.filter((t) => !idSet.has(t.id));
+      const newActiveId = idSet.has(session.activeTabId || "")
+        ? remainingTabs[remainingTabs.length - 1]?.id || null
+        : session.activeTabId;
+
+      saveSession({
+        ...session,
+        openTabs: remainingTabs,
+        activeTabId: newActiveId,
+      });
+    }
+  } catch (err) {
+    console.error("Error batch deleting projects from localStorage:", err);
+  }
+}
+
+/**
  * Load the user's active session (open tabs & active article)
  */
 export function loadSession(): SessionState | null {

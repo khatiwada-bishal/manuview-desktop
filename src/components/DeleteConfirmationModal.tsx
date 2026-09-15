@@ -5,7 +5,8 @@ import { Trash2, AlertTriangle, X } from "lucide-react";
 import { PaperItem } from "./DesktopSidebar";
 
 interface DeleteConfirmationModalProps {
-  paper: PaperItem | null;
+  paper?: PaperItem | null;
+  papers?: PaperItem[] | null;
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
@@ -13,6 +14,7 @@ interface DeleteConfirmationModalProps {
 
 export function DeleteConfirmationModal({
   paper,
+  papers,
   isOpen,
   onClose,
   onConfirm,
@@ -27,7 +29,11 @@ export function DeleteConfirmationModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen || !paper) return null;
+  const targetPapers = papers && papers.length > 0 ? papers : paper ? [paper] : [];
+  if (!isOpen || targetPapers.length === 0) return null;
+
+  const isMultiple = targetPapers.length > 1;
+  const singleItem = targetPapers[0];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xl p-4 animate-in fade-in duration-150">
@@ -43,10 +49,14 @@ export function DeleteConfirmationModal({
             </div>
             <div>
               <h3 className="text-sm font-bold text-[#111827] dark:text-white">
-                Delete Manuscript Project
+                {isMultiple
+                  ? `Delete ${targetPapers.length} Manuscript Projects`
+                  : "Delete Manuscript Project"}
               </h3>
               <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                This action is permanent and cannot be undone.
+                {isMultiple
+                  ? `Permanently remove ${targetPapers.length} selected manuscripts.`
+                  : "This action is permanent and cannot be undone."}
               </p>
             </div>
           </div>
@@ -60,32 +70,62 @@ export function DeleteConfirmationModal({
         </div>
 
         {/* Project details card */}
-        <div className="rounded-2xl liquid-glass-card p-3.5 space-y-1.5 text-left">
-          <div className="text-xs font-semibold text-[#111827] dark:text-white truncate">
-            {paper.title || paper.shortName}
+        {isMultiple ? (
+          <div className="rounded-2xl liquid-glass-card p-3 space-y-2 text-left max-h-48 overflow-y-auto [scrollbar-width:thin]">
+            <div className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider px-1">
+              Selected Manuscripts ({targetPapers.length})
+            </div>
+            <div className="space-y-1.5">
+              {targetPapers.map((p) => (
+                <div
+                  key={p.id}
+                  className="p-2 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between gap-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-semibold text-[#111827] dark:text-white truncate">
+                      {p.title || p.shortName}
+                    </div>
+                    <div className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate">
+                      {p.journal}
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/[0.04] dark:bg-white/[0.08] text-neutral-600 dark:text-neutral-300 shrink-0">
+                    {p.score ?? 0}%
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-[11px] text-neutral-500 dark:text-neutral-400">
-            <span className="font-medium text-neutral-600 dark:text-neutral-300">{paper.journal}</span>
-            <span>&bull;</span>
-            {paper.isDeskReject || paper.editorialTriage?.outcome === "desk_reject" || paper.ineligibilityReason === "scope_mismatch" ? (
-              <span className="font-medium text-rose-600 dark:text-rose-400">
-                Editorial Desk Reject
-              </span>
-            ) : paper.isEligibleForReview === false ? (
-              <span className="font-medium text-neutral-500 dark:text-neutral-400">
-                {paper.ineligibilityReason === "already_published" ? "Already Published" : "Non-Article"}
-              </span>
-            ) : (
-              <span className="font-mono text-neutral-500 dark:text-neutral-400">Score: {paper.score ?? 0}%</span>
-            )}
+        ) : (
+          <div className="rounded-2xl liquid-glass-card p-3.5 space-y-1.5 text-left">
+            <div className="text-xs font-semibold text-[#111827] dark:text-white truncate">
+              {singleItem.title || singleItem.shortName}
+            </div>
+            <div className="flex items-center gap-2 text-[11px] text-neutral-500 dark:text-neutral-400">
+              <span className="font-medium text-neutral-600 dark:text-neutral-300">{singleItem.journal}</span>
+              <span>&bull;</span>
+              {singleItem.isDeskReject || singleItem.editorialTriage?.outcome === "desk_reject" || singleItem.ineligibilityReason === "scope_mismatch" ? (
+                <span className="font-medium text-rose-600 dark:text-rose-400">
+                  Editorial Desk Reject
+                </span>
+              ) : singleItem.isEligibleForReview === false ? (
+                <span className="font-medium text-neutral-500 dark:text-neutral-400">
+                  {singleItem.ineligibilityReason === "already_published" ? "Already Published" : "Non-Article"}
+                </span>
+              ) : (
+                <span className="font-mono text-neutral-500 dark:text-neutral-400">Score: {singleItem.score ?? 0}%</span>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Warning text */}
         <div className="flex items-start gap-2.5 text-xs text-amber-900 dark:text-amber-200 bg-amber-500/10 border border-amber-500/25 backdrop-blur-xs rounded-2xl p-3.5">
           <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <span>
-            All diagnostic evaluations, persona reviewer reports, and causal claim analyses for this manuscript will be permanently removed from your computer.
+            {isMultiple
+              ? `All diagnostic evaluations, persona reviewer reports, and causal claim analyses for these ${targetPapers.length} manuscripts will be permanently removed from your computer.`
+              : "All diagnostic evaluations, persona reviewer reports, and causal claim analyses for this manuscript will be permanently removed from your computer."}
           </span>
         </div>
 
@@ -107,7 +147,9 @@ export function DeleteConfirmationModal({
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 shadow-xs transition cursor-pointer active:scale-95"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            <span>Delete Project</span>
+            <span>
+              {isMultiple ? `Delete ${targetPapers.length} Projects` : "Delete Project"}
+            </span>
           </button>
         </div>
       </div>

@@ -24,6 +24,10 @@ import {
   Info,
   ShieldAlert,
   Clock,
+  CheckSquare,
+  Square,
+  Check,
+  X,
 } from "lucide-react";
 import { isDesktopApp } from "@/lib/desktop";
 
@@ -176,6 +180,7 @@ interface DesktopSidebarProps {
   onOpenSettings: () => void;
   onSelectService?: (serviceId: string) => void;
   onDeletePaper?: (paper: PaperItem, e: React.MouseEvent) => void;
+  onDeleteMultiplePapers?: (papers: PaperItem[]) => void;
   onGoHome?: () => void;
 }
 
@@ -196,8 +201,11 @@ export function DesktopSidebar({
   onOpenSettings,
   onSelectService,
   onDeletePaper,
+  onDeleteMultiplePapers,
   onGoHome,
 }: DesktopSidebarProps) {
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedPaperIds, setSelectedPaperIds] = useState<Set<string>>(new Set());
   const [servicesExpanded, setServicesExpanded] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
@@ -727,18 +735,74 @@ export function DesktopSidebar({
         <div>
           <div className="flex items-center justify-between px-2 mb-1.5">
             <span className="text-[11px] font-bold text-[#9CA3AF] dark:text-neutral-400 uppercase tracking-wider">
-              ARTICLES
+              {isSelectMode ? `SELECTED (${selectedPaperIds.size}/${papers.length})` : "ARTICLES"}
             </span>
-            <button
-              type="button"
-              onClick={onNewReview}
-              title="Add new manuscript review"
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition cursor-pointer"
-            >
-              <Plus className="w-3 h-3" />
-              <span>New</span>
-            </button>
+            <div className="flex items-center gap-1">
+              {papers.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSelectMode(!isSelectMode);
+                    setSelectedPaperIds(new Set());
+                  }}
+                  title={isSelectMode ? "Cancel selection" : "Select multiple articles"}
+                  className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium transition cursor-pointer ${
+                    isSelectMode
+                      ? "text-neutral-500 hover:bg-black/[0.05] dark:hover:bg-white/[0.05]"
+                      : "text-neutral-600 dark:text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50"
+                  }`}
+                >
+                  <CheckSquare className="w-3 h-3" />
+                  <span>{isSelectMode ? "Cancel" : "Select"}</span>
+                </button>
+              )}
+              {!isSelectMode && (
+                <button
+                  type="button"
+                  onClick={onNewReview}
+                  title="Add new manuscript review"
+                  className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>New</span>
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Batch Selection Action Strip */}
+          {isSelectMode && (
+            <div className="mx-1 mb-2 p-1.5 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-between gap-1 text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedPaperIds.size === papers.length) {
+                    setSelectedPaperIds(new Set());
+                  } else {
+                    setSelectedPaperIds(new Set(papers.map((p) => p.id)));
+                  }
+                }}
+                className="px-2 py-0.5 rounded-lg text-[10px] font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-500/20 transition cursor-pointer"
+              >
+                {selectedPaperIds.size === papers.length ? "Deselect All" : "Select All"}
+              </button>
+              <button
+                type="button"
+                disabled={selectedPaperIds.size === 0}
+                onClick={() => {
+                  if (selectedPaperIds.size === 0) return;
+                  const targets = papers.filter((p) => selectedPaperIds.has(p.id));
+                  if (onDeleteMultiplePapers) {
+                    onDeleteMultiplePapers(targets);
+                  }
+                }}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold text-white bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed shadow-xs transition cursor-pointer"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>Delete ({selectedPaperIds.size})</span>
+              </button>
+            </div>
+          )}
 
           <div className="space-y-1">
             {papers.length === 0 ? (
@@ -770,6 +834,7 @@ export function DesktopSidebar({
 
                   {groupPapers.map((paper) => {
                     const isSelected = paper.id === activePaperId;
+                    const isSelectedInBatch = selectedPaperIds.has(paper.id);
                     const isDeskReject =
                       paper.editorialTriage?.outcome === "desk_reject" ||
                       paper.ineligibilityReason === "scope_mismatch" ||
@@ -778,23 +843,46 @@ export function DesktopSidebar({
                       <div key={paper.id} className="space-y-0.5 group/article">
                         <div
                           onClick={() => {
-                            onSelectPaper(paper.id);
-                            onSelectView("overview");
+                            if (isSelectMode) {
+                              setSelectedPaperIds((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(paper.id)) next.delete(paper.id);
+                                else next.add(paper.id);
+                                return next;
+                              });
+                            } else {
+                              onSelectPaper(paper.id);
+                              onSelectView("overview");
+                            }
                           }}
                           className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer ${
-                            isSelected && activeView === "overview"
+                            isSelectMode && isSelectedInBatch
+                              ? "bg-blue-600/15 dark:bg-blue-500/25 border border-blue-500/40 text-blue-700 dark:text-blue-300 font-semibold"
+                              : !isSelectMode && isSelected && activeView === "overview"
                               ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
-                              : isSelected
+                              : !isSelectMode && isSelected
                               ? "bg-blue-600/10 dark:bg-blue-500/20 font-medium text-blue-700 dark:text-blue-300 border border-blue-500/20"
                               : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white border border-transparent"
                           }`}
                         >
                           <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
-                            <FileText
-                              className={`w-4 h-4 shrink-0 ${
-                                isSelected ? "text-blue-600 dark:text-blue-400" : "text-neutral-500 dark:text-neutral-400"
-                              }`}
-                            />
+                            {isSelectMode ? (
+                              <div
+                                className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 transition ${
+                                  isSelectedInBatch
+                                    ? "bg-blue-600 text-white"
+                                    : "border border-neutral-300 dark:border-neutral-600 bg-black/[0.02] dark:bg-white/[0.04]"
+                                }`}
+                              >
+                                {isSelectedInBatch && <Check className="w-3 h-3 stroke-[3]" />}
+                              </div>
+                            ) : (
+                              <FileText
+                                className={`w-4 h-4 shrink-0 ${
+                                  isSelected ? "text-blue-600 dark:text-blue-400" : "text-neutral-500 dark:text-neutral-400"
+                                }`}
+                              />
+                            )}
                             <span className="truncate">
                               {paper.shortName}
                             </span>
@@ -819,7 +907,7 @@ export function DesktopSidebar({
                                 {paper.score ?? 0}%
                               </span>
                             )}
-                            {onDeletePaper && (
+                            {!isSelectMode && onDeletePaper && (
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -836,7 +924,7 @@ export function DesktopSidebar({
                         </div>
 
                         {/* Status notification when selected for ineligible papers */}
-                        {isSelected && paper.isEligibleForReview === false && !isDeskReject && (
+                        {!isSelectMode && isSelected && paper.isEligibleForReview === false && !isDeskReject && (
                           <div className="pl-4 pr-2 py-1 space-y-0.5">
                             {paper.ineligibilityReason === "already_published" ? (
                               <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400 font-medium bg-emerald-500/10 px-2 py-1.5 rounded-lg border border-emerald-500/20">
