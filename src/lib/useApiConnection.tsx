@@ -95,6 +95,8 @@ export function ApiConnectionProvider({ children }: { children: React.ReactNode 
       const providerLabel =
         currentProvider === "ollama"
           ? "Local Ollama"
+          : currentProvider === "webllm"
+          ? "Local WebLLM (On-Device)"
           : currentProvider.toUpperCase();
 
       if (data && data.success) {

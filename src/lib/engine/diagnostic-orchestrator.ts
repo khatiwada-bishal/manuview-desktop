@@ -793,7 +793,7 @@ export async function runManuscriptDiagnostic(
   const activeConfig = await resolveActiveConfig(config);
   const isConfigUsable = Boolean(
     activeConfig?.provider &&
-    (activeConfig.provider === "ollama" || (typeof activeConfig.apiKey === "string" && activeConfig.apiKey.trim().length > 0))
+    (activeConfig.provider === "ollama" || activeConfig.provider === "webllm" || (typeof activeConfig.apiKey === "string" && activeConfig.apiKey.trim().length > 0))
   );
 
   // ---------------------------------------------------------------------------
@@ -1088,7 +1088,7 @@ export async function runManuscriptDiagnostic(
 
   if (!isConfigUsable) {
     llmCallError = activeConfig?.provider
-      ? `API key missing for provider "${activeConfig.provider}".`
+      ? (activeConfig.provider === "webllm" ? "On-device WebGPU model is not ready." : `API key missing for provider "${activeConfig.provider}".`)
       : "No AI provider configured. Configure API keys in Settings to enable the AI review panel.";
   } else {
     onProgress?.({
@@ -1698,7 +1698,7 @@ export async function runBriefJournalFitAnalysis(
   const activeConfig = await resolveActiveConfig(input.providerConfig);
   const isConfigUsable = Boolean(
     activeConfig?.provider &&
-    (activeConfig.provider === "ollama" || (typeof activeConfig.apiKey === "string" && activeConfig.apiKey.trim().length > 0))
+    (activeConfig.provider === "ollama" || activeConfig.provider === "webllm" || (typeof activeConfig.apiKey === "string" && activeConfig.apiKey.trim().length > 0))
   );
 
   let parsedLLM: RawLLMBriefFitResponse | null = null;

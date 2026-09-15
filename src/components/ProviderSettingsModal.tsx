@@ -119,7 +119,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave }: Props) {
 
   const handleFetchModels = async () => {
     let effectiveKey = isKeyDirty ? apiKeyInput.trim() : (await getSecureApiKey(config.provider)) || config.apiKey?.trim() || "";
-    if (!effectiveKey && config.provider !== "ollama") {
+    if (!effectiveKey && config.provider !== "ollama" && config.provider !== "webllm") {
       setFetchFeedback({
         type: "error",
         message: `Please enter your ${config.provider.toUpperCase()} API key first.`,

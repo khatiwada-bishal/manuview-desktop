@@ -497,8 +497,8 @@ export function DesktopScanModal({
                   Manuscript Confidentiality &amp; Zero-Retention Guarantee
                 </span>
                 <span>
-                  {provider === "ollama"
-                    ? "100% On-Device: Your manuscript is analyzed locally via Ollama. No text, data, or metadata ever leaves your machine."
+                  {provider === "ollama" || provider === "webllm"
+                    ? "100% On-Device: Your manuscript is analyzed locally via private GPU/CPU acceleration. No text, data, or metadata ever leaves your machine."
                     : "Direct Encrypted BYOK Connection: Official API calls with zero-retention flags. ManuView does not log, store, or relay your unpublished work through third-party servers."}
                 </span>
               </div>

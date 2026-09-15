@@ -222,7 +222,7 @@ export async function evaluateManuscriptScopeTriageWithLLM(
   }
 
   const resolvedConfig = await resolveActiveConfig(providerConfig);
-  const hasKey = Boolean(resolvedConfig?.apiKey || resolvedConfig?.provider === "ollama");
+  const hasKey = Boolean(resolvedConfig?.apiKey || resolvedConfig?.provider === "ollama" || resolvedConfig?.provider === "webllm");
 
   if (!hasKey) {
     // If no LLM credentials configured, return heuristic result

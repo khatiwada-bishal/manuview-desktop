@@ -271,7 +271,7 @@ export function getServerConfigStatus(): {
   }
 
   const hasServerKey = serverProviders.length > 0;
-  const hasClientKey = Boolean(saved && (saved.apiKey || saved.hasSecureKey || saved.provider === "ollama"));
+  const hasClientKey = Boolean(saved && (saved.apiKey || saved.hasSecureKey || saved.provider === "ollama" || saved.provider === "webllm"));
 
   if (hasClientKey && saved) {
     return {
@@ -1125,7 +1125,7 @@ export async function fetchAvailableModels(
   let apiKey = config?.apiKey?.trim() || "";
   let baseUrl = config?.baseUrl?.trim() || "";
 
-  if (!apiKey && provider !== "ollama") {
+  if (!apiKey && provider !== "ollama" && provider !== "webllm") {
     try {
       const secureKey = await getSecureApiKey(provider);
       if (secureKey) {
@@ -1149,7 +1149,7 @@ export async function fetchAvailableModels(
 
   const defaultList = CURATED_MODELS[provider] || CURATED_MODELS.gemini;
 
-  if (options?.throwOnError && !apiKey && provider !== "ollama") {
+  if (options?.throwOnError && !apiKey && provider !== "ollama" && provider !== "webllm") {
     throw new Error(`Please enter your ${provider.toUpperCase()} API key first.`);
   }
 
