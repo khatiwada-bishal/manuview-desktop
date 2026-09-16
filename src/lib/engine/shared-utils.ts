@@ -164,8 +164,13 @@ export async function callLLMForJson<T>(
         content: `Repair this malformed JSON and return valid JSON:\n\n${payload}`,
       },
     ];
-    const repairedRaw = await callLLM(repairMessages, config, undefined, { jsonMode: true });
-    return cleanAndRepairJson<T>(repairedRaw);
+    try {
+      const repairedRaw = await callLLM(repairMessages, config, undefined, { jsonMode: true });
+      return cleanAndRepairJson<T>(repairedRaw);
+    } catch (microErr: unknown) {
+      console.warn("JSON micro-repair LLM pass could not parse response:", getErrorMessage(microErr));
+      throw new Error("AI response was received but could not be parsed as valid JSON.");
+    }
   }
 }
 

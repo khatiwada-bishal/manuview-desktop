@@ -376,7 +376,7 @@ export async function generateWithLocalSLM(
       messages: messages as any,
       stream: true,
       temperature: 0.5,
-      max_tokens: 2500,
+      max_tokens: 4096,
     });
 
     let accumulated = "";

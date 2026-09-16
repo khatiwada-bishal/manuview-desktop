@@ -1288,9 +1288,14 @@ export async function runManuscriptDiagnostic(
         }
       );
     } catch (err: unknown) {
-      const safeError = sanitizeErrorMessage(getErrorMessage(err) || "AI provider call failed or is not connected.");
+      const rawError = getErrorMessage(err) || "AI provider call failed or is not connected.";
+      const safeError = sanitizeErrorMessage(rawError);
       console.warn("LLM review generation warning, using document-grounded offline heuristics:", safeError);
-      llmCallError = safeError;
+      // Clean up technical syntax parser errors for user presentation
+      const userFacingError = /JSON Parse error|Unexpected token|Unexpected identifier|is not valid JSON/i.test(safeError)
+        ? "AI response could not be parsed as valid JSON"
+        : safeError;
+      llmCallError = userFacingError;
     }
   }
 
