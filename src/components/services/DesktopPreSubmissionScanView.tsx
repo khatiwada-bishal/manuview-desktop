@@ -52,7 +52,13 @@ import {
 } from "@/lib/types";
 import JournalCombobox, { JournalInfoTooltip } from "@/components/JournalCombobox";
 import { BriefJournalFitView, BriefJournalFitPrintView } from "@/components/BriefJournalFitView";
-import { exportInteractiveHtmlReport, exportWordDocReport } from "@/lib/export-generator";
+import {
+  exportInteractiveHtmlReport,
+  exportWordDocReport,
+  exportPdfReport,
+  exportLatexRebuttalTable,
+  exportBibTeX,
+} from "@/lib/export-generator";
 import { pickManuscriptFileDesktop, isDesktopApp } from "@/lib/desktop";
 import { extractTextFromFile, parseManuscriptText } from "@/lib/parser";
 import { runManuscriptDiagnostic, runBriefJournalFitAnalysis } from "@/lib/diagnostic-engine";
@@ -130,6 +136,8 @@ export function DesktopPreSubmissionScanView({
   const [copiedScanReport, setCopiedScanReport] = useState<boolean>(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [showAllScanRefs, setShowAllScanRefs] = useState(false);
+  const [activeExportFormat, setActiveExportFormat] = useState<string | null>(null);
+  const [exportToast, setExportToast] = useState<string | null>(null);
   const [compatibilityMatch, setCompatibilityMatch] = useState<{
     journalName: string;
     journalDiscipline: string;
@@ -248,27 +256,49 @@ export function DesktopPreSubmissionScanView({
     }
   };
 
+  const handleExport = async (format: "pdf" | "html" | "word" | "latex" | "bibtex") => {
+    if (!report || activeExportFormat) return;
+    setActiveExportFormat(format);
+
+    try {
+      let res: { success: boolean; filePath?: string; cancelled?: boolean; error?: string } | undefined;
+      let label = "";
+
+      if (format === "pdf") {
+        label = "PDF Report (.pdf)";
+        res = await exportPdfReport(report);
+      } else if (format === "html") {
+        label = "Interactive HTML (.html)";
+        res = await exportInteractiveHtmlReport(report);
+      } else if (format === "word") {
+        label = "Word Document (.doc)";
+        res = await exportWordDocReport(report);
+      } else if (format === "latex") {
+        label = "LaTeX Rebuttal (.tex)";
+        res = await exportLatexRebuttalTable(report);
+      } else if (format === "bibtex") {
+        label = "BibTeX Citations (.bib)";
+        res = await exportBibTeX(report);
+      }
+
+      if (res?.success) {
+        setExportToast(`Report exported successfully as ${label}`);
+        setTimeout(() => setExportToast(null), 3500);
+      } else if (res?.error) {
+        setExportToast(`Export failed: ${res.error}`);
+        setTimeout(() => setExportToast(null), 4500);
+      }
+    } catch (err) {
+      console.error(`Export ${format} error:`, err);
+      setExportToast(`Failed to export ${format}: ${String(err)}`);
+      setTimeout(() => setExportToast(null), 4500);
+    } finally {
+      setActiveExportFormat(null);
+    }
+  };
+
   const handleDownloadPDF = () => {
-    if (!report) return;
-    const originalTitle = document.title;
-    const sanitized = (report.title || "Manuscript")
-      .replace(/[^a-zA-Z0-9_-]/g, "_")
-      .slice(0, 45);
-    document.title = `ManuView_Diagnostic_Report_${sanitized}`;
-    window.print();
-    setTimeout(() => {
-      document.title = originalTitle;
-    }, 1500);
-  };
-
-  const handleExportHTML = () => {
-    if (!report) return;
-    exportInteractiveHtmlReport(report);
-  };
-
-  const handleExportWord = () => {
-    if (!report) return;
-    exportWordDocReport(report);
+    handleExport("pdf");
   };
 
   const registerCompletedScan = (fullReport: any) => {
@@ -987,29 +1017,32 @@ export function DesktopPreSubmissionScanView({
 
                   <button
                     type="button"
-                    onClick={handleExportHTML}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-neutral-700 hover:bg-neutral-50 dark:bg-[#161F30] dark:hover:bg-[#1E293B] dark:text-neutral-300 dark:hover:text-white border border-[#E5E7EB] dark:border-[#334155] transition shadow-2xs cursor-pointer"
+                    disabled={activeExportFormat !== null}
+                    onClick={() => handleExport("html")}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-neutral-700 hover:bg-neutral-50 dark:bg-[#161F30] dark:hover:bg-[#1E293B] dark:text-neutral-300 dark:hover:text-white border border-[#E5E7EB] dark:border-[#334155] transition shadow-2xs cursor-pointer disabled:opacity-50"
                   >
                     <Globe className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Interactive HTML</span>
+                    <span>{activeExportFormat === "html" ? "Exporting..." : "Interactive HTML"}</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={handleExportWord}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-neutral-700 hover:bg-neutral-50 dark:bg-[#161F30] dark:hover:bg-[#1E293B] dark:text-neutral-300 dark:hover:text-white border border-[#E5E7EB] dark:border-[#334155] transition shadow-2xs cursor-pointer"
+                    disabled={activeExportFormat !== null}
+                    onClick={() => handleExport("word")}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-neutral-700 hover:bg-neutral-50 dark:bg-[#161F30] dark:hover:bg-[#1E293B] dark:text-neutral-300 dark:hover:text-white border border-[#E5E7EB] dark:border-[#334155] transition shadow-2xs cursor-pointer disabled:opacity-50"
                   >
                     <FileText className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Word (.docx)</span>
+                    <span>{activeExportFormat === "word" ? "Exporting..." : "Word (.doc)"}</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={handleDownloadPDF}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#0F172A] hover:bg-[#1E293B] dark:bg-blue-600 dark:hover:bg-blue-500 text-white transition shadow-xs cursor-pointer"
+                    disabled={activeExportFormat !== null}
+                    onClick={() => handleExport("pdf")}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#0F172A] hover:bg-[#1E293B] dark:bg-blue-600 dark:hover:bg-blue-500 text-white transition shadow-xs cursor-pointer disabled:opacity-50"
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>PDF Report</span>
+                    <Printer className="w-3.5 h-3.5 text-rose-400" />
+                    <span>{activeExportFormat === "pdf" ? "Preparing PDF..." : "PDF Report"}</span>
                   </button>
                 </div>
               </div>
@@ -2017,6 +2050,13 @@ export function DesktopPreSubmissionScanView({
           </div>
         ))}
       </div>
+
+      {exportToast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-xs font-medium shadow-xl border border-neutral-700 dark:border-neutral-200 animate-fade-in">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 dark:text-emerald-600 shrink-0" />
+          <span>{exportToast}</span>
+        </div>
+      )}
     </div>
   );
 }

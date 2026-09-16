@@ -60,6 +60,7 @@ import {
   exportWordDocReport,
   exportLatexRebuttalTable,
   exportBibTeX,
+  exportPdfReport,
 } from "@/lib/export-generator";
 import { DimensionRadarChart } from "@/components/charts/DimensionRadarChart";
 import { SegmentedReadinessGauge } from "@/components/charts/SegmentedReadinessGauge";
@@ -530,7 +531,7 @@ export function DesktopDashboard({
   const [activeExportFormat, setActiveExportFormat] = useState<string | null>(null);
 
   const handleExportFormat = async (
-    format: "word" | "html" | "latex" | "bibtex",
+    format: "word" | "html" | "latex" | "bibtex" | "pdf",
     e?: React.MouseEvent
   ) => {
     if (e) {
@@ -544,7 +545,7 @@ export function DesktopDashboard({
     setIsExportOpen(false);
 
     try {
-      let res: { success: boolean; filePath?: string; error?: string } | undefined;
+      let res: { success: boolean; filePath?: string; cancelled?: boolean; error?: string } | undefined;
       let label = "";
 
       if (format === "word") {
@@ -553,6 +554,9 @@ export function DesktopDashboard({
       } else if (format === "html") {
         label = "Interactive HTML (.html)";
         res = await exportInteractiveHtmlReport(effectiveReport);
+      } else if (format === "pdf") {
+        label = "PDF Document (.pdf)";
+        res = await exportPdfReport(effectiveReport);
       } else if (format === "latex") {
         label = "LaTeX Rebuttal Table (.tex)";
         res = await exportLatexRebuttalTable(effectiveReport);
@@ -564,9 +568,14 @@ export function DesktopDashboard({
       if (res?.success) {
         setExportToast(`Report exported successfully as ${label}`);
         setTimeout(() => setExportToast(null), 3500);
+      } else if (res?.error) {
+        setExportToast(`Export failed: ${res.error}`);
+        setTimeout(() => setExportToast(null), 4500);
       }
     } catch (err) {
       console.error(`Failed to export ${format}:`, err);
+      setExportToast(`Failed to export ${format}: ${String(err)}`);
+      setTimeout(() => setExportToast(null), 4500);
     } finally {
       setActiveExportFormat(null);
       setTimeout(() => {
@@ -576,12 +585,7 @@ export function DesktopDashboard({
   };
 
   const handlePrint = (e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    setIsExportOpen(false);
-    window.print();
+    handleExportFormat("pdf", e);
   };
 
   // --- Section 1: The 6 Evaluation Dimensions ---
@@ -2727,11 +2731,12 @@ export function DesktopDashboard({
                         <div className="my-1 border-t border-neutral-100 dark:border-neutral-800" />
                         <button
                           type="button"
-                          onClick={(e) => handlePrint(e)}
-                          className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2.5 cursor-pointer"
+                          disabled={activeExportFormat !== null}
+                          onClick={(e) => handleExportFormat("pdf", e)}
+                          className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2.5 cursor-pointer disabled:opacity-50"
                         >
-                          <Printer className="w-3.5 h-3.5 text-neutral-500" />
-                          <span>Print / Save as PDF</span>
+                          <Printer className="w-3.5 h-3.5 text-rose-500" />
+                          <span>{activeExportFormat === "pdf" ? "Preparing PDF..." : "Print / PDF Report (.pdf)"}</span>
                         </button>
                       </div>
                     )}

@@ -35,17 +35,17 @@ function sanitizeFilename(title: string): string {
 async function triggerDownload(
   content: string,
   filename: string,
-  _mimeType: string,
+  mimeType: string,
   filters?: { name: string; extensions: string[] }[]
-): Promise<{ success: boolean; filePath?: string }> {
-  return await saveFileDesktop(content, filename, filters);
+): Promise<{ success: boolean; filePath?: string; cancelled?: boolean; error?: string }> {
+  return await saveFileDesktop(content, filename, filters, mimeType);
 }
 
 /**
  * Generates and triggers download of a 100% self-contained, standalone
  * interactive HTML report that opens in any browser offline.
  */
-export async function exportInteractiveHtmlReport(report: ReviewReport) {
+export async function exportInteractiveHtmlReport(report: ReviewReport): Promise<{ success: boolean; filePath?: string; cancelled?: boolean; error?: string }> {
   const isFullReport = report.mode === "full" || !("fitScore" in report);
   const filename = `ManuView_Interactive_Report_${sanitizeFilename(report.title)}.html`;
   const htmlContent = isFullReport
@@ -59,9 +59,10 @@ export async function exportInteractiveHtmlReport(report: ReviewReport) {
 }
 
 /**
- * Generates and triggers download of a native-compatible Microsoft Word document (.doc/.docx).
+ * Generates and triggers download of a native-compatible Microsoft Word document (.doc/.docx)
+ * styled to match the interactive HTML diagnostic design.
  */
-export async function exportWordDocReport(report: ReviewReport) {
+export async function exportWordDocReport(report: ReviewReport): Promise<{ success: boolean; filePath?: string; cancelled?: boolean; error?: string }> {
   const isFullReport = report.mode === "full" || !("fitScore" in report);
   const filename = `ManuView_Diagnostic_Report_${sanitizeFilename(report.title)}.doc`;
   const wordContent = isFullReport
@@ -72,6 +73,76 @@ export async function exportWordDocReport(report: ReviewReport) {
     { name: "Microsoft Word Document", extensions: ["doc", "docx"] },
     { name: "All Files", extensions: ["*"] },
   ]);
+}
+
+/**
+ * Triggers a high-fidelity print / PDF export of the diagnostic report.
+ * Uses an isolated print-rendering frame containing the complete standalone report
+ * matching the interactive HTML design, ensuring desktop app UI controls and shell are never printed.
+ */
+export async function exportPdfReport(report: ReviewReport): Promise<{ success: boolean; cancelled?: boolean; error?: string }> {
+  if (typeof window === "undefined") {
+    return { success: false, error: "Window context not available for PDF export" };
+  }
+
+  const isFullReport = report.mode === "full" || !("fitScore" in report);
+  const title = report.title || "Manuscript";
+  const filename = `ManuView_Diagnostic_Report_${sanitizeFilename(title)}`;
+  const htmlContent = isFullReport
+    ? generateFullReportHtml(report as FullReviewReport)
+    : generateBriefReportHtml(report as BriefJournalFitReport);
+
+  try {
+    const existing = document.getElementById("manuview-print-frame");
+    if (existing && existing.parentNode) {
+      existing.parentNode.removeChild(existing);
+    }
+
+    const iframe = document.createElement("iframe");
+    iframe.id = "manuview-print-frame";
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.style.opacity = "0";
+    iframe.style.pointerEvents = "none";
+    iframe.setAttribute("aria-hidden", "true");
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) {
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+      return { success: false, error: "Unable to create print document frame" };
+    }
+
+    doc.open();
+    doc.write(htmlContent);
+    doc.close();
+    doc.title = filename;
+
+    // Allow iframe styles, embedded SVGs, and fonts to render
+    await new Promise((resolve) => setTimeout(resolve, 350));
+
+    const win = iframe.contentWindow;
+    if (win) {
+      win.focus();
+      win.print();
+    }
+
+    setTimeout(() => {
+      const el = document.getElementById("manuview-print-frame");
+      if (el && el.parentNode) {
+        el.parentNode.removeChild(el);
+      }
+    }, 4000);
+
+    return { success: true };
+  } catch (err) {
+    console.error("PDF print export failed:", err);
+    return { success: false, error: String(err) };
+  }
 }
 
 function escapeLatex(text?: string | null): string {
@@ -152,12 +223,9 @@ ${rows}
 `;
 }
 
-/**
- * Triggers download of LaTeX Rebuttal Table (.tex)
- */
-export async function exportLatexRebuttalTable(report: ReviewReport) {
+export async function exportLatexRebuttalTable(report: ReviewReport): Promise<{ success: boolean; filePath?: string; cancelled?: boolean; error?: string }> {
   const isFullReport = report.mode === "full" || !("fitScore" in report);
-  if (!isFullReport) return { success: false };
+  if (!isFullReport) return { success: false, error: "LaTeX Rebuttal Matrix is only available for full diagnostic reviews." };
   const filename = `ManuView_Rebuttal_Matrix_${sanitizeFilename(report.title)}.tex`;
   const latexContent = generateLatexRebuttal(report as FullReviewReport);
   return await triggerDownload(latexContent, filename, "application/x-latex;charset=utf-8", [
@@ -214,12 +282,12 @@ export function generateBibTeX(report: ReviewReport): string {
   return bibtex;
 }
 
-/**
- * Triggers download of BibTeX file (.bib)
- */
-export async function exportBibTeX(report: ReviewReport) {
+export async function exportBibTeX(report: ReviewReport): Promise<{ success: boolean; filePath?: string; cancelled?: boolean; error?: string }> {
   const filename = `ManuView_Bibliography_${sanitizeFilename(report.title)}.bib`;
   const bibtexContent = generateBibTeX(report);
+  if (!bibtexContent.trim()) {
+    return { success: false, error: "No verified citations with DOIs found in manuscript." };
+  }
   return await triggerDownload(bibtexContent, filename, "application/x-bibtex;charset=utf-8", [
     { name: "BibTeX Bibliography", extensions: ["bib"] },
     { name: "All Files", extensions: ["*"] },
@@ -470,11 +538,62 @@ export function generateFullReportHtml(r: FullReviewReport): string {
     .journal-name { font-size: 16px; font-weight: 700; margin: 4px 0; }
     .journal-meta { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
 
+    @page {
+      size: A4 portrait;
+      margin: 12mm 14mm 12mm 14mm;
+    }
     @media print {
-      body { background: #FFF; padding: 0; }
-      .btn-print, .tabs-nav, .filter-pills, .persona-selector { display: none !important; }
-      .tab-content, .persona-panel { display: block !important; }
-      .card { border: 1px solid #CCC !important; page-break-inside: avoid; }
+      html, body {
+        background-color: #FFFFFF !important;
+        color: #0F172A !important;
+        font-size: 11pt !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .container {
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .btn-print, .tabs-nav, .filter-pills, .persona-selector, .print-tip {
+        display: none !important;
+      }
+      .tab-content, .persona-panel {
+        display: block !important;
+      }
+      .card, .header-card {
+        box-shadow: none !important;
+        border: 1px solid #CBD5E1 !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        margin-bottom: 16px !important;
+        padding: 18px !important;
+      }
+      .issue-item, .journal-card, .dimension-card, .persona-panel {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        margin-bottom: 12px !important;
+      }
+      .score-banner {
+        background: #F1F5F9 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .badge-a, .badge-b, .badge-c, .meta-badge, .persona-badge {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      h1, h2, h3, h4 {
+        break-after: avoid !important;
+        page-break-after: avoid !important;
+        color: #0F172A !important;
+      }
+      table, tr, td, th {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
     }
   </style>
 </head>
@@ -502,7 +621,7 @@ export function generateFullReportHtml(r: FullReviewReport): string {
           <span class="score-number" style="${!hasNumericScore ? "font-size: 26px; color: #94A3B8;" : ""}">${scoreLabel}</span>
           <span class="score-label">${isDeskReject ? "Editorial Scope Screening (External Peer Review Bypassed)" : hasNumericScore ? "/ 100 Overall Acceptance Potential" : "Acceptance potential bypassed"}</span>
         </div>
-        <div style="font-size: 12px; color: #94A3B8; font-weight: 500;">
+        <div style="font-size: 12px; color: #94A3B8; font-weight: 500;" class="print-tip">
           <span>Tip: Save as PDF via browser (Cmd+P / Ctrl+P)</span>
         </div>
       </div>
@@ -765,7 +884,7 @@ export function generateFullReportHtml(r: FullReviewReport): string {
 // -----------------------------------------------------------------------------
 // 2. BRIEF SCOPE FIT REPORT - STANDALONE INTERACTIVE HTML GENERATOR
 // -----------------------------------------------------------------------------
-function generateBriefReportHtml(r: BriefJournalFitReport): string {
+export function generateBriefReportHtml(r: BriefJournalFitReport): string {
   const title = escapeHtml(r.title);
   const targetJournal = escapeHtml(r.targetJournal);
   const dateStr = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
@@ -799,6 +918,26 @@ function generateBriefReportHtml(r: BriefJournalFitReport): string {
       box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
     h1 { font-family: Georgia, serif; font-size: 24px; margin: 12px 0; color: #0F172A; }
+
+    @page {
+      size: A4 portrait;
+      margin: 12mm 14mm 12mm 14mm;
+    }
+    @media print {
+      html, body {
+        background-color: #FFFFFF !important;
+        color: #0F172A !important;
+        font-size: 11pt !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+      .print-tip { display: none !important; }
+      .card { box-shadow: none !important; border: 1px solid #CBD5E1 !important; break-inside: avoid !important; page-break-inside: avoid !important; margin-bottom: 14px !important; }
+      h1, h2, h3 { break-after: avoid !important; page-break-after: avoid !important; color: #0F172A !important; }
+    }
   </style>
 </head>
 <body>
@@ -806,7 +945,7 @@ function generateBriefReportHtml(r: BriefJournalFitReport): string {
     <div class="card">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <strong style="font-size: 16px;">ManuView Editorial Scope Report</strong>
-        <span style="font-size: 12px; color: #64748B;">Print / Save PDF via Browser (Cmd+P)</span>
+        <span style="font-size: 12px; color: #64748B;" class="print-tip">Print / Save PDF via Browser (Cmd+P)</span>
       </div>
       <h1>${title}</h1>
       <p style="font-size: 13px; color: #64748B;">Target Journal: <strong>${targetJournal}</strong> • Generated on ${dateStr}</p>
@@ -850,10 +989,18 @@ function generateBriefReportHtml(r: BriefJournalFitReport): string {
 export function generateFullReportWord(r: FullReviewReport): string {
   const title = escapeHtml(r.title);
   const targetJournal = escapeHtml(r.targetJournal || "General High Impact Journal");
+  const isScopeMismatch = Boolean(
+    r.targetJournalEvaluation?.isDisciplinaryMismatch ||
+    r.priorityIssues?.some((i) => i.priority === "A" && (i.category === "Scope/Fit" || /scope|out-of-scope|desk reject/i.test(`${i.title} ${i.description}`)))
+  );
+  const mismatchWarning = r.targetJournalEvaluation?.mismatchWarning ||
+    (isScopeMismatch
+      ? `Manuscript research domain falls outside the published aims and scope of ${targetJournal}. Submitting out-of-scope manuscripts is the primary cause of immediate editorial desk rejection without external peer review.`
+      : "");
   const isDeskReject = Boolean(
     r.editorialTriage?.outcome === "desk_reject" ||
     r.ineligibilityReason === "scope_mismatch" ||
-    r.targetJournalEvaluation?.isDisciplinaryMismatch
+    isScopeMismatch
   );
   const hasNumericScore = !isDeskReject && typeof r.overallScore === "number";
   const scoreLabel = isDeskReject
@@ -888,159 +1035,353 @@ export function generateFullReportWord(r: FullReviewReport): string {
     body {
       font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
       font-size: 11pt;
-      line-height: 1.4;
+      line-height: 1.45;
       color: #1E293B;
     }
-    h1 { font-family: 'Georgia', serif; font-size: 20pt; color: #0F172A; margin-bottom: 4pt; }
-    h2 { font-family: 'Calibri', sans-serif; font-size: 14pt; color: #0F172A; border-bottom: 2pt solid #2563EB; padding-bottom: 3pt; margin-top: 18pt; margin-bottom: 6pt; }
-    h3 { font-family: 'Calibri', sans-serif; font-size: 12pt; color: #1E293B; margin-top: 12pt; margin-bottom: 4pt; }
+    h1 { font-family: 'Georgia', serif; font-size: 22pt; color: #0F172A; margin-bottom: 6pt; margin-top: 0; line-height: 1.25; }
+    h2 { font-family: 'Calibri', sans-serif; font-size: 14pt; font-weight: bold; color: #0F172A; border-bottom: 2pt solid #2563EB; padding-bottom: 4pt; margin-top: 22pt; margin-bottom: 10pt; }
+    h3 { font-family: 'Calibri', sans-serif; font-size: 12pt; font-weight: bold; color: #1E293B; margin-top: 14pt; margin-bottom: 4pt; }
+    
     table { border-collapse: collapse; width: 100%; margin-top: 8pt; margin-bottom: 12pt; }
-    th { background-color: #F1F5F9; border: 1pt solid #CBD5E1; padding: 6pt 8pt; text-align: left; font-size: 10pt; font-weight: bold; }
-    td { border: 1pt solid #CBD5E1; padding: 6pt 8pt; font-size: 10pt; vertical-align: top; }
-    .callout { background-color: #F8FAFC; border-left: 3pt solid #2563EB; padding: 8pt 12pt; margin: 8pt 0; }
-    .badge-a { color: #DC2626; font-weight: bold; }
-    .badge-b { color: #D97706; font-weight: bold; }
-    .badge-c { color: #16A34A; font-weight: bold; }
+    th { background-color: #F1F5F9; border: 1pt solid #CBD5E1; padding: 7pt 9pt; text-align: left; font-size: 10pt; font-weight: bold; color: #0F172A; }
+    td { border: 1pt solid #CBD5E1; padding: 7pt 9pt; font-size: 10pt; vertical-align: top; }
+    
+    .card-box {
+      border: 1pt solid #CBD5E1;
+      background-color: #FFFFFF;
+      padding: 14pt 16pt;
+      margin-bottom: 14pt;
+    }
+    .header-card {
+      border: 1pt solid #CBD5E1;
+      background-color: #FFFFFF;
+      padding: 18pt 20pt;
+      margin-bottom: 16pt;
+    }
+    .callout-blue {
+      background-color: #EFF6FF;
+      border-left: 4pt solid #2563EB;
+      padding: 10pt 14pt;
+      margin: 10pt 0;
+      color: #1E40AF;
+    }
+    .callout-red {
+      background-color: #FEF2F2;
+      border-left: 4pt solid #EF4444;
+      padding: 10pt 14pt;
+      margin: 10pt 0;
+      color: #991B1B;
+    }
+    .callout-amber {
+      background-color: #FFFBEB;
+      border-left: 4pt solid #F59E0B;
+      padding: 10pt 14pt;
+      margin: 10pt 0;
+      color: #92400E;
+    }
+    .callout-green {
+      background-color: #ECFDF5;
+      border-left: 4pt solid #10B981;
+      padding: 10pt 14pt;
+      margin: 10pt 0;
+      color: #065F46;
+    }
+    .badge-pill {
+      display: inline-block;
+      padding: 2.5pt 8pt;
+      font-size: 9pt;
+      font-weight: bold;
+      border-radius: 4pt;
+    }
+    .badge-a { background-color: #FEE2E2; color: #991B1B; border: 1pt solid #FCA5A5; font-weight: bold; }
+    .badge-b { background-color: #FEF3C7; color: #92400E; border: 1pt solid #FCD34D; font-weight: bold; }
+    .badge-c { background-color: #DCFCE7; color: #166534; border: 1pt solid #86EFAC; font-weight: bold; }
+    .badge-target { background-color: #EFF6FF; color: #1D4ED8; border: 1pt solid #BFDBFE; font-weight: bold; }
+    .badge-adversarial { background-color: #FFE4E6; color: #9F1239; border: 1pt solid #FECDD3; font-weight: bold; }
+    
+    .code-box {
+      background-color: #F8FAFC;
+      border: 1pt solid #CBD5E1;
+      padding: 8pt 12pt;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 9pt;
+      color: #1E293B;
+      white-space: pre-wrap;
+      margin: 6pt 0;
+    }
+    .quote-box {
+      font-style: italic;
+      background-color: #F8FAFC;
+      border-left: 2pt solid #94A3B8;
+      padding: 6pt 10pt;
+      margin: 6pt 0;
+      font-size: 9.5pt;
+      color: #475569;
+    }
     ul { margin-top: 4pt; margin-bottom: 8pt; padding-left: 18pt; }
-    li { margin-bottom: 3pt; }
+    li { margin-bottom: 3.5pt; font-size: 10pt; }
   </style>
 </head>
 <body>
-  <p style="font-size: 9pt; color: #64748B; text-transform: uppercase; letter-spacing: 1pt;">ManuView • AI Pre-Submission Peer-Review Diagnostic Suite</p>
-  <h1>${title}</h1>
-  <p style="font-size: 10pt; color: #64748B;">Target Journal: <strong>${targetJournal}</strong> | Evaluation Date: ${dateStr}</p>
-  
-  <div class="callout" style="background-color: #EFF6FF; border-left: 4pt solid #2563EB;">
-    <p style="font-size: 16pt; font-weight: bold; margin: 0; color: #1E40AF;">${scoreLabel}</p>
-    <p style="font-size: 10pt; margin-top: 4pt; margin-bottom: 0;">${escapeHtml(r.summary)}</p>
+  <!-- Header Card (Matching Interactive HTML Design) -->
+  <div class="header-card">
+    <table style="border: none; margin: 0; width: 100%;">
+      <tr style="border: none;">
+        <td style="border: none; padding: 0; vertical-align: middle;">
+          <p style="font-size: 9.5pt; font-weight: bold; color: #2563EB; text-transform: uppercase; letter-spacing: 1pt; margin: 0 0 6pt 0;">
+            ManuView • AI Pre-Submission Peer-Review Diagnostic Suite
+          </p>
+        </td>
+        <td style="border: none; padding: 0; text-align: right; vertical-align: middle;">
+          <span class="badge-pill ${isScopeMismatch ? "badge-a" : "badge-target"}">
+            Target: ${targetJournal}${isScopeMismatch ? " (Scope Mismatch)" : ""}
+          </span>
+        </td>
+      </tr>
+    </table>
+
+    <h1 style="margin-top: 8pt;">${title}</h1>
+    <p style="font-size: 10pt; color: #64748B; margin: 0 0 12pt 0;">
+      Generated on ${dateStr} • Peer-Review Calibrated Pre-Submission Diagnostic
+    </p>
+
+    ${isScopeMismatch ? `
+    <div class="callout-red">
+      <p style="font-weight: bold; font-size: 11pt; margin: 0 0 4pt 0;">🚨 CRITICAL SCOPE MISMATCH WARNING (HIGH DESK-REJECT HAZARD)</p>
+      <p style="margin: 0; font-size: 10pt;">${escapeHtml(mismatchWarning)}</p>
+    </div>
+    ` : ""}
+
+    <div class="callout-blue" style="${isScopeMismatch ? "background-color: #FEF2F2; border-left: 4pt solid #DC2626; color: #991B1B;" : ""}">
+      <p style="font-size: 16pt; font-weight: bold; margin: 0;">${scoreLabel}</p>
+      <p style="font-size: 10.5pt; margin: 6pt 0 0 0; line-height: 1.5;">${escapeHtml(r.summary)}</p>
+    </div>
   </div>
 
+  <!-- Section 1: Executive Overview & Triage -->
+  <h2>1. Editorial Synthesis & Triage Assessment</h2>
+  <div class="card-box">
+    <p style="font-size: 10.5pt; line-height: 1.5; margin: 0 0 8pt 0;">${escapeHtml(r.summary)}</p>
+    ${r.classification ? `
+      <div style="background-color: #F8FAFC; border-left: 3pt solid #2563EB; padding: 8pt 10pt; margin-top: 8pt;">
+        <strong>Document Classification:</strong> ${escapeHtml(r.classification.categoryLabel)}<br>
+        <span style="font-size: 9.5pt; color: #475569;">${escapeHtml(r.classification.advisoryMessage)}</span>
+      </div>
+    ` : ""}
+  </div>
+
+  <!-- Section 2: 6-Dimension Scoring Rubric -->
   ${r.dimensions ? `
-  <h2>1. 6-Dimension Scholarly Scoring Rubric</h2>
+  <h2>2. 6-Dimension Scholarly Scoring Rubric</h2>
   <table>
     <tr>
-      <th style="width: 25%;">Dimension</th>
-      <th style="width: 12%;">Score (1-5)</th>
-      <th style="width: 28%;">Verdict</th>
-      <th style="width: 35%;">Key Observations</th>
+      <th style="width: 22%;">Dimension</th>
+      <th style="width: 14%;">Score</th>
+      <th style="width: 26%;">Verdict</th>
+      <th style="width: 38%;">Key Observations & Editorial Hazards</th>
     </tr>
     ${Object.entries(r.dimensions || {}).map(([_, dim]) => `
       <tr>
         <td><strong>${escapeHtml(dim.label)}</strong></td>
-        <td><strong>${dim.score} / 5</strong></td>
-        <td>${escapeHtml(dim.verdict)}</td>
+        <td><span class="badge-pill badge-target">${dim.score} / 5</span></td>
+        <td><strong>${escapeHtml(dim.verdict)}</strong></td>
         <td>
-          ${(dim.vulnerabilities && dim.vulnerabilities.length > 0) ? `<span style="color: #DC2626;"><strong>Risks:</strong> ${escapeHtml(dim.vulnerabilities.join("; "))}</span>` : `<span style="color: #16A34A;">Sound methodology</span>`}
+          ${(dim.strengths && dim.strengths.length > 0) ? `
+            <div style="color: #166534; font-size: 9pt; margin-bottom: 4pt;">
+              <strong>✔ Strengths:</strong> ${escapeHtml(dim.strengths.join("; "))}
+            </div>
+          ` : ""}
+          ${(dim.vulnerabilities && dim.vulnerabilities.length > 0) ? `
+            <div style="color: #991B1B; font-size: 9pt;">
+              <strong>✖ Vulnerabilities:</strong> ${escapeHtml(dim.vulnerabilities.join("; "))}
+            </div>
+          ` : `<span style="color: #166534; font-size: 9pt;">Methodologically Sound</span>`}
         </td>
       </tr>
     `).join("")}
   </table>
   ` : ""}
 
+  <!-- Section 3: Simulated Reviewer Panel -->
   ${(r.reviewerPersonas && r.reviewerPersonas.length > 0) ? `
-  <h2>2. Simulated ${r.reviewerPersonas.length}-Persona Peer Review (Adversarial Panel)</h2>
-  ${r.reviewerPersonas.map(p => `
-    <h3>${p.persona === "devils_advocate" ? "⚡ [Adversarial Stress-Test] " : ""}${escapeHtml(p.name)}</h3>
-    <p style="font-size: 9.5pt; color: #475569; margin-bottom: 3pt;"><strong>${escapeHtml(p.title)}</strong> • ${escapeHtml(p.affiliation)}</p>
-    ${p.expertise ? `<p style="font-size: 9pt; color: #64748B; margin-bottom: 6pt;"><em>Area of Expertise & Scope:</em> ${escapeHtml(p.expertise)}</p>` : ""}
-    <p><strong>Recommendation:</strong> ${escapeHtml(p.decisionRecommendation)} | <strong>Key Challenge:</strong> ${escapeHtml(p.keyChallenge)}</p>
-    <p>${escapeHtml(p.assessment)}</p>
-    ${(p.evidenceAnchors && p.evidenceAnchors.length > 0) ? `
-      <p><strong>Manuscript Evidence Anchors (Grounding):</strong></p>
-      <ul style="font-family: 'Courier New', monospace; font-size: 9pt; color: #334155;">
-        ${p.evidenceAnchors.map(a => `<li>${escapeHtml(a)}</li>`).join("")}
+  <h2>3. Simulated ${r.reviewerPersonas.length}-Persona Peer Review (Adversarial Panel)</h2>
+  ${r.reviewerPersonas.map((p) => `
+    <div class="card-box">
+      <div style="margin-bottom: 6pt;">
+        <span class="badge-pill ${p.persona === "devils_advocate" ? "badge-adversarial" : "badge-b"}">
+          ${escapeHtml(p.decisionRecommendation)}
+        </span>
+        ${p.persona === "devils_advocate" ? `
+          <span class="badge-pill badge-adversarial" style="margin-left: 6pt;">
+            ⚡ Hostile Stress-Test / Adversarial Referee
+          </span>
+        ` : ""}
+      </div>
+      <h3 style="margin-top: 4pt; margin-bottom: 2pt;">${escapeHtml(p.name)}</h3>
+      <p style="font-size: 10pt; color: #475569; margin: 0 0 6pt 0;">
+        <strong>${escapeHtml(p.title)}</strong> • ${escapeHtml(p.affiliation)}
+      </p>
+
+      ${p.expertise ? `
+        <div style="background-color: #F1F5F9; border: 1pt solid #CBD5E1; padding: 6pt 10pt; font-size: 9.5pt; margin-bottom: 8pt;">
+          <strong>Area of Expertise & Scope:</strong> ${escapeHtml(p.expertise)}
+        </div>
+      ` : ""}
+
+      <div class="callout-red" style="margin-bottom: 10pt;">
+        <strong>Key Challenge:</strong> ${escapeHtml(p.keyChallenge)}
+      </div>
+
+      <p style="font-size: 10.5pt; line-height: 1.5; margin-bottom: 10pt;">${escapeHtml(p.assessment)}</p>
+
+      ${(p.evidenceAnchors && p.evidenceAnchors.length > 0) ? `
+        <div style="background-color: #F8FAFC; border: 1pt dashed #CBD5E1; padding: 6pt 10pt; margin-bottom: 10pt;">
+          <strong style="font-size: 9pt; text-transform: uppercase; color: #0F172A;">Manuscript Evidence Anchors (Grounding):</strong>
+          <ul style="margin-top: 4pt; font-family: 'Consolas', monospace; font-size: 9pt; color: #334155;">
+            ${p.evidenceAnchors.map(a => `<li>${escapeHtml(a)}</li>`).join("")}
+          </ul>
+        </div>
+      ` : ""}
+
+      <p style="font-weight: bold; margin-bottom: 2pt; font-size: 10pt;">Major Critiques:</p>
+      <ul>
+        ${(p.majorCritiques || []).map(c => `<li>${escapeHtml(c)}</li>`).join("")}
       </ul>
-    ` : ""}
-    <p><strong>Major Critiques:</strong></p>
-    <ul>
-      ${(p.majorCritiques || []).map(c => `<li>${escapeHtml(c)}</li>`).join("")}
-    </ul>
-    <p><strong>Must-Address Items:</strong></p>
-    <ul>
-      ${(p.mustAddressItems || []).map(m => `<li>${escapeHtml(m)}</li>`).join("")}
-    </ul>
-    ${(p.counterArguments && p.counterArguments.length > 0) ? `
-      <p style="color: #9F1239;"><strong>Adversarial Defenses & Pre-emptive Arguments:</strong></p>
-      <ul style="color: #9F1239; font-size: 9.5pt;">
-        ${p.counterArguments.map(ca => `<li>${escapeHtml(ca)}</li>`).join("")}
+
+      <p style="font-weight: bold; margin-bottom: 2pt; color: #166534; font-size: 10pt;">Must-Address Prior to Submission:</p>
+      <ul style="color: #166534;">
+        ${(p.mustAddressItems || []).map(m => `<li>${escapeHtml(m)}</li>`).join("")}
       </ul>
-    ` : ""}
+
+      ${(p.counterArguments && p.counterArguments.length > 0) ? `
+        <div style="background-color: #FFF1F2; border: 1pt solid #FECDD3; padding: 8pt 10pt; margin-top: 8pt;">
+          <strong style="font-size: 9pt; color: #9F1239; text-transform: uppercase;">Adversarial Defenses & Pre-emptive Arguments:</strong>
+          <ul style="margin-top: 4pt; color: #9F1239; font-size: 9.5pt;">
+            ${p.counterArguments.map(arg => `<li>${escapeHtml(arg)}</li>`).join("")}
+          </ul>
+        </div>
+      ` : ""}
+    </div>
   `).join("")}
   ` : ""}
 
-  <h2>3. Actionable Priority Issues & Rebuttal Strategies</h2>
-  <table>
-    <tr>
-      <th style="width: 12%;">Priority</th>
-      <th style="width: 22%;">Category & Anchor</th>
-      <th style="width: 33%;">Issue Description</th>
-      <th style="width: 33%;">Actionable Fix & Author Rebuttal Strategy</th>
-    </tr>
-    ${(r.priorityIssues || []).map(iss => {
-      const priority = (iss.priority || "B").toUpperCase();
-      const priorityClass = priority.toLowerCase();
-      return `
-      <tr>
-        <td class="badge-${priorityClass}">
-          Priority ${escapeHtml(priority)}
-          ${iss.expectedEffort ? `<br><span style="font-size: 8pt; color: #475569;">(${escapeHtml(iss.expectedEffort)})</span>` : ""}
-        </td>
-        <td>
-          <strong>${escapeHtml(iss.title || "")}</strong><br>
-          <span style="font-size: 9pt; color: #64748B;">${escapeHtml(iss.category || "")}</span>
-          ${iss.evidenceAnchor ? `<br><code style="font-size: 8pt; color: #475569;">${escapeHtml(iss.evidenceAnchor)}</code>` : ""}
-        </td>
-        <td>
-          <div>${escapeHtml(iss.description || "")}</div>
-          ${iss.impactAssessment ? `<div style="margin-top: 4pt; font-size: 8.5pt; color: #92400E; background: #FFFBEB; padding: 4pt; border-left: 2pt solid #F59E0B;"><strong>Editorial Risk:</strong> ${escapeHtml(iss.impactAssessment)}</div>` : ""}
-        </td>
-        <td>
-          <div style="white-space: pre-line;"><strong>Operational Fix:</strong><br>${escapeHtml(iss.actionableFix || "")}</div>
-          ${iss.suggestedRewrite ? `<div style="margin-top: 4pt; font-size: 8.5pt; color: #1E293B; background: #F8FAFC; padding: 4pt; border: 1px solid #E2E8F0; font-family: monospace; white-space: pre-wrap;"><strong>Draft Revision:</strong><br>${escapeHtml(iss.suggestedRewrite)}</div>` : ""}
-          ${iss.rebuttalStrategy ? `<div style="margin-top: 4pt; color: #1E40AF; background: #EFF6FF; padding: 4pt; border-left: 2pt solid #2563EB; font-size: 8.5pt; white-space: pre-line;"><strong>Rebuttal Framing:</strong><br>${escapeHtml(iss.rebuttalStrategy)}</div>` : ""}
-        </td>
-      </tr>
-    `;}).join("")}
-  </table>
+  <!-- Section 4: Priority Action Items -->
+  <h2>4. Actionable Priority Issues & Rebuttal Strategies (${(r.priorityIssues || []).length} Items)</h2>
+  ${(r.priorityIssues || []).map(iss => {
+    const priority = (iss.priority || "B").toUpperCase();
+    const badgeClass = priority === "A" ? "badge-a" : priority === "B" ? "badge-b" : "badge-c";
+    return `
+    <div class="card-box">
+      <div style="margin-bottom: 6pt;">
+        <span class="badge-pill ${badgeClass}">Priority ${escapeHtml(priority)}: ${escapeHtml(iss.category || "General")}</span>
+        ${iss.expectedEffort ? `<span class="badge-pill" style="background-color: #F1F5F9; color: #475569; border: 1pt solid #E2E8F0; margin-left: 4pt;">Effort: ${escapeHtml(iss.expectedEffort)}</span>` : ""}
+        ${iss.evidenceAnchor ? `<span class="badge-pill" style="background-color: #F8FAFC; color: #334155; border: 1pt dashed #CBD5E1; font-family: monospace; margin-left: 4pt;">Anchor: ${escapeHtml(iss.evidenceAnchor)}</span>` : ""}
+      </div>
 
-  <h2>4. Target Journal Recommendations</h2>
+      <h3 style="margin-top: 4pt; margin-bottom: 4pt; font-size: 12pt; color: #0F172A;">${escapeHtml(iss.title || "")}</h3>
+      <p style="font-size: 10.5pt; line-height: 1.5; margin: 4pt 0 8pt 0;">${escapeHtml(iss.description || "")}</p>
+
+      ${iss.impactAssessment ? `
+        <div class="callout-amber">
+          <strong>Editorial Risk & Scholarly Consequence:</strong><br>
+          ${escapeHtml(iss.impactAssessment)}
+        </div>
+      ` : ""}
+
+      ${iss.reviewerQuote ? `
+        <div class="quote-box">
+          <strong>Reviewer Anticipated Reaction:</strong> ${escapeHtml(iss.reviewerQuote)}
+        </div>
+      ` : ""}
+
+      ${iss.actionableFix ? `
+        <div class="callout-green">
+          <strong>Required Pre-Submission Fix:</strong><br>
+          ${escapeHtml(iss.actionableFix)}
+        </div>
+      ` : ""}
+
+      ${iss.suggestedRewrite ? `
+        <div style="margin: 8pt 0;">
+          <strong style="font-size: 9.5pt; color: #2563EB; text-transform: uppercase;">Ready-to-Use Manuscript Revision / Template:</strong>
+          <div class="code-box">${escapeHtml(iss.suggestedRewrite)}</div>
+        </div>
+      ` : ""}
+
+      ${iss.rebuttalStrategy ? `
+        <div class="callout-blue">
+          <strong>Author Point-by-Point Rebuttal Strategy:</strong><br>
+          ${escapeHtml(iss.rebuttalStrategy)}
+        </div>
+      ` : ""}
+    </div>
+    `;
+  }).join("")}
+
+  <!-- Section 5: Target Journal Recommendations -->
+  <h2>5. Target Journal Recommendations & Fit Analysis</h2>
+  ${r.targetJournalEvaluation ? `
+    <div class="card-box" style="border-left: 4pt solid ${r.targetJournalEvaluation.isDisciplinaryMismatch ? "#DC2626" : "#2563EB"}; margin-bottom: 12pt;">
+      <strong>Target Submission Venue:</strong> ${escapeHtml(r.targetJournalEvaluation.name)}<br>
+      <span class="badge-pill ${r.targetJournalEvaluation.isDisciplinaryMismatch ? "badge-a" : "badge-c"}">
+        ${r.targetJournalEvaluation.isDisciplinaryMismatch ? "Critical Scope Mismatch" : "In-Scope Target"} (Fit: ${r.targetJournalEvaluation.fitScore}%)
+      </span>
+      <p style="font-size: 9.5pt; color: #475569; margin: 4pt 0 0 0;">
+        Field: ${escapeHtml(r.targetJournalEvaluation.journalDiscipline || "Unknown")} • Impact Factor: ${r.targetJournalEvaluation.impactFactor || "N/A"}
+      </p>
+      ${r.targetJournalEvaluation.mismatchWarning ? `
+        <div style="color: #991B1B; font-size: 9.5pt; margin-top: 4pt;">
+          <strong>Warning:</strong> ${escapeHtml(r.targetJournalEvaluation.mismatchWarning)}
+        </div>
+      ` : ""}
+    </div>
+  ` : ""}
+
   <table>
     <tr>
-      <th>Tier</th>
-      <th>Journal Name</th>
-      <th>Impact Factor</th>
-      <th>Scope Alignment & Desk-Reject Hazards</th>
+      <th style="width: 14%;">Match Tier</th>
+      <th style="width: 28%;">Journal Name & Publisher</th>
+      <th style="width: 12%;">Impact Factor</th>
+      <th style="width: 46%;">Scope Alignment & Desk-Reject Hazards</th>
     </tr>
     ${(r.journalRecommendations || []).map(j => `
       <tr>
-        <td><strong>${escapeHtml(j.tier)}</strong></td>
-        <td><strong>${escapeHtml(j.journalName)}</strong><br><span style="font-size: 9pt; color: #64748B;">${escapeHtml(j.publisher)}</span></td>
-        <td>${j.impactFactor}</td>
+        <td><span class="badge-pill badge-target">${escapeHtml(j.tier || "Standard")}</span></td>
+        <td><strong>${escapeHtml(j.journalName || "")}</strong><br><span style="font-size: 9pt; color: #64748B;">${escapeHtml(j.publisher || "")}</span></td>
+        <td><strong>${escapeHtml(String(j.impactFactor ?? "N/A"))}</strong></td>
         <td>
-          <p>${escapeHtml(j.scopeRationale)}</p>
-          ${(j.rejectionRisks && j.rejectionRisks.length > 0) ? `<p style="color: #DC2626; font-size: 9pt; margin-top: 4pt;"><strong>Hazards:</strong> ${escapeHtml(j.rejectionRisks.join("; "))}</p>` : ""}
+          <p style="margin: 0 0 4pt 0;">${escapeHtml(j.scopeRationale || "")}</p>
+          ${(j.rejectionRisks && j.rejectionRisks.length > 0) ? `
+            <div style="color: #DC2626; font-size: 9pt;">
+              <strong>Hazards:</strong> ${escapeHtml(j.rejectionRisks.join("; "))}
+            </div>
+          ` : ""}
         </td>
       </tr>
     `).join("")}
   </table>
 
+  <!-- Section 6: Reporting Guideline Compliance Audit -->
   ${r.reportingGuideline ? `
-  <h2>5. Reporting Guideline Compliance Audit (${escapeHtml(r.reportingGuideline.guidelineName)})</h2>
-  <div class="callout" style="background-color: #F8FAFC; border-left: 4pt solid ${r.reportingGuideline.scorePercent >= 80 ? "#10B981" : r.reportingGuideline.scorePercent >= 60 ? "#D97706" : "#DC2626"};">
-    <p style="font-weight: bold; margin: 0; font-size: 11pt;">Compliance Score: ${r.reportingGuideline.itemSetScope === "core_subset"
-      ? `${r.reportingGuideline.evidencedCount}/${r.reportingGuideline.totalItems} core items evidenced (${r.reportingGuideline.itemSetSize} in full standard; ${r.reportingGuideline.scorePercent}%)`
-      : r.reportingGuideline.evidencedCount !== undefined && r.reportingGuideline.totalItems !== undefined
-      ? `${r.reportingGuideline.evidencedCount}/${r.reportingGuideline.totalItems} Items (${r.reportingGuideline.scorePercent}%)`
-      : `${r.reportingGuideline.scorePercent}%`}</p>
+  <h2>6. Reporting Guideline Compliance Audit (${escapeHtml(r.reportingGuideline.guidelineName)})</h2>
+  <div class="card-box" style="border-left: 4pt solid ${r.reportingGuideline.scorePercent >= 80 ? "#10B981" : r.reportingGuideline.scorePercent >= 60 ? "#F59E0B" : "#EF4444"};">
+    <p style="font-weight: bold; margin: 0 0 6pt 0; font-size: 11pt;">
+      Compliance Score: ${r.reportingGuideline.itemSetScope === "core_subset"
+        ? `${r.reportingGuideline.evidencedCount}/${r.reportingGuideline.totalItems} core items evidenced (${r.reportingGuideline.scorePercent}%)`
+        : `${r.reportingGuideline.scorePercent}% Compliant`}
+    </p>
+    <p style="font-size: 9.5pt; color: #64748B; margin: 0 0 8pt 0;">Standard: ${escapeHtml(r.reportingGuideline.standardType)}</p>
+
     ${(r.reportingGuideline.compliantItems && r.reportingGuideline.compliantItems.length > 0) ? `
-      <p style="color: #166534; font-size: 9.5pt; margin-top: 6pt; margin-bottom: 2pt;"><strong>Compliant Items:</strong></p>
+      <p style="color: #166534; font-weight: bold; font-size: 9.5pt; margin: 6pt 0 2pt 0;">✔ Compliant Elements:</p>
       <ul style="color: #166534; font-size: 9.5pt;">
         ${r.reportingGuideline.compliantItems.map(item => `<li>${escapeHtml(item)}</li>`).join("")}
       </ul>
     ` : ""}
+
     ${(r.reportingGuideline.missingOrPartialItems && r.reportingGuideline.missingOrPartialItems.length > 0) ? `
-      <p style="color: #DC2626; font-size: 9.5pt; margin-top: 6pt; margin-bottom: 2pt;"><strong>Missing / Partially Addressed Items:</strong></p>
-      <ul style="color: #DC2626; font-size: 9.5pt;">
+      <p style="color: #991B1B; font-weight: bold; font-size: 9.5pt; margin: 6pt 0 2pt 0;">✖ Missing or Partially Addressed Elements:</p>
+      <ul style="color: #991B1B; font-size: 9.5pt;">
         ${r.reportingGuideline.missingOrPartialItems.map(item => `<li>${escapeHtml(item)}</li>`).join("")}
       </ul>
     ` : ""}
@@ -1053,12 +1394,12 @@ export function generateFullReportWord(r: FullReviewReport): string {
 // -----------------------------------------------------------------------------
 // 4. BRIEF REPORT - MICROSOFT WORD (.DOC) EXPORT GENERATOR
 // -----------------------------------------------------------------------------
-function generateBriefReportWord(r: BriefJournalFitReport): string {
+export function generateBriefReportWord(r: BriefJournalFitReport): string {
   const title = escapeHtml(r.title);
   const targetJournal = escapeHtml(r.targetJournal);
   const dateStr = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
   const scoreBanner = r.fitScore !== undefined
-    ? `<p style="font-size: 14pt; font-weight: bold; margin: 0;">Scope Match: ${r.fitScore}% — ${escapeHtml(r.verdict)}</p>`
+    ? `<p style="font-size: 15pt; font-weight: bold; margin: 0; color: #1E40AF;">Scope Match: ${r.fitScore}% — ${escapeHtml(r.verdict)}</p>`
     : `<p style="font-size: 14pt; font-weight: bold; margin: 0; color: #475569;">${escapeHtml(r.verdict)}</p>`;
 
   return `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -1067,32 +1408,81 @@ function generateBriefReportWord(r: BriefJournalFitReport): string {
   <title>ManuView Scope Fit Report: ${title}</title>
   <style>
     @page { size: 8.5in 11.0in; margin: 1.0in; }
-    body { font-family: 'Calibri', Arial, sans-serif; font-size: 11pt; color: #1E293B; line-height: 1.4; }
-    h1 { font-family: 'Georgia', serif; font-size: 18pt; color: #0F172A; }
-    h2 { font-size: 13pt; color: #0F172A; border-bottom: 1.5pt solid #2563EB; padding-bottom: 2pt; margin-top: 14pt; }
+    body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #1E293B; line-height: 1.45; }
+    h1 { font-family: 'Georgia', serif; font-size: 20pt; color: #0F172A; margin-top: 4pt; margin-bottom: 6pt; }
+    h2 { font-size: 13pt; font-weight: bold; color: #0F172A; border-bottom: 2pt solid #2563EB; padding-bottom: 3pt; margin-top: 16pt; margin-bottom: 8pt; }
+    .card-box { border: 1pt solid #CBD5E1; padding: 12pt 14pt; margin-bottom: 12pt; background-color: #FFFFFF; }
+    .callout-blue { background-color: #EFF6FF; border-left: 4pt solid #2563EB; padding: 10pt 14pt; margin: 10pt 0; color: #1E40AF; }
+    .callout-green { background-color: #ECFDF5; border-left: 4pt solid #10B981; padding: 8pt 12pt; margin: 8pt 0; color: #065F46; }
+    .callout-red { background-color: #FEF2F2; border-left: 4pt solid #EF4444; padding: 8pt 12pt; margin: 8pt 0; color: #991B1B; }
+    .badge-pill { display: inline-block; padding: 2.5pt 8pt; font-size: 9pt; font-weight: bold; border-radius: 4pt; background-color: #EFF6FF; color: #1D4ED8; border: 1pt solid #BFDBFE; }
+    table { border-collapse: collapse; width: 100%; margin-top: 8pt; }
+    th { background-color: #F1F5F9; border: 1pt solid #CBD5E1; padding: 6pt 8pt; text-align: left; font-size: 10pt; font-weight: bold; }
+    td { border: 1pt solid #CBD5E1; padding: 6pt 8pt; font-size: 10pt; vertical-align: top; }
     ul { padding-left: 18pt; margin-top: 4pt; margin-bottom: 8pt; }
-    li { margin-bottom: 3pt; }
+    li { margin-bottom: 3pt; font-size: 10pt; }
   </style>
 </head>
 <body>
-  <h1>${title}</h1>
-  <p>Target Journal: <strong>${targetJournal}</strong> | Date: ${dateStr}</p>
-  <div style="background-color: #EFF6FF; border-left: 4pt solid #2563EB; padding: 10pt; margin: 10pt 0;">
-    ${scoreBanner}
-    <p style="margin-top: 4pt; margin-bottom: 0;">${escapeHtml(r.summary)}</p>
+  <div class="card-box">
+    <table style="border: none; margin: 0; width: 100%;">
+      <tr style="border: none;">
+        <td style="border: none; padding: 0;">
+          <p style="font-size: 9pt; font-weight: bold; color: #2563EB; text-transform: uppercase; letter-spacing: 1pt; margin: 0;">
+            ManuView Editorial Scope Report
+          </p>
+        </td>
+        <td style="border: none; padding: 0; text-align: right;">
+          <span class="badge-pill">Target: ${targetJournal}</span>
+        </td>
+      </tr>
+    </table>
+    <h1>${title}</h1>
+    <p style="font-size: 9.5pt; color: #64748B; margin: 0 0 10pt 0;">Generated on ${dateStr}</p>
+    <div class="callout-blue">
+      ${scoreBanner}
+      <p style="margin-top: 6pt; margin-bottom: 0; font-size: 10.5pt; line-height: 1.5;">${escapeHtml(r.summary)}</p>
+    </div>
   </div>
+
   <h2>Scope Strengths Supporting Submission</h2>
-  <ul>
-    ${(r.keyHighlights || []).map(h => `<li>${escapeHtml(h)}</li>`).join("")}
-  </ul>
+  <div class="callout-green">
+    <ul style="margin: 0;">
+      ${(r.keyHighlights || []).map(h => `<li>${escapeHtml(h)}</li>`).join("")}
+    </ul>
+  </div>
+
   <h2>Desk-Reject Hazards for ${targetJournal}</h2>
-  <ul>
-    ${(r.deskRejectHazards || []).map(h => `<li style="color: #DC2626;">${escapeHtml(h)}</li>`).join("")}
-  </ul>
+  <div class="callout-red">
+    <ul style="margin: 0;">
+      ${(r.deskRejectHazards || []).map(h => `<li>${escapeHtml(h)}</li>`).join("")}
+    </ul>
+  </div>
+
   <h2>Title & Abstract Framing Suggestions</h2>
-  <ul>
-    ${(r.framingSuggestions || []).map(s => `<li>${escapeHtml(s)}</li>`).join("")}
-  </ul>
+  <div class="callout-blue">
+    <ul style="margin: 0;">
+      ${(r.framingSuggestions || []).map(s => `<li>${escapeHtml(s)}</li>`).join("")}
+    </ul>
+  </div>
+
+  ${(r.alternativeJournals && r.alternativeJournals.length > 0) ? `
+  <h2>Alternative Target Journals</h2>
+  <table>
+    <tr>
+      <th style="width: 25%;">Journal</th>
+      <th style="width: 15%;">Impact Factor</th>
+      <th style="width: 60%;">Match Rationale</th>
+    </tr>
+    ${r.alternativeJournals.map(j => `
+      <tr>
+        <td><strong>${escapeHtml(j.name)}</strong><br><span style="font-size: 9pt; color: #64748B;">${escapeHtml(j.tier)}</span></td>
+        <td>${j.impactFactor || "N/A"}</td>
+        <td>${escapeHtml(j.matchReason)}</td>
+      </tr>
+    `).join("")}
+  </table>
+  ` : ""}
 </body>
 </html>`;
 }

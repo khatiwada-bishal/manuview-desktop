@@ -85,6 +85,31 @@ export async function openExternalLink(url: string): Promise<void> {
 
 let isSavingDesktop = false;
 
+function downloadBlobWeb(
+  content: string,
+  filename: string,
+  mimeType: string
+): { success: boolean; filePath?: string; error?: string } {
+  if (typeof window === "undefined") {
+    return { success: false, error: "No window context" };
+  }
+  try {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    return { success: true, filePath: filename };
+  } catch (blobErr) {
+    console.error("Browser blob download failed:", blobErr);
+    return { success: false, error: String(blobErr) };
+  }
+}
+
 /**
  * Saves a file using the native desktop file save dialog if in Tauri,
  * or standard browser anchor download if in web preview.
@@ -92,8 +117,9 @@ let isSavingDesktop = false;
 export async function saveFileDesktop(
   content: string,
   defaultFilename: string,
-  filters?: { name: string; extensions: string[] }[]
-): Promise<{ success: boolean; filePath?: string; error?: string }> {
+  filters?: { name: string; extensions: string[] }[],
+  mimeType: string = "text/plain;charset=utf-8"
+): Promise<{ success: boolean; filePath?: string; cancelled?: boolean; error?: string }> {
   // Prevent concurrent save operations
   if (isSavingDesktop) {
     return { success: false, error: "Save operation already in progress" };
@@ -112,7 +138,7 @@ export async function saveFileDesktop(
 
       if (!filePath) {
         // User cancelled the save dialog
-        return { success: false };
+        return { success: false, cancelled: true };
       }
 
       // Write strictly via scoped official Tauri fs plugin (Audit Finding #2)
@@ -121,35 +147,26 @@ export async function saveFileDesktop(
         await writeTextFile(filePath, content);
         return { success: true, filePath };
       } catch (fsErr) {
-        console.error("plugin-fs writeTextFile failed:", fsErr);
+        console.error("plugin-fs writeTextFile failed, attempting browser download fallback:", fsErr);
+        // Fallback to browser blob download if fs throws an unexpected permission or OS error
+        const fallbackRes = downloadBlobWeb(content, defaultFilename, mimeType);
+        if (fallbackRes.success) {
+          return { success: true, filePath: defaultFilename };
+        }
         return { success: false, error: String(fsErr) };
       }
     } catch (err) {
-      console.error("Native save dialog error:", err);
+      console.error("Native save dialog error, attempting browser download fallback:", err);
+      const fallbackRes = downloadBlobWeb(content, defaultFilename, mimeType);
+      if (fallbackRes.success) {
+        return { success: true, filePath: defaultFilename };
+      }
       return { success: false, error: String(err) };
     } finally {
       isSavingDesktop = false;
     }
   }
 
-  // Web preview mode (only executed in standard browser, never in desktop app)
-  if (typeof window !== "undefined") {
-    try {
-      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = defaultFilename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      return { success: true, filePath: defaultFilename };
-    } catch (blobErr) {
-      console.error("Browser blob download failed:", blobErr);
-      return { success: false, error: String(blobErr) };
-    }
-  }
-
-  return { success: false, error: "No window context" };
+  // Web preview mode (executed in standard browser or dev webview)
+  return downloadBlobWeb(content, defaultFilename, mimeType);
 }
