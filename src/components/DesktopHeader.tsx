@@ -422,16 +422,19 @@ export function DesktopHeader({
         {/* Download for OS Split Button (Web Mode Only - exact match with screenshot) */}
         {!isDesktopApp() && (
           <div className="relative inline-flex items-center" ref={downloadDropdownRef}>
-            <div className="inline-flex items-center h-8 rounded-lg bg-blue-600 hover:bg-blue-500 text-white shadow-xs transition-all duration-200 overflow-hidden">
+            <div className="inline-flex items-center h-8 rounded-lg bg-blue-600/80 hover:bg-blue-600 text-white shadow-xs transition-all duration-200 overflow-hidden">
               <button
                 type="button"
                 data-no-drag
-                onClick={() => triggerPlatformDownload(selectedPlatform)}
+                onClick={() => setDownloadDropdownOpen((prev) => !prev)}
                 className="inline-flex items-center h-full gap-1.5 px-3 font-semibold text-xs cursor-pointer hover:bg-blue-700/40 transition active:scale-[0.98]"
-                title={`Download ManuView for ${selectedPlatform.label}`}
+                title={`Download ManuView for ${selectedPlatform.label} (Coming Soon)`}
               >
                 <Sparkles className="w-3.5 h-3.5 text-white" />
                 <span>Download for {selectedPlatform.label}</span>
+                <span className="text-[10px] font-normal px-1.5 py-0.5 rounded bg-white/20 text-white leading-none">
+                  Coming Soon
+                </span>
               </button>
               <button
                 type="button"
@@ -454,11 +457,11 @@ export function DesktopHeader({
 
             {/* Dropdown Menu for Other Operating Systems */}
             {downloadDropdownOpen && (
-              <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl liquid-glass-modal bg-white dark:bg-[#0f172a] p-2 shadow-2xl border border-black/10 dark:border-white/10 z-50 animate-fade-in backdrop-blur-2xl">
+              <div className="absolute right-0 top-full mt-2 w-72 rounded-2xl liquid-glass-modal bg-white dark:bg-[#0f172a] p-2 shadow-2xl border border-black/10 dark:border-white/10 z-50 animate-fade-in backdrop-blur-2xl">
                 <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-neutral-400 border-b border-black/5 dark:border-white/10 flex items-center justify-between">
                   <span>Operating Systems</span>
                   <span className="font-mono text-[9px] text-emerald-600 dark:text-emerald-400">
-                    Desktop v0.1.0
+                    Desktop v0.3.97
                   </span>
                 </div>
                 <div className="space-y-1 mt-1.5">
@@ -466,16 +469,9 @@ export function DesktopHeader({
                     const isCurrentSelected = plat.id === selectedPlatform.id;
                     const isDetected = plat.id === detectedPlatformId;
                     return (
-                      <button
+                      <div
                         key={plat.id}
-                        type="button"
-                        data-no-drag
-                        onClick={() => {
-                          setSelectedPlatform(plat);
-                          setDownloadDropdownOpen(false);
-                          triggerPlatformDownload(plat);
-                        }}
-                        className={`w-full text-left p-2 rounded-xl transition flex items-center justify-between group cursor-pointer ${
+                        className={`w-full text-left p-2 rounded-xl transition flex items-center justify-between group ${
                           isCurrentSelected
                             ? "bg-blue-500/10 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 font-semibold"
                             : "hover:bg-black/5 dark:hover:bg-white/10 text-neutral-800 dark:text-neutral-200"
@@ -509,12 +505,14 @@ export function DesktopHeader({
                               )}
                             </div>
                             <div className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">
-                              {plat.sublabel}
+                              {plat.sublabel} ({plat.extension})
                             </div>
                           </div>
                         </div>
-                        <Download className="w-3 h-3 text-neutral-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 shrink-0 ml-1.5" />
-                      </button>
+                        <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 whitespace-nowrap shrink-0 ml-1.5">
+                          Coming Soon
+                        </span>
+                      </div>
                     );
                   })}
                 </div>

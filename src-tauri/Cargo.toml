@@ -1,6 +1,6 @@
 [package]
 name = "manuview-desktop"
-version = "0.1.0"
+version = "0.3.97"
 description = "ManuView - AI Pre-Submission Peer-Review Simulator"
 authors = ["ManuView Team"]
 license = "MIT"

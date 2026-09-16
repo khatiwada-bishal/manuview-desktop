@@ -279,7 +279,7 @@ export function DesktopSidebar({
         {/* FOOTER: App Version (left) + Model Pill & Settings (right) */}
         <div className="p-3 border-t border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between">
           <span className="font-semibold text-neutral-400 dark:text-neutral-500 text-[11px] pl-1 select-none">
-            v0.1.0
+            v0.3.97
           </span>
           <button
             type="button"

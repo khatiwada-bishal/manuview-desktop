@@ -388,15 +388,18 @@ export function DesktopWebLandingPage({
           <div className="flex flex-wrap items-center justify-center gap-3.5 mb-14 sm:mb-18">
             {/* Split Download Button with Platform Detection & Dropdown */}
             <div className="relative inline-flex items-center" ref={downloadDropdownRef}>
-              <div className="inline-flex items-center rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-md transition-all duration-200 overflow-hidden">
+              <div className="inline-flex items-center rounded-xl bg-blue-600/85 hover:bg-blue-600 text-white shadow-md transition-all duration-200 overflow-hidden">
                 <button
                   type="button"
-                  onClick={() => handleDownload(selectedPlatform)}
+                  onClick={() => setDownloadDropdownOpen((prev) => !prev)}
                   className="inline-flex items-center gap-2 px-5 py-2.5 font-semibold text-sm cursor-pointer hover:bg-blue-700/40 transition active:scale-[0.98]"
-                  title={`Download ManuView for ${selectedPlatform.label}`}
+                  title={`Download ManuView for ${selectedPlatform.label} (Coming Soon)`}
                 >
                   <Sparkles className="w-4 h-4 text-white" />
                   <span>Download for {selectedPlatform.label}</span>
+                  <span className="text-[11px] font-normal px-2 py-0.5 rounded bg-white/20 text-white leading-none">
+                    Coming Soon
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -422,7 +425,7 @@ export function DesktopWebLandingPage({
                   <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400 border-b border-black/5 dark:border-white/10 flex items-center justify-between">
                     <span>Operating Systems</span>
                     <span className="font-mono text-[9px] text-emerald-600 dark:text-emerald-400">
-                      Desktop v0.1.0
+                      Desktop v0.3.97
                     </span>
                   </div>
                   <div className="space-y-1 mt-1.5">
@@ -430,15 +433,9 @@ export function DesktopWebLandingPage({
                       const isCurrentSelected = plat.id === selectedPlatform.id;
                       const isDetected = plat.id === detectedPlatformId;
                       return (
-                        <button
+                        <div
                           key={plat.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedPlatform(plat);
-                            setDownloadDropdownOpen(false);
-                            handleDownload(plat);
-                          }}
-                          className={`w-full text-left p-2.5 rounded-xl transition flex items-center justify-between group cursor-pointer ${
+                          className={`w-full text-left p-2.5 rounded-xl transition flex items-center justify-between group ${
                             isCurrentSelected
                               ? "bg-blue-500/10 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 font-semibold"
                               : "hover:bg-black/5 dark:hover:bg-white/10 text-neutral-800 dark:text-neutral-200"
@@ -476,8 +473,10 @@ export function DesktopWebLandingPage({
                               </div>
                             </div>
                           </div>
-                          <Download className="w-3.5 h-3.5 text-neutral-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 shrink-0 ml-2" />
-                        </button>
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 whitespace-nowrap shrink-0 ml-1.5">
+                            Coming Soon
+                          </span>
+                        </div>
                       );
                     })}
                   </div>
@@ -1736,11 +1735,20 @@ export function DesktopWebLandingPage({
           <div className="flex flex-wrap items-center justify-center gap-3.5">
             <button
               type="button"
-              onClick={() => handleDownload(selectedPlatform)}
+              onClick={() => {
+                const heroDropdown = document.querySelector('[aria-label="Other operating system downloads"]') as HTMLButtonElement | null;
+                if (heroDropdown) {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  setTimeout(() => heroDropdown.click(), 400);
+                }
+              }}
               className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl liquid-glass-btn-primary text-white font-semibold text-sm shadow-xs transition active:scale-[0.98] cursor-pointer"
             >
               <Download className="w-4 h-4 text-white" />
-              <span>Download ManuView for {selectedPlatform.label}</span>
+              <span>Download for {selectedPlatform.label}</span>
+              <span className="text-[11px] font-normal px-2 py-0.5 rounded bg-white/20 text-white leading-none">
+                Coming Soon
+              </span>
             </button>
 
             <button
@@ -1765,43 +1773,34 @@ export function DesktopWebLandingPage({
                 <img
                   src="/icon.svg"
                   alt="ManuView Logo"
-                  className="w-7 h-7 rounded-lg shadow-xs shrink-0 select-none"
+                  className="w-7 h-7 rounded-lg shadow-2xs"
                 />
-                <div className="truncate min-w-0">
-                  <div className="font-bold text-xs sm:text-sm text-[#0F172A] dark:text-white tracking-tight leading-tight">
-                    ManuView Desktop
-                  </div>
-                  <div className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium leading-tight">
-                    Research &amp; Review Suite
-                  </div>
-                </div>
+                <span className="text-sm font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
+                  ManuView
+                </span>
+                <span className="font-mono text-[10px] text-neutral-400 dark:text-neutral-500">
+                  v0.3.97
+                </span>
               </div>
-              <p className="text-neutral-500 dark:text-neutral-400 leading-relaxed text-xs">
-                Open-source pre-submission scientific peer-review diagnostics. Free and open to every researcher worldwide.
+              <p className="text-[11px] leading-relaxed text-neutral-500 dark:text-neutral-400">
+                Privacy-first pre-submission peer review &amp; manuscript diagnostic suite for academic researchers.
               </p>
-              <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 text-[11px] pt-1 font-medium">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Zero-retention &bull; Privacy by default</span>
-              </div>
             </div>
 
             <div>
-              <h4 className="font-semibold text-neutral-900 dark:text-neutral-200 mb-3 text-xs">Product</h4>
+              <h4 className="font-semibold text-neutral-900 dark:text-neutral-200 mb-3 text-xs">Simulators</h4>
               <ul className="space-y-2 text-neutral-600 dark:text-neutral-400">
-                <li><button type="button" onClick={onLaunchApp} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Launch App</button></li>
-                <li><button type="button" onClick={() => scrollToSection("demo")} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Interactive Preview</button></li>
-                <li><button type="button" onClick={() => { setActiveTab("dimensions"); scrollToSection("demo"); }} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">The 6 Scoring Rubrics</button></li>
-                <li><button type="button" onClick={() => { setActiveTab("personas"); scrollToSection("demo"); }} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">5-Persona Peer Review</button></li>
-                <li><button type="button" onClick={() => handleToolClick("journal-fit")} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Journal Fit Predictor</button></li>
+                <li><button type="button" onClick={() => handleToolClick("ai-review")} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">5-Persona Peer Review</button></li>
+                <li><button type="button" onClick={() => handleToolClick("journal-fit")} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Journal Fit Benchmark</button></li>
+                <li><button type="button" onClick={() => handleToolClick("reference-checker")} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Retraction &amp; DOI Audit</button></li>
+                <li><button type="button" onClick={() => handleToolClick("citation-claim")} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Citation Claim Checker</button></li>
               </ul>
             </div>
 
             <div>
-              <h4 className="font-semibold text-neutral-900 dark:text-neutral-200 mb-3 text-xs">Research Tools</h4>
+              <h4 className="font-semibold text-neutral-900 dark:text-neutral-200 mb-3 text-xs">Author Tools</h4>
               <ul className="space-y-2 text-neutral-600 dark:text-neutral-400">
-                <li><button type="button" onClick={() => handleToolClick("reference-checker")} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Reference &amp; Retraction Audit</button></li>
-                <li><button type="button" onClick={() => handleToolClick("citation-claim")} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Citation Claim Validator</button></li>
-                <li><button type="button" onClick={() => handleToolClick("prisma")} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">PRISMA 2020 Flow Generator</button></li>
+                <li><button type="button" onClick={() => handleToolClick("prisma")} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">PRISMA 2020 Generator</button></li>
                 <li><button type="button" onClick={() => handleToolClick("cover-letter")} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Cover Letter Generator</button></li>
                 <li><button type="button" onClick={() => handleToolClick("response-builder")} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Rebuttal Response Matrix</button></li>
               </ul>
@@ -1810,10 +1809,22 @@ export function DesktopWebLandingPage({
             <div>
               <h4 className="font-semibold text-neutral-900 dark:text-neutral-200 mb-3 text-xs">Downloads</h4>
               <ul className="space-y-2 text-neutral-600 dark:text-neutral-400">
-                <li><button type="button" onClick={() => handleDownload(PLATFORMS[0])} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">macOS Apple Silicon (.dmg)</button></li>
-                <li><button type="button" onClick={() => handleDownload(PLATFORMS[1])} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">macOS Intel (.dmg)</button></li>
-                <li><button type="button" onClick={() => handleDownload(PLATFORMS[2])} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Windows 10 / 11 (.msi)</button></li>
-                <li><button type="button" onClick={() => handleDownload(PLATFORMS[3])} className="hover:text-neutral-900 dark:hover:text-neutral-200 transition cursor-pointer">Linux AppImage (.AppImage)</button></li>
+                <li className="flex items-center justify-between">
+                  <span>macOS Apple Silicon (.dmg)</span>
+                  <span className="text-[9px] font-medium px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">Coming Soon</span>
+                </li>
+                <li className="flex items-center justify-between">
+                  <span>macOS Intel (.dmg)</span>
+                  <span className="text-[9px] font-medium px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">Coming Soon</span>
+                </li>
+                <li className="flex items-center justify-between">
+                  <span>Windows 10 / 11 (.msi)</span>
+                  <span className="text-[9px] font-medium px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">Coming Soon</span>
+                </li>
+                <li className="flex items-center justify-between">
+                  <span>Linux AppImage (.AppImage)</span>
+                  <span className="text-[9px] font-medium px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">Coming Soon</span>
+                </li>
               </ul>
             </div>
 
