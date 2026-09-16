@@ -9,8 +9,10 @@ import {
   CreateMLCEngine,
   hasModelInCache,
   deleteModelAllInfoInCache,
+  prebuiltAppConfig,
   type MLCEngineInterface,
   type InitProgressReport,
+  type AppConfig,
 } from "@mlc-ai/web-llm";
 import { isDesktopApp, isMacOS } from "@/lib/desktop";
 
@@ -326,10 +328,39 @@ export async function initLocalModel(
 
   try {
     // Load WebLLM engine with direct WebGPU access
-    // Bypasses Web Worker messaging issues in Tauri / WKWebView and connects directly to GPU
-    activeEngine = await CreateMLCEngine(modelId, {
-      initProgressCallback: progressCallback,
-    });
+    // Bypasses Web Worker messaging issues in Tauri / WKWebView and connects directly to GPU.
+    // Configure sliding window attention (StreamingLLM with attention sinks) to allow
+    // handling documents without hard token window overflow crashes.
+    const customAppConfig: AppConfig = {
+      ...prebuiltAppConfig,
+      model_list: prebuiltAppConfig.model_list.map((m) => {
+        if (SUPPORTED_LOCAL_MODELS.some((sm) => sm.id === m.model_id)) {
+          return {
+            ...m,
+            overrides: {
+              ...m.overrides,
+              context_window_size: -1,
+              sliding_window_size: 4096,
+              attention_sink_size: 4,
+            },
+          };
+        }
+        return m;
+      }),
+    };
+
+    activeEngine = await CreateMLCEngine(
+      modelId,
+      {
+        appConfig: customAppConfig,
+        initProgressCallback: progressCallback,
+      },
+      {
+        context_window_size: -1,
+        sliding_window_size: 4096,
+        attention_sink_size: 4,
+      }
+    );
 
     activeModelId = modelId;
 
@@ -367,7 +398,8 @@ export async function initLocalModel(
 export async function generateWithLocalSLM(
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
   modelId: string = DEFAULT_LOCAL_MODEL,
-  onChunk?: (delta: string, accumulated: string) => void
+  onChunk?: (delta: string, accumulated: string) => void,
+  maxTokens: number = 1536
 ): Promise<string> {
   const engine = await initLocalModel(modelId);
 
@@ -383,7 +415,7 @@ export async function generateWithLocalSLM(
       messages: messages as any,
       stream: true,
       temperature: 0.5,
-      max_tokens: 4096,
+      max_tokens: maxTokens,
     });
 
     let accumulated = "";

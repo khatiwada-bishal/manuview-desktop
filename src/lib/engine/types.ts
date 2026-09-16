@@ -37,7 +37,7 @@ export const PROVIDER_CONTEXT_CHAR_LIMITS: Record<string, number> = {
   mistral: 55000,
   groq: 20000,
   ollama: 22000,
-  webllm: 8000,
+  webllm: 4500,
 };
 export const DEFAULT_CONTEXT_CHAR_LIMIT = 45000;
 
