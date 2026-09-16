@@ -13,13 +13,10 @@ import {
   CheckCircle2,
   FileCode,
   Download,
-  ShieldCheck,
-  Cpu,
 } from "lucide-react";
 import { callLLM, sanitizeAuthorText, sanitizeErrorMessage, getSavedClientConfig, resolveActiveConfig } from "@/lib/llm";
 import { cleanAndRepairJson } from "@/lib/json-repair";
 import { ProviderConfig } from "@/lib/types";
-import { parseDecisionLetterDeterministic } from "@/lib/deterministic-templates";
 
 const SAMPLE_DECISION_LETTER = `Dear Author,
 
@@ -43,13 +40,15 @@ interface RebuttalItem {
   draftResponse: string;
 }
 
-export function DesktopResponseBuilderView() {
+export interface DesktopResponseBuilderViewProps {
+  onOpenSettings?: () => void;
+}
+
+export function DesktopResponseBuilderView({ onOpenSettings }: DesktopResponseBuilderViewProps = {}) {
   const [inputText, setInputText] = useState("");
-  const [deterministicMode, setDeterministicMode] = useState<boolean>(true);
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<RebuttalItem[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [infoNotice, setInfoNotice] = useState<string | null>(null);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
 
   const handleSample = () => {
@@ -65,23 +64,22 @@ export function DesktopResponseBuilderView() {
 
     setLoading(true);
     setError(null);
-    setInfoNotice(null);
     setItems([]);
 
-    // 1. Instant deterministic parsing if deterministicMode is active
-    if (deterministicMode) {
-      const parsed = parseDecisionLetterDeterministic(inputText);
-      if (parsed.length === 0) {
-        setError("Unable to parse structured reviewer critiques from input. Ensure text contains reviewer comments or numbered points.");
-      } else {
-        setItems(parsed);
-      }
-      setLoading(false);
-      return;
-    }
-
-    // 2. Active LLM generation with graceful deterministic fallback
     try {
+      const providerConfig = await resolveActiveConfig();
+      const isConfigUsable =
+        providerConfig.provider === "ollama" ||
+        providerConfig.provider === "webllm" ||
+        Boolean(providerConfig.apiKey && providerConfig.apiKey.trim().length > 0) ||
+        Boolean(providerConfig.hasSecureKey);
+
+      if (!isConfigUsable) {
+        setError("No AI model provider configured. Synthesizing a rebuttal matrix requires an active model (Ollama, Local SLM, or Cloud LLM API). Please open Settings to configure a provider.");
+        setLoading(false);
+        return;
+      }
+
       const safeInput = sanitizeAuthorText(inputText);
 
       const prompt = `Parse the following journal peer-review decision letter into structured, numbered critique points and generate an itemized revision response matrix:
@@ -105,16 +103,6 @@ Return a JSON array of parsed reviewer comments with the following format:
   }
 ]`;
 
-      const providerConfig = await resolveActiveConfig();
-
-      if (!providerConfig.hasSecureKey && providerConfig.provider !== "ollama") {
-        const parsed = parseDecisionLetterDeterministic(inputText);
-        setItems(parsed);
-        setDeterministicMode(true);
-        setInfoNotice("No model provider configured. Generated with the publication-grade Deterministic Decision Letter Parser.");
-        return;
-      }
-
       const raw = await callLLM([{ role: "user", content: prompt }], providerConfig);
       let parsed: RebuttalItem[] = [];
       try {
@@ -122,25 +110,13 @@ Return a JSON array of parsed reviewer comments with the following format:
       } catch {}
 
       if (!Array.isArray(parsed) || parsed.length === 0) {
-        const fallback = parseDecisionLetterDeterministic(inputText);
-        if (fallback.length > 0) {
-          setItems(fallback);
-          setInfoNotice("LLM response could not be parsed as JSON. Generated using Deterministic Decision Letter Parser.");
-          return;
-        }
-        throw new Error("Unable to parse structured reviewer critiques from input.");
+        throw new Error("Unable to parse structured reviewer critiques from input. Please check the letter format or try again.");
       }
 
       setItems(parsed);
     } catch (err: any) {
-      console.warn("LLM response builder failed, falling back to deterministic parser:", err);
-      const fallback = parseDecisionLetterDeterministic(inputText);
-      if (fallback.length > 0) {
-        setItems(fallback);
-        setInfoNotice("Live model request interrupted or unavailable. Rebuttal matrix generated using Deterministic Decision Letter Parser.");
-      } else {
-        setError(sanitizeErrorMessage(err.message || "Failed to generate rebuttal matrix."));
-      }
+      console.warn("LLM response builder failed:", err);
+      setError(sanitizeErrorMessage(err.message || "Failed to generate rebuttal matrix. Please check your model configuration and try again."));
     } finally {
       setLoading(false);
     }
@@ -238,49 +214,21 @@ ${rows}
             className="w-full px-3.5 py-2.5 rounded-xl liquid-glass-input text-xs sm:text-sm focus:outline-none resize-none font-mono"
           />
 
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
-              Parsing &amp; Generation Engine
-            </label>
-            <div className="flex items-center h-[42px] p-1 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 max-w-md">
-              <button
-                type="button"
-                onClick={() => setDeterministicMode(true)}
-                className={`flex-1 flex items-center justify-center gap-1.5 h-full rounded-lg text-xs font-medium transition cursor-pointer ${
-                  deterministicMode
-                    ? "bg-rose-600 text-white shadow-xs"
-                    : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
-                }`}
-              >
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Deterministic Parser</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setDeterministicMode(false)}
-                className={`flex-1 flex items-center justify-center gap-1.5 h-full rounded-lg text-xs font-medium transition cursor-pointer ${
-                  !deterministicMode
-                    ? "bg-rose-600 text-white shadow-xs"
-                    : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
-                }`}
-              >
-                <Cpu className="w-3.5 h-3.5" />
-                <span>Live Model AI Stream</span>
-              </button>
-            </div>
-          </div>
-
-          {infoNotice && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20 text-xs backdrop-blur-xs">
-              <ShieldCheck className="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400" />
-              <span>{infoNotice}</span>
-            </div>
-          )}
-
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 text-red-700 dark:text-rose-300 border border-red-500/20 text-xs backdrop-blur-xs">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-red-500/10 text-red-700 dark:text-rose-300 border border-red-500/20 text-xs backdrop-blur-xs">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{error}</span>
+              </div>
+              {onOpenSettings && (
+                <button
+                  type="button"
+                  onClick={onOpenSettings}
+                  className="shrink-0 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium text-xs transition cursor-pointer"
+                >
+                  Configure Provider
+                </button>
+              )}
             </div>
           )}
 
@@ -297,8 +245,8 @@ ${rows}
                 </>
               ) : (
                 <>
-                  {deterministicMode ? <ShieldCheck className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
-                  <span>{deterministicMode ? "Parse & Build Rebuttal Matrix (Deterministic)" : "Generate Response Matrix (AI)"}</span>
+                  <Sparkles className="w-4 h-4" />
+                  <span>Generate Response Matrix (AI)</span>
                 </>
               )}
             </button>

@@ -6,6 +6,8 @@ export type ScoreDimension =
   | 'clarity'
   | 'prior_work';
 
+export type CoverLetterFormat = "standard" | "nature" | "elsevier" | "ieee" | "plos";
+
 export const VALID_SCORE_DIMENSIONS: ReadonlySet<ScoreDimension> = new Set<ScoreDimension>([
   'originality',
   'broad_interest',

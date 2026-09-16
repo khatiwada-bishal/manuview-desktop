@@ -451,16 +451,16 @@ export default function App() {
       return <DesktopReferenceView />;
     }
     if (activeTabId === "tool-citation-claim") {
-      return <DesktopCitationClaimView />;
+      return <DesktopCitationClaimView onOpenSettings={() => setIsSettingsOpen(true)} />;
     }
     if (activeTabId === "tool-prisma") {
       return <DesktopPrismaView />;
     }
     if (activeTabId === "tool-cover-letter") {
-      return <DesktopCoverLetterView />;
+      return <DesktopCoverLetterView onOpenSettings={() => setIsSettingsOpen(true)} />;
     }
     if (activeTabId === "tool-response-builder") {
-      return <DesktopResponseBuilderView />;
+      return <DesktopResponseBuilderView onOpenSettings={() => setIsSettingsOpen(true)} />;
     }
 
     // Default: Article Review Dashboard

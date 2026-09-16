@@ -17,7 +17,11 @@ import { callLLM, sanitizeAuthorText, sanitizeErrorMessage, getSavedClientConfig
 import { cleanAndRepairJson } from "@/lib/json-repair";
 import { ProviderConfig } from "@/lib/types";
 
-export function DesktopCitationClaimView() {
+export interface DesktopCitationClaimViewProps {
+  onOpenSettings?: () => void;
+}
+
+export function DesktopCitationClaimView({ onOpenSettings }: DesktopCitationClaimViewProps = {}) {
   const [sentence, setSentence] = useState("");
   const [doi, setDoi] = useState("");
   const [loading, setLoading] = useState(false);
@@ -92,6 +96,17 @@ Return a JSON object with:
 }`;
 
       const providerConfig = await resolveActiveConfig();
+      const isConfigUsable =
+        providerConfig.provider === "ollama" ||
+        providerConfig.provider === "webllm" ||
+        Boolean(providerConfig.apiKey && providerConfig.apiKey.trim().length > 0) ||
+        Boolean(providerConfig.hasSecureKey);
+
+      if (!isConfigUsable) {
+        setError("No AI model provider configured. Validating citation claims requires an active model (Ollama, Local SLM, or Cloud LLM API). Please open Settings to configure a provider.");
+        setLoading(false);
+        return;
+      }
 
       const raw = await callLLM([{ role: "user", content: prompt }], providerConfig);
 
@@ -174,9 +189,20 @@ Return a JSON object with:
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 text-red-700 dark:text-rose-300 border border-red-500/20 text-xs backdrop-blur-xs">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-red-500/10 text-red-700 dark:text-rose-300 border border-red-500/20 text-xs backdrop-blur-xs">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{error}</span>
+              </div>
+              {onOpenSettings && (
+                <button
+                  type="button"
+                  onClick={onOpenSettings}
+                  className="shrink-0 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium text-xs transition cursor-pointer"
+                >
+                  Configure Provider
+                </button>
+              )}
             </div>
           )}
 
