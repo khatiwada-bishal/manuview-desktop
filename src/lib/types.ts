@@ -312,6 +312,9 @@ export interface DeskRejectPillarEvaluation {
   actionablePreSubmissionFix?: string;
   evidenceSpans?: string[];
   triggerId?: string;
+  /** Qualitative editorial background context (general frequency or venue-specific disclaimers, not manuscript-specific) */
+  editorialContext?: string;
+  /** @deprecated Renamed to editorialContext; preserved for backwards compatibility */
   baseRateContext?: string;
 }
 

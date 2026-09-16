@@ -451,31 +451,29 @@ export interface SixPillarResult {
 }
 
 /**
- * Empirical desk-rejection base rates observed in peer-reviewed editorial studies:
- * 1. Novelty / Incremental Contribution: 51.8%
- * 2. Out of Aims & Scope: 17.4%
- * 3. Methodological Flaw / Inadequate Controls: ~10.2%
- * 4. Publication Integrity & Citations: ~6.0%
- * 5. Standards & Ethics Declarations: ~5.9%
- * 6. Presentation & Language Clarity: ~5.3%
+ * Illustrative, commonly-cited relative frequency of each desk-reject cause.
+ * Not manuscript-specific; shown as general editorial context only.
  */
-export const DESK_REJECT_BASE_RATES = {
-  novelty_scale: "51.8% of editorial desk rejections (Leading cause in selective journals)",
-  scope_remit: "17.4% of editorial desk rejections (Leading categorical boundary error)",
-  methodology_controls: "10.2% of editorial desk rejections (Fatal protocol/control voids)",
-  integrity_citations: "6.0% of editorial desk rejections (Retracted citations & ethics flags)",
-  standards_compliance: "5.9% of editorial desk rejections (Missing data/ethics mandates)",
-  presentation_language: "5.3% of editorial desk rejections (Structural & readability barriers)",
+export const DESK_REJECT_CAUSE_CONTEXT = {
+  novelty_scale: "Among the most common desk-reject causes in selective journals",
+  scope_remit: "A frequent categorical (aims & scope) desk-reject cause",
+  methodology_controls: "A common fatal cause (protocol/control voids)",
+  integrity_citations: "Retracted citations & ethics flags",
+  standards_compliance: "Missing data/ethics mandates",
+  presentation_language: "Structural & readability barriers",
 };
+
+/** @deprecated Kept for backwards compatibility */
+export const DESK_REJECT_BASE_RATES = DESK_REJECT_CAUSE_CONTEXT;
 
 /**
  * Conducts a comprehensive 6-pillar editorial screening against desk rejection risks:
- * 1. Scope & Aims Remit (#2 cause, 17.4%)
- * 2. Novelty & Contribution Scale (#1 cause, 51.8% in selective venues)
- * 3. Methodological & Procedural Controls (#3 cause, 10.2%)
- * 4. Publication Integrity & Citations (6.0%)
- * 5. Reporting Standards & Compliance (5.9%)
- * 6. Presentation & Language Clarity (5.3%)
+ * 1. Scope & Aims Remit (Categorical boundary error)
+ * 2. Novelty & Contribution Scale (Leading cause in selective venues)
+ * 3. Methodological & Procedural Controls (Protocol/control voids)
+ * 4. Publication Integrity & Citations (Retracted citations & ethics flags)
+ * 5. Reporting Standards & Compliance (Missing data/ethics mandates)
+ * 6. Presentation & Language Clarity (Structural & readability barriers)
  */
 export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPillarResult {
   const {
@@ -508,7 +506,8 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
       verdict: `Substantive domain (${detectedDiscipline}) diverges from ${targetJournalName || "target journal"}'s published remit (${effectiveJournalDiscipline || "target discipline"}). Fatal desk rejection barrier.`,
       actionablePreSubmissionFix: fix,
       triggerId: "scope-divergence-mismatch",
-      baseRateContext: DESK_REJECT_BASE_RATES.scope_remit,
+      editorialContext: DESK_REJECT_CAUSE_CONTEXT.scope_remit,
+      baseRateContext: DESK_REJECT_CAUSE_CONTEXT.scope_remit,
       evidenceSpans: [`Discipline: ${detectedDiscipline} vs Journal: ${effectiveJournalDiscipline || "target discipline"}`],
     });
     salvageRoadmap.push(`[Priority A - Scope] ${fix}`);
@@ -518,7 +517,8 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
       title: "Scope & Aims Remit",
       status: "pass",
       verdict: `Topical focus and inquiry align with ${targetJournalName || "target journal"} editorial scope.`,
-      baseRateContext: DESK_REJECT_BASE_RATES.scope_remit,
+      editorialContext: DESK_REJECT_CAUSE_CONTEXT.scope_remit,
+      baseRateContext: DESK_REJECT_CAUSE_CONTEXT.scope_remit,
     });
   }
 
@@ -533,6 +533,7 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
       title: "Novelty & Contribution Scale",
       status: "pass",
       verdict: `${targetJournalName || "This journal"} evaluates papers on methodological and ethical rigor rather than subjective novelty. No novelty desk-reject barrier.`,
+      editorialContext: "Disclaimed by journal editorial criteria (Soundness-only venue)",
       baseRateContext: "Disclaimed by journal editorial criteria (Soundness-only venue)",
     });
   } else if (isAbstractThin) {
@@ -546,7 +547,8 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
         "Abstract provides insufficient articulation of the conceptual advance and benchmark differentiation.",
       actionablePreSubmissionFix: fix,
       triggerId: "novelty-insufficient-differentiation",
-      baseRateContext: DESK_REJECT_BASE_RATES.novelty_scale,
+      editorialContext: DESK_REJECT_CAUSE_CONTEXT.novelty_scale,
+      baseRateContext: DESK_REJECT_CAUSE_CONTEXT.novelty_scale,
       evidenceSpans: [abstractText.slice(0, 150)],
     });
     salvageRoadmap.push(`[Priority B - Novelty] ${fix}`);
@@ -564,7 +566,8 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
         "Manuscript contribution may be triaged as incremental or sub-field specific for a flagship multidisciplinary venue.",
       actionablePreSubmissionFix: fix,
       triggerId: "flagship-incremental-contribution",
-      baseRateContext: DESK_REJECT_BASE_RATES.novelty_scale,
+      editorialContext: DESK_REJECT_CAUSE_CONTEXT.novelty_scale,
+      baseRateContext: DESK_REJECT_CAUSE_CONTEXT.novelty_scale,
     });
     salvageRoadmap.push(`[Priority B - Framing] ${fix}`);
   } else {
@@ -574,7 +577,8 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
       status: "pass",
       verdict:
         "Clear problem statement and distinct contribution rationale articulated in manuscript frontmatter.",
-      baseRateContext: DESK_REJECT_BASE_RATES.novelty_scale,
+      editorialContext: DESK_REJECT_CAUSE_CONTEXT.novelty_scale,
+      baseRateContext: DESK_REJECT_CAUSE_CONTEXT.novelty_scale,
     });
   }
 
@@ -599,7 +603,8 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
       status: "pass",
       verdict:
         "Abstract-level pre-submission screening. Full experimental protocol and procedural controls will be validated upon complete manuscript submission.",
-      baseRateContext: DESK_REJECT_BASE_RATES.methodology_controls,
+      editorialContext: DESK_REJECT_CAUSE_CONTEXT.methodology_controls,
+      baseRateContext: DESK_REJECT_CAUSE_CONTEXT.methodology_controls,
     });
   } else if (isMethodsMissing) {
     const fix =
@@ -612,7 +617,8 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
         "Fatal barrier: Manuscript lacks a dedicated Materials & Methods section. External peer reviewers cannot verify protocol validity.",
       actionablePreSubmissionFix: fix,
       triggerId: "missing-methodology-section",
-      baseRateContext: DESK_REJECT_BASE_RATES.methodology_controls,
+      editorialContext: DESK_REJECT_CAUSE_CONTEXT.methodology_controls,
+      baseRateContext: DESK_REJECT_CAUSE_CONTEXT.methodology_controls,
     });
     salvageRoadmap.push(`[Priority A - Methods] ${fix}`);
   } else if (isMethodsInferred) {
@@ -626,7 +632,8 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
         "Methods content is scattered throughout body sections rather than unified in a dedicated protocol section.",
       actionablePreSubmissionFix: fix,
       triggerId: "inferred-methods-structure",
-      baseRateContext: DESK_REJECT_BASE_RATES.methodology_controls,
+      editorialContext: DESK_REJECT_CAUSE_CONTEXT.methodology_controls,
+      baseRateContext: DESK_REJECT_CAUSE_CONTEXT.methodology_controls,
     });
     salvageRoadmap.push(`[Priority B - Structure] ${fix}`);
   } else if (causalAssertions.length > 2 && statMetrics.length === 0) {
@@ -640,7 +647,8 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
         "Aggressive causal claims made without accompanying econometric/statistical controls or power specifications.",
       actionablePreSubmissionFix: fix,
       triggerId: "uncontrolled-causal-claims",
-      baseRateContext: DESK_REJECT_BASE_RATES.methodology_controls,
+      editorialContext: DESK_REJECT_CAUSE_CONTEXT.methodology_controls,
+      baseRateContext: DESK_REJECT_CAUSE_CONTEXT.methodology_controls,
       evidenceSpans: causalAssertions.slice(0, 2),
     });
     salvageRoadmap.push(`[Priority B - Causal Framing] ${fix}`);
@@ -651,7 +659,8 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
       status: "pass",
       verdict:
         "Experimental workflows, mathematical models, and procedural parameters are structured and auditable.",
-      baseRateContext: DESK_REJECT_BASE_RATES.methodology_controls,
+      editorialContext: DESK_REJECT_CAUSE_CONTEXT.methodology_controls,
+      baseRateContext: DESK_REJECT_CAUSE_CONTEXT.methodology_controls,
     });
   }
 
@@ -665,7 +674,8 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
       verdict: `Fatal integrity hazard: Bibliography references ${citationIntegrity.retractedCount} formally retracted paper(s). Automated editorial screeners will desk-reject.`,
       actionablePreSubmissionFix: fix,
       triggerId: "retracted-citations-detected",
-      baseRateContext: DESK_REJECT_BASE_RATES.integrity_citations,
+      editorialContext: DESK_REJECT_CAUSE_CONTEXT.integrity_citations,
+      baseRateContext: DESK_REJECT_CAUSE_CONTEXT.integrity_citations,
     });
     salvageRoadmap.push(`[Priority A - Integrity] ${fix}`);
   } else if (citationIntegrity && citationIntegrity.unresolvableCount > 5) {
@@ -678,7 +688,8 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
       verdict: `${citationIntegrity.unresolvableCount} references could not be verified in Crossref. Requires manual bibliographic verification before submission.`,
       actionablePreSubmissionFix: fix,
       triggerId: "unresolved-citations-warning",
-      baseRateContext: DESK_REJECT_BASE_RATES.integrity_citations,
+      editorialContext: DESK_REJECT_CAUSE_CONTEXT.integrity_citations,
+      baseRateContext: DESK_REJECT_CAUSE_CONTEXT.integrity_citations,
     });
     salvageRoadmap.push(`[Priority B - Citations] ${fix}`);
   } else if (citationIntegrity?.selfCitationPercent && citationIntegrity.selfCitationPercent > 35) {
@@ -691,7 +702,8 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
       verdict: `Elevated author self-citation rate (${citationIntegrity.selfCitationPercent}%). Handling editors scrutinize high self-citation clusters.`,
       actionablePreSubmissionFix: fix,
       triggerId: "high-self-citation-rate",
-      baseRateContext: DESK_REJECT_BASE_RATES.integrity_citations,
+      editorialContext: DESK_REJECT_CAUSE_CONTEXT.integrity_citations,
+      baseRateContext: DESK_REJECT_CAUSE_CONTEXT.integrity_citations,
     });
     salvageRoadmap.push(`[Priority B - Self-Citation] ${fix}`);
   } else {
@@ -701,7 +713,8 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
       status: "pass",
       verdict:
         "Bibliographic integrity verified; no retracted papers or citation anomalies detected.",
-      baseRateContext: DESK_REJECT_BASE_RATES.integrity_citations,
+      editorialContext: DESK_REJECT_CAUSE_CONTEXT.integrity_citations,
+      baseRateContext: DESK_REJECT_CAUSE_CONTEXT.integrity_citations,
     });
   }
 
@@ -728,7 +741,8 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
       verdict: `Guideline compliance score is low (${reportingGuideline.scorePercent}%) for ${reportingGuideline.guidelineName}.`,
       actionablePreSubmissionFix: fix,
       triggerId: "guideline-compliance-deficit",
-      baseRateContext: DESK_REJECT_BASE_RATES.standards_compliance,
+      editorialContext: DESK_REJECT_CAUSE_CONTEXT.standards_compliance,
+      baseRateContext: DESK_REJECT_CAUSE_CONTEXT.standards_compliance,
     });
     salvageRoadmap.push(`[Priority B - Standards] ${fix}`);
   } else if (!hasDataStmt) {
@@ -742,7 +756,8 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
         "No explicit Data or Code Availability Statement detected. Most indexed journals require this prior to review.",
       actionablePreSubmissionFix: fix,
       triggerId: "missing-data-statement",
-      baseRateContext: DESK_REJECT_BASE_RATES.standards_compliance,
+      editorialContext: DESK_REJECT_CAUSE_CONTEXT.standards_compliance,
+      baseRateContext: DESK_REJECT_CAUSE_CONTEXT.standards_compliance,
     });
     salvageRoadmap.push(`[Priority B - Compliance] ${fix}`);
   } else if (!hasEthicsStmt && /human|patient|clinical|mice|rat|animal|participant/i.test(manuscript.abstract || "")) {
@@ -754,7 +769,8 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
       verdict: "Study appears to involve human or animal subjects, but no explicit Ethics/IRB statement was found.",
       actionablePreSubmissionFix: fix,
       triggerId: "missing-ethics-irb-statement",
-      baseRateContext: DESK_REJECT_BASE_RATES.standards_compliance,
+      editorialContext: DESK_REJECT_CAUSE_CONTEXT.standards_compliance,
+      baseRateContext: DESK_REJECT_CAUSE_CONTEXT.standards_compliance,
     });
     salvageRoadmap.push(`[Priority B - Ethics] ${fix}`);
   } else {
@@ -764,7 +780,8 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
       status: "pass",
       verdict:
         "Reporting disclosures, reproducibility indicators, and availability statements conform to standard editorial criteria.",
-      baseRateContext: DESK_REJECT_BASE_RATES.standards_compliance,
+      editorialContext: DESK_REJECT_CAUSE_CONTEXT.standards_compliance,
+      baseRateContext: DESK_REJECT_CAUSE_CONTEXT.standards_compliance,
     });
   }
 
@@ -775,7 +792,8 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
       title: "Presentation & Language Clarity",
       status: "pass",
       verdict: `Abstract/frontmatter pre-submission scan (${manuscript.wordCount} words). Full monograph length will be audited upon complete manuscript submission.`,
-      baseRateContext: DESK_REJECT_BASE_RATES.presentation_language,
+      editorialContext: DESK_REJECT_CAUSE_CONTEXT.presentation_language,
+      baseRateContext: DESK_REJECT_CAUSE_CONTEXT.presentation_language,
     });
   } else if (manuscript.wordCount > 0 && manuscript.wordCount < 1200) {
     const fix = "Expand manuscript with complete literature review, methodology subsections, and in-depth discussion.";
@@ -786,7 +804,8 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
       verdict: `Manuscript length (${manuscript.wordCount} words) is below minimum peer-review thresholds for research articles.`,
       actionablePreSubmissionFix: fix,
       triggerId: "manuscript-underlength",
-      baseRateContext: DESK_REJECT_BASE_RATES.presentation_language,
+      editorialContext: DESK_REJECT_CAUSE_CONTEXT.presentation_language,
+      baseRateContext: DESK_REJECT_CAUSE_CONTEXT.presentation_language,
     });
     salvageRoadmap.push(`[Priority A - Length] ${fix}`);
   } else if (manuscript.wordCount > 28000) {
@@ -798,7 +817,8 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
       verdict: `Length (${manuscript.wordCount.toLocaleString()} words) exceeds standard journal monograph ceilings.`,
       actionablePreSubmissionFix: fix,
       triggerId: "manuscript-overlength",
-      baseRateContext: DESK_REJECT_BASE_RATES.presentation_language,
+      editorialContext: DESK_REJECT_CAUSE_CONTEXT.presentation_language,
+      baseRateContext: DESK_REJECT_CAUSE_CONTEXT.presentation_language,
     });
     salvageRoadmap.push(`[Priority B - Length] ${fix}`);
   } else {
@@ -807,7 +827,8 @@ export function evaluateSixPillarDeskRejection(params: SixPillarParams): SixPill
       title: "Presentation & Language Clarity",
       status: "pass",
       verdict: "Manuscript presentation, structural length, and prose organization satisfy standard editorial submission criteria.",
-      baseRateContext: DESK_REJECT_BASE_RATES.presentation_language,
+      editorialContext: DESK_REJECT_CAUSE_CONTEXT.presentation_language,
+      baseRateContext: DESK_REJECT_CAUSE_CONTEXT.presentation_language,
     });
   }
 

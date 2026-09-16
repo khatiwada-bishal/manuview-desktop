@@ -1107,9 +1107,9 @@ export function DesktopDashboard({
                 <p className="text-neutral-600 dark:text-neutral-400 text-[11px] leading-relaxed">
                   {p.verdict}
                 </p>
-                {p.baseRateContext && (
+                {(p.editorialContext || p.baseRateContext) && (
                   <div className="text-[10px] text-neutral-500 dark:text-neutral-400 italic">
-                    Base Rate: {p.baseRateContext}
+                    Editorial Context: {p.editorialContext || p.baseRateContext}
                   </div>
                 )}
                 {p.actionablePreSubmissionFix && (
