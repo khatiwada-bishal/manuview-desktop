@@ -908,9 +908,9 @@ export function DesktopPreSubmissionScanView({
             </div>
 
             {/* Morphing Action Slot: Submit Button morphs directly into Pipeline Stepper */}
-            <div className="w-full transition-all duration-300 ease-in-out">
+            <div className="w-full fluid-morph-container">
               {loading ? (
-                <div className="w-full rounded-2xl border border-blue-200/80 dark:border-blue-900/50 bg-white/90 dark:bg-[#161F30]/90 backdrop-blur-md p-5 sm:p-6 shadow-md animate-fade-in">
+                <div className="w-full rounded-2xl border border-blue-200/80 dark:border-blue-900/50 bg-white/90 dark:bg-[#161F30]/90 backdrop-blur-md p-5 sm:p-6 shadow-md animate-fluid-in ring-1 ring-blue-500/20">
                   <ScanPipelineStepper
                     currentStepMessage={loadingStep || "Running full pre-submission scan..."}
                     percent={loadingPercent}
@@ -919,11 +919,11 @@ export function DesktopPreSubmissionScanView({
               ) : (
                 <button
                   type="submit"
-                  className="w-full py-4 px-6 rounded-2xl font-semibold text-xs sm:text-sm bg-[#0F172A] dark:bg-blue-600 hover:bg-[#1E293B] dark:hover:bg-blue-500 text-white transition-all duration-200 flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg cursor-pointer isolate relative overflow-hidden select-none group"
+                  className="w-full py-4 px-6 rounded-2xl font-semibold text-xs sm:text-sm bg-[#0F172A] dark:bg-blue-600 hover:bg-[#1E293B] dark:hover:bg-blue-500 text-white transition-all duration-300 flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg cursor-pointer isolate relative overflow-hidden select-none group hover:scale-[1.005] active:scale-[0.995]"
                 >
-                  <Sparkles className="w-4 h-4 text-amber-300 shrink-0 group-hover:rotate-12 transition-transform duration-200" />
+                  <Sparkles className="w-4 h-4 text-amber-300 shrink-0 group-hover:rotate-12 transition-transform duration-300" />
                   <span className="truncate font-bold">Run Pre-Submission AI Review &amp; 5-Persona Simulation</span>
-                  <ArrowRight className="w-4 h-4 shrink-0 group-hover:translate-x-0.5 transition-transform duration-200" />
+                  <ArrowRight className="w-4 h-4 shrink-0 group-hover:translate-x-0.5 transition-transform duration-300" />
                 </button>
               )}
             </div>

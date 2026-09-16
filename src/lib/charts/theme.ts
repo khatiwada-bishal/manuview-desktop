@@ -158,7 +158,7 @@ export function renderStaticRadarSvg(
   const size = options.size || 340;
   const cx = size / 2;
   const cy = size / 2;
-  const maxRadius = size * 0.38;
+  const maxRadius = size * 0.30;
 
   const bgGrid = options.isDarkMode ? "#334155" : "#E2E8F0";
   const axisColor = options.isDarkMode ? "#475569" : "#CBD5E1";

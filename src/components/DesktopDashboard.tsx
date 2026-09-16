@@ -1120,8 +1120,8 @@ export function DesktopDashboard({
                     : "bg-emerald-50/30 dark:bg-emerald-950/10 border-emerald-200/70 dark:border-emerald-800/40"
                 }`}
               >
-                <div className="flex items-center justify-between gap-1">
-                  <span className="font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-1.5 min-w-0 flex-1">
                     {isFatal ? (
                       <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
                     ) : isWarn ? (
@@ -1129,9 +1129,9 @@ export function DesktopDashboard({
                     ) : (
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     )}
-                    <span>{p.title}</span>
+                    <span className="truncate">{p.title}</span>
                   </span>
-                  <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
+                  <span className={`shrink-0 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border whitespace-nowrap ${
                     isFatal
                       ? "bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-900/60 dark:text-rose-200"
                       : isWarn

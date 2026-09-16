@@ -96,8 +96,10 @@ export function ScanPipelineStepper({
         
         {/* Continuous active progress fill */}
         <div
-          className="absolute left-6 top-5 -translate-y-1/2 h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-500 rounded-full z-0 transition-all duration-500 ease-out"
-          style={{ width: `${Math.min(100, Math.max(0, (activeIndex / 3) * 100))}%` }}
+          className="absolute left-6 top-5 -translate-y-1/2 h-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-500 rounded-full z-0 transition-all duration-700 ease-out"
+          style={{
+            width: `${typeof percent === "number" ? Math.max(0, Math.min(100, percent)) : Math.min(100, Math.max(0, (activeIndex / 3) * 100))}%`,
+          }}
         />
 
         {SCAN_STAGES.map((stage, idx) => {

@@ -396,8 +396,8 @@ export function DesktopReferenceView() {
                 </div>
               </div>
 
-              <div className="liquid-glass-card rounded-2xl overflow-hidden">
-                <table className="w-full text-left text-xs border-collapse">
+              <div className="liquid-glass-card rounded-2xl overflow-x-auto [scrollbar-width:thin]">
+                <table className="w-full min-w-[640px] text-left text-xs border-collapse">
                   <thead className="bg-black/5 dark:bg-white/5 border-b border-black/10 dark:border-white/10 text-neutral-500 dark:text-neutral-400 font-semibold uppercase tracking-wider text-[10px]">
                     <tr>
                       <th className="px-4 py-3">Status</th>

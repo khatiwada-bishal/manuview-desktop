@@ -543,3 +543,34 @@ body {
   animation: float-subtle-4 6.8s ease-in-out infinite;
 }
 
+/* ==========================================================================
+   Fluid Morphing & Tactile Transitions
+   ========================================================================== */
+.fluid-morph-container {
+  transition: all 500ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: height, transform, opacity;
+}
+
+@keyframes fluid-scale-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.96) translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-fluid-in {
+  animation: fluid-scale-in 400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fluid-morph-container,
+  .animate-fluid-in {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+

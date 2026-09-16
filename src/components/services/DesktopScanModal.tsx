@@ -311,8 +311,8 @@ export function DesktopScanModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xl p-4">
-      <div className="w-full max-w-lg rounded-3xl liquid-glass-modal p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150">
-        <div className="flex items-center justify-between border-b border-black/10 dark:border-white/10 pb-3">
+      <div className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-3xl liquid-glass-modal p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200 overflow-hidden shadow-2xl">
+        <div className="flex items-center justify-between border-b border-black/10 dark:border-white/10 pb-3 shrink-0">
           <div className="flex items-center gap-2.5">
             <span className="text-xl">🪄</span>
             <div>
@@ -349,7 +349,7 @@ export function DesktopScanModal({
         </div>
 
         {loading ? (
-          <div className="py-8 space-y-6 animate-fade-in">
+          <div className="py-6 px-1 space-y-6 animate-fluid-in overflow-y-auto [scrollbar-width:thin]">
             <ScanPipelineStepper
               currentStepMessage={loadingStep || "Running pre-submission diagnostic engine..."}
               percent={loadingPercent}
@@ -359,20 +359,21 @@ export function DesktopScanModal({
             </p>
           </div>
         ) : (
-          <form onSubmit={handleCheckCompatibility} className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
-                Manuscript Target &amp; Content
-              </span>
-              <button
-                type="button"
-                onClick={handleSample}
-                className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Load Sample Preprint</span>
-              </button>
-            </div>
+          <form onSubmit={handleCheckCompatibility} className="flex-1 flex flex-col min-h-0 space-y-4">
+            <div className="flex-1 overflow-y-auto pr-1 space-y-4 [scrollbar-width:thin]">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                  Manuscript Target &amp; Content
+                </span>
+                <button
+                  type="button"
+                  onClick={handleSample}
+                  className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Load Sample Preprint</span>
+                </button>
+              </div>
 
             <div className="relative z-30">
               <div className="flex items-center gap-1.5 mb-1">
@@ -489,8 +490,10 @@ export function DesktopScanModal({
                 </span>
               </div>
             </div>
+            </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-black/10 dark:border-white/10">
+            {/* Sticky/Fixed Footer Action Bar */}
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-black/10 dark:border-white/10 shrink-0">
               <button
                 type="button"
                 onClick={onClose}
@@ -510,7 +513,7 @@ export function DesktopScanModal({
                   <button
                     type="button"
                     onClick={handleSubmitForReview}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs cursor-pointer transition"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs cursor-pointer transition hover:scale-[1.02] active:scale-[0.98]"
                   >
                     <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                     <span>Submit for Review</span>
@@ -520,7 +523,7 @@ export function DesktopScanModal({
               ) : (
                 <button
                   type="submit"
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs cursor-pointer transition"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs cursor-pointer transition hover:scale-[1.02] active:scale-[0.98]"
                 >
                   <Search className="w-3.5 h-3.5" />
                   <span>Check Compatibility</span>
