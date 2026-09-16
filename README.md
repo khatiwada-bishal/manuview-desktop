@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <strong>100% Local & Private Processing</strong> &bull; <strong>Zero Unpublished Data Retention</strong> &bull; <strong>Multi-LLM Compatible</strong>
+  <strong>100% Local & Private Processing</strong> &bull; <strong>Zero Unpublished Data Retention</strong> &bull; <strong>Multi-LLM & WebGPU Compatible</strong>
 </p>
 
 ---
@@ -20,50 +20,112 @@
 > ### 🧪 Pre-compiled Installers are in Testing!
 > Ready-to-use executable installers for **macOS (`.dmg` / `.app`)** and **Windows (`.exe` / `.msi`)** are currently in our testing phase and will be published directly under [GitHub Releases](https://github.com/khatiwada-bishal/manuview-desktop/releases).
 > 
-> If you'd like to try ManuView right now without waiting for the release packages, you can easily run it on your computer in just **2 minutes** using the simple instructions below!
+> You can easily run ManuView right now on your computer in just **2 minutes** using the simple instructions below!
 
 ---
 
 ## Table of Contents
-1. [Core Features](#-core-features)
-2. [How to Run Locally (Step-by-Step)](#-how-to-run-locally-step-by-step)
+1. [Core Capabilities & Latest Features](#-core-capabilities--latest-features)
+2. [Diagnostic & Review Architecture](#-diagnostic--review-architecture)
+3. [How to Run Locally (Step-by-Step)](#-how-to-run-locally-step-by-step)
    - [Method 1: Web Preview (Fastest — No Rust Needed)](#method-1-web-preview-fastest--no-rust-needed)
-   - [Method 2: Full Native Desktop App](#method-2-full-native-desktop-app)
-3. [How to Get a Free AI API Key (No Credit Card Needed)](#-how-to-get-a-free-ai-api-key-no-credit-card-needed)
-   - [1. Google AI Studio (Gemini) — Recommended](#1-google-ai-studio-gemini--recommended)
-   - [2. GroqCloud (Ultra-Fast Llama 3.3)](#2-groqcloud-ultra-fast-llama-33)
-   - [3. OpenRouter (Access to 100+ Free Models)](#3-openrouter-access-to-100-free-models)
-   - [4. Mistral AI](#4-mistral-ai)
-   - [5. Ollama (100% Offline, Zero Key Required)](#5-ollama-100-offline--zero-key-required)
-4. [How to Add Your API Key in ManuView](#-how-to-add-your-api-key-in-manuview)
-5. [Scholarly Disclaimer & Responsible Use](#-scholarly-disclaimer--responsible-use)
-6. [Privacy & Security Guarantee](#-privacy--security-guarantee)
+   - [Method 2: Full Native Desktop App (macOS & Windows)](#method-2-full-native-desktop-app-macos--windows)
+4. [AI Providers & Key Setup (Free Options Included)](#-ai-providers--key-setup)
+   - [1. Google AI Studio (Gemini) — Recommended Cloud](#1-google-ai-studio-gemini--recommended-cloud)
+   - [2. Local WebGPU / In-Browser SLM (Zero Setup, 100% Private)](#2-local-webgpu--in-browser-slm-zero-setup-100-private)
+   - [3. GroqCloud (Ultra-Fast Llama 3.3)](#3-groqcloud-ultra-fast-llama-33)
+   - [4. OpenRouter (Access to 100+ Free Models)](#4-openrouter-access-to-100-free-models)
+   - [5. Mistral AI & OpenAI / Anthropic](#5-mistral-ai--openai--anthropic)
+   - [6. Ollama (Local Self-Hosted LLMs)](#6-ollama-local-self-hosted-llms)
+5. [Report Export & Academic Tools](#-report-export--academic-tools)
+6. [Testing & Scientific Benchmark Suite](#-testing--scientific-benchmark-suite)
+7. [Scholarly Disclaimer & Responsible Use](#-scholarly-disclaimer--responsible-use)
+8. [Privacy & Security Guarantee](#-privacy--security-guarantee)
+9. [License](#-license)
 
 ---
 
-## 🚀 Core Features
+## 🚀 Core Capabilities & Latest Features
 
-- **Pre-Submission AI Review**: Simulates 5 specialized reviewer personas (Methodologist, Statistician, Domain Specialist, Clinical/Applied Reviewer, and Journal Editor) with 6 quantitative scoring dimensions.
-- **Published Article & Guardrail Detection**: Automatically checks Crossref registries to verify already-published DOIs, and guards against evaluating non-academic files (CVs, resumes, code).
-- **Journal Fit Predictor**: Analyzes manuscript title and abstract against 1,300+ journal catalog scopes, impact metrics, and editorial expectations.
-- **Reference & Retraction Audit**: Scans references in real-time against Crossref DOI endpoints and Retraction Watch databases to flag retracted or broken citations.
-- **Citation Claim Validator**: Validates whether assertions and empirical claims in your text are backed by cited literature.
+ManuView transforms manuscript submission preparation through rigorous, multi-layered diagnostic intelligence:
+
+### 1. 5-Persona Simulated Peer Review
+- Simulates five distinct academic reviewer archetypes:
+  - 🔬 **Methodologist**: Scrutinizes study design, controls, power analysis, and reproducibility.
+  - 📊 **Statistician**: Verifies test selection, degrees of freedom, effect sizes, and p-value consistency via automated GRIM and Statcheck tests.
+  - 🎯 **Domain Specialist**: Evaluates conceptual novelty, grounding in recent literature, and field impact.
+  - 🩺 **Clinical / Applied Reviewer**: Assesses translational feasibility, real-world utility, and ethical rigor.
+  - 🏛️ **Journal Editor**: Reviews overall scope, title/abstract alignment, framing, and desk-rejection hazards.
+
+### 2. 6-Pillar Editorial Triage Matrix
+- Quantifies editorial risk across the 6 major causes of desk rejection:
+  - **Scope & Venue Fit**
+  - **Methodological Soundness**
+  - **Statistical Rigor & Reproducibility**
+  - **Literature Grounding & Citation Integrity**
+  - **Ethical & Data Reporting Compliance**
+  - **Clarity, Structure & IMRaD Conventions**
+
+### 3. Interactive Infographics & Visual Analytics
+- **Dynamic Radar Chart**: Multi-axis visualization of readiness across all evaluation dimensions with SVG export.
+- **Segmented Readiness Gauge**: Calibrated qualitative readiness band (High / Moderate / Low) without artificial percentage false precision.
+- **Decision Distribution Bar**: Anticipated editorial outcomes (Accept / Minor Revision / Major Revision / Reject) summing strictly to 100%.
+- **Citation Status Donut**: Visual breakdown of verified, unverified, retracted, and self-citations.
+- **Scan Pipeline Stepper**: Real-time visual progress through text extraction, DOI checking, compliance parsing, and LLM inference.
+
+### 4. Grounded Citation & Retraction Verification
+- **Landmark Retraction Watch Database**: Built-in offline database detects retracted papers instantly without external dependencies.
+- **Crossref DOI Verification**: Real-time live validation of references, authors, publication years, and DOI resolution.
+- **Smart DOI De-Wrapping**: Robust parser that joins split DOIs across line breaks and hyphens without corrupting adjacent entries.
+- **Recency & Self-Citation Indexing**: Flags reference obsolescence (>10-year skew) and computes self-citation concentration.
+
+### 5. Multi-Format Academic Report Export
+- **Print-Optimized PDF**: Browser-native print styles with clean page breaks, styled callouts, and SVG graphics.
+- **Microsoft Word (`.doc` / `.docx`)**: Styled HTML formatted for flawless Word document import.
+- **Point-by-Point LaTeX Rebuttal Template**: Pre-populated LaTeX rebuttal matrix for journal resubmissions.
+- **BibTeX Library Export**: Structured BibTeX collection for all verified references.
+
+### 6. Built-in Academic Utility Suite
 - **PRISMA 2020 Flow Diagram Generator**: Interactive flow-diagram tool for systematic reviews with SVG/PDF export.
-- **Journal Cover Letter Drafter**: Formats professional submission letters highlighting novelty, ethical clearances, and editorial fit.
+- **Cover Letter Drafter**: Formats professional submission letters highlighting novelty, ethical clearances, and editorial fit.
 - **Review Response Rebuttal Builder**: Generates point-by-point author rebuttal matrices to respond constructively to peer reviewer critiques.
+- **Batch Manuscript Management**: Multi-select, batch deletion, and local computer project persistence.
+
+---
+
+## 🔬 Diagnostic & Review Architecture
+
+ManuView is engineered as a modular, lightweight desktop client powered by Tauri v2, React 18, and Vite:
+
+```
+src/
+├── components/
+│   ├── dashboard/          # Modularized dashboard cards (Triage, Personas, Citations, etc.)
+│   ├── scan/               # Input dropzone, model picker, and full report viewers
+│   ├── sidebar/            # Collapsible macOS-style sidebar, paper lists, time buckets
+│   ├── charts/             # Radar charts, gauges, donuts, pipeline steppers
+│   └── services/           # PRISMA flowcharts, Cover Letters, Rebuttal builders
+├── lib/
+│   ├── engine/             # Diagnostic orchestrator, prompt builders, compliance audits
+│   ├── webllm/             # WebGPU on-device SLM execution engine (Qwen2.5-0.5B, etc.)
+│   ├── data/               # Retraction Watch compact DB, 1,300+ journal catalog
+│   ├── statcheck.ts        # Automated statistical consistency and GRIM test checks
+│   ├── citation-recency.ts # Reference recency and self-citation density metrics
+│   └── export-generator.ts # PDF, Word, LaTeX rebuttal, and BibTeX generators
+└── src-tauri/              # Rust native application shell and OS dialog/file integration
+```
 
 ---
 
 ## 💻 How to Run Locally (Step-by-Step)
 
-You do not need deep programming experience to run ManuView on your computer. Follow either method below:
+You do not need deep programming experience to run ManuView. Choose either of the two methods below:
 
-### Prerequisites (Only Node.js is required for Method 1)
+### Prerequisites
 
 1. **Install Node.js** (Version 18 or newer):
-   - Download the official installer from [nodejs.org](https://nodejs.org/) (choose the **LTS** version).
-   - Run the installer and click "Next" through the setup.
-   - Verify installation by opening your Terminal (Mac) or Command Prompt / PowerShell (Windows) and typing:
+   - Download the official installer from [nodejs.org](https://nodejs.org/) (choose **LTS**).
+   - Verify installation in your terminal:
      ```bash
      node -v
      npm -v
@@ -73,157 +135,164 @@ You do not need deep programming experience to run ManuView on your computer. Fo
 
 ### Method 1: Web Preview (Fastest — No Rust Needed)
 
-If you only have Node.js installed and don't want to install Rust compilers, you can run ManuView inside your web browser right away:
+If you only have Node.js installed and want to run ManuView immediately:
 
-1. **Download or Clone the Repository**:
+1. **Clone the Repository**:
    ```bash
    git clone https://github.com/khatiwada-bishal/manuview-desktop.git
    cd manuview-desktop
    ```
-   *(Alternatively, click the green **Code** button on GitHub &rarr; **Download ZIP**, and unzip the folder).*
 
 2. **Install Dependencies**:
-   Open Terminal / Command Prompt inside the `manuview-desktop` folder and run:
    ```bash
    npm install
    ```
 
-3. **Start the Application**:
+3. **Start the Development Server**:
    ```bash
    npm run dev
    ```
 
 4. **Open in Browser**:
-   Open your browser and navigate to:
-   ```
-   http://localhost:1420
-   ```
-   *The entire ManuView suite will load with full functionality in your browser!*
+   Navigate to [http://localhost:1420](http://localhost:1420). All features—including file upload, citation verification, AI reviews, and export tools—will run in your browser.
 
 ---
 
-### Method 2: Full Native Desktop App
+### Method 2: Full Native Desktop App (macOS & Windows)
 
-To run ManuView as a native macOS window or Windows desktop program with native window controls:
+To run ManuView inside a native operating system window with OS file dialogs and window dragging:
 
-1. **Install Rust** (Required for Tauri native apps):
-   - **macOS / Linux**: Open your Terminal and run:
+1. **Install Rust** (Required for Tauri):
+   - **macOS / Linux**:
      ```bash
      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
      ```
-     Press `1` (Proceed with default installation), then restart your terminal.
-   - **Windows**: Download and run **`rustup-init.exe`** from [rustup.rs](https://rustup.rs/).
+     Restart your terminal after installation.
+   - **Windows**: Download and run `rustup-init.exe` from [rustup.rs](https://rustup.rs/).
 
 2. **Launch the Native Desktop App**:
-   Inside the `manuview-desktop` directory, run:
    ```bash
    npm run desktop:dev
    ```
-   *Tauri will compile the native window and launch the ManuView desktop application automatically!*
+   Tauri will compile the native backend and launch the standalone desktop app.
+
+3. **Build an Executable / Installer**:
+   ```bash
+   npm run desktop:build
+   ```
+   *(For macOS specifically, you can also run `./scripts/build-mac.sh` to package `.dmg` and `.app` bundles).*
 
 ---
 
-## 🔑 How to Get a Free AI API Key (No Credit Card Needed)
+## 🔑 AI Providers & Key Setup
 
-ManuView operates on a **Bring-Your-Own-Key (BYOK)** model. This guarantees that **you own your data** and pay nothing extra. 
+ManuView operates on a **Bring-Your-Own-Key (BYOK)** model. You have complete control over where your manuscript data travels:
 
-Several major AI providers offer generous, **100% free tiers** that require no credit card. Here are the best free options:
+### 1. Google AI Studio (Gemini) — *Recommended Cloud*
+> **Generous free tier (up to 15 RPM), fast inference, and large context windows for full manuscripts.**
 
----
-
-### 1. Google AI Studio (Gemini) — *Recommended*
-> **Why choose it**: Generous free tier (up to 15 requests/minute), very fast, and exceptional at long academic papers.
-
-1. Go to **[Google AI Studio](https://aistudio.google.com/)**.
-2. Sign in with your standard Google / Gmail account.
-3. In the left sidebar or top banner, click **"Get API key"**.
-4. Click **"Create API key"** &rarr; Select any existing Google Cloud project or choose **"Create API key in new project"**.
-5. Copy your generated key (starts with `AIzaSy...`).
-6. **Recommended Model in ManuView**: `Gemini 2.5 Flash` or `Gemini 1.5 Flash`.
+1. Visit [Google AI Studio](https://aistudio.google.com/).
+2. Sign in with your Google account.
+3. Click **"Get API key"** &rarr; **"Create API key"**.
+4. In ManuView, open **Settings** (gear icon in the bottom-left sidebar).
+5. Select **Google Gemini**, pick `gemini-2.5-flash` or `gemini-1.5-flash`, and paste your key.
 
 ---
 
-### 2. GroqCloud (Ultra-Fast Llama 3.3)
-> **Why choose it**: Blazing fast response speeds (hundreds of tokens per second), completely free tier for open-weight models.
+### 2. Local WebGPU / In-Browser SLM (Zero Setup, 100% Private)
+> **Runs directly inside your browser or desktop window using your GPU. No API keys, no accounts, zero data transmission.**
 
-1. Go to **[GroqCloud Console](https://console.groq.com/)**.
-2. Click **"Sign Up"** and log in with your Google or GitHub account.
-3. In the left menu, click **"API Keys"** (or go directly to [console.groq.com/keys](https://console.groq.com/keys)).
-4. Click **"Create API Key"**, give it a name (e.g., `ManuView`), and click **Submit**.
-5. Copy your key (starts with `gsk_...`).
-6. **Recommended Model in ManuView**: `llama-3.3-70b-versatile`.
+1. Open **Settings** &rarr; switch to the **Local Models (WebLLM)** tab.
+2. Select an optimized local Small Language Model (e.g., `Qwen2.5-0.5B-Instruct` or `Llama-3.2-1B`).
+3. Click **Download / Cache Model** (weights are cached locally on your device).
+4. Run live reviews completely offline with full privacy.
 
 ---
 
-### 3. OpenRouter (Access to 100+ Free Models)
-> **Why choose it**: Access multiple state-of-the-art models from Meta, Qwen, Google, and Mistral with a single key.
+### 3. GroqCloud (Ultra-Fast Llama 3.3)
+> **High-speed inference for open models like Meta Llama 3.3 70B.**
 
-1. Visit **[OpenRouter.ai](https://openrouter.ai/)**.
-2. Sign in with Google, GitHub, or email.
-3. Click on your profile icon in the top right &rarr; select **"Keys"** (or go to [openrouter.ai/keys](https://openrouter.ai/keys)).
-4. Click **"Create Key"**, give it a label, and leave credit limit blank or set a limit.
-5. Copy your key (starts with `sk-or-v1-...`).
-6. OpenRouter provides dozens of models tagged `:free` (e.g. `meta-llama/llama-3.3-70b-instruct:free`, `google/gemini-2.0-flash-exp:free`).
+1. Visit [console.groq.com](https://console.groq.com/) and create a free account.
+2. Navigate to **API Keys** &rarr; **Create API Key**.
+3. In ManuView, select **Groq** and choose `llama-3.3-70b-versatile`.
 
 ---
 
-### 4. Mistral AI
-> **Why choose it**: High-quality European foundation models with strong reasoning capabilities.
+### 4. OpenRouter (Access to 100+ Free Models)
+> **Single unified key for Meta, Mistral, Google, Qwen, and DeepSeek.**
 
-1. Go to **[Mistral AI Console (La Plateforme)](https://console.mistral.ai/)**.
-2. Create a free account.
-3. In the left sidebar, click **"API Keys"**.
-4. Click **"Create new key"**, name it `ManuView`, and copy the secret key.
-5. **Recommended Model in ManuView**: `mistral-small-latest` or `codestral-latest`.
+1. Visit [openrouter.ai](https://openrouter.ai/) and register.
+2. Go to **Keys** &rarr; **Create Key** (starts with `sk-or-v1-...`).
+3. In ManuView, select **OpenRouter**. ManuView automatically suggests available free-tier models (tagged `:free`).
 
 ---
 
-### 5. Ollama (100% Offline — Zero Key Required)
-> **Why choose it**: If you work in a clinical or highly confidential environment and cannot send text to external APIs, run models 100% offline on your own GPU/CPU.
+### 5. Mistral AI & OpenAI / Anthropic
+- **Mistral AI**: Create a key at [console.mistral.ai](https://console.mistral.ai/) and choose `mistral-small-latest` or `codestral-latest`.
+- **OpenAI**: Supply your key from [platform.openai.com](https://platform.openai.com/) to use `gpt-4o` or `gpt-4o-mini`.
+- **Anthropic**: Use Claude 3.5 Sonnet or Haiku directly with your Anthropic key.
 
-1. Download Ollama from **[ollama.com](https://ollama.com/)** (Mac, Windows, Linux).
-2. Open your terminal and download an academic-grade open model:
+---
+
+### 6. Ollama (Local Self-Hosted LLMs)
+> **For high-security clinical or confidential labs running their own local model server.**
+
+1. Install [Ollama](https://ollama.com/) on your workstation.
+2. Pull your preferred model:
    ```bash
    ollama run llama3.3
    ```
-3. In ManuView Settings, select **Ollama (Local)**. The application will connect directly to `http://localhost:11434` without requiring any API key or internet access.
+3. In ManuView Settings, select **Ollama (Local)**. ManuView connects directly to `http://localhost:11434` without needing an API key.
 
 ---
 
-## ⚙️ How to Add Your API Key in ManuView
+## 📑 Report Export & Academic Tools
 
-Once you have your key from any of the providers above:
+Once a review is complete, click **Export Report** in the top-right toolbar to choose your format:
 
-1. Launch **ManuView Desktop** (or open `http://localhost:1420`).
-2. Look at the bottom of the sidebar and click the **Settings (Gear icon)** next to the AI model indicator.
-3. In the Settings dialog:
-   - Select your **AI Provider** (e.g., *Google Gemini*, *Groq*, *OpenRouter*, etc.).
-   - Select your preferred **Model** from the dropdown list.
-   - Paste your key into the **API Key** field.
-4. Click **"Check Latency"** / **"Test Connection"** to verify that your key connects successfully.
-5. Click **"Save Settings"**.
+| Format | Output | Best Used For |
+|---|---|---|
+| **Print / PDF** | Formatted PDF with custom page-breaks and charts | Archival, departmental review, co-author distribution |
+| **Microsoft Word** | Clean `.doc` / `.docx` with callout blocks | Collaborative editing and track changes with co-authors |
+| **LaTeX Rebuttal** | Point-by-point `.tex` table matrix | Resubmissions to journal editorial boards |
+| **BibTeX** | `.bib` file with deduplicated references | Direct import into Overleaf, LaTeX, or Zotero |
 
-> [!TIP]
-> Your API key is stored **only inside your local device's storage**. It is never sent to ManuView servers or stored in any cloud database.
+---
+
+## 🧪 Testing & Scientific Benchmark Suite
+
+ManuView includes an end-to-end automated test and scientific benchmarking suite:
+
+```bash
+# Run all 56 unit and integration tests
+npm test
+
+# Run synthetic scientific validation benchmarks (17 detectors)
+npm run benchmark
+
+# Run golden layer benchmarks
+npm run benchmark:gold
+
+# Verify TypeScript build and production bundle
+npm run build
+```
 
 ---
 
 ## ⚠️ Scholarly Disclaimer & Responsible Use
 
 - **Simulated Synthetic Personas**: All reviewer personas, editorial office notes, and adversarial critiques displayed in ManuView are synthetic, AI-simulated role models designed exclusively for pre-submission stress-testing and manuscript triage. They do **not** represent real living individuals, actual journal editorial boards, or binding peer-review decisions.
-- **Offline Deterministic Audits vs. Synthetic Scoring**: When operated without an active LLM connection (offline heuristic mode), ManuView strictly suppresses overall acceptance scores and simulated personas to safeguard scholarly integrity. Instead, it provides a transparent, deterministic compliance audit covering IMRaD section structure, statistical and protocol cues, reporting guideline adherence, DOI validity, and author self-citation density.
-- **Use AI with Caution**: Generative AI models can occasionally produce inaccuracies, imprecise critiques, or false inferences. Always exercise independent scholarly judgment and verify citations, experimental methods, and statistical parameters.
+- **Offline Deterministic Audits vs. Synthetic Scoring**: When operated without an active LLM connection, ManuView strictly suppresses overall acceptance scores and simulated personas to safeguard scholarly integrity. Instead, it provides a transparent, deterministic compliance audit covering IMRaD section structure, statistical and protocol cues, reporting guideline adherence, DOI validity, and author self-citation density.
 - **Decision-Support Only**: ManuView is designed solely to assist authors in pre-submission preparation and diagnostic triage. It does not replace domain expertise, formal peer review, institutional ethics boards, or editorial oversight.
-- **No Publication Guarantee**: Automated diagnostic evaluations cannot guarantee manuscript acceptance or favorable peer review outcomes. Final editorial decisions rest exclusively with journal editors and designated peer reviewers.
 - **Ethics Alignment**: Designed to assist compliance with international guidelines from the **Committee on Publication Ethics (COPE)** and the **International Committee of Medical Journal Editors (ICMJE)**.
 
 ---
 
 ## 🛡️ Privacy & Security Guarantee
 
-1. **Zero Cloud Telemetry**: ManuView does not operate a central server that ingests or logs your manuscript text.
-2. **Local Storage**: All project cards, generated reviewer reports, cover letters, and diagnostic scores are saved strictly inside your local browser or desktop app directory.
-3. **Encrypted Direct Communication**: When calling your selected AI provider, communication is transmitted over HTTPS directly between your computer and the AI provider's official endpoint using your private key.
+1. **Zero Cloud Telemetry**: ManuView does not operate a central server that ingests or logs manuscript text.
+2. **Local Storage**: All project cards, generated reviewer reports, cover letters, and diagnostic scores are saved strictly inside your local storage.
+3. **Encrypted Direct Communication**: When calling cloud AI providers, communication is transmitted over HTTPS directly between your computer and the AI provider's official endpoint using your private key.
 
 ---
 
