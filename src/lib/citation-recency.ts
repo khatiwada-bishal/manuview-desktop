@@ -8,6 +8,8 @@
  * 4. In-text citation callout matching (flags orphan bibliography entries)
  */
 
+import { normalizeAuthorName, parseManuscriptAuthor } from "./engine/shared-utils";
+
 export interface YearDistribution {
   year: number;
   count: number;
@@ -167,23 +169,53 @@ export function analyzeCitationRecency(
   const last5YearsPercent = Math.round((last5YearsCount / denominator) * 100);
   const classicPercent = Math.round((classicCount / denominator) * 100);
 
-  // Self-Citation Analysis
+  // Evidenced Self-Citation Analysis with Disambiguated Author Matching (P0 §2.4)
   let selfCitationCount = 0;
   if (authorNames && authorNames.length > 0) {
-    const authorSurnames = authorNames
-      .map((name) => {
-        const parts = name.trim().split(/\s+/);
-        return parts[parts.length - 1].toLowerCase();
-      })
-      .filter((s) => s.length > 2);
+    const parsedManuscriptAuthors = authorNames
+      .map(parseManuscriptAuthor)
+      .filter((a): a is { family: string; initial?: string } => Boolean(a));
 
-    for (const ref of references) {
-      const lowerRef = ref.toLowerCase();
-      const isSelf = authorSurnames.some((surname) => {
-        const pattern = new RegExp(`\\b${surname}\\b`, "i");
-        return pattern.test(lowerRef);
-      });
-      if (isSelf) selfCitationCount++;
+    if (parsedManuscriptAuthors.length > 0) {
+      for (const ref of references) {
+        // Isolate author block: text preceding the year or first period
+        let authorBlock = ref;
+        const yearMatch = ref.match(/\b(?:19|20)\d{2}\b/);
+        if (yearMatch && yearMatch.index && yearMatch.index > 5) {
+          authorBlock = ref.slice(0, yearMatch.index);
+        } else {
+          const parts = ref.split(/\.\s+/);
+          if (parts.length >= 2) authorBlock = parts[0];
+        }
+
+        const normBlock = normalizeAuthorName(authorBlock);
+        let isMatch = false;
+
+        for (const msAuth of parsedManuscriptAuthors) {
+          const fam = msAuth.family;
+          if (!fam || fam.length < 2) continue;
+
+          // Ensure surname appears as a distinct word in author block
+          const famRegex = new RegExp(`\\b${fam}\\b`, "i");
+          if (famRegex.test(normBlock)) {
+            if (fam.length >= 4) {
+              isMatch = true;
+              break;
+            } else if (msAuth.initial) {
+              // 2-3 char surnames require author initial match in the author block
+              const initRegex = new RegExp(`\\b${fam}\\b[\\s,]+${msAuth.initial}|\\b${msAuth.initial}[\\s.]*${fam}\\b`, "i");
+              if (initRegex.test(normBlock)) {
+                isMatch = true;
+                break;
+              }
+            } else if (fam.length === 3) {
+              isMatch = true;
+              break;
+            }
+          }
+        }
+        if (isMatch) selfCitationCount++;
+      }
     }
   }
   const selfCitationPercent = Math.round((selfCitationCount / totalReferences) * 100);

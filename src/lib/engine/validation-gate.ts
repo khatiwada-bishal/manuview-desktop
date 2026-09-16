@@ -49,10 +49,79 @@ export function isSpanGroundedInManuscript(span: string, rawText: string, normal
  * Validates reviewer persona evidence anchors and priority issues against manuscript text.
  * Calculates verification coverage metrics and suppresses or flags ungrounded hallucinations.
  */
+/**
+ * Verifies whether a structural locator (e.g. "Table 2", "Figure 3", "Section 4.1", "Methodology")
+ * actually resolves to a detected element in the manuscript text or parsed sections (P1 §1.5).
+ */
+export function isStructuralAnchorResolvable(
+  anchor: string,
+  rawManuscriptText: string,
+  sections?: { introduction?: string; methods?: string; results?: string; discussion?: string; conclusion?: string }
+): boolean {
+  const cleanAnchor = anchor.trim().toLowerCase();
+
+  // 1. Table / Figure checks: e.g. "Table 2", "Figure 1", "Fig. 3"
+  const tableFigMatch = cleanAnchor.match(/\b(table|figure|fig\.)\s*([0-9a-z]+)\b/i);
+  if (tableFigMatch) {
+    const isFig = tableFigMatch[1].toLowerCase().startsWith("fig");
+    const typePattern = isFig ? "(?:figure|fig\\.?)" : "table";
+    const num = tableFigMatch[2];
+    const pat = new RegExp(`\\b${typePattern}\\s*${num}\\b`, "i");
+    return pat.test(rawManuscriptText);
+  }
+
+  // 2. Equation check: e.g. "Equation 3", "Eq. (2)"
+  const eqMatch = cleanAnchor.match(/\b(equation|eq\.)\s*\(?([0-9a-z]+)\)?/i);
+  if (eqMatch) {
+    const num = eqMatch[2];
+    const pat = new RegExp(`\\b(?:equation|eq\\.?)\\s*\\(?${num}\\)?`, "i");
+    return pat.test(rawManuscriptText);
+  }
+
+  // 3. Named Section checks: "Methodology", "Results", "Discussion", "Introduction"
+  if (sections) {
+    if (/\b(?:method|materials?\s+and\s+methods?)\b/i.test(cleanAnchor)) {
+      return Boolean(sections.methods && sections.methods.length > 50);
+    }
+    if (/\b(?:results?|findings?)\b/i.test(cleanAnchor)) {
+      return Boolean(sections.results && sections.results.length > 50);
+    }
+    if (/\b(?:discussion)\b/i.test(cleanAnchor)) {
+      return Boolean(sections.discussion && sections.discussion.length > 50);
+    }
+    if (/\b(?:introduction|background)\b/i.test(cleanAnchor)) {
+      return Boolean(sections.introduction && sections.introduction.length > 50);
+    }
+    if (/\b(?:conclusion)\b/i.test(cleanAnchor)) {
+      return Boolean(sections.conclusion && sections.conclusion.length > 50);
+    }
+  }
+
+  // 4. Numbered section check: e.g. "Section 3.2", "§3"
+  const sectionNumMatch = cleanAnchor.match(/(?:section|§)\s*([0-9]+(?:\.[0-9]+)*)/i);
+  if (sectionNumMatch) {
+    const secNum = sectionNumMatch[1].replace(/\./g, "\\.");
+    const pat = new RegExp(`(?:section|§)\\s*${secNum}\\b`, "i");
+    return pat.test(rawManuscriptText);
+  }
+
+  // 5. Fallback: If anchor text itself appears in raw text (>= 6 chars)
+  if (cleanAnchor.length >= 6) {
+    return rawManuscriptText.toLowerCase().includes(cleanAnchor);
+  }
+
+  return false;
+}
+
+/**
+ * Validates reviewer persona evidence anchors and priority issues against manuscript text.
+ * Calculates verification coverage metrics and suppresses or flags ungrounded hallucinations.
+ */
 export function validateEvidenceSpansAndCoverage(
   personas: ReviewerPersonaFeedback[],
   priorityIssues: PriorityIssue[],
-  rawManuscriptText: string
+  rawManuscriptText: string,
+  sections?: { introduction?: string; methods?: string; results?: string; discussion?: string; conclusion?: string }
 ): {
   validatedPersonas: ReviewerPersonaFeedback[];
   validatedIssues: PriorityIssue[];
@@ -79,9 +148,9 @@ export function validateEvidenceSpansAndCoverage(
           verifiedQuotes++;
           validatedAnchors.push(anchor);
         } else {
-          // If anchor is a structural locator like "Section 3.2: Methodology", that's grounded if section exists
-          const isStructural = /section|method|result|table|figure|eq\.|equation/i.test(anchor);
-          if (isStructural) {
+          // If anchor is a structural locator, verify that the referenced element actually exists (P1 §1.5)
+          const isStructural = /section|method|result|table|figure|fig\.|eq\.|equation/i.test(anchor);
+          if (isStructural && isStructuralAnchorResolvable(anchor, rawManuscriptText, sections)) {
             verifiedQuotes++;
             validatedAnchors.push(anchor);
           } else {
@@ -109,9 +178,13 @@ export function validateEvidenceSpansAndCoverage(
     if (issue.evidenceAnchor) {
       const quoteMatch = issue.evidenceAnchor.match(/["'“](.+?)["'”]/);
       const textToTest = quoteMatch ? quoteMatch[1] : issue.evidenceAnchor;
-      const isStructural = /section|method|result|table|figure|eq\.|equation/i.test(issue.evidenceAnchor);
+      const isStructural = /section|method|result|table|figure|fig\.|eq\.|equation/i.test(issue.evidenceAnchor);
 
-      if (!isStructural && !isSpanGroundedInManuscript(textToTest, rawManuscriptText, normRaw)) {
+      if (isStructural) {
+        if (!isStructuralAnchorResolvable(issue.evidenceAnchor, rawManuscriptText, sections)) {
+          anchorGrounded = false;
+        }
+      } else if (!isSpanGroundedInManuscript(textToTest, rawManuscriptText, normRaw)) {
         anchorGrounded = false;
       }
     }

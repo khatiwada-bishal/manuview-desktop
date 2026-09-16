@@ -77,10 +77,8 @@ export function calculateDeterministicDimensions(
 
   const methScore = isMethodsMissing
     ? 1
-    : isMethodsInferred
-    ? sampleCount > 0 || eqCount > 0
-      ? 3
-      : 2
+    : isMethodsInferred || Boolean(manuscript.sectionProvenance?.structureNotDetected)
+    ? 2
     : sections.methods && (sampleCount > 0 || eqCount > 0)
     ? 4
     : 3;
@@ -156,13 +154,13 @@ export function calculateDeterministicDimensions(
       label: "Methodological & Statistical Soundness",
       verdict: isMethodsMissing
         ? "CRITICAL: Formal Methods / Experimental section not detected in manuscript."
-        : isMethodsInferred
-        ? `Methodological narrative inferred from manuscript body (${eqCount} equation(s), ${sampleCount} sample indicator(s)); explicit 'Methods' heading was absent.`
+        : (isMethodsInferred || Boolean(manuscript.sectionProvenance?.structureNotDetected))
+        ? "Structure not detected: Formal 'Methods' heading was not found. Methodological soundness cannot be reliably assessed from synthetic body slices."
         : `Methodological architecture incorporates ${eqCount} mathematical formulation(s) and ${sampleCount} sample indicator(s).`,
-      strengths: isMethodsMissing
+      strengths: (isMethodsMissing || isMethodsInferred || Boolean(manuscript.sectionProvenance?.structureNotDetected))
         ? []
         : [
-            !isMethodsInferred && sections.methods
+            sections.methods
               ? "Formal procedural description in dedicated Methods section"
               : "Documented procedural workflow",
             repoCount > 0
@@ -173,10 +171,12 @@ export function calculateDeterministicDimensions(
         ? [
             "Manuscript lacks an explicit Materials & Methods section. Peer reviewers cannot evaluate protocol validity, statistical power, or reproducibility.",
           ]
+        : (isMethodsInferred || Boolean(manuscript.sectionProvenance?.structureNotDetected))
+        ? [
+            "Insert an explicit 'Materials and Methods' section heading so editors and referees can evaluate experimental specifications and reproducibility.",
+          ]
         : [
-            isMethodsInferred
-              ? "Insert an explicit 'Materials and Methods' section heading so editors and referees can immediately locate experimental specifications"
-              : "Reporting formal sample power calculations (1 - beta >= 0.80) in Methods",
+            "Reporting formal sample power calculations (1 - beta >= 0.80) in Methods",
             "Documenting full replication archive in a persistent public repository (Zenodo, GitHub, OSF)",
           ],
       source: "heuristic",
@@ -376,9 +376,9 @@ export function calculateDecisionCategoryDistribution(params: {
     p_reject_after_review += (100 - total);
   }
 
-  // NeurIPS 2014 "Messy Middle" flag:
-  // In empirical experiments, papers in the 42-68 score band with split assessments
-  // had a 57% chance of receiving a flipped decision with another reviewer panel.
+  // Competitive Mid-Tier Variance Flag (P1 §3.2):
+  // Submissions in the competitive mid-tier without fatal barriers exhibit
+  // higher reviewer variance where outcomes are sensitive to reviewer assignment.
   const messy_middle_flag =
     !isScopeMismatch &&
     !isMethodsMissing &&
@@ -394,7 +394,7 @@ export function calculateDecisionCategoryDistribution(params: {
       : "medium";
 
   const baseRateDisclaimer = messy_middle_flag
-    ? "Messy Middle Range: Empirical peer-review studies (e.g. NeurIPS committee experiment) demonstrate that submissions in this competitive mid-tier experience significant reviewer variance, where final outcome hinges heavily on referee assignment."
+    ? "Competitive Mid-Tier Notice: Submissions in this score range exhibit substantial peer-review variance; final decisions often hinge on reviewer assignment and addressing minor methodological caveats."
     : undefined;
 
   return {
@@ -566,12 +566,24 @@ export function calculateCalibratedAcceptanceProbability(
     hasRetraction,
   });
 
+  const readinessBand =
+    decisionOutcome === "Desk Reject Hazard"
+      ? ("Desk Reject Hazard" as const)
+      : decisionOutcome === "High Risk / Substantial Rebuttal Required"
+      ? ("Substantial Revision Needed" as const)
+      : decisionOutcome === "Competitive with Major Revisions"
+      ? ("Competitive / Moderate Readiness" as const)
+      : ("Strong Submission Readiness" as const);
+
   return {
     overallScore: compositeScore,
     acceptanceProbabilityPercent: calibratedProb,
     probabilityRange,
     baselineJournalRatePercent: baselineRate,
     decisionOutcome,
+    readinessBand,
+    calibrationAdvisory:
+      "Advisory Readiness Tier: Estimated relative to historical selectivity base rates and detected technical barriers. Real-world peer-review decisions exhibit variance dependent on referee assignment.",
     decisionDistribution,
     dimensionalMultiplier: Number(dimensionalMultiplier.toFixed(2)),
     hazardPenaltyMultiplier: Number(hazardMultiplier.toFixed(2)),
@@ -580,270 +592,6 @@ export function calculateCalibratedAcceptanceProbability(
   };
 }
 
-// -----------------------------------------------------------------------------
-// AUDIT REDESIGN: BEHAVIORAL ANCHORS, LENIENCY CORRECTION & CALIBRATED DISTRIBUTION
-// -----------------------------------------------------------------------------
-
-export const BEHAVIORAL_ANCHORS: Record<
-  ScoringDimension,
-  {
-    "1-2": string;
-    "3-4": string;
-    "5-6": string;
-    "7-8": string;
-    "9-10": string;
-  }
-> = {
-  NOVELTY: {
-    "9-10": "Paradigm-shifting conceptual or empirical advance opening a new area of inquiry.",
-    "7-8": "Substantive conceptual advance that resolves known ambiguities or outperforms contemporary benchmarks.",
-    "5-6": "Incremental refinement or extension of established frameworks; solid utility but limited conceptual leap.",
-    "3-4": "Marginal variation with negligible differentiation from existing 2023-2025 published literature.",
-    "1-2": "Derivative replication lacking demonstrable novelty or conceptual contribution.",
-  },
-  METHODOLOGY: {
-    "9-10": "Gold-standard protocol: preregistered, exhaustive controls, validated instrumentation, and fully open artifacts.",
-    "7-8": "Methodologically rigorous design with minor parameter caveats; fully reproducible with standard effort.",
-    "5-6": "Plausible workflow, but key baseline controls, ablations, or hyperparameter details are underspecified.",
-    "3-4": "Severe confounding, uncalibrated instruments, high risk of bias, or missing negative controls.",
-    "1-2": "Fatal protocol flaw, invalid study design, or missing Materials and Methods section.",
-  },
-  STATISTICAL_RIGOR: {
-    "9-10": "A-priori power calculation, 95% CIs for all estimates, exact p-values, and FDR multiplicity control.",
-    "7-8": "Appropriate inferential tests with confidence intervals and effect sizes; minor multiplicity caveats.",
-    "5-6": "Bare p-values without confidence intervals or effect sizes; multiple comparisons uncorrected.",
-    "3-4": "Underpowered cohort without justification, or p-value contradictory with reported confidence interval.",
-    "1-2": "P-hacking signatures, fabricated degrees of freedom, or total absence of quantitative uncertainty metrics.",
-  },
-  LITERATURE_COMPLETENESS: {
-    "9-10": "Exemplary synthesis of foundational and contemporary (2023-2025) literature with nuanced positioning.",
-    "7-8": "Solid coverage of core frameworks; minor omissions of secondary preprints or non-English studies.",
-    "5-6": "Omits key competitive baselines or rival hypotheses; citation distribution is somewhat narrow.",
-    "3-4": "Heavily biased citations, excessive self-citation (>25%), or reliance on superseded literature.",
-    "1-2": "Cites retracted papers without acknowledgement or exhibits complete blindness to domain state-of-the-art.",
-  },
-  PRESENTATION: {
-    "9-10": "Flawless scholarly prose, intuitive publication-grade data visualizations, and clear caption legends.",
-    "7-8": "Clear, readable academic organization with minor typographical or formatting blemishes.",
-    "5-6": "Dense, ambiguous phrasing; undefined acronyms; cluttered or low-resolution figures.",
-    "3-4": "Obscure narrative structure, inconsistent notation across sections, or illegible diagrams.",
-    "1-2": "Incoherent prose, severe fragmentation, or language barriers preventing substantive peer review.",
-  },
-  ETHICAL_RIGOR: {
-    "9-10": "Explicit IRB/ethics protocol, informed consent, FAIR data repository DOI, and full COI disclosure.",
-    "7-8": "Declared ethics compliance and data availability; minor missing accession details.",
-    "5-6": "Generic statements ('data available on request'); ethics committee approval details unspecified.",
-    "3-4": "Omitted IRB protocol for human/animal subjects or undisclosed commercial competing interests.",
-    "1-2": "Severe compliance breach, tortured phrases / text synthesis artifacts, or research misconduct indicators.",
-  },
-};
-
-export const DEFAULT_LENIENCY_CORRECTION = 0.60;
-
-/**
- * Corrects for systematic LLM scoring leniency (+0.4 to +0.8 bias documented in empirical evaluations).
- */
-export function applyLeniencyCorrection(
-  score: number,
-  bias: number = DEFAULT_LENIENCY_CORRECTION
-): number {
-  return Math.max(1.0, Math.min(10.0, Number((score - bias).toFixed(1))));
-}
-
-/**
- * Empirical Bayesian shrinkage pulling observed quality estimates toward venue base rates.
- * p_calibrated = (1 - alpha) * p_observed + alpha * baseRate
- */
-export function applyBaseRateShrinkage(
-  pObserved: number,
-  baseRate: number,
-  alpha: number = 0.50
-): number {
-  const result = (1 - alpha) * pObserved + alpha * baseRate;
-  return Math.max(0.001, Math.min(0.999, Number(result.toFixed(3))));
-}
-
-/**
- * Implements critical issue caps (Spec §5.2).
- * When critical issues are present (e.g. fatal methodological flaw, retracted citations),
- * positive outcomes (ACCEPT and MINOR_REVISION) are capped at (0.15 / criticalCount).
- * The surplus probability is shifted to REJECT_AFTER_REVIEW or DESK_REJECT.
- */
-export function applyCriticalIssueCaps(
-  probs: Record<DecisionCategory, number>,
-  criticalCount: number
-): Record<DecisionCategory, number> {
-  if (criticalCount <= 0) return { ...probs };
-
-  const cap = Math.min(0.15, Number((0.15 / criticalCount).toFixed(3)));
-  let excess = 0;
-
-  const result = { ...probs };
-
-  if (result.ACCEPT > cap * 0.2) {
-    excess += result.ACCEPT - cap * 0.2;
-    result.ACCEPT = Number((cap * 0.2).toFixed(3));
-  }
-  if (result.MINOR_REVISION > cap * 0.8) {
-    excess += result.MINOR_REVISION - cap * 0.8;
-    result.MINOR_REVISION = Number((cap * 0.8).toFixed(3));
-  }
-
-  // Shift excess to REJECT_AFTER_REVIEW and DESK_REJECT
-  result.REJECT_AFTER_REVIEW = Number((result.REJECT_AFTER_REVIEW + excess * 0.7).toFixed(3));
-  result.DESK_REJECT = Number((result.DESK_REJECT + excess * 0.3).toFixed(3));
-
-  // Re-normalize to exactly 1.000
-  const sum = Object.values(result).reduce((a, b) => a + b, 0);
-  if (sum > 0 && Math.abs(sum - 1.0) > 0.0001) {
-    result.REJECT_AFTER_REVIEW = Number((result.REJECT_AFTER_REVIEW + (1.0 - sum)).toFixed(3));
-  }
-
-  return result;
-}
-
-export interface CalibrateDecisionDistributionParams {
-  rawCompositeScore: number; // 0..100 or 1..10
-  baselineRate?: number; // 0..1, e.g. 0.08 for Nature, 0.48 for PLOS ONE
-  targetJournal?: string;
-  archetype?: JournalArchetype;
-  criticalCount?: number;
-  isScopeMismatch?: boolean;
-  isMethodsMissing?: boolean;
-  hasRetraction?: boolean;
-  leniencyCorrection?: number;
-  modelVersion?: string;
-}
-
-/**
- * Calibrates the discrete 5-category decision distribution anchored to venue selectivity base rates
- * and modulated by empirical leniency correction and critical defect caps (Spec §5.1 & §5.2).
- */
-export function calibrateDecisionDistribution(
-  params: CalibrateDecisionDistributionParams
-): DecisionDistribution {
-  const {
-    rawCompositeScore,
-    baselineRate = 0.25,
-    criticalCount = 0,
-    isScopeMismatch = false,
-    isMethodsMissing = false,
-    hasRetraction = false,
-    leniencyCorrection = DEFAULT_LENIENCY_CORRECTION,
-    modelVersion = "manuview-calibrated-v2",
-  } = params;
-
-  // Normalize composite score to 0..100
-  const score100 = rawCompositeScore <= 10 ? (rawCompositeScore - 1) * 11.11 : rawCompositeScore;
-  // Apply leniency adjustment to effective score (subtracted bias term)
-  const adjustedScore = Math.max(0, Math.min(100, score100 - leniencyCorrection * 10));
-
-  let probs: Record<DecisionCategory, number>;
-
-  if (isScopeMismatch) {
-    probs = {
-      DESK_REJECT: 0.88,
-      REJECT_AFTER_REVIEW: 0.09,
-      MAJOR_REVISION: 0.03,
-      MINOR_REVISION: 0.0,
-      ACCEPT: 0.0,
-    };
-  } else if (isMethodsMissing) {
-    probs = {
-      DESK_REJECT: 0.78,
-      REJECT_AFTER_REVIEW: 0.16,
-      MAJOR_REVISION: 0.06,
-      MINOR_REVISION: 0.0,
-      ACCEPT: 0.0,
-    };
-  } else if (hasRetraction) {
-    probs = {
-      DESK_REJECT: 0.72,
-      REJECT_AFTER_REVIEW: 0.20,
-      MAJOR_REVISION: 0.08,
-      MINOR_REVISION: 0.0,
-      ACCEPT: 0.0,
-    };
-  } else {
-    // Base desk-reject rate derived from venue baseline selectivity
-    const venueDeskRate = Math.max(0.12, Math.min(0.80, 0.82 - baselineRate * 1.15));
-    // Quality dampener: higher adjustedScore reduces desk reject
-    const qualityDampener = ((adjustedScore - 50) / 100) * 0.45;
-    const pDesk = Math.max(0.05, Math.min(0.85, venueDeskRate - qualityDampener));
-
-    const rem = 1.0 - pDesk;
-
-    let pAccept: number;
-    let pMinor: number;
-    let pMajor: number;
-    let pReject: number;
-
-    if (adjustedScore >= 80) {
-      pAccept = rem * 0.08;
-      pMinor = rem * 0.42;
-      pMajor = rem * 0.36;
-      pReject = rem - (pAccept + pMinor + pMajor);
-    } else if (adjustedScore >= 65) {
-      pAccept = rem * 0.03;
-      pMinor = rem * 0.26;
-      pMajor = rem * 0.46;
-      pReject = rem - (pAccept + pMinor + pMajor);
-    } else if (adjustedScore >= 50) {
-      pAccept = rem * 0.01;
-      pMinor = rem * 0.12;
-      pMajor = rem * 0.45;
-      pReject = rem - (pAccept + pMinor + pMajor);
-    } else {
-      pAccept = 0.0;
-      pMinor = rem * 0.04;
-      pMajor = rem * 0.32;
-      pReject = rem - (pMinor + pMajor);
-    }
-
-    // Shrink positive outcome with venue baseline rate
-    pAccept = applyBaseRateShrinkage(pAccept, baselineRate * 0.1, 0.4);
-    pMinor = applyBaseRateShrinkage(pMinor, baselineRate * 0.4, 0.4);
-
-    probs = {
-      DESK_REJECT: Number(pDesk.toFixed(3)),
-      REJECT_AFTER_REVIEW: Number(pReject.toFixed(3)),
-      MAJOR_REVISION: Number(pMajor.toFixed(3)),
-      MINOR_REVISION: Number(pMinor.toFixed(3)),
-      ACCEPT: Number(pAccept.toFixed(3)),
-    };
-  }
-
-  // Apply critical issue caps
-  if (criticalCount > 0) {
-    probs = applyCriticalIssueCaps(probs, criticalCount);
-  }
-
-  // Ensure strict sum to 1.000
-  const sum = Object.values(probs).reduce((a, b) => a + b, 0);
-  if (Math.abs(sum - 1.0) > 0.0001) {
-    probs.REJECT_AFTER_REVIEW = Number((probs.REJECT_AFTER_REVIEW + (1.0 - sum)).toFixed(3));
-  }
-
-  // Messy middle flag: activated when score is in the competitive mid-tier (42..68)
-  // and no deterministic barrier exists
-  const messyMiddle =
-    !isScopeMismatch &&
-    !isMethodsMissing &&
-    !hasRetraction &&
-    criticalCount === 0 &&
-    adjustedScore >= 42 &&
-    adjustedScore <= 68;
-
-  return {
-    probabilities: probs,
-    calibration: {
-      baseRateUsed: baselineRate,
-      leniencyCorrection,
-      modelVersion,
-    },
-    messyMiddle,
-  };
-}
 
 
 

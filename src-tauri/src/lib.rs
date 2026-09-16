@@ -72,6 +72,29 @@ async fn call_llm_native(
     headers: std::collections::HashMap<String, String>,
     body: Option<String>,
 ) -> Result<HttpResponsePayload, String> {
+    // SSRF Hardening (P3 §5.4): Restrict destination host to verified LLM & academic providers
+    let parsed_url = reqwest::Url::parse(&url).map_err(|e| format!("Invalid destination URL: {}", e))?;
+    let host = parsed_url.host_str().ok_or("Destination URL missing host")?.to_lowercase();
+    let is_allowed = host == "api.openai.com"
+        || host == "api.anthropic.com"
+        || host == "generativelanguage.googleapis.com"
+        || host == "api.groq.com"
+        || host == "api.mistral.ai"
+        || host == "openrouter.ai"
+        || host == "integrate.api.nvidia.com"
+        || host == "api.openalex.org"
+        || host == "api.crossref.org"
+        || host == "huggingface.co"
+        || host.ends_with(".huggingface.co")
+        || host == "raw.githubusercontent.com"
+        || host.ends_with(".githubusercontent.com")
+        || host == "localhost"
+        || host == "127.0.0.1";
+
+    if !is_allowed {
+        return Err(format!("SSRF Violation: Target host '{}' is not in the allowed API destinations list.", host));
+    }
+
     let client = reqwest::Client::builder()
         .build()
         .map_err(|e| format!("Failed to create HTTP client: {}", e))?;

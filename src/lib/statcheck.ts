@@ -175,6 +175,7 @@ export function upperIncompleteGammaQ(a: number, x: number): number {
  * Standard Normal Z two-tailed p-value
  */
 export function pValueFromZ(z: number): number {
+  if (z === 0) return 1;
   const absZ = Math.abs(z);
   return Math.max(0, Math.min(1, 1 - erf(absZ / Math.SQRT2)));
 }

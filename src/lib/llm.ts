@@ -608,9 +608,9 @@ export async function callLLM(
   }
 
   // -----------------------------------------------------------
-  // 2. Groq / OpenAI Compatible API (including OpenRouter & NVIDIA NIM)
+  // 2. Groq / Mistral / OpenAI Compatible API (including OpenRouter & NVIDIA NIM)
   // -----------------------------------------------------------
-  if ((provider === "groq" || provider === "openai") && apiKey) {
+  if ((provider === "groq" || provider === "openai" || provider === "mistral") && apiKey) {
     let customBase = config?.baseUrl || getEnv('OPENAI_BASE_URL');
     const isNvidia = Boolean(apiKey?.startsWith("nvapi-") || (customBase && customBase.includes("nvidia.com")));
     const isOpenRouter = !isNvidia && Boolean(apiKey?.startsWith("sk-or-") || (customBase && customBase.includes("openrouter.ai")));
@@ -625,6 +625,8 @@ export async function callLLM(
     let endpoint = "https://api.openai.com/v1/chat/completions";
     if (provider === "groq") {
       endpoint = "https://api.groq.com/openai/v1/chat/completions";
+    } else if (provider === "mistral") {
+      endpoint = "https://api.mistral.ai/v1/chat/completions";
     } else if (customBase) {
       const validated = validateBaseUrl(customBase);
       if (!validated.valid) {
@@ -633,7 +635,7 @@ export async function callLLM(
       let cleanBase = validated.normalized || customBase.trim().replace(/\/+$/, "");
       endpoint = cleanBase.endsWith("/chat/completions") ? cleanBase : `${cleanBase}/chat/completions`;
     }
-    let chosenModel = (model || getEnv('OPENAI_MODEL') || (provider === "groq" ? "llama-3.3-70b-versatile" : isNvidia ? "nvidia/llama-3.1-nemotron-70b-instruct" : (isOpenRouter ? "openai/gpt-4o-mini" : "gpt-4o-mini"))).trim();
+    let chosenModel = (model || getEnv('OPENAI_MODEL') || (provider === "groq" ? "llama-3.3-70b-versatile" : provider === "mistral" ? "mistral-large-latest" : isNvidia ? "nvidia/llama-3.1-nemotron-70b-instruct" : (isOpenRouter ? "openai/gpt-4o-mini" : "gpt-4o-mini"))).trim();
     if (isNvidia && (!chosenModel.includes("/") || chosenModel === "gpt-4o" || chosenModel === "gpt-4o-mini")) {
       chosenModel = "nvidia/llama-3.1-nemotron-70b-instruct";
     }
@@ -1058,6 +1060,29 @@ export const CURATED_MODELS: Record<LLMProvider, AvailableModel[]> = {
       name: "Mixtral 8x7B MoE",
       description: "Mistral MoE architecture with 32k context window.",
       tag: "MoE",
+      recommended: false,
+    },
+  ],
+  mistral: [
+    {
+      id: "mistral-large-latest",
+      name: "Mistral Large (Latest)",
+      description: "Mistral flagship model with deep academic reasoning capabilities.",
+      tag: "⚡ Recommended",
+      recommended: true,
+    },
+    {
+      id: "mistral-small-latest",
+      name: "Mistral Small (Latest)",
+      description: "Fast, cost-efficient model for rapid manuscript pre-screening.",
+      tag: "Fast",
+      recommended: false,
+    },
+    {
+      id: "codestral-latest",
+      name: "Codestral (Latest)",
+      description: "Specialized for computational methods, reproducible code, and data pipelines.",
+      tag: "Code / Math",
       recommended: false,
     },
   ],

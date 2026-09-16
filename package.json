@@ -12,6 +12,7 @@
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build",
     "desktop:build:mac": "./scripts/build-mac.sh",
+    "test": "tsx --test test/**/*.test.ts",
     "audit:npm": "npm audit --audit-level=high"
   },
   "dependencies": {
@@ -38,6 +39,7 @@
     "autoprefixer": "^10.4.20",
     "postcss": "^8.5.2",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.23.13",
     "typescript": "^5.7.3",
     "vite": "^6.1.0"
   }

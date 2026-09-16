@@ -10,6 +10,18 @@ export const MAX_ASSERTION_SNIPPET_LENGTH = 85;
 export const MIN_VERIFIED_REFS_FOR_SELF_CITATION = 10;
 export const MIN_AUTHOR_FAMILY_NAME_LENGTH = 2; // Supports 2-letter Asian surnames (Li, Wu, Xu, Ho, Ng, Yu)
 export const MAX_MICRO_REPAIR_PAYLOAD_CHARS = 48000;
+
+/**
+ * Generates a per-request cryptographically unique boundary delimiter nonce (P0 §1.4 / §2.6).
+ * Prevents adversarial prompt injection where a manuscript embeds a static closing tag.
+ */
+export function generateBoundaryNonce(): string {
+  const randomPart = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID().replace(/-/g, "")
+    : Math.random().toString(36).slice(2) + Date.now().toString(36);
+  return `UNTRUSTED_DOC_NONCE_${randomPart}`;
+}
+
 export const BOUNDARY_DELIMITER = "MANUSCRIPT_UNTRUSTED_CONTENT_VERBATIM";
 
 /**
@@ -22,6 +34,7 @@ export const PROVIDER_CONTEXT_CHAR_LIMITS: Record<string, number> = {
   gemini: 65000,
   anthropic: 55000,
   openai: 55000,
+  mistral: 55000,
   groq: 20000,
   ollama: 22000,
   webllm: 8000,

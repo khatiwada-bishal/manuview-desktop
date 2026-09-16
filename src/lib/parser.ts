@@ -654,6 +654,7 @@ export function parseManuscriptText(inputRawText: string, filename?: string): Pa
           .slice(0, 15000);
         sectionProvenance.discussionInferred = true;
       }
+      sectionProvenance.structureNotDetected = true;
     }
   }
 

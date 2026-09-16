@@ -1,11 +1,11 @@
 /**
  * Academic Hedging & Causal Overclaim Linguistic Analyzer
  * 
- * Based on Ken Hyland's Corpus of Academic Hedging & Boosting and meta-research guidelines:
+ * Heuristic academic phrasing and epistemic stance lexicon:
  * 1. Detects unhedged superlatives and hyperbole ("revolutionary", "unprecedented", "flawless")
  * 2. Flags strong causal claims ("definitely proves", "establishes direct causality")
  * 3. Identifies observational study designs claiming unwarranted mechanistic causation
- * 4. Computes an overall "Epistemic Hedging Index" and provides concrete hedged rewrites
+ * 4. Computes a heuristic "Epistemic Hedging Index" (0-100) and provides concrete hedged rewrites
  */
 
 export interface OverclaimMatch {
@@ -22,7 +22,7 @@ export interface HedgingAuditReport {
   totalOverclaimsFound: number;
   criticalCount: number;
   warningCount: number;
-  epistemicBalanceIndex: number; // 0 to 100 score (100 = appropriately hedged academic prose)
+  epistemicBalanceIndex: number; // 0 to 100 heuristic indicator (100 = appropriately hedged academic prose)
   matches: OverclaimMatch[];
   summary: string;
   hasCausalVulnerabilities: boolean;
@@ -110,11 +110,11 @@ const OVERCLAIM_RULES: OverclaimRule[] = [
     explanation: "Complex phenotypes and multidimensional systems are rarely driven by a single isolated variable.",
   },
   {
-    pattern: /\b(?:demonstrates?\s+that\s+X\s+causes\s+Y)\b/gi,
+    pattern: /\b(?:demonstrates?\s+(?:that\s+)?[\w\s-]{2,25}\s+causes\s+[\w\s-]{2,25}|demonstrates?\s+(?:direct\s+)?causality)\b/gi,
     category: "causal_overclaim",
     severity: "warning",
-    suggestedRewrite: "indicates that manipulation of X influences Y",
-    explanation: "Specify the exact operational manipulation rather than broad causal statements.",
+    suggestedRewrite: "indicates that manipulation of the independent variable influences the outcome",
+    explanation: "Specify the exact operational manipulation and boundary conditions rather than asserting broad causal mechanisms.",
   },
 
   // 4. Universal Generalizations without Population Sampling

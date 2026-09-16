@@ -24,7 +24,7 @@ const SESSION_PREFIX = "manuview_sec_";
 
 /**
  * Persist an API credential into the native OS credential manager over Tauri IPC,
- * or encrypted/session storage if running in standard web preview mode.
+ * or session-scoped storage if running in browser preview mode.
  */
 export async function saveSecureApiKey(provider: string, key: string): Promise<void> {
   const cleanProvider = (provider || "").trim().toLowerCase();
@@ -43,7 +43,9 @@ export async function saveSecureApiKey(provider: string, key: string): Promise<v
     }
   }
 
-  // Fallback: sessionStorage for web preview mode (never written to plaintext localStorage)
+  // Fallback: session-scoped obfuscation in sessionStorage for web preview mode
+  // Note: Hardware-encrypted OS keychain storage is exclusive to the native desktop app.
+  // In web preview mode, keys are session-scoped and base64-obfuscated (never written to persistent localStorage).
   if (typeof window !== "undefined" && window.sessionStorage) {
     try {
       if (cleanKey) {

@@ -867,6 +867,32 @@ export function DesktopDashboard({
   const renderCalibratedAcceptanceCard = () => {
     if (!calibratedAcceptance) return null;
 
+    // P2 §4.3: Strictly suppress quantitative acceptance probability percentages in offline mode
+    if (fullReport?.executionMode === "heuristic_offline") {
+      return (
+        <div className="rounded-3xl liquid-glass-card border border-black/[0.08] dark:border-white/[0.1] p-6 sm:p-7 transition-all duration-200">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 flex items-center justify-center shrink-0">
+              <BarChart3 className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-[#0F172A] dark:text-white">
+                  Deterministic Offline Audit Active
+                </h3>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800">
+                  Scores Suppressed
+                </span>
+              </div>
+              <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-1">
+                Quantitative acceptance probability percentages are strictly suppressed in offline mode. Authoritative deterministic audits (Statcheck, GRIM, IMRaD section detection, mandatory declarations, and citation recency) drive this report.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     const prob = calibratedAcceptance.acceptanceProbabilityPercent;
     const isHighRisk = prob < 15 || calibratedAcceptance.decisionOutcome.includes("Hazard");
     const isModerate = prob >= 15 && prob < 40;

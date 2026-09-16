@@ -174,6 +174,7 @@ export interface SectionProvenance {
   resultsMissing?: boolean;
   introductionInferred?: boolean;
   discussionInferred?: boolean;
+  structureNotDetected?: boolean;
 }
 
 export interface ParsedManuscript {
@@ -342,6 +343,8 @@ export interface CalibratedAcceptanceRating {
   probabilityRange: [number, number]; // e.g. [11, 19] confidence bounds
   baselineJournalRatePercent: number; // Target journal baseline selectivity, e.g. 7.5 (%)
   decisionOutcome: ExpectedDecisionOutcome;
+  readinessBand?: 'Desk Reject Hazard' | 'Substantial Revision Needed' | 'Competitive / Moderate Readiness' | 'Strong Submission Readiness';
+  calibrationAdvisory?: string;
   decisionDistribution: DecisionCategoryDistribution;
   dimensionalMultiplier: number; // Composite quality multiplier MQ (e.g. 1.85)
   hazardPenaltyMultiplier: number; // Compounded deficit penalty (e.g. 0.85)
@@ -489,7 +492,7 @@ export interface BriefJournalFitReport {
 
 export type ReviewReport = FullReviewReport | BriefJournalFitReport;
 
-export type LLMProvider = 'ollama' | 'gemini' | 'groq' | 'openai' | 'anthropic' | 'webllm';
+export type LLMProvider = 'ollama' | 'gemini' | 'groq' | 'openai' | 'anthropic' | 'webllm' | 'mistral';
 
 export interface ProviderConfig {
   provider: LLMProvider;

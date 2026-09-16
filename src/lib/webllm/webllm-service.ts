@@ -1,11 +1,11 @@
 /**
  * WebLLM Service
  * Manages on-device Small Language Model (SLM) execution via WebGPU.
- * Operates in a background Web Worker off the main UI thread.
+ * Executes on the main thread via direct WebGPU pipeline to avoid Tauri/WKWebView worker constraints.
+ * Operates offline after initial one-time model weight download.
  */
 
 import {
-  CreateWebWorkerMLCEngine,
   CreateMLCEngine,
   hasModelInCache,
   deleteModelAllInfoInCache,
@@ -28,7 +28,7 @@ export const SUPPORTED_LOCAL_MODELS: LocalModelInfo[] = [
     name: "Qwen 2.5 (0.5B Instruct)",
     sizeMB: 380,
     vramMB: 600,
-    description: "Lightweight, ultra-fast local SLM. Perfect for structured output, quick summaries, and low-spec machines.",
+    description: "Lightweight, ultra-fast on-device SLM (~380 MB). Ideal for qualitative summaries and local editorial synthesis.",
     isDefault: true,
   },
   {
@@ -253,7 +253,7 @@ export async function unloadLocalModel(): Promise<void> {
 
 /**
  * Initializes and loads a local SLM via WebGPU.
- * Runs inside a background Web Worker to preserve 60 FPS UI performance.
+ * Executes on the main thread via direct WebGPU pipeline (bypassing worker constraints in Tauri).
  */
 export async function initLocalModel(
   modelId: string = DEFAULT_LOCAL_MODEL,
