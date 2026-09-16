@@ -76,7 +76,29 @@ export function extractReferencesFromText(text: string): string[] {
   }
 
   // G5: Repair DOIs split across line breaks or hyphens from two-column PDF extractions
-  refSection = refSection.replace(/(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]*?)[-\s]*[\r\n]+[ \t]*([-._;()/:A-Za-z0-9]+)/g, "$1$2");
+  refSection = refSection.replace(
+    /(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]*?)[-\s]*[\r\n]+[ \t]*([^\s\r\n]+)/g,
+    (match, p1, p2) => {
+      // If p2 is the start of a numbered or bulleted reference or protocol, DO NOT merge across lines
+      if (/^(?:\d+[\.\)]|\[\d+\]|\(\d+\)|[-*•]|doi:|https?:)/i.test(p2)) {
+        return match;
+      }
+      // If p2 starts with an author name or capitalized word, DO NOT merge
+      if (/^[A-Z][a-zA-Z'\-À-ÿ]+(?:,|\b)/.test(p2)) {
+        return match;
+      }
+      // If p1 ends with a hyphen or slash, it is an authentic line-wrap in PDF extraction
+      if (/[/-]$/.test(p1)) {
+        const cleanP1 = p1.endsWith("-") ? p1.slice(0, -1) : p1;
+        return cleanP1 + p2;
+      }
+      // If p2 is a continuation token of a DOI suffix (alphanumeric, no leading uppercase word)
+      if (/^[a-z0-9][a-zA-Z0-9._\-]*$/i.test(p2) && !/^[A-Z]/.test(p2)) {
+        return p1 + p2;
+      }
+      return match;
+    }
+  );
 
   // 2. Parse individual reference items from refSection
   const rawLines = refSection

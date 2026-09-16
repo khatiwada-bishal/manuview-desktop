@@ -86,6 +86,25 @@ science.aad8828
   assert.equal(quality.abnormallyLongCount, 0);
 });
 
+test('G5b: Reference entries ending with complete DOIs do not concatenate into subsequent entries', () => {
+  const sampleBibliography = `
+References
+1. Saunders D, et al. A DLL3-targeted antibody-drug conjugate for small cell lung cancer. Sci Transl Med. 2015. DOI: 10.1126/scitranslmed.aac9459
+2. Wakefield AJ, et al. Ileal-lymphoid-nodular hyperplasia and pervasive developmental disorder in children. Lancet. 1998. DOI: 10.1016/S0140-6736(97)11096-0
+3. NonExistent A, Hallucination B. Synthetic AI generated citation. J Bio. 2024. DOI: 10.1038/s41586-999-hallucinated01
+4. Rudin CM, et al. Molecular subtypes of small cell lung cancer. Nat Rev Cancer. 2019. DOI: 10.1038/s41568-019-0133-9
+5. Obokata H, et al. Retraction: Stimulus-triggered fate conversion of somatic cells into pluripotency. Nature. 2014. DOI: 10.1038/nature13598
+  `;
+
+  const extracted = extractReferencesFromText(sampleBibliography);
+  assert.equal(extracted.length, 5);
+  assert.ok(extracted[0].includes('10.1126/scitranslmed.aac9459'));
+  assert.ok(extracted[1].includes('10.1016/S0140-6736(97)11096-0'));
+  assert.ok(extracted[2].includes('10.1038/s41586-999-hallucinated01'));
+  assert.ok(extracted[3].includes('10.1038/s41568-019-0133-9'));
+  assert.ok(extracted[4].includes('10.1038/nature13598'));
+});
+
 test('C1: Standalone service and AI Review produce identical CitationIntegritySummary metrics', async () => {
   clearDoiCache();
 
