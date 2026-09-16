@@ -1401,6 +1401,40 @@ export async function runManuscriptDiagnostic(
   }
 
   // Step 6: Finalize Classification & Validate Sections
+  // Normalize root payload in case the model wrapped the response (e.g. { "review": { ... } })
+  if (parsedLLM && typeof parsedLLM === "object") {
+    if (Array.isArray(parsedLLM)) {
+      parsedLLM = parsedLLM[0] || {};
+    }
+    const candidateWrappers = ["review", "diagnostic", "analysis", "result", "response", "output", "data", "report", "evaluation"];
+    for (const wrapper of candidateWrappers) {
+      if ((parsedLLM as any)[wrapper] && typeof (parsedLLM as any)[wrapper] === "object" && !Array.isArray((parsedLLM as any)[wrapper])) {
+        const sub = (parsedLLM as any)[wrapper];
+        if (sub.dimensions || sub.reviewerPersonas || sub.priorityIssues || sub.overallScore || sub.summary) {
+          parsedLLM = { ...parsedLLM, ...sub };
+          break;
+        }
+      }
+    }
+
+    // Normalize snake_case or alias keys
+    if (!(parsedLLM as any).reviewerPersonas) {
+      (parsedLLM as any).reviewerPersonas = (parsedLLM as any).reviewer_personas || (parsedLLM as any).personas || (parsedLLM as any).reviewers;
+    }
+    if (!(parsedLLM as any).priorityIssues) {
+      (parsedLLM as any).priorityIssues = (parsedLLM as any).priority_issues || (parsedLLM as any).issues;
+    }
+    if (!(parsedLLM as any).journalRecommendations) {
+      (parsedLLM as any).journalRecommendations = (parsedLLM as any).journal_recommendations || (parsedLLM as any).recommendations || (parsedLLM as any).journals;
+    }
+    if (!(parsedLLM as any).reportingGuideline) {
+      (parsedLLM as any).reportingGuideline = (parsedLLM as any).reporting_guideline || (parsedLLM as any).guideline;
+    }
+    if ((parsedLLM as any).overallScore === undefined && (parsedLLM as any).overall_score !== undefined) {
+      (parsedLLM as any).overallScore = (parsedLLM as any).overall_score;
+    }
+  }
+
   const rawCategory = parsedLLM?.classification?.category;
   const category: DocumentCategory = isDocumentCategory(rawCategory)
     ? rawCategory
@@ -1442,10 +1476,17 @@ export async function runManuscriptDiagnostic(
   const personaSource = personaValidation.isValid ? "llm" : "heuristic";
 
   const usedLlm = [dimensionSource, issueSource, personaSource].filter((s) => s === "llm").length;
+  const hasLlmContent = Boolean(
+    usedLlm > 0 ||
+    (typeof parsedLLM?.summary === "string" && parsedLLM.summary.trim().length > MIN_SUMMARY_LENGTH) ||
+    (typeof parsedLLM?.overallScore === "number" && !isNaN(parsedLLM.overallScore)) ||
+    (recsValidation.isValid && recsValidation.data && recsValidation.data.length > 0)
+  );
+
   const executionMode: "llm_synthesized" | "partial_llm" | "failed" =
     usedLlm === 3
       ? "llm_synthesized"
-      : usedLlm > 0
+      : hasLlmContent
       ? "partial_llm"
       : "failed";
 
