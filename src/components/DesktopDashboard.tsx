@@ -60,6 +60,10 @@ import {
   exportLatexRebuttalTable,
   exportBibTeX,
 } from "@/lib/export-generator";
+import { DimensionRadarChart } from "@/components/charts/DimensionRadarChart";
+import { SegmentedReadinessGauge } from "@/components/charts/SegmentedReadinessGauge";
+import { DecisionDistributionBar } from "@/components/charts/DecisionDistributionBar";
+import type { ScoreDimension } from "@/lib/types";
 import { DesktopJournalMatchesListView } from "./DesktopJournalMatchesListView";
 import { findMatchingJournals, JournalEntry, MatchedJournalItem } from "@/lib/journals";
 import { openJournalWebsite } from "@/lib/journal-scope-service";
@@ -236,6 +240,7 @@ export function DesktopDashboard({
     }
   };
   const [issueFilter, setIssueFilter] = useState<"all" | "A" | "B" | "C">("all");
+  const [selectedRadarDimension, setSelectedRadarDimension] = useState<ScoreDimension | null>(null);
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
   const [exportToast, setExportToast] = useState<string | null>(null);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
@@ -591,7 +596,7 @@ export function DesktopDashboard({
     }
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-5">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-bold text-[#0F172A] dark:text-white flex items-center gap-2">
             <BarChart3 className="w-4 h-4 text-[#2563EB] dark:text-blue-400" />
@@ -600,11 +605,30 @@ export function DesktopDashboard({
           <span className="text-xs text-[#64748B] dark:text-neutral-400">Calibrated against top-tier standards</span>
         </div>
 
+        {/* Interactive 6-Dimension Radar / Spider Chart */}
+        <DimensionRadarChart
+          dimensions={dimensions}
+          selectedDimension={selectedRadarDimension}
+          onSelectDimension={(dim) => {
+            setSelectedRadarDimension(dim);
+            const el = document.getElementById(`dimension-card-${dim}`);
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+          }}
+          isHeuristicOnly={fullReport?.executionMode === "heuristic_offline"}
+        />
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {dimEntries.map(([key, dim]) => (
             <div
               key={key}
-              className="rounded-3xl liquid-glass-card liquid-glass-card-interactive p-5 space-y-3.5 flex flex-col justify-between"
+              id={`dimension-card-${key}`}
+              className={`rounded-3xl liquid-glass-card liquid-glass-card-interactive p-5 space-y-3.5 flex flex-col justify-between transition-all duration-300 ${
+                selectedRadarDimension === key
+                  ? "ring-2 ring-blue-500 shadow-md"
+                  : ""
+              }`}
             >
               <div className="space-y-2">
                 <div className="flex items-start sm:items-center justify-between gap-2.5">
@@ -941,6 +965,19 @@ export function DesktopDashboard({
 
         {expandedOverviewCards.calibratedAcceptance && (
           <div className="px-6 pb-6 sm:px-7 sm:pb-7 pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937] space-y-5 animate-fade-in">
+            {/* Interactive Segmented Readiness Gauge */}
+            <SegmentedReadinessGauge
+              currentBand={band}
+              calibrationAdvisory={calibratedAcceptance.calibrationAdvisory}
+            />
+
+            {/* 100% Stacked Expected Decision Distribution */}
+            {calibratedAcceptance.decisionDistribution && (
+              <DecisionDistributionBar
+                distribution={calibratedAcceptance.decisionDistribution}
+              />
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Readiness Band Card */}
               <div className="p-4 rounded-2xl bg-[#F8FAFC] dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] space-y-1 shadow-2xs">

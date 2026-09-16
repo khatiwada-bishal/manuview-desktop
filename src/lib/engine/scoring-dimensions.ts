@@ -540,6 +540,14 @@ export function calculateCalibratedAcceptanceProbability(
     readinessBand = "Strong Submission Readiness";
   }
 
+  const decisionDistribution = calculateDecisionCategoryDistribution({
+    compositeScore,
+    baselineRate,
+    isScopeMismatch,
+    isMethodsMissing,
+    hasRetraction,
+  });
+
   return {
     overallScore: compositeScore,
     baselineJournalRatePercent: baselineRate,
@@ -547,6 +555,7 @@ export function calculateCalibratedAcceptanceProbability(
     readinessBand,
     calibrationAdvisory:
       "Qualitative Pre-Submission Readiness Assessment — Quantitative acceptance probability percentages are suppressed because pre-submission predictive calibration has not been statistically validated against real-world journal accept/reject datasets. Evaluated on editorial scope, methodological completeness, and verified reference integrity.",
+    decisionDistribution,
     primaryHazard,
     keyOpportunity,
   };

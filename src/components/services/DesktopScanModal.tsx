@@ -26,6 +26,7 @@ import { PaperItem } from "@/components/DesktopSidebar";
 import { FullReviewReport, ProviderConfig, ParsedManuscript } from "@/lib/types";
 import { useApiConnection } from "@/lib/useApiConnection";
 import { sanitizeErrorMessage, getSavedClientConfig, resolveActiveConfig } from "@/lib/llm";
+import { ScanPipelineStepper } from "@/components/charts/ScanPipelineStepper";
 
 interface DesktopScanModalProps {
   isOpen: boolean;
@@ -348,27 +349,12 @@ export function DesktopScanModal({
         </div>
 
         {loading ? (
-          <div className="py-12 flex flex-col items-center justify-center space-y-4 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 backdrop-blur-xs">
-              <RefreshCw className="w-6 h-6 animate-spin" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="font-bold text-sm text-neutral-900 dark:text-white">
-                Running Full Diagnostic Engine...
-              </h3>
-              <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                {loadingStep}
-              </p>
-              {loadingPercent !== undefined && (
-                <div className="w-48 bg-neutral-200 dark:bg-neutral-800 rounded-full h-1.5 overflow-hidden mx-auto mt-2.5">
-                  <div
-                    className="bg-blue-600 dark:bg-blue-400 h-full rounded-full transition-all duration-300"
-                    style={{ width: `${loadingPercent}%` }}
-                  />
-                </div>
-              )}
-            </div>
-            <p className="text-[11px] text-neutral-400 dark:text-neutral-500 max-w-xs">
+          <div className="py-8 space-y-6 animate-fade-in">
+            <ScanPipelineStepper
+              currentStepMessage={loadingStep || "Running pre-submission diagnostic engine..."}
+              percent={loadingPercent}
+            />
+            <p className="text-[11px] text-center text-neutral-400 dark:text-neutral-500 max-w-sm mx-auto">
               Calibrating against {journal || "target"} editorial standards and cross-checking references.
             </p>
           </div>

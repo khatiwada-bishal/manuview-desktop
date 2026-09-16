@@ -1,5 +1,6 @@
 import type { FullReviewReport, BriefJournalFitReport, ReviewReport } from "./types";
 import { saveFileDesktop } from "./desktop";
+import { renderStaticRadarSvg } from "./charts/theme";
 
 function escapeHtml(str: string | number | undefined | null): string {
   if (str === undefined || str === null) return "";
@@ -648,6 +649,9 @@ export function generateFullReportHtml(r: FullReviewReport): string {
     ${r.dimensions ? `
     <!-- Tab 3: Dimensions -->
     <div id="tab-dimensions" class="tab-content">
+      <div style="display: flex; justify-content: center; margin-bottom: 24px; padding: 16px; background: #f8fafc; border-radius: 16px; border: 1px solid #e2e8f0;">
+        ${renderStaticRadarSvg(r.dimensions, { size: 320 })}
+      </div>
       <div class="dimension-grid">
         ${Object.entries(r.dimensions || {}).map(([_, dim]) => `
           <div class="dimension-card">

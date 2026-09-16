@@ -61,6 +61,11 @@ import { PaperItem } from "@/components/DesktopSidebar";
 import { DesktopDashboardData } from "@/components/DesktopDashboard";
 import { findMatchingJournals } from "@/lib/journals";
 import DesktopJournalMatchesListView from "@/components/DesktopJournalMatchesListView";
+import { ScanPipelineStepper } from "@/components/charts/ScanPipelineStepper";
+import { DimensionRadarChart } from "@/components/charts/DimensionRadarChart";
+import { SegmentedReadinessGauge } from "@/components/charts/SegmentedReadinessGauge";
+import { DecisionDistributionBar } from "@/components/charts/DecisionDistributionBar";
+import type { ScoreDimension } from "@/lib/types";
 
 const SAMPLE_PREPRINT_TITLE = "Single-cell transcriptional profiling of DLL3 activation in neuroendocrine lung carcinoma";
 const SAMPLE_PREPRINT_JOURNAL = "Nature Communications";
@@ -117,6 +122,7 @@ export function DesktopPreSubmissionScanView({
   const [report, setReport] = useState<ReviewReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedPersona, setSelectedPersona] = useState<number>(0);
+  const [selectedRadarDim, setSelectedRadarDim] = useState<ScoreDimension | null>(null);
   const [copiedScanSnippet, setCopiedScanSnippet] = useState<number | null>(null);
   const [copiedScanReport, setCopiedScanReport] = useState<boolean>(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
@@ -901,6 +907,15 @@ export function DesktopPreSubmissionScanView({
               </div>
             </div>
 
+            {loading && (
+              <div className="py-2 animate-fade-in">
+                <ScanPipelineStepper
+                  currentStepMessage={loadingStep || "Running full pre-submission scan..."}
+                  percent={loadingPercent}
+                />
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={loading}
@@ -1120,7 +1135,15 @@ export function DesktopPreSubmissionScanView({
                   </div>
                 )
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="space-y-4">
+                  {'calibratedAcceptance' in report && report.calibratedAcceptance && (
+                    <SegmentedReadinessGauge
+                      currentBand={report.calibratedAcceptance.readinessBand || "Competitive / Moderate Readiness"}
+                      calibrationAdvisory={report.calibratedAcceptance.calibrationAdvisory}
+                    />
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   {/* Readiness Score Card */}
                   <div className="p-6 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937] flex flex-col justify-center items-center text-center shadow-2xs">
                     {report.overallScore !== undefined ? (
@@ -1178,7 +1201,8 @@ export function DesktopPreSubmissionScanView({
                     <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed font-normal">{report.summary}</p>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
               {/* Only show 6 dimensions, prioritized action plan, and 5 personas if review eligible */}
               {report.isEligibleForReview !== false && (
@@ -1191,12 +1215,29 @@ export function DesktopPreSubmissionScanView({
                         <span>The 6 Evaluation Dimensions (1–5 Scale)</span>
                       </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {Object.entries(report.dimensions).map(([key, dim]) => (
-                    <div
-                      key={key}
-                      className="p-5 rounded-2xl bg-white border border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937] flex flex-col justify-between hover:border-neutral-300 dark:hover:border-[#334155] shadow-2xs transition"
-                    >
+                      {/* Interactive 6-Dimension Radar / Spider Chart */}
+                      <DimensionRadarChart
+                        dimensions={report.dimensions}
+                        selectedDimension={selectedRadarDim}
+                        onSelectDimension={(dim) => {
+                          setSelectedRadarDim(dim);
+                          const el = document.getElementById(`scan-dim-card-${dim}`);
+                          if (el) {
+                            el.scrollIntoView({ behavior: "smooth", block: "center" });
+                          }
+                        }}
+                        isHeuristicOnly={Boolean(report.executionMode === "heuristic_offline")}
+                      />
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {Object.entries(report.dimensions).map(([key, dim]) => (
+                          <div
+                            key={key}
+                            id={`scan-dim-card-${key}`}
+                            className={`p-5 rounded-2xl bg-white border border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937] flex flex-col justify-between hover:border-neutral-300 dark:hover:border-[#334155] shadow-2xs transition ${
+                              selectedRadarDim === key ? "ring-2 ring-blue-500 shadow-md" : ""
+                            }`}
+                          >
                       <div>
                         <div className="flex items-start sm:items-center justify-between gap-2.5 mb-2">
                           <div className="flex items-center gap-1.5 min-w-0 flex-1">
