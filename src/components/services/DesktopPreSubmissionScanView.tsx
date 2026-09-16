@@ -907,42 +907,26 @@ export function DesktopPreSubmissionScanView({
               </div>
             </div>
 
-            {loading && (
-              <div className="py-2 animate-fade-in">
-                <ScanPipelineStepper
-                  currentStepMessage={loadingStep || "Running full pre-submission scan..."}
-                  percent={loadingPercent}
-                />
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-4 px-6 rounded-2xl font-semibold text-xs sm:text-sm bg-[#0F172A] dark:bg-blue-600 hover:bg-[#1E293B] dark:hover:bg-blue-500 text-white transition-all duration-150 flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg disabled:cursor-not-allowed disabled:bg-[#1E293B] disabled:text-white/70 cursor-pointer isolate relative overflow-hidden select-none"
-            >
+            {/* Morphing Action Slot: Submit Button morphs directly into Pipeline Stepper */}
+            <div className="w-full transition-all duration-300 ease-in-out">
               {loading ? (
-                <span key="btn-loading-state" className="flex items-center justify-center gap-2 truncate max-w-full">
-                  <RefreshCw className="w-4 h-4 animate-spin text-blue-400 shrink-0" />
-                  <span key={loadingStep || "analyzing-step"} className="truncate">
-                    {loadingStep || "Running 5-Persona Peer Review Simulation..."}
-                    {loadingPercent !== undefined ? ` (${loadingPercent}%)` : ""}
-                  </span>
-                </span>
+                <div className="w-full rounded-2xl border border-blue-200/80 dark:border-blue-900/50 bg-white/90 dark:bg-[#161F30]/90 backdrop-blur-md p-5 sm:p-6 shadow-md animate-fade-in">
+                  <ScanPipelineStepper
+                    currentStepMessage={loadingStep || "Running full pre-submission scan..."}
+                    percent={loadingPercent}
+                  />
+                </div>
               ) : (
-                <span key="btn-idle-state" className="flex items-center justify-center gap-2.5 truncate max-w-full">
-                  <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
+                <button
+                  type="submit"
+                  className="w-full py-4 px-6 rounded-2xl font-semibold text-xs sm:text-sm bg-[#0F172A] dark:bg-blue-600 hover:bg-[#1E293B] dark:hover:bg-blue-500 text-white transition-all duration-200 flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg cursor-pointer isolate relative overflow-hidden select-none group"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-300 shrink-0 group-hover:rotate-12 transition-transform duration-200" />
                   <span className="truncate font-bold">Run Pre-Submission AI Review &amp; 5-Persona Simulation</span>
-                  <ArrowRight className="w-4 h-4 shrink-0" />
-                </span>
+                  <ArrowRight className="w-4 h-4 shrink-0 group-hover:translate-x-0.5 transition-transform duration-200" />
+                </button>
               )}
-              {loading && loadingPercent !== undefined && (
-                <div
-                  className="absolute bottom-0 left-0 h-1.5 bg-blue-500 dark:bg-blue-400 transition-all duration-300"
-                  style={{ width: `${loadingPercent}%` }}
-                />
-              )}
-            </button>
+            </div>
           </form>
         )}
 
