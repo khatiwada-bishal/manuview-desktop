@@ -1525,17 +1525,6 @@ export function DesktopDashboard({
           </span>
         </div>
 
-        {isDeskReject && triage?.summary && (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50/80 dark:border-rose-800/50 dark:bg-rose-950/30 p-4 flex items-start gap-3">
-            <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-            <p className="text-xs leading-relaxed text-rose-900/90 dark:text-rose-300/90">
-              {triage.summary}
-            </p>
-          </div>
-        )}
-
-        {isDeskReject && renderFivePillarTriageCard(false)}
-
         {/* Simulated Reviewer Perspectives Recommendation Distribution */}
         {fullReport?.panelConsensus && (
           <div className="p-4 rounded-2xl liquid-glass-card shadow-2xs space-y-2">
