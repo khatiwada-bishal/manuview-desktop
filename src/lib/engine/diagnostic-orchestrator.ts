@@ -1,4 +1,5 @@
 import {
+  computeCanonicalJournalFit,
   findMatchingJournals,
   inferJournalDiscipline,
   isDisciplineMatch,
@@ -1727,8 +1728,33 @@ export async function runManuscriptDiagnostic(
   // Ground journal metrics strictly in the curated catalog (§1.3)
   const finalRecommendations: JournalRecommendation[] = rawRecommendations.map((rec) => {
     const catalogEntry = lookupJournalInCatalog(rec.journalName);
+    const targetTier = rec.tier;
+    const isCited = Boolean(
+      manuscript.references?.some((ref) => ref.toLowerCase().includes(rec.journalName.toLowerCase()))
+    );
+    const isTarget = targetJournalName ? rec.journalName.toLowerCase().includes(targetJournalName.toLowerCase()) : false;
+    const canonical = computeCanonicalJournalFit({
+      manuscriptText: `${manuscript.title} ${manuscript.abstract || ""}`,
+      manuscriptDiscipline: detectedDiscipline,
+      journal: catalogEntry
+        ? { source: "catalog", entry: catalogEntry }
+        : { source: "name_only", name: rec.journalName, inferredDiscipline: detectedDiscipline },
+      tier: targetTier,
+      isTarget,
+      isCited,
+    });
+    const fitScore =
+      catalogEntry && rec.tier === "Reach" && catalogEntry.name === journalMatches.reach.name
+        ? journalMatches.reachFitScore
+        : catalogEntry && rec.tier === "Realistic" && catalogEntry.name === journalMatches.realistic.name
+        ? journalMatches.realisticFitScore
+        : catalogEntry && rec.tier === "Fallback" && catalogEntry.name === journalMatches.fallback.name
+        ? journalMatches.fallbackFitScore
+        : canonical.fitScore;
+
     return {
       ...rec,
+      fitScore,
       journalName: catalogEntry ? catalogEntry.name : rec.journalName,
       impactFactor: catalogEntry ? catalogEntry.impactFactor : undefined,
       publisher: catalogEntry ? catalogEntry.publisher : (rec.publisher && rec.publisher !== "Academic Publisher" ? rec.publisher : "Non-catalog venue"),
@@ -1820,9 +1846,9 @@ export async function runBriefJournalFitAnalysis(
     keywords = input.keywords.split(/[,;\n]+/).map((k) => k.trim()).filter(Boolean);
   }
 
-  const catalogEntry = JOURNAL_CATALOG.find(
-    (j) => j.name.toLowerCase() === targetJournal.toLowerCase()
-  );
+  const catalogEntry =
+    lookupJournalInCatalog(targetJournal) ||
+    JOURNAL_CATALOG.find((j) => j.name.toLowerCase() === targetJournal.toLowerCase());
   const matches = findMatchingJournals(title, abstract, targetJournal);
 
   let openAlexProfile: OpenAlexSource | null = null;
@@ -1865,24 +1891,43 @@ export async function runBriefJournalFitAnalysis(
 
   const isScopeAssessed = scopeAssessment.method !== "unavailable";
 
-  const discMatch = catalogEntry && matches.detectedDiscipline
-    ? isDisciplineMatch(matches.detectedDiscipline, catalogEntry.discipline)
-    : undefined;
+  const targetNorm = targetJournal.toLowerCase();
+  const isRecommendedReach = targetNorm === matches.reach.name.toLowerCase();
+  const isRecommendedRealistic = targetNorm === matches.realistic.name.toLowerCase();
+  const isRecommendedFallback = targetNorm === matches.fallback.name.toLowerCase();
 
-  const isDomainMatch = catalogEntry
-    ? (discMatch ? discMatch.isMatch : (catalogEntry.discipline === matches.detectedDiscipline || catalogEntry.discipline === "Multidisciplinary"))
-    : openAlexScopeFit
-    ? openAlexScopeFit.isScopeMatch
-    : false;
+  const targetTier: "Reach" | "Realistic" | "Fallback" | undefined =
+    isRecommendedReach
+      ? "Reach"
+      : isRecommendedFallback
+      ? "Fallback"
+      : isRecommendedRealistic
+      ? "Realistic"
+      : undefined;
 
-  let heuristicScore = catalogEntry
-    ? (isDomainMatch ? (discMatch?.crossDisciplinary ? 72 : 82) : 26)
-    : openAlexScopeFit
-    ? openAlexScopeFit.scopeConfidence
-    : 0;
-  if (catalogEntry?.impactFactor && catalogEntry.impactFactor > 30) {
-    heuristicScore = Math.max(0, heuristicScore - 8);
-  }
+  const canonicalFit = computeCanonicalJournalFit({
+    manuscriptText: `${title} ${abstract}`,
+    manuscriptDiscipline: matches.detectedDiscipline,
+    journal: catalogEntry
+      ? { source: "catalog", entry: catalogEntry }
+      : openAlexProfile
+      ? { source: "openalex", profile: openAlexProfile }
+      : { source: "name_only", name: targetJournal, inferredDiscipline: matches.detectedDiscipline },
+    tier: targetTier,
+    isTarget: true,
+    isCited: false,
+  });
+
+  const finalFitScore = isRecommendedReach
+    ? matches.reachFitScore
+    : isRecommendedRealistic
+    ? matches.realisticFitScore
+    : isRecommendedFallback
+    ? matches.fallbackFitScore
+    : canonicalFit.fitScore;
+
+  const discMatch = isDisciplineMatch(matches.detectedDiscipline, canonicalFit.disciplineOfRecord);
+  const isDomainMatch = !canonicalFit.isDisciplinaryMismatch;
 
   const activeConfig = await resolveActiveConfig(input.providerConfig);
   const isConfigUsable = Boolean(
@@ -1932,9 +1977,9 @@ Primary Topics: ${openAlexProfile.topics.slice(0, 3).map((t) => t.displayName).j
 DETECTED MANUSCRIPT FIELD:
 ${matches.detectedDiscipline}
 ${
-  catalogEntry && discMatch && !discMatch.isMatch
+  !isDomainMatch
     ? `\nCRITICAL DISCIPLINARY MISMATCH DIRECTIVE:
-The target journal "${safeTargetJournal}" publishes in "${catalogEntry.discipline}", which does not match this manuscript's core domain ("${matches.detectedDiscipline}").
+The target journal "${safeTargetJournal}" operates in "${canonicalFit.disciplineOfRecord}", which does not match this manuscript's core domain ("${matches.detectedDiscipline}").
 Submitting across incompatible academic domains results in immediate editorial desk rejection. You MUST assign a fitScore below 35 and verdict "Scope Mismatch / High Desk-Reject Hazard".`
     : ""
 }
@@ -2000,21 +2045,11 @@ Respond with ONLY a valid JSON object matching this schema:
     verdict = "Not Assessed — journal profile unavailable";
     verdictColor = "grey";
   } else {
-    fitScore =
-      typeof parsedLLM?.fitScore === "number"
-        ? Math.min(100, Math.max(0, parsedLLM.fitScore))
-        : heuristicScore;
-
-    if (catalogEntry && discMatch && !discMatch.isMatch) {
-      fitScore = Math.min(32, fitScore);
-    }
+    // Ground strictly in deterministic canonical fit; LLM acts as narrator, not scorer
+    fitScore = finalFitScore;
 
     verdict =
-      parsedLLM?.verdict === "Strong Editorial Fit" ||
-      parsedLLM?.verdict === "Moderate Scope Match" ||
-      parsedLLM?.verdict === "Scope Mismatch / High Desk-Reject Hazard"
-        ? parsedLLM.verdict
-        : fitScore >= 75
+      fitScore >= 75
         ? "Strong Editorial Fit"
         : fitScore >= 50
         ? "Moderate Scope Match"
@@ -2034,13 +2069,17 @@ Respond with ONLY a valid JSON object matching this schema:
       ? `The manuscript demonstrates good thematic alignment with ${targetJournal}'s core scientific remit in ${catalogEntry.discipline}. The title and abstract articulate a defined research question suitable for the journal's specialist readership.`
       : `CRITICAL SCOPE MISMATCH: The manuscript's primary domain is ${matches.detectedDiscipline}, whereas ${targetJournal} publishes within ${catalogEntry.discipline}. Submitting out of scope faces an immediate editorial desk reject unless retargeted to a field-appropriate venue.`
     : openAlexProfile
-    ? openAlexScopeFit?.summary || `Evaluated against OpenAlex subject indexing for ${openAlexProfile.displayName}.`
+    ? isDomainMatch
+      ? openAlexScopeFit?.summary || `Evaluated against OpenAlex subject indexing for ${openAlexProfile.displayName}.`
+      : `CRITICAL SCOPE MISMATCH: The manuscript's primary domain is ${matches.detectedDiscipline}, whereas ${openAlexProfile.displayName} focuses in ${canonicalFit.disciplineOfRecord}. Submitting out of scope faces an immediate editorial desk reject unless retargeted to a field-appropriate venue.`
     : scopeAssessment.reason
     ? `Scope could not be assessed because live registry data for "${targetJournal}" was unavailable (${scopeAssessment.reason}). Detailed scope data is available for ${JOURNAL_CATALOG.length} curated journals; "${targetJournal}" is not among them.`
     : `Detailed scope data is available for ${JOURNAL_CATALOG.length} curated journals; "${targetJournal}" was not found in the curated catalog or live registries. Authors should consult the official journal aims and author guidelines directly prior to submission.`;
 
   const safeSummary =
-    typeof parsedLLM?.summary === "string" && parsedLLM.summary.length > 20
+    !isDomainMatch
+      ? defaultSummary
+      : typeof parsedLLM?.summary === "string" && parsedLLM.summary.length > 20
       ? parsedLLM.summary
       : defaultSummary;
 
@@ -2105,16 +2144,16 @@ Respond with ONLY a valid JSON object matching this schema:
     ? {
         domainMatch: {
           score:
-            typeof parsedLLM?.dimensions?.domainMatch?.score === "number"
+            !isDomainMatch
+              ? Math.min(35, typeof parsedLLM?.dimensions?.domainMatch?.score === "number" ? parsedLLM.dimensions.domainMatch.score : 25)
+              : typeof parsedLLM?.dimensions?.domainMatch?.score === "number"
               ? parsedLLM.dimensions.domainMatch.score
-              : isDomainMatch
-              ? 88
-              : 45,
+              : 88,
           feedback:
             parsedLLM?.dimensions?.domainMatch?.feedback ||
             (isDomainMatch
               ? `Strong subject correspondence with ${matches.detectedDiscipline}.`
-              : `Marginal alignment with primary discipline.`),
+              : `Critical scope mismatch with manuscript discipline (${matches.detectedDiscipline}). High desk-rejection hazard.`),
         },
         noveltySignificance: {
           score:
@@ -2127,14 +2166,16 @@ Respond with ONLY a valid JSON object matching this schema:
         },
         readershipAlignment: {
           score:
-            typeof parsedLLM?.dimensions?.readershipAlignment?.score === "number"
+            !isDomainMatch
+              ? Math.min(40, typeof parsedLLM?.dimensions?.readershipAlignment?.score === "number" ? parsedLLM.dimensions.readershipAlignment.score : 30)
+              : typeof parsedLLM?.dimensions?.readershipAlignment?.score === "number"
               ? parsedLLM.dimensions.readershipAlignment.score
-              : isDomainMatch
-              ? 82
-              : 50,
+              : 82,
           feedback:
             parsedLLM?.dimensions?.readershipAlignment?.feedback ||
-            `Core findings will engage researchers working on related methodological bottlenecks.`,
+            (isDomainMatch
+              ? `Core findings will engage researchers working on related methodological bottlenecks.`
+              : `Limited relevance for specialized readership in ${canonicalFit.disciplineOfRecord}.`),
         },
         keywordRelevance: {
           score:

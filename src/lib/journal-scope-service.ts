@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { searchJournalInOpenAlex, OpenAlexSource } from "./openalex";
-import { JOURNAL_CATALOG, JournalEntry, inferJournalDiscipline } from "./journals";
+import { JOURNAL_CATALOG, JournalEntry, inferJournalDiscipline, mapOpenAlexToDiscipline } from "./journals";
 
 export interface JournalScopeProfile {
   journalName: string;
@@ -62,25 +62,6 @@ function saveToLocalStorageCache(key: string, profile: JournalScopeProfile): voi
   }
 }
 
-/**
- * Maps OpenAlex scientific taxonomy (domain, field, subfield) to canonical ManuView disciplines
- */
-function mapOpenAlexToDiscipline(field?: string, domain?: string, subfield?: string): string | undefined {
-  const combined = `${subfield || ""} ${field || ""} ${domain || ""}`.toLowerCase();
-  if (/oncolog|cancer/i.test(combined)) return "Oncology";
-  if (/neuro/i.test(combined)) return "Neuroscience";
-  if (/biomed|molecular biology|genetics|biochem/i.test(combined)) return "Biomedicine";
-  if (/clinical|medicine|surgery|pediatric|cardio/i.test(combined)) return "Clinical";
-  if (/computer science|artificial intelligence|software|machine learning/i.test(combined)) return "Computer Science";
-  if (/operations research|management science|supply chain|logistics/i.test(combined)) return "Operations Research & Management";
-  if (/finance|economics|econometric|business|accounting/i.test(combined)) return "Economics, Finance & Business";
-  if (/materials science|chemical|chemistry/i.test(combined)) return "Chemistry & Materials Science";
-  if (/physics|mathematics|astronomy/i.test(combined)) return "Physical Sciences & Mathematics";
-  if (/environment|ecology|sustainability|climate/i.test(combined)) return "Environmental Science & Sustainability";
-  if (/engineering/i.test(combined)) return "Engineering & Applied Sciences";
-  if (/psychology|social sciences|education|sociology/i.test(combined)) return "Social Sciences, Psychology & Education";
-  return undefined;
-}
 
 /**
  * Searches the curated catalog for an exact or case-insensitive match

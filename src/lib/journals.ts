@@ -1,3 +1,5 @@
+import type { OpenAlexSource } from "./openalex";
+
 export type Discipline =
   | 'Oncology'
   | 'Biomedicine'
@@ -2845,7 +2847,6 @@ export function isDisciplineMatch(
       "Engineering & Applied Sciences",
       "Physical Sciences & Mathematics",
       "Biomedicine",
-      "Clinical",
       "Economics, Finance & Business",
       "Environmental Science & Sustainability",
       "Neuroscience",
@@ -2863,7 +2864,7 @@ export function isDisciplineMatch(
       "Computer Science",
     ]),
     "Oncology": new Set(["Biomedicine", "Clinical"]),
-    "Clinical": new Set(["Oncology", "Biomedicine", "Neuroscience", "Computer Science"]),
+    "Clinical": new Set(["Oncology", "Biomedicine", "Neuroscience"]),
     "Biomedicine": new Set([
       "Oncology",
       "Clinical",
@@ -2973,58 +2974,6 @@ export interface TargetJournalTierResults {
 }
 
 /**
- * Calculates a dynamic, mathematically sound fit score (0-100) based on
- * disciplinary compatibility, text overlap, tier expectation alignment, and citation cues.
- */
-export function calculateDynamicFitScore(
-  journal: JournalEntry,
-  tier: 'Reach' | 'Realistic' | 'Fallback',
-  manuscriptText: string,
-  manuscriptDiscipline: Discipline,
-  isTarget: boolean,
-  isCited: boolean
-): number {
-  const matchInfo = isDisciplineMatch(manuscriptDiscipline, journal.discipline);
-
-  // If severe disciplinary mismatch:
-  if (!matchInfo.isMatch) {
-    let mismatchScore = 24;
-    if (isCited) mismatchScore += 6;
-    const scopeWords = journal.aimsAndScope.toLowerCase().split(/\W+/).filter(w => w.length > 5);
-    const matched = scopeWords.filter(w => manuscriptText.toLowerCase().includes(w)).length;
-    mismatchScore += Math.min(5, matched);
-    return Math.min(35, Math.max(15, mismatchScore));
-  }
-
-  // Baseline by discipline affinity
-  let baseScore = matchInfo.severity === "exact" ? 78 : 68;
-
-  if (isTarget) baseScore += 5;
-  if (isCited) baseScore += 8;
-
-  // Semantic keyword overlap with journal aimsAndScope & keyExpectations
-  const textLower = manuscriptText.toLowerCase();
-  const scopeWords = journal.aimsAndScope.toLowerCase().split(/\W+/).filter(w => w.length > 4);
-  const expectationsWords = journal.keyExpectations.join(" ").toLowerCase().split(/\W+/).filter(w => w.length > 4);
-  const allJournalKeywords = new Set([...scopeWords, ...expectationsWords]);
-
-  let matchedWords = 0;
-  for (const w of allJournalKeywords) {
-    if (textLower.includes(w)) matchedWords++;
-  }
-  baseScore += Math.min(10, Math.floor(matchedWords / 3));
-
-  // Tier adjustment
-  if (tier === 'Realistic') {
-    return Math.min(95, Math.max(68, baseScore + 4));
-  } else if (tier === 'Reach') {
-    return Math.min(88, Math.max(60, baseScore - 4));
-  } else {
-    return Math.min(96, Math.max(72, baseScore + 6));
-  }
-}
-
-/**
  * Looks up a journal in the authoritative curated JOURNAL_CATALOG (§1.3).
  * Prevents LLM-invented impact factors and publishers from being accepted as facts.
  */
@@ -3059,6 +3008,222 @@ export function lookupJournalInCatalog(name: string): JournalEntry | undefined {
   }
 
   return undefined;
+}
+
+/**
+ * Maps OpenAlex scientific taxonomy (domain, field, subfield, or concept) to canonical ManuView disciplines
+ */
+export function mapOpenAlexToDiscipline(field?: string, domain?: string, subfield?: string): Discipline | undefined {
+  const combined = `${subfield || ""} ${field || ""} ${domain || ""}`.toLowerCase();
+  if (/oncolog|cancer/i.test(combined)) return "Oncology";
+  if (/neuro/i.test(combined)) return "Neuroscience";
+  if (/biomed|molecular biology|genetics|biochem/i.test(combined)) return "Biomedicine";
+  if (/clinical|medicine|surgery|pediatric|cardio/i.test(combined)) return "Clinical";
+  if (/computer science|artificial intelligence|software|machine learning/i.test(combined)) return "Computer Science";
+  if (/operations research|management science|supply chain|logistics/i.test(combined)) return "Operations Research & Management";
+  if (/finance|economics|econometric|business|accounting/i.test(combined)) return "Economics, Finance & Business";
+  if (/materials science|chemical|chemistry/i.test(combined)) return "Chemistry & Materials Science";
+  if (/physics|mathematics|astronomy/i.test(combined)) return "Physical Sciences & Mathematics";
+  if (/environment|ecology|sustainability|climate/i.test(combined)) return "Environmental Science & Sustainability";
+  if (/engineering/i.test(combined)) return "Engineering & Applied Sciences";
+  if (/psychology|social sciences|education|sociology/i.test(combined)) return "Social Sciences, Psychology & Education";
+  return undefined;
+}
+
+export interface CanonicalFitInput {
+  manuscriptText: string;
+  manuscriptDiscipline: Discipline | string;
+  journal:
+    | { source: "catalog"; entry: JournalEntry }
+    | { source: "openalex"; profile: OpenAlexSource }
+    | { source: "name_only"; name: string; inferredDiscipline?: Discipline | string };
+  tier?: "Reach" | "Realistic" | "Fallback";
+  isCited?: boolean;
+  isTarget?: boolean;
+}
+
+export interface CanonicalFitResult {
+  fitScore: number;
+  isDisciplinaryMismatch: boolean;
+  disciplineOfRecord: Discipline;
+  components: {
+    disciplineAffinity: number;
+    scopeOverlap: number;
+    tierAdjustment: number;
+  };
+  rationale: string;
+}
+
+/**
+ * Computes a canonical, deterministic journal fit score (0-100).
+ * Acts as the single authoritative source of truth across Recommendation tier cards,
+ * Target Journal Evaluation, and the Brief Journal Fit check.
+ */
+export function computeCanonicalJournalFit(input: CanonicalFitInput): CanonicalFitResult {
+  let disciplineOfRecord: Discipline;
+  let catalogEntry: JournalEntry | undefined;
+  let journalName: string;
+  let aimsScopeText = "";
+  let expectationsText = "";
+  let impactFactor: number | undefined;
+
+  if (input.journal.source === "catalog") {
+    catalogEntry = input.journal.entry;
+    journalName = catalogEntry.name;
+    disciplineOfRecord = catalogEntry.discipline;
+    aimsScopeText = catalogEntry.aimsAndScope;
+    expectationsText = catalogEntry.keyExpectations.join(" ");
+    impactFactor = catalogEntry.impactFactor;
+  } else if (input.journal.source === "openalex") {
+    journalName = input.journal.profile.displayName;
+    catalogEntry = lookupJournalInCatalog(journalName);
+    if (catalogEntry) {
+      disciplineOfRecord = catalogEntry.discipline;
+      aimsScopeText = catalogEntry.aimsAndScope;
+      expectationsText = catalogEntry.keyExpectations.join(" ");
+      impactFactor = catalogEntry.impactFactor;
+    } else {
+      let mapped: Discipline | undefined;
+      for (const t of input.journal.profile.topics || []) {
+        mapped = mapOpenAlexToDiscipline(t.field, t.domain, t.subfield);
+        if (mapped) break;
+      }
+      if (!mapped) {
+        for (const c of input.journal.profile.concepts || []) {
+          mapped = mapOpenAlexToDiscipline(c.displayName, c.displayName, c.displayName);
+          if (mapped) break;
+        }
+      }
+      disciplineOfRecord = mapped || inferJournalDiscipline(journalName) || "Multidisciplinary";
+      aimsScopeText = [
+        ...(input.journal.profile.concepts || []).map((c) => c.displayName),
+        ...(input.journal.profile.topics || []).map((t) => [t.displayName, t.subfield, t.field, t.domain].filter(Boolean).join(" ")),
+      ].join(" ");
+      impactFactor = input.journal.profile.twoYearMeanCitedness;
+    }
+  } else {
+    journalName = input.journal.name;
+    catalogEntry = lookupJournalInCatalog(journalName);
+    if (catalogEntry) {
+      disciplineOfRecord = catalogEntry.discipline;
+      aimsScopeText = catalogEntry.aimsAndScope;
+      expectationsText = catalogEntry.keyExpectations.join(" ");
+      impactFactor = catalogEntry.impactFactor;
+    } else {
+      disciplineOfRecord =
+        (input.journal.inferredDiscipline as Discipline) ||
+        inferJournalDiscipline(journalName) ||
+        "Multidisciplinary";
+      aimsScopeText = journalName;
+    }
+  }
+
+  const matchInfo = isDisciplineMatch(input.manuscriptDiscipline, disciplineOfRecord);
+  const isDisciplinaryMismatch = !matchInfo.isMatch;
+
+  // Semantic keyword overlap
+  const textLower = (input.manuscriptText || "").toLowerCase();
+  const scopeWords = aimsScopeText.toLowerCase().split(/\W+/).filter((w) => w.length > 4);
+  const expectationsWords = expectationsText.toLowerCase().split(/\W+/).filter((w) => w.length > 4);
+  const allKeywords = new Set([...scopeWords, ...expectationsWords]);
+
+  let matchedWords = 0;
+  for (const w of allKeywords) {
+    if (textLower.includes(w)) matchedWords++;
+  }
+
+  // 1. Severe Disciplinary Mismatch: constrained to [15, 35]
+  if (isDisciplinaryMismatch) {
+    const disciplineAffinity = 22;
+    const citationBonus = input.isCited ? 6 : 0;
+    const scopeOverlap = Math.min(5, Math.floor(matchedWords / 3));
+    const rawScore = disciplineAffinity + citationBonus + scopeOverlap;
+    const fitScore = Math.min(35, Math.max(15, rawScore));
+
+    return {
+      fitScore,
+      isDisciplinaryMismatch: true,
+      disciplineOfRecord,
+      components: {
+        disciplineAffinity,
+        scopeOverlap,
+        tierAdjustment: 0,
+      },
+      rationale: `Severe Disciplinary Scope Mismatch: Manuscript study area is in "${input.manuscriptDiscipline}", whereas "${journalName}" operates in "${disciplineOfRecord}". High desk-rejection risk.`,
+    };
+  }
+
+  // 2. Disciplinary Match or Cross-Disciplinary Alignment
+  let disciplineAffinity = matchInfo.severity === "exact" ? 78 : (matchInfo.isCrossDisciplinary ? 72 : 68);
+  if (input.isCited) disciplineAffinity += 8;
+
+  const scopeOverlap = Math.min(10, Math.floor(matchedWords / 3));
+  const combinedScore = disciplineAffinity + scopeOverlap;
+
+  let tierAdjustment = 0;
+  if (input.tier === "Realistic") {
+    tierAdjustment = 4;
+  } else if (input.tier === "Reach") {
+    tierAdjustment = -4;
+  } else if (input.tier === "Fallback") {
+    tierAdjustment = 6;
+  }
+
+  if (impactFactor && impactFactor > 30 && input.tier !== "Reach") {
+    tierAdjustment -= 4;
+  }
+
+  let fitScore = combinedScore + tierAdjustment;
+
+  // Clamping by tier
+  if (input.tier === "Realistic") {
+    fitScore = Math.min(95, Math.max(68, fitScore));
+  } else if (input.tier === "Reach") {
+    fitScore = Math.min(88, Math.max(60, fitScore));
+  } else if (input.tier === "Fallback") {
+    fitScore = Math.min(96, Math.max(72, fitScore));
+  } else {
+    fitScore = Math.min(95, Math.max(65, fitScore));
+  }
+
+  const rationale = matchInfo.severity === "exact"
+    ? `Strong domain alignment with ${disciplineOfRecord} core remit.`
+    : `Cross-disciplinary alignment with ${disciplineOfRecord} readership.`;
+
+  return {
+    fitScore,
+    isDisciplinaryMismatch: false,
+    disciplineOfRecord,
+    components: {
+      disciplineAffinity,
+      scopeOverlap,
+      tierAdjustment,
+    },
+    rationale,
+  };
+}
+
+/**
+ * Calculates a dynamic, mathematically sound fit score (0-100) based on
+ * disciplinary compatibility, text overlap, tier expectation alignment, and citation cues.
+ * Delegates directly to the canonical fit computation.
+ */
+export function calculateDynamicFitScore(
+  journal: JournalEntry,
+  tier: 'Reach' | 'Realistic' | 'Fallback',
+  manuscriptText: string,
+  manuscriptDiscipline: Discipline,
+  isTarget: boolean,
+  isCited: boolean
+): number {
+  return computeCanonicalJournalFit({
+    manuscriptText,
+    manuscriptDiscipline,
+    journal: { source: "catalog", entry: journal },
+    tier,
+    isTarget,
+    isCited,
+  }).fitScore;
 }
 
 /**
@@ -3106,54 +3271,63 @@ export function findMatchingJournals(
   // Set of cited journal names normalized
   const citedNormSet = new Set((citedJournals || []).map(c => c.trim().toLowerCase()));
 
+  // Manuscript-grounded natural domain tiering
+  const nonReach = domainJournals.slice(1);
+  const sortedByAR = [...nonReach].sort((a, b) => {
+    const arDiff = parseAcceptanceRate(b.acceptanceRate) - parseAcceptanceRate(a.acceptanceRate);
+    if (arDiff !== 0) return arDiff;
+    return a.impactFactor - b.impactFactor;
+  });
+  const naturalFallback = sortedByAR[0] || domainJournals[domainJournals.length - 1];
+  const naturalReach = domainJournals[0];
+  const naturalRemaining = domainJournals.filter((j) => j.name !== naturalReach.name && j.name !== naturalFallback.name);
+  const naturalCitedMatch = naturalRemaining.find((j) => citedNormSet.has(j.name.toLowerCase()));
+  let naturalRealistic = naturalCitedMatch;
+  if (!naturalRealistic) {
+    const domainARs = domainJournals.map((j) => parseAcceptanceRate(j.acceptanceRate)).sort((a, b) => a - b);
+    const medianAR = domainARs[Math.floor(domainARs.length / 2)];
+
+    naturalRemaining.sort((a, b) => {
+      const distA = Math.abs(parseAcceptanceRate(a.acceptanceRate) - medianAR);
+      const distB = Math.abs(parseAcceptanceRate(b.acceptanceRate) - medianAR);
+      if (distA !== distB) return distA - distB;
+      return b.impactFactor - a.impactFactor;
+    });
+    naturalRealistic = naturalRemaining[0] || nonReach[0] || naturalReach;
+  }
+
   if (domainJournals.length >= 3) {
     if (targetEntry && isTargetDisciplineMatch && targetEntry.discipline === discipline) {
-      // TARGET-CENTRIC TIER CALIBRATION (In-Discipline)
-      const targetIF = targetEntry.impactFactor;
-      realistic = targetEntry;
-
-      const higherIFJournals = domainJournals.filter(j => j.impactFactor > targetIF * 1.15 && j.name !== targetEntry!.name);
-      if (higherIFJournals.length > 0) {
-        reach = higherIFJournals[0];
+      if (targetEntry.name.toLowerCase() === naturalReach.name.toLowerCase()) {
+        reach = targetEntry;
+        realistic = naturalRealistic;
+        fallback = naturalFallback;
+      } else if (targetEntry.name.toLowerCase() === naturalFallback.name.toLowerCase()) {
+        fallback = targetEntry;
+        reach = naturalReach;
+        realistic = naturalRealistic;
       } else {
-        reach = domainJournals[0].name !== targetEntry.name ? domainJournals[0] : (multiJournals[0] || domainJournals[0]);
+        // TARGET-CENTRIC TIER CALIBRATION (In-Discipline peer benchmark)
+        const targetIF = targetEntry.impactFactor;
+        realistic = targetEntry;
+
+        const higherIFJournals = domainJournals.filter((j) => j.impactFactor > targetIF * 1.15 && j.name !== targetEntry!.name);
+        if (higherIFJournals.length > 0) {
+          reach = higherIFJournals[0];
+        } else {
+          reach = naturalReach.name !== targetEntry.name ? naturalReach : (multiJournals[0] || naturalReach);
+        }
+
+        const fallbackCandidates = domainJournals
+          .filter((j) => j.name !== realistic.name && j.name !== reach.name)
+          .sort((a, b) => parseAcceptanceRate(b.acceptanceRate) - parseAcceptanceRate(a.acceptanceRate));
+
+        fallback = fallbackCandidates[0] || domainJournals[domainJournals.length - 1];
       }
-
-      const fallbackCandidates = domainJournals
-        .filter(j => j.name !== realistic.name && j.name !== reach.name)
-        .sort((a, b) => parseAcceptanceRate(b.acceptanceRate) - parseAcceptanceRate(a.acceptanceRate));
-
-      fallback = fallbackCandidates[0] || domainJournals[domainJournals.length - 1];
     } else {
-      // DOMAIN CITATION & EMPIRICAL CALIBRATION (Manuscript-grounded)
-      // When target is out-of-discipline or not specified, calibrate tiers strictly within manuscript's true field!
-      reach = domainJournals[0];
-
-      const nonReach = domainJournals.slice(1);
-      const sortedByAR = [...nonReach].sort((a, b) => {
-        const arDiff = parseAcceptanceRate(b.acceptanceRate) - parseAcceptanceRate(a.acceptanceRate);
-        if (arDiff !== 0) return arDiff;
-        return a.impactFactor - b.impactFactor;
-      });
-      fallback = sortedByAR[0];
-
-      const remaining = domainJournals.filter(j => j.name !== reach.name && j.name !== fallback.name);
-      const citedMatch = remaining.find(j => citedNormSet.has(j.name.toLowerCase()));
-
-      if (citedMatch) {
-        realistic = citedMatch;
-      } else {
-        const domainARs = domainJournals.map(j => parseAcceptanceRate(j.acceptanceRate)).sort((a, b) => a - b);
-        const medianAR = domainARs[Math.floor(domainARs.length / 2)];
-
-        remaining.sort((a, b) => {
-          const distA = Math.abs(parseAcceptanceRate(a.acceptanceRate) - medianAR);
-          const distB = Math.abs(parseAcceptanceRate(b.acceptanceRate) - medianAR);
-          if (distA !== distB) return distA - distB;
-          return b.impactFactor - a.impactFactor;
-        });
-        realistic = remaining[0] || nonReach[0];
-      }
+      reach = naturalReach;
+      realistic = naturalRealistic;
+      fallback = naturalFallback;
     }
   } else if (domainJournals.length === 2) {
     reach = domainJournals[0];
@@ -3257,68 +3431,80 @@ export function findMatchingJournals(
   let targetJournalEvaluation: TargetJournalTierResults['targetJournalEvaluation'] = undefined;
   if (targetEntry) {
     const targetNorm = targetEntry.name.toLowerCase();
-    const isRecommendedTier =
-      targetNorm === reach.name.toLowerCase() ||
-      targetNorm === realistic.name.toLowerCase() ||
-      targetNorm === fallback.name.toLowerCase();
-    const inOtherMatches = otherMatches.some(
-      (m) => m.journal.name.toLowerCase() === targetNorm && m.matchScore >= 45
-    );
-    const discMatch = isDisciplineMatch(discipline, targetEntry.discipline);
-    const isMismatch = !(isRecommendedTier || inOtherMatches || discMatch.isMatch || targetEntry.discipline === 'Multidisciplinary');
+    const isReach = targetNorm === reach.name.toLowerCase();
+    const isFallback = targetNorm === fallback.name.toLowerCase();
+    const isRealistic = targetNorm === realistic.name.toLowerCase();
+    const targetTier: 'Reach' | 'Realistic' | 'Fallback' = isReach ? 'Reach' : isFallback ? 'Fallback' : 'Realistic';
 
-    const targetScore = calculateDynamicFitScore(
-      targetEntry,
-      'Realistic',
-      text,
-      discipline,
-      true,
-      citedNormSet.has(targetEntry.name.toLowerCase())
-    );
+    const canonicalResult = computeCanonicalJournalFit({
+      manuscriptText: text,
+      manuscriptDiscipline: discipline,
+      journal: { source: "catalog", entry: targetEntry },
+      tier: targetTier,
+      isTarget: true,
+      isCited: citedNormSet.has(targetNorm),
+    });
+
+    const targetFitScore = isReach
+      ? reachFitScore
+      : isRealistic
+      ? realisticFitScore
+      : isFallback
+      ? fallbackFitScore
+      : canonicalResult.fitScore;
 
     targetJournalEvaluation = {
       name: targetEntry.name,
       journalName: targetEntry.name,
       foundInCatalog: true,
-      tier: (targetEntry.name === reach.name ? 'Reach' : targetEntry.name === fallback.name ? 'Fallback' : 'Realistic') as 'Reach' | 'Realistic' | 'Fallback',
-      fitScore: isMismatch ? 22 : Math.max(targetScore, 65),
+      tier: targetTier,
+      fitScore: targetFitScore,
       impactFactor: targetEntry.impactFactor,
-      discipline: targetEntry.discipline,
-      journalDiscipline: targetEntry.discipline,
+      discipline: canonicalResult.disciplineOfRecord,
+      journalDiscipline: canonicalResult.disciplineOfRecord,
       manuscriptDiscipline: discipline,
-      isDisciplinaryMismatch: isMismatch,
-      mismatchWarning: isMismatch
+      isDisciplinaryMismatch: canonicalResult.isDisciplinaryMismatch,
+      mismatchWarning: canonicalResult.isDisciplinaryMismatch
         ? `Severe Disciplinary Scope Mismatch: Manuscript study area is in "${discipline}", whereas "${targetEntry.name}" publishes in "${targetEntry.discipline}". High desk-rejection risk.`
         : undefined,
     };
   } else if (targetJournal) {
     const targetNorm = targetJournal.trim().toLowerCase();
-    const isRecommendedTier =
-      targetNorm === reach.name.toLowerCase() ||
-      targetNorm === realistic.name.toLowerCase() ||
-      targetNorm === fallback.name.toLowerCase();
-    const inOtherMatches = otherMatches.some(
-      (m) => m.journal.name.toLowerCase() === targetNorm && m.matchScore >= 45
-    );
-    const inferredDiscipline = inferJournalDiscipline(targetJournal);
-    const effectiveTargetDiscipline = inferredDiscipline || discipline;
-    const discMatch = isDisciplineMatch(discipline, effectiveTargetDiscipline);
-    const isMismatch = !(isRecommendedTier || inOtherMatches || discMatch.isMatch || effectiveTargetDiscipline === 'Multidisciplinary');
-    const targetScore = isMismatch ? 22 : Math.max(realisticFitScore, 65);
+    const isReach = targetNorm === reach.name.toLowerCase();
+    const isFallback = targetNorm === fallback.name.toLowerCase();
+    const isRealistic = targetNorm === realistic.name.toLowerCase();
+    const targetTier: 'Reach' | 'Realistic' | 'Fallback' = isReach ? 'Reach' : isFallback ? 'Fallback' : 'Realistic';
+
+    const canonicalResult = computeCanonicalJournalFit({
+      manuscriptText: text,
+      manuscriptDiscipline: discipline,
+      journal: { source: "name_only", name: targetJournal },
+      tier: targetTier,
+      isTarget: true,
+      isCited: citedNormSet.has(targetNorm),
+    });
+
+    const targetFitScore = isReach
+      ? reachFitScore
+      : isRealistic
+      ? realisticFitScore
+      : isFallback
+      ? fallbackFitScore
+      : canonicalResult.fitScore;
 
     targetJournalEvaluation = {
       name: targetJournal,
       journalName: targetJournal,
       foundInCatalog: false,
-      tier: 'Realistic' as const,
-      fitScore: targetScore,
+      tier: targetTier,
+      fitScore: targetFitScore,
       impactFactor: realistic.impactFactor,
-      discipline: effectiveTargetDiscipline,
-      journalDiscipline: effectiveTargetDiscipline,
+      discipline: canonicalResult.disciplineOfRecord,
+      journalDiscipline: canonicalResult.disciplineOfRecord,
       manuscriptDiscipline: discipline,
-      isDisciplinaryMismatch: isMismatch,
-      mismatchWarning: isMismatch
-        ? `Severe Disciplinary Scope Mismatch: Manuscript study area is in "${discipline}", whereas target journal "${targetJournal}" operates in "${effectiveTargetDiscipline}". High desk-rejection risk.`
+      isDisciplinaryMismatch: canonicalResult.isDisciplinaryMismatch,
+      mismatchWarning: canonicalResult.isDisciplinaryMismatch
+        ? `Severe Disciplinary Scope Mismatch: Manuscript study area is in "${discipline}", whereas target journal "${targetJournal}" operates in "${canonicalResult.disciplineOfRecord}". High desk-rejection risk.`
         : undefined,
     };
   }
