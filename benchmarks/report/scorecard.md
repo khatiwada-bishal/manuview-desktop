@@ -1,6 +1,6 @@
 # ManuView Benchmark Scorecard
 
-- **Timestamp**: 2026-09-16T07:06:25.875Z
+- **Timestamp**: 2026-09-16T13:56:28.009Z
 - **Engine Commit**: `HEAD`
 - **Manifest Version**: `1.0.0`
 - **Status**: ✅ All Targets Met
