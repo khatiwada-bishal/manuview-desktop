@@ -102,10 +102,10 @@ export interface CitationIntegritySummary {
   coverageNote: string;
   verifiedCount: number;
   unresolvableCount: number; // Potential AI hallucination (confirmed 404)
-  uncheckedCount: number; // References without DOI or lookup offline/rate-limited
+  uncheckedCount: number; // References without DOI or lookup unavailable/rate-limited
   retractedCount: number;
   expressionOfConcernCount?: number;
-  retractionCheckAvailable: boolean; // false if Crossref/network failed or offline
+  retractionCheckAvailable: boolean; // false if Crossref/network check failed
   selfCitationPercent?: number; // 0 to 100 percentage of verified references matching manuscript authors
   selfCitationRatio?: number; // Backward-compatible alias matching selfCitationPercent (0 to 100)
   selfCitationNote?: string; // Transparent explanation when ratio is omitted or calculated
@@ -378,8 +378,8 @@ export interface EditorialTriageOutcome {
 }
 
 /**
- * Deterministic compliance audit item (P0-1). Used in heuristic/offline mode
- * to present factual, verifiable checks rather than fabricated referee opinions.
+ * Deterministic compliance audit item (P0-1).
+ * Presents factual, verifiable structural and integrity checks.
  */
 export interface ComplianceAuditItem {
   id: string;
@@ -443,7 +443,8 @@ export interface FullReviewReport {
   statcheck?: import('./statcheck').StatcheckReport;
   hedgingAudit?: import('./hedging-overclaims').HedgingAuditReport;
   citationHealth?: import('./citation-recency').CitationHealthReport;
-  executionMode?: 'llm_synthesized' | 'partial_llm' | 'heuristic_offline';
+  executionMode?: 'llm_synthesized' | 'partial_llm' | 'failed';
+  reviewStatus?: 'complete' | 'partial' | 'failed';
   llmCallError?: string;
   verificationCoverage?: VerificationCoverageSummary;
   funnelStageReached?: 'stage0_integrity' | 'stage1_triage' | 'stage2_deep_review' | 'stage3_synthesis';

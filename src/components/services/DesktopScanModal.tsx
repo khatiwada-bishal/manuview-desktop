@@ -32,6 +32,7 @@ interface DesktopScanModalProps {
   isOpen: boolean;
   onClose: () => void;
   onComplete: (paper: PaperItem, data: DesktopDashboardData, fullReport?: any) => void;
+  onOpenSettings?: () => void;
 }
 
 const SAMPLE_PREPRINT = {
@@ -46,6 +47,7 @@ export function DesktopScanModal({
   isOpen,
   onClose,
   onComplete,
+  onOpenSettings,
 }: DesktopScanModalProps) {
   const { isConnected, modelName, provider } = useApiConnection();
   const [journal, setJournal] = useState("");
@@ -203,6 +205,18 @@ export function DesktopScanModal({
       return;
     }
 
+    const savedConfig = await resolveActiveConfig();
+    const isConfigUsable =
+      Boolean(savedConfig.apiKey && savedConfig.apiKey.trim().length > 0) ||
+      Boolean(savedConfig.hasSecureKey) ||
+      savedConfig.provider === "ollama" ||
+      savedConfig.provider === "webllm";
+
+    if (!isConfigUsable) {
+      setError("No AI model provider configured. A review requires one configured provider: Ollama (local server), Local SLM (WebLLM), or Cloud LLM API. Please open Settings to configure a provider.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setLoadingStep("Analyzing paper & journal scope compatibility...");
@@ -281,13 +295,24 @@ export function DesktopScanModal({
   const handleSubmitForReview = async () => {
     if (!compatibilityMatch) return;
 
+    const savedConfig = await resolveActiveConfig();
+    const isConfigUsable =
+      Boolean(savedConfig.apiKey && savedConfig.apiKey.trim().length > 0) ||
+      Boolean(savedConfig.hasSecureKey) ||
+      savedConfig.provider === "ollama" ||
+      savedConfig.provider === "webllm";
+
+    if (!isConfigUsable) {
+      setError("No AI model provider configured. A review requires one configured provider: Ollama (local server), Local SLM (WebLLM), or Cloud LLM API. Please open Settings to configure a provider.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setLoadingStep("Commissioning 5-persona peer review panel (Methods, Domain, Editor, Stats, Devil's Advocate)...");
     setLoadingPercent(40);
 
     try {
-      const savedConfig = await resolveActiveConfig();
       const fullReport = await runManuscriptDiagnostic(
         compatibilityMatch.parsed,
         savedConfig,
@@ -360,6 +385,26 @@ export function DesktopScanModal({
           </div>
         ) : (
           <form onSubmit={handleCheckCompatibility} className="flex-1 flex flex-col min-h-0 space-y-4">
+            {error && (
+              <div className="p-3 rounded-xl bg-red-50 dark:bg-rose-950/40 border border-red-200 dark:border-rose-800 text-red-800 dark:text-rose-300 text-xs flex items-center justify-between gap-3 shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-red-600 dark:text-rose-400" />
+                  <span className="break-words">{error}</span>
+                </div>
+                {onOpenSettings && (error.toLowerCase().includes("provider") || error.toLowerCase().includes("settings") || error.toLowerCase().includes("key")) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenSettings();
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-medium text-xs whitespace-nowrap transition cursor-pointer shrink-0"
+                  >
+                    Configure Provider
+                  </button>
+                )}
+              </div>
+            )}
             <div className="flex-1 overflow-y-auto pr-1 space-y-4 [scrollbar-width:thin]">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">

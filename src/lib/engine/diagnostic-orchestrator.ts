@@ -871,6 +871,12 @@ export async function runManuscriptDiagnostic(
     (activeConfig.provider === "ollama" || activeConfig.provider === "webllm" || (typeof activeConfig.apiKey === "string" && activeConfig.apiKey.trim().length > 0))
   );
 
+  if (!isConfigUsable) {
+    throw new Error(
+      "No AI model provider configured. Pre-submission reviews require a configured provider (Ollama, Bundled SLM, or Cloud API). Please configure a provider in Settings before starting a review."
+    );
+  }
+
   // ---------------------------------------------------------------------------
   // STAGE 0: Technical Completeness & Publication Integrity Screening Gate
   // ---------------------------------------------------------------------------
@@ -890,76 +896,22 @@ export async function runManuscriptDiagnostic(
   const dedupeResult = deduplicateReferences(manuscript.references || []);
   const uniqueReferences = dedupeResult.unique;
 
-  if (!isConfigUsable) {
-    // Offline mode: deterministic format check + local Retraction Watch database check (100% coverage)
-    verifiedRefs = uniqueReferences.map((raw) => {
-      const rawStr = typeof raw === "string" ? raw : (raw as any)?.raw || "";
-      const doiMatch = rawStr.match(/\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)\b/i);
-      const doi = doiMatch ? doiMatch[1].replace(/[.,;)\]]+$/, "") : undefined;
-      const retCheck = checkRetractionStatus(doi, rawStr);
-      if (retCheck.isRetracted || retCheck.isExpressionOfConcern) {
-        return {
-          raw: rawStr,
-          doi,
-          status: retCheck.isRetracted ? ("retracted" as const) : ("expression_of_concern" as const),
-          isRetracted: retCheck.isRetracted,
-          isRetractionNotice: retCheck.isRetractionNotice || false,
-          retractionDetails: retCheck.reason,
-          resolutionMethod: "unresolved" as const,
-        };
-      }
-      return {
-        raw: rawStr,
-        doi,
-        status: "unchecked" as const,
-        isRetracted: false,
-        isRetractionNotice: retCheck.isRetractionNotice || false,
-        retractionDetails: retCheck.isRetractionNotice
-          ? "Reference is a formal retraction notice, not a retracted article."
-          : "Offline mode: Crossref resolution not performed. Reference status unverified.",
-        resolutionMethod: "unresolved" as const,
-      };
+  if (uniqueReferences.length > 0) {
+    const sampledToVerify = uniqueReferences.slice(0, DEFAULT_MAX_SAMPLED_REFS);
+    const remainingRefs = uniqueReferences.slice(DEFAULT_MAX_SAMPLED_REFS);
+
+    onProgress?.({
+      stage: "classifying",
+      message: `Stage 0: Cross-verifying ${sampledToVerify.length} references with Crossref & Retraction Watch...`,
+      percent: 18,
     });
-  } else {
-    // Online mode: verify sampled references via Crossref and live retraction flags, and screen remaining locally (E5)
-    if (uniqueReferences.length > 0) {
-      const sampledToVerify = uniqueReferences.slice(0, DEFAULT_MAX_SAMPLED_REFS);
-      const remainingRefs = uniqueReferences.slice(DEFAULT_MAX_SAMPLED_REFS);
 
-      onProgress?.({
-        stage: "classifying",
-        message: `Stage 0: Cross-verifying ${sampledToVerify.length} references with Crossref & Retraction Watch...`,
-        percent: 18,
-      });
-
-      let verifiedSampled: ReferenceVerification[] = [];
-      try {
-        verifiedSampled = await batchVerifyReferences(sampledToVerify);
-      } catch (err) {
-        console.warn("Crossref reference verification encountered network error:", err);
-        verifiedSampled = sampledToVerify.map((raw) => {
-          const rawStr = typeof raw === "string" ? raw : (raw as any)?.raw || "";
-          const doiMatch = rawStr.match(/\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)\b/i);
-          const doi = doiMatch ? doiMatch[1].replace(/[.,;)\]]+$/, "") : undefined;
-          const retCheck = checkRetractionStatus(doi, rawStr);
-          return {
-            raw: rawStr,
-            doi,
-            status: retCheck.isRetracted
-              ? ("retracted" as const)
-              : retCheck.isExpressionOfConcern
-              ? ("expression_of_concern" as const)
-              : ("unchecked" as const),
-            isRetracted: retCheck.isRetracted,
-            isRetractionNotice: retCheck.isRetractionNotice || false,
-            retractionDetails: retCheck.reason || "Network lookup unavailable. Reference status unverified.",
-            resolutionMethod: "unresolved" as const,
-          };
-        });
-      }
-
-      // E5: 100% Retraction coverage on remaining references beyond DEFAULT_MAX_SAMPLED_REFS
-      const verifiedRemaining: ReferenceVerification[] = remainingRefs.map((raw) => {
+    let verifiedSampled: ReferenceVerification[] = [];
+    try {
+      verifiedSampled = await batchVerifyReferences(sampledToVerify);
+    } catch (err) {
+      console.warn("Crossref reference verification encountered network error:", err);
+      verifiedSampled = sampledToVerify.map((raw) => {
         const rawStr = typeof raw === "string" ? raw : (raw as any)?.raw || "";
         const doiMatch = rawStr.match(/\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)\b/i);
         const doi = doiMatch ? doiMatch[1].replace(/[.,;)\]]+$/, "") : undefined;
@@ -974,13 +926,36 @@ export async function runManuscriptDiagnostic(
             : ("unchecked" as const),
           isRetracted: retCheck.isRetracted,
           isRetractionNotice: retCheck.isRetractionNotice || false,
-          retractionDetails: retCheck.reason || "Beyond sampled audit limit; retraction screened locally.",
+          retractionDetails: retCheck.reason || "Network lookup unavailable. Reference status unverified.",
           resolutionMethod: "unresolved" as const,
         };
       });
-
-      verifiedRefs = [...verifiedSampled, ...verifiedRemaining];
     }
+
+    // E5: 100% Retraction coverage on remaining references beyond DEFAULT_MAX_SAMPLED_REFS
+    const verifiedRemaining: ReferenceVerification[] = remainingRefs.map((raw) => {
+      const rawStr = typeof raw === "string" ? raw : (raw as any)?.raw || "";
+      const doiMatch = rawStr.match(/\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)\b/i);
+      const doi = doiMatch ? doiMatch[1].replace(/[.,;)\]]+$/, "") : undefined;
+      const retCheck = checkRetractionStatus(doi, rawStr);
+      return {
+        raw: rawStr,
+        doi,
+        status: retCheck.isRetracted
+          ? ("retracted" as const)
+          : retCheck.isExpressionOfConcern
+          ? ("expression_of_concern" as const)
+          : ("unchecked" as const),
+        isRetracted: retCheck.isRetracted,
+        isRetractionNotice: retCheck.isRetractionNotice || false,
+        retractionDetails: retCheck.isRetractionNotice
+          ? "Reference is a formal retraction notice, not a retracted article."
+          : retCheck.reason,
+        resolutionMethod: "unresolved" as const,
+      };
+    });
+
+    verifiedRefs = [...verifiedSampled, ...verifiedRemaining];
   }
 
   const citationIntegrity = computeCitationIntegrity(
@@ -1026,7 +1001,8 @@ export async function runManuscriptDiagnostic(
       journalRecommendations: [],
       citationIntegrity,
       reportingGuideline: undefined,
-      executionMode: "heuristic_offline",
+      executionMode: "llm_synthesized",
+      reviewStatus: "complete",
     };
   }
 
@@ -1052,7 +1028,7 @@ export async function runManuscriptDiagnostic(
     try {
       liveJournalScope = await fetchLiveJournalScope(targetJournalName);
     } catch {
-      // Graceful offline fallback
+      // Graceful local fallback
     }
   }
 
@@ -1249,101 +1225,84 @@ export async function runManuscriptDiagnostic(
       statcheck: domainSynthesis.statcheck,
       hedgingAudit: domainSynthesis.hedgingAudit,
       citationHealth: domainSynthesis.citationHealth,
-      executionMode: isConfigUsable ? "llm_synthesized" : "heuristic_offline",
+      executionMode: "llm_synthesized",
+      reviewStatus: "complete",
     };
   }
 
   // Step 5: Multi-Stage LLM Evaluation Simulation & Micro-Repair
   const provider = activeConfig?.provider || "gemini";
-  const isLocalSLM = provider === "webllm";
   const maxBodyChars = PROVIDER_CONTEXT_CHAR_LIMITS[provider] || DEFAULT_CONTEXT_CHAR_LIMIT;
   const boundaryNonce = generateBoundaryNonce();
 
-  const systemPrompt = isLocalSLM
-    ? buildLocalSLMSystemPrompt(boundaryNonce)
-    : buildPreSubmissionSystemPrompt(boundaryNonce);
-  const userPrompt = isLocalSLM
-    ? buildLocalSLMUserPrompt(
-        manuscript,
-        heuristicClassification,
-        citationIntegrity,
-        targetJournalName,
-        topCitedJournals,
-        maxBodyChars,
-        boundaryNonce,
-        detectedDiscipline
-      )
-    : buildPreSubmissionUserPrompt(
-        manuscript,
-        heuristicClassification,
-        citationIntegrity,
-        targetJournalName,
-        topCitedJournals,
-        maxBodyChars,
-        boundaryNonce,
-        detectedDiscipline
-      );
+  // One unified review prompt path for all providers (Ollama, Bundled SLM, Cloud API)
+  const systemPrompt = buildPreSubmissionSystemPrompt(boundaryNonce);
+  const userPrompt = buildPreSubmissionUserPrompt(
+    manuscript,
+    heuristicClassification,
+    citationIntegrity,
+    targetJournalName,
+    topCitedJournals,
+    maxBodyChars,
+    boundaryNonce,
+    detectedDiscipline
+  );
 
   let parsedLLM: RawLLMDiagnosticResponse | null = null;
   let llmCallError: string | null = null;
 
-  if (!isConfigUsable) {
-    llmCallError = activeConfig?.provider
-      ? (activeConfig.provider === "webllm" ? "On-device WebGPU model is not ready." : `API key missing for provider "${activeConfig.provider}".`)
-      : "No AI provider configured. Configure API keys in Settings to enable the AI review panel.";
-  } else {
-    onProgress?.({
-      stage: "generating_review",
-      message: isDeskRejectByScope
-        ? "Direct Desk Reject: Synthesizing Handling Editor triage statement & in-scope recommendations..."
-        : "Simulating 5-persona peer review panel (Methods, Domain, Statistician, Editor, Devil's Advocate)...",
-      percent: 70,
-    });
+  onProgress?.({
+    stage: "generating_review",
+    message: isDeskRejectByScope
+      ? "Direct Desk Reject: Synthesizing Handling Editor triage statement & in-scope recommendations..."
+      : "Simulating 5-persona peer review panel (Methods, Domain, Statistician, Editor, Devil's Advocate)...",
+    percent: 70,
+  });
 
-    let accumulatedLen = 0;
-    let lastProgressEmit = 0;
+  let accumulatedLen = 0;
+  let lastProgressEmit = 0;
 
-    try {
-      parsedLLM = await callLLMForJson<RawLLMDiagnosticResponse>(
-        [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        activeConfig,
-        {
-          onChunk: onProgress
-            ? (_delta, acc) => {
-                accumulatedLen = acc.length;
-                const now = Date.now();
-                if (now - lastProgressEmit > 300) {
-                  lastProgressEmit = now;
-                  const streamPercent = Math.min(95, 70 + Math.floor(accumulatedLen / 250));
-                  onProgress({
-                    stage: "streaming_review",
-                    message: `Synthesizing peer critiques and evidence anchors (${Math.round(accumulatedLen / 4)} tokens)...`,
-                    percent: streamPercent,
-                  });
-                }
+  try {
+    parsedLLM = await callLLMForJson<RawLLMDiagnosticResponse>(
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      activeConfig,
+      {
+        onChunk: onProgress
+          ? (_delta, acc) => {
+              accumulatedLen = acc.length;
+              const now = Date.now();
+              if (now - lastProgressEmit > 300) {
+                lastProgressEmit = now;
+                const streamPercent = Math.min(95, 70 + Math.floor(accumulatedLen / 250));
+                onProgress({
+                  stage: "streaming_review",
+                  message: `Synthesizing peer critiques and evidence anchors (${Math.round(accumulatedLen / 4)} tokens)...`,
+                  percent: streamPercent,
+                });
               }
-            : undefined,
-          onRepairStart: () =>
-            onProgress?.({
-              stage: "generating_review",
-              message: "Resolving JSON syntax boundary via micro-repair loop...",
-              percent: 96,
-            }),
-        }
-      );
-    } catch (err: unknown) {
-      const rawError = getErrorMessage(err) || "AI provider call failed or is not connected.";
-      const safeError = sanitizeErrorMessage(rawError);
-      console.warn("LLM review generation warning, using document-grounded offline heuristics:", safeError);
-      // Clean up technical syntax parser errors for user presentation
-      const userFacingError = /JSON Parse error|Unexpected token|Unexpected identifier|is not valid JSON/i.test(safeError)
-        ? "AI response could not be parsed as valid JSON"
-        : safeError;
-      llmCallError = userFacingError;
-    }
+            }
+          : undefined,
+        onRepairStart: () =>
+          onProgress?.({
+            stage: "generating_review",
+            message: "Resolving JSON syntax boundary via micro-repair loop...",
+            percent: 96,
+          }),
+      }
+    );
+  } catch (err: unknown) {
+    const rawError = getErrorMessage(err) || "AI provider call failed or is not connected.";
+    const safeError = sanitizeErrorMessage(rawError);
+    console.error("LLM review generation failed:", safeError);
+    // Clean up technical syntax parser errors for user presentation
+    const userFacingError = /JSON Parse error|Unexpected token|Unexpected identifier|is not valid JSON/i.test(safeError)
+      ? "AI response could not be parsed as valid JSON"
+      : safeError;
+    llmCallError = userFacingError;
+    throw new Error(`AI review generation failed: ${userFacingError}`);
   }
 
   // Step 6: Finalize Classification & Validate Sections
@@ -1385,19 +1344,28 @@ export async function runManuscriptDiagnostic(
 
   const dimensionSource = dimValidation.isValid ? "llm" : "heuristic";
   const issueSource = issuesValidation.isValid ? "llm" : "heuristic";
-  const personaSource = personaValidation.isValid
-    ? "llm"
-    : isLocalSLM && parsedLLM?.handlingEditorCritique
-    ? "llm"
-    : "heuristic";
+  const personaSource = personaValidation.isValid ? "llm" : "heuristic";
 
   const usedLlm = [dimensionSource, issueSource, personaSource].filter((s) => s === "llm").length;
-  const executionMode: "llm_synthesized" | "partial_llm" | "heuristic_offline" =
-    usedLlm === 3 || (isLocalSLM && parsedLLM && (typeof parsedLLM.overallScore === "number" || dimValidation.isValid))
+  const executionMode: "llm_synthesized" | "partial_llm" | "failed" =
+    usedLlm === 3
       ? "llm_synthesized"
       : usedLlm > 0
       ? "partial_llm"
-      : "heuristic_offline";
+      : "failed";
+
+  const reviewStatus: "complete" | "partial" | "failed" =
+    executionMode === "llm_synthesized"
+      ? "complete"
+      : executionMode === "partial_llm"
+      ? "partial"
+      : "failed";
+
+  if (executionMode === "failed") {
+    throw new Error(
+      "AI model output could not be validated into a peer review structure. Please check model capacity or try a larger model."
+    );
+  }
 
   let finalOverallScore: number | undefined = undefined;
   if (isDeskRejectByScope) {
@@ -1409,11 +1377,7 @@ export async function runManuscriptDiagnostic(
   }
 
   let finalSummary =
-    executionMode === "heuristic_offline"
-      ? (llmCallError
-          ? `AI review unavailable (${llmCallError}) — connect an LLM provider for the simulated reviewer panel. The report below presents an objective Deterministic Compliance Audit.`
-          : "AI review unavailable — connect an LLM provider for the simulated reviewer panel. The report below presents an objective Deterministic Compliance Audit.")
-      : typeof parsedLLM?.summary === "string" && parsedLLM.summary.length > MIN_SUMMARY_LENGTH
+    typeof parsedLLM?.summary === "string" && parsedLLM.summary.length > MIN_SUMMARY_LENGTH
       ? parsedLLM.summary
       : domainSynthesis.summary;
 
@@ -1424,7 +1388,7 @@ export async function runManuscriptDiagnostic(
   let finalDimensions: Record<ScoreDimension, DimensionScore> | undefined = undefined;
   {
     const dims: Partial<Record<ScoreDimension, DimensionScore>> = {};
-    if (executionMode !== "heuristic_offline" && dimValidation.isValid && dimValidation.data) {
+    if (dimValidation.isValid && dimValidation.data) {
       for (const [key, dim] of Object.entries(dimValidation.data)) {
         if (isScoreDimension(key)) {
           dims[key] = {
@@ -1460,20 +1424,16 @@ export async function runManuscriptDiagnostic(
   }
 
   let finalPriorityIssues: PriorityIssue[] = [];
-  if (executionMode !== "heuristic_offline") {
-    if (issuesValidation.isValid && issuesValidation.data) {
-      finalPriorityIssues = issuesValidation.data.map((issue) => ({
-        ...issue,
-        priority: (issue.priority || "B") as "A" | "B" | "C",
-        category: (issue.category || "Methodology") as PriorityIssue["category"],
-        source: "llm" as const,
-        evidenceAnchor: issue.evidenceAnchor
-          ? groundEvidenceAnchor(issue.evidenceAnchor, manuscript.rawText, manuscript.sections)
-          : undefined,
-      }));
-    } else {
-      finalPriorityIssues = [...domainSynthesis.priorityIssues];
-    }
+  if (issuesValidation.isValid && issuesValidation.data) {
+    finalPriorityIssues = issuesValidation.data.map((issue) => ({
+      ...issue,
+      priority: (issue.priority || "B") as "A" | "B" | "C",
+      category: (issue.category || "Methodology") as PriorityIssue["category"],
+      source: "llm" as const,
+      evidenceAnchor: issue.evidenceAnchor
+        ? groundEvidenceAnchor(issue.evidenceAnchor, manuscript.rawText, manuscript.sections)
+        : undefined,
+    }));
   } else {
     finalPriorityIssues = [...domainSynthesis.priorityIssues];
   }
@@ -1502,9 +1462,7 @@ export async function runManuscriptDiagnostic(
       description:
         "One or more references in the bibliography have been formally retracted by publishers. Citing retracted work can trigger immediate editorial desk rejection.",
       reviewerQuote:
-        executionMode === "heuristic_offline"
-          ? ""
-          : "'The authors cite a retracted publication as foundation for their claims. This raises severe academic integrity concerns.'",
+        "'The authors cite a retracted publication as foundation for their claims. This raises severe academic integrity concerns.'",
       actionableFix: "Remove or replace the retracted citation with updated verified peer-reviewed literature.",
       source: "crossref",
     });
@@ -1519,9 +1477,7 @@ export async function runManuscriptDiagnostic(
       description:
         "Multiple DOIs in the reference list failed resolution against the Crossref registry. This pattern is commonly flagged by editors as potential AI-hallucinated citations.",
       reviewerQuote:
-        executionMode === "heuristic_offline"
-          ? ""
-          : "'Several cited DOIs return 404 in Crossref. Are these valid citations or hallucinated citations?'",
+        "'Several cited DOIs return 404 in Crossref. Are these valid citations or hallucinated citations?'",
       actionableFix: "Verify each cited paper's official DOI directly on the publisher's journal website.",
       source: "crossref",
     });
@@ -1534,9 +1490,7 @@ export async function runManuscriptDiagnostic(
       description:
         "One DOI in the reference list could not be resolved against the Crossref registry. This may indicate a formatting typo or newly published article.",
       reviewerQuote:
-        executionMode === "heuristic_offline"
-          ? ""
-          : "'One of the cited DOIs did not resolve in the Crossref database. Please verify the DOI string.'",
+        "'One of the cited DOIs did not resolve in the Crossref database. Please verify the DOI string.'",
       actionableFix: "Check the DOI string on the publisher's website to ensure no characters or punctuation were truncated.",
       source: "crossref",
     });
@@ -1565,9 +1519,7 @@ export async function runManuscriptDiagnostic(
         category: "Citations",
         description: `Over 40% of verified references cite prior publications by the authors. Journal editors and reviewers routinely flag excessive self-citation (>25%) as citation-stacking or an insular conceptual foundation, and rates above 40% frequently trigger immediate desk rejection.`,
         reviewerQuote:
-          executionMode === "heuristic_offline"
-            ? ""
-            : "'The manuscript exhibits unusually high self-citation (>40%), creating an insular empirical framing. Broaden foundational literature with third-party studies.'",
+          "'The manuscript exhibits unusually high self-citation (>40%), creating an insular empirical framing. Broaden foundational literature with third-party studies.'",
         actionableFix:
           "Audit references and replace non-essential self-citations with independent, third-party peer-reviewed empirical literature.",
         source: "crossref",
@@ -1580,9 +1532,7 @@ export async function runManuscriptDiagnostic(
         category: "Citations",
         description: `Author self-citations represent ${selfCitRate.toFixed(1)}% of verified references, exceeding the standard academic ceiling of 25%. While direct extensions of previous datasets are valid, elevated ratios invite referee scrutiny.`,
         reviewerQuote:
-          executionMode === "heuristic_offline"
-            ? ""
-            : "'Self-citation exceeds 25%. Ensure previous author papers are cited strictly where required for methodological lineage.'",
+          "'Self-citation exceeds 25%. Ensure previous author papers are cited strictly where required for methodological lineage.'",
         actionableFix:
           "Verify that each self-citation is essential for method or data continuity, and introduce independent external benchmarks.",
         source: "crossref",
@@ -1602,7 +1552,6 @@ export async function runManuscriptDiagnostic(
           targetJournalName,
           targetDiscipline: journalMatches.targetJournalEvaluation?.journalDiscipline || "Target Domain",
           realisticJournalName: journalMatches.realistic?.name,
-          reviewerQuote: executionMode === "heuristic_offline" ? "" : undefined,
         });
       additionalIssues.unshift(scopeIssue);
     }
@@ -1613,7 +1562,7 @@ export async function runManuscriptDiagnostic(
   let finalPersonas: ReviewerPersonaFeedback[] = [];
   const missingPersonaRoles: ReviewerPersonaFeedback["persona"][] = [];
 
-  if (executionMode !== "heuristic_offline" && personaValidation.isValid && personaValidation.data && personaValidation.data.length > 0) {
+  if (personaValidation.isValid && personaValidation.data && personaValidation.data.length > 0) {
     const llmPersonas: ReviewerPersonaFeedback[] = personaValidation.data.map((p) => ({
       persona: p.persona || ("domain_expert" as const),
       name: p.name || "Reviewer",
@@ -1853,6 +1802,7 @@ export async function runManuscriptDiagnostic(
     hedgingAudit: domainSynthesis.hedgingAudit,
     citationHealth: domainSynthesis.citationHealth,
     executionMode,
+    reviewStatus: executionMode === "llm_synthesized" ? "complete" : "partial",
     llmCallError: llmCallError || undefined,
   };
 

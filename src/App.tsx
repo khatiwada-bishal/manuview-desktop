@@ -627,6 +627,7 @@ export default function App() {
           isOpen={isScanOpen}
           onClose={() => setIsScanOpen(false)}
           onComplete={handleScanComplete}
+          onOpenSettings={() => setIsSettingsOpen(true)}
         />
 
         {/* Project Deletion Confirmation Modal */}

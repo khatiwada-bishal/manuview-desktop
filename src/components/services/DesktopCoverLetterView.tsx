@@ -16,7 +16,7 @@ import {
 import JournalCombobox from "@/components/JournalCombobox";
 import { callLLM, sanitizeAuthorText, sanitizeErrorMessage, getSavedClientConfig, resolveActiveConfig } from "@/lib/llm";
 import { ProviderConfig } from "@/lib/types";
-import { generateOfflineCoverLetter, CoverLetterFormat } from "@/lib/offline-templates";
+import { generateDeterministicCoverLetter, CoverLetterFormat } from "@/lib/deterministic-templates";
 
 export function formatCoverLetterText(raw: string, targetJournal: string, title: string): string {
   let cleaned = (raw || "").trim();
@@ -85,7 +85,7 @@ export function DesktopCoverLetterView() {
   const [mainFindings, setMainFindings] = useState("");
   const [broadSignificance, setBroadSignificance] = useState("");
   const [format, setFormat] = useState<CoverLetterFormat>("standard");
-  const [offlineMode, setOfflineMode] = useState<boolean>(true);
+  const [deterministicMode, setDeterministicMode] = useState<boolean>(true);
   const [loading, setLoading] = useState(false);
   const [letter, setLetter] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -123,9 +123,9 @@ export function DesktopCoverLetterView() {
     const safeFindings = sanitizeAuthorText(mainFindings);
     const safeSignificance = sanitizeAuthorText(broadSignificance);
 
-    // 1. If offline mode is toggled, generate instantaneously with deterministic template
-    if (offlineMode) {
-      const generated = generateOfflineCoverLetter({
+    // 1. If deterministic mode is toggled, generate instantaneously with template
+    if (deterministicMode) {
+      const generated = generateDeterministicCoverLetter({
         title: safeTitle,
         targetJournal: safeTargetJournal,
         abstract: safeAbstract,
@@ -139,12 +139,12 @@ export function DesktopCoverLetterView() {
       return;
     }
 
-    // 2. Try LLM generation with seamless fallback if no API key is set
+    // 2. Otherwise generate via active LLM provider (Ollama / Local SLM / Cloud)
     try {
       const providerConfig = await resolveActiveConfig();
 
       if (!providerConfig.hasSecureKey && providerConfig.provider !== "ollama") {
-        const generated = generateOfflineCoverLetter({
+        const generated = generateDeterministicCoverLetter({
           title: safeTitle,
           targetJournal: safeTargetJournal,
           abstract: safeAbstract,
@@ -154,8 +154,8 @@ export function DesktopCoverLetterView() {
           format,
         });
         setLetter(generated);
-        setOfflineMode(true);
-        setInfoNotice("No external API key detected. Generated with the publication-grade Offline Academic Template engine.");
+        setDeterministicMode(true);
+        setInfoNotice("No model provider configured. Generated with the deterministic editorial template.");
         return;
       }
 
@@ -204,8 +204,8 @@ IMPORTANT OUTPUT INSTRUCTIONS:
       const cleanFormatted = formatCoverLetterText(generated, safeTargetJournal, safeTitle);
       setLetter(cleanFormatted);
     } catch (err: any) {
-      console.warn("LLM generation failed, switching to offline template fallback:", err);
-      const generated = generateOfflineCoverLetter({
+      console.warn("LLM generation failed, switching to deterministic template fallback:", err);
+      const generated = generateDeterministicCoverLetter({
         title: safeTitle,
         targetJournal: safeTargetJournal,
         abstract: safeAbstract,
@@ -215,7 +215,7 @@ IMPORTANT OUTPUT INSTRUCTIONS:
         format,
       });
       setLetter(generated);
-      setInfoNotice("Cloud AI service unavailable. Generated via Offline Academic Template Engine.");
+      setInfoNotice("Live model request interrupted or unavailable. Generated via Deterministic Academic Template.");
     } finally {
       setLoading(false);
     }
@@ -329,27 +329,27 @@ IMPORTANT OUTPUT INSTRUCTIONS:
               <div className="flex items-center h-[42px] p-1 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10">
                 <button
                   type="button"
-                  onClick={() => setOfflineMode(true)}
+                  onClick={() => setDeterministicMode(true)}
                   className={`flex-1 flex items-center justify-center gap-1.5 h-full rounded-lg text-xs font-medium transition cursor-pointer ${
-                    offlineMode
+                    deterministicMode
                       ? "bg-blue-600 text-white shadow-xs"
                       : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
                   }`}
                 >
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Offline (0 MB, Instant)</span>
+                  <span>Deterministic Template</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setOfflineMode(false)}
+                  onClick={() => setDeterministicMode(false)}
                   className={`flex-1 flex items-center justify-center gap-1.5 h-full rounded-lg text-xs font-medium transition cursor-pointer ${
-                    !offlineMode
+                    !deterministicMode
                       ? "bg-blue-600 text-white shadow-xs"
                       : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
                   }`}
                 >
                   <Cpu className="w-3.5 h-3.5" />
-                  <span>Cloud LLM Stream</span>
+                  <span>Live Model AI Stream</span>
                 </button>
               </div>
             </div>
@@ -393,8 +393,8 @@ IMPORTANT OUTPUT INSTRUCTIONS:
                 </>
               ) : (
                 <>
-                  {offlineMode ? <ShieldCheck className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
-                  <span>{offlineMode ? "Generate Instant Offline Letter" : "Generate AI Editorial Cover Letter"}</span>
+                  {deterministicMode ? <ShieldCheck className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                  <span>{deterministicMode ? "Generate Deterministic Letter" : "Generate AI Editorial Cover Letter"}</span>
                 </>
               )}
             </button>

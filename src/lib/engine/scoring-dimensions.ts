@@ -29,7 +29,7 @@ export interface DeterministicDimensionParams {
 }
 
 /**
- * Calculates deterministic academic scoring dimensions for heuristic/offline mode
+ * Calculates deterministic academic scoring dimensions
  * or fallback execution when live AI output is unavailable.
  */
 export function calculateDeterministicDimensions(

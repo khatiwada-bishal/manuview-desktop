@@ -1,5 +1,5 @@
 /**
- * Offline Academic Templates and Decision Letter Parser
+ * Deterministic Academic Templates and Decision Letter Parser
  * Provides 100% deterministic, local generation for:
  * 1. Journal Submission Cover Letters (Nature, Elsevier, IEEE, PLOS, Standard)
  * 2. Point-by-Point Referee Response Rebuttal Matrices
@@ -20,7 +20,7 @@ export interface CoverLetterParams {
   email?: string;
 }
 
-export function generateOfflineCoverLetter(params: CoverLetterParams): string {
+export function generateDeterministicCoverLetter(params: CoverLetterParams): string {
   const {
     title,
     targetJournal,
@@ -156,6 +156,8 @@ Email: ${email}
 ORCID: [0000-000X-XXXX-XXXX]`;
 }
 
+export const generateOfflineCoverLetter = generateDeterministicCoverLetter;
+
 export interface RebuttalItem {
   reviewer: string;
   itemNumber: number;
@@ -166,10 +168,10 @@ export interface RebuttalItem {
 }
 
 /**
- * Parses referee decision letters offline into discrete critique points
+ * Parses referee decision letters deterministically into discrete critique points
  * and populates rigorous academic rebuttal draft frames.
  */
-export function parseDecisionLetterOffline(rawText: string): RebuttalItem[] {
+export function parseDecisionLetterDeterministic(rawText: string): RebuttalItem[] {
   const text = (rawText || "").trim();
   if (!text) return [];
 
@@ -209,6 +211,8 @@ export function parseDecisionLetterOffline(rawText: string): RebuttalItem[] {
 
   return items;
 }
+
+export const parseDecisionLetterOffline = parseDecisionLetterDeterministic;
 
 function extractPointsFromSection(
   sectionText: string,

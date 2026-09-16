@@ -19,7 +19,7 @@ import {
 import { callLLM, sanitizeAuthorText, sanitizeErrorMessage, getSavedClientConfig, resolveActiveConfig } from "@/lib/llm";
 import { cleanAndRepairJson } from "@/lib/json-repair";
 import { ProviderConfig } from "@/lib/types";
-import { parseDecisionLetterOffline } from "@/lib/offline-templates";
+import { parseDecisionLetterDeterministic } from "@/lib/deterministic-templates";
 
 const SAMPLE_DECISION_LETTER = `Dear Author,
 
@@ -45,7 +45,7 @@ interface RebuttalItem {
 
 export function DesktopResponseBuilderView() {
   const [inputText, setInputText] = useState("");
-  const [offlineMode, setOfflineMode] = useState<boolean>(true);
+  const [deterministicMode, setDeterministicMode] = useState<boolean>(true);
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<RebuttalItem[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -68,9 +68,9 @@ export function DesktopResponseBuilderView() {
     setInfoNotice(null);
     setItems([]);
 
-    // 1. Instant offline heuristic parsing if offlineMode is active
-    if (offlineMode) {
-      const parsed = parseDecisionLetterOffline(inputText);
+    // 1. Instant deterministic parsing if deterministicMode is active
+    if (deterministicMode) {
+      const parsed = parseDecisionLetterDeterministic(inputText);
       if (parsed.length === 0) {
         setError("Unable to parse structured reviewer critiques from input. Ensure text contains reviewer comments or numbered points.");
       } else {
@@ -80,7 +80,7 @@ export function DesktopResponseBuilderView() {
       return;
     }
 
-    // 2. Cloud LLM generation with graceful offline fallback
+    // 2. Active LLM generation with graceful deterministic fallback
     try {
       const safeInput = sanitizeAuthorText(inputText);
 
@@ -108,10 +108,10 @@ Return a JSON array of parsed reviewer comments with the following format:
       const providerConfig = await resolveActiveConfig();
 
       if (!providerConfig.hasSecureKey && providerConfig.provider !== "ollama") {
-        const parsed = parseDecisionLetterOffline(inputText);
+        const parsed = parseDecisionLetterDeterministic(inputText);
         setItems(parsed);
-        setOfflineMode(true);
-        setInfoNotice("No external API key detected. Generated with the publication-grade Offline Decision Letter Parser.");
+        setDeterministicMode(true);
+        setInfoNotice("No model provider configured. Generated with the publication-grade Deterministic Decision Letter Parser.");
         return;
       }
 
@@ -122,10 +122,10 @@ Return a JSON array of parsed reviewer comments with the following format:
       } catch {}
 
       if (!Array.isArray(parsed) || parsed.length === 0) {
-        const fallback = parseDecisionLetterOffline(inputText);
+        const fallback = parseDecisionLetterDeterministic(inputText);
         if (fallback.length > 0) {
           setItems(fallback);
-          setInfoNotice("LLM response could not be parsed as JSON. Generated using Offline Decision Letter Parser.");
+          setInfoNotice("LLM response could not be parsed as JSON. Generated using Deterministic Decision Letter Parser.");
           return;
         }
         throw new Error("Unable to parse structured reviewer critiques from input.");
@@ -133,11 +133,11 @@ Return a JSON array of parsed reviewer comments with the following format:
 
       setItems(parsed);
     } catch (err: any) {
-      console.warn("LLM response builder failed, falling back to offline parser:", err);
-      const fallback = parseDecisionLetterOffline(inputText);
+      console.warn("LLM response builder failed, falling back to deterministic parser:", err);
+      const fallback = parseDecisionLetterDeterministic(inputText);
       if (fallback.length > 0) {
         setItems(fallback);
-        setInfoNotice("Cloud AI unavailable. Rebuttal matrix generated using Offline Decision Letter Parser.");
+        setInfoNotice("Live model request interrupted or unavailable. Rebuttal matrix generated using Deterministic Decision Letter Parser.");
       } else {
         setError(sanitizeErrorMessage(err.message || "Failed to generate rebuttal matrix."));
       }
@@ -245,27 +245,27 @@ ${rows}
             <div className="flex items-center h-[42px] p-1 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 max-w-md">
               <button
                 type="button"
-                onClick={() => setOfflineMode(true)}
+                onClick={() => setDeterministicMode(true)}
                 className={`flex-1 flex items-center justify-center gap-1.5 h-full rounded-lg text-xs font-medium transition cursor-pointer ${
-                  offlineMode
+                  deterministicMode
                     ? "bg-rose-600 text-white shadow-xs"
                     : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
                 }`}
               >
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Offline Parser (0 MB, Instant)</span>
+                <span>Deterministic Parser</span>
               </button>
               <button
                 type="button"
-                onClick={() => setOfflineMode(false)}
+                onClick={() => setDeterministicMode(false)}
                 className={`flex-1 flex items-center justify-center gap-1.5 h-full rounded-lg text-xs font-medium transition cursor-pointer ${
-                  !offlineMode
+                  !deterministicMode
                     ? "bg-rose-600 text-white shadow-xs"
                     : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
                 }`}
               >
                 <Cpu className="w-3.5 h-3.5" />
-                <span>Cloud LLM Stream</span>
+                <span>Live Model AI Stream</span>
               </button>
             </div>
           </div>
@@ -297,8 +297,8 @@ ${rows}
                 </>
               ) : (
                 <>
-                  {offlineMode ? <ShieldCheck className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
-                  <span>{offlineMode ? "Parse & Build Rebuttal Matrix (Offline)" : "Generate Response Matrix (AI)"}</span>
+                  {deterministicMode ? <ShieldCheck className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
+                  <span>{deterministicMode ? "Parse & Build Rebuttal Matrix (Deterministic)" : "Generate Response Matrix (AI)"}</span>
                 </>
               )}
             </button>

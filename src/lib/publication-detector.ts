@@ -282,7 +282,7 @@ export async function detectPublishedArticle(
         };
       }
     } catch {
-      // Network failed or offline - fall back to strong local header evidence (only if NOT a preprint)
+      // Network request failed - fall back to strong local header evidence (only if NOT a preprint)
       if (!localMarkers.isPreprint && localMarkers.hasPublishedMarkers) {
         return {
           isPublished: true,

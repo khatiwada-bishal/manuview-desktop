@@ -241,7 +241,7 @@ export async function verifyDOIWithCrossref(doi: string): Promise<Partial<Refere
     return { ...DOI_VERIFICATION_CACHE.get(cleanDoiKey)! };
   }
 
-  // E2: Local-first retraction lookup (instant offline resolution)
+  // E2: Local-first retraction lookup (instant local resolution)
   const localRetraction = checkRetractionStatus(cleanDoiKey);
 
   const cleanDoi = encodeURIComponent(cleanDoiKey);

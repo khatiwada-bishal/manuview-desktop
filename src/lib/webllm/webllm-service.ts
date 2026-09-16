@@ -12,6 +12,7 @@ import {
   type MLCEngineInterface,
   type InitProgressReport,
 } from "@mlc-ai/web-llm";
+import { isDesktopApp, isMacOS } from "@/lib/desktop";
 
 export interface LocalModelInfo {
   id: string;
@@ -153,12 +154,16 @@ export async function checkWebGPUCapabilities(): Promise<WebGPUCapabilityCheck> 
     const meetsBufferRequirement = maxStorageBuffers >= 10;
 
     if (!meetsBufferRequirement) {
+      const reason =
+        isDesktopApp() && isMacOS()
+          ? `macOS desktop webview restricts WebGPU storage buffers to ${maxStorageBuffers} (WebLLM requires 10). For local private reviews on macOS, please use Ollama (Settings -> Provider -> Ollama), or use Google Chrome / Edge.`
+          : `Your browser restricts maxStorageBuffersPerShaderStage to ${maxStorageBuffers} (WebLLM requires 10). Please use Google Chrome / Edge, or switch to Ollama for local execution.`;
       return {
         supported: true,
         adapterAvailable: true,
         storageBufferLimit: maxStorageBuffers,
         meetsBufferRequirement: false,
-        reason: `Your browser limits maxStorageBuffersPerShaderStage to ${maxStorageBuffers} (WebLLM requires 10). Please use Google Chrome, Edge, or the native ManuView Desktop app.`,
+        reason,
       };
     }
 
@@ -341,7 +346,9 @@ export async function initLocalModel(
     let errorMessage = err?.message || String(err);
     if (errorMessage.includes("maxStorageBuffersPerShaderStage")) {
       errorMessage =
-        "Your browser (Safari/WebKit) restricts WebGPU storage buffers to 9 (WebLLM requires 10). For offline GPU SLM execution, please open ManuView in Google Chrome / Edge or use the native ManuView Desktop application.";
+        isDesktopApp() && isMacOS()
+          ? "macOS desktop webview restricts WebGPU storage buffers to 9 (WebLLM requires 10). For local private models on macOS, please use Ollama (http://localhost:11434) in Settings -> Provider, or configure a cloud LLM."
+          : "Your browser restricts WebGPU storage buffers to 9 (WebLLM requires 10). Please open ManuView in Google Chrome / Edge or use Ollama for local execution.";
     }
     notifyListeners({
       state: "error",

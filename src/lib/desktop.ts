@@ -11,6 +11,11 @@ export function isDesktopApp(): boolean {
   );
 }
 
+export function isMacOS(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Macintosh|Mac OS X/i.test(navigator.userAgent || "");
+}
+
 /**
  * Open a native OS file dialog for selecting a manuscript (.pdf, .docx).
  * Returns null if cancelled or in web browser mode.

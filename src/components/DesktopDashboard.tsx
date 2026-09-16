@@ -616,7 +616,6 @@ export function DesktopDashboard({
               el.scrollIntoView({ behavior: "smooth", block: "center" });
             }
           }}
-          isHeuristicOnly={fullReport?.executionMode === "heuristic_offline"}
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -890,32 +889,6 @@ export function DesktopDashboard({
   // --- Calibrated Pre-Submission Acceptance Probability Card ---
   const renderCalibratedAcceptanceCard = () => {
     if (!calibratedAcceptance) return null;
-
-    // P2 §4.3: Strictly suppress quantitative acceptance probability percentages in offline mode
-    if (fullReport?.executionMode === "heuristic_offline") {
-      return (
-        <div className="rounded-3xl liquid-glass-card border border-black/[0.08] dark:border-white/[0.1] p-6 sm:p-7 transition-all duration-200">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 flex items-center justify-center shrink-0">
-              <BarChart3 className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-[#0F172A] dark:text-white">
-                  Deterministic Offline Audit Active
-                </h3>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800">
-                  Scores Suppressed
-                </span>
-              </div>
-              <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-1">
-                Quantitative acceptance probability percentages are strictly suppressed in offline mode. Authoritative deterministic audits (Statcheck, GRIM, IMRaD section detection, mandatory declarations, and citation recency) drive this report.
-              </p>
-            </div>
-          </div>
-        </div>
-      );
-    }
 
     const band = calibratedAcceptance.readinessBand || "Competitive / Moderate Readiness";
     const isHighRisk = band === "Desk Reject Hazard" || band === "Substantial Revision Needed";
@@ -1470,8 +1443,6 @@ export function DesktopDashboard({
           <span>
             {isDeskReject
               ? "Editorial Triage Decision: Submission is out of scope for the target journal."
-              : fullReport?.executionMode === "heuristic_offline"
-              ? "Expert reviewer panel simulation is running with deterministic academic heuristics. Connect an AI provider in AI Settings and re-run the scan to generate live simulated peer reviews."
               : "Expert reviewer panel simulation is enabled when live AI evaluation is connected."}
           </span>
         </div>
@@ -2750,24 +2721,6 @@ export function DesktopDashboard({
                 </p>
               </div>
 
-              {/* Heuristic Offline Degradation Notice */}
-              {fullReport?.executionMode === "heuristic_offline" && (
-                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-900 dark:text-amber-200 flex items-start gap-3 text-xs leading-relaxed animate-fade-in">
-                  <span className="text-base select-none">⚡</span>
-                  <div>
-                    <div className="font-semibold text-xs uppercase tracking-wider text-amber-800 dark:text-amber-300 mb-0.5">
-                      Deterministic Heuristic Calibration Active
-                    </div>
-                    <div>
-                      {fullReport.llmCallError ? (
-                        <span className="font-medium text-rose-600 dark:text-rose-400">Notice: {fullReport.llmCallError}. </span>
-                      ) : null}
-                      Diagnostics were generated using deterministic structural heuristics, Crossref registry checks, and disciplinary catalog calibrations. To enable live deep LLM critiques and multi-persona adversarial debates, connect an AI provider in <strong>AI Settings</strong>.
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* Acceptance Potential Banner OR Ineligibility / Desk Reject Banner */}
               {isDeskReject ? (
                 <div className="p-5 sm:p-6 rounded-2xl border-2 border-rose-500/40 bg-gradient-to-br from-rose-50/90 via-white/80 to-rose-50/50 dark:from-rose-950/40 dark:via-[#161F30] dark:to-rose-950/20 shadow-xs space-y-4">
@@ -2994,11 +2947,11 @@ export function DesktopDashboard({
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
-                        <span className="text-xs sm:text-sm font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
-                          Deterministic Compliance Audit Mode
+                        <span className="text-xs sm:text-sm font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">
+                          Pre-Submission Audit
                         </span>
                         <span className="text-xs text-neutral-600 dark:text-neutral-400">
-                          Algorithmic peer-review scoring suppressed for scholarly integrity in offline heuristic mode.
+                          Acceptance potential calculation is pending or not applicable.
                         </span>
                       </div>
                     )}

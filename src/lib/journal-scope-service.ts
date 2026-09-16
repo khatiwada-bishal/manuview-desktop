@@ -122,7 +122,7 @@ export async function fetchLiveJournalScope(journalName: string): Promise<Journa
       openAlexSource = lookup.source;
     }
   } catch {
-    // Graceful offline fallback
+    // Network unavailable or request failed; fall back to local journal catalog
   }
 
   // 5. Synthesize unified JournalScopeProfile

@@ -121,7 +121,7 @@ export interface DeterministicPriorityIssuesParams {
 }
 
 /**
- * Calculates deterministic priority action items for offline or fallback execution.
+ * Calculates deterministic priority action items for baseline or fallback execution.
  */
 export function calculateDeterministicPriorityIssues(
   params: DeterministicPriorityIssuesParams

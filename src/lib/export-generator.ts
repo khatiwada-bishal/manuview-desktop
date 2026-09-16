@@ -497,17 +497,10 @@ export function generateFullReportHtml(r: FullReviewReport): string {
       </div>
       ` : ""}
 
-      ${r.executionMode === "heuristic_offline" ? `
-      <div style="background-color: #FEF3C7; border: 1px solid #F59E0B; padding: 12px 16px; border-radius: 8px; margin-top: 16px; color: #92400E; font-size: 13px;">
-        <strong>Notice:</strong> AI review unavailable — connect a provider for the reviewer panel and dimension scoring. The checks below are deterministic.
-        ${r.llmCallError ? `<div style="font-family: monospace; font-size: 11px; margin-top: 4px; color: #B45309;">Provider error: ${escapeHtml(r.llmCallError)}</div>` : ""}
-      </div>
-      ` : ""}
-
       <div class="score-banner" style="${!hasNumericScore ? "background: #1E293B;" : (isScopeMismatch ? "background: linear-gradient(135deg, #7F1D1D 0%, #991B1B 100%);" : "")}">
         <div class="score-meter">
           <span class="score-number" style="${!hasNumericScore ? "font-size: 26px; color: #94A3B8;" : ""}">${scoreLabel}</span>
-          <span class="score-label">${isDeskReject ? "Editorial Scope Screening (External Peer Review Bypassed)" : hasNumericScore ? "/ 100 Overall Acceptance Potential" : (r.executionMode === "heuristic_offline" ? "AI scoring offline" : "Acceptance potential bypassed")}</span>
+          <span class="score-label">${isDeskReject ? "Editorial Scope Screening (External Peer Review Bypassed)" : hasNumericScore ? "/ 100 Overall Acceptance Potential" : "Acceptance potential bypassed"}</span>
         </div>
         <div style="font-size: 12px; color: #94A3B8; font-weight: 500;">
           <span>Tip: Save as PDF via browser (Cmd+P / Ctrl+P)</span>
@@ -855,7 +848,7 @@ export function generateFullReportWord(r: FullReviewReport): string {
     ? (r.ineligibilityReason === "already_published" ? "Status: Already Published Article" : "Status: Ineligible (Non-Article)")
     : hasNumericScore
     ? `Overall Potential Score: ${r.overallScore} / 100`
-    : (r.executionMode === "heuristic_offline" ? "Overall Potential Score: Not Assessed (AI provider offline)" : "Overall Potential Score: Not Assessed");
+    : "Overall Potential Score: Not Assessed";
   const dateStr = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 
   return `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -903,14 +896,6 @@ export function generateFullReportWord(r: FullReviewReport): string {
   <h1>${title}</h1>
   <p style="font-size: 10pt; color: #64748B;">Target Journal: <strong>${targetJournal}</strong> | Evaluation Date: ${dateStr}</p>
   
-  ${r.executionMode === "heuristic_offline" ? `
-  <div class="callout" style="background-color: #FEF3C7; border-left: 4pt solid #F59E0B; margin-bottom: 12pt;">
-    <p style="font-size: 11pt; font-weight: bold; margin: 0; color: #92400E;">Notice: AI Review Unavailable</p>
-    <p style="font-size: 10pt; margin-top: 4pt; margin-bottom: 0; color: #92400E;">Connect an AI provider to enable reviewer personas and dimensional scoring. Deterministic checks (citations, guidelines, structure) are reported below.</p>
-    ${r.llmCallError ? `<p style="font-family: monospace; font-size: 9pt; margin-top: 4pt; color: #B45309;">Provider error: ${escapeHtml(r.llmCallError)}</p>` : ""}
-  </div>
-  ` : ""}
-
   <div class="callout" style="background-color: #EFF6FF; border-left: 4pt solid #2563EB;">
     <p style="font-size: 16pt; font-weight: bold; margin: 0; color: #1E40AF;">${scoreLabel}</p>
     <p style="font-size: 10pt; margin-top: 4pt; margin-bottom: 0;">${escapeHtml(r.summary)}</p>

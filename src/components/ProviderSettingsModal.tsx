@@ -15,6 +15,7 @@ import {
   maskApiKey,
 } from "@/lib/secureStorage";
 import { isModelCached, SUPPORTED_LOCAL_MODELS } from "@/lib/webllm/webllm-service";
+import { isDesktopApp, isMacOS } from "@/lib/desktop";
 import { Settings, ShieldCheck, X, CheckCircle2, Activity, RefreshCw, AlertCircle, Zap, Check, ChevronDown, Sparkles, Search, KeyRound, Cpu, Download } from "lucide-react";
 import { GeminiLogo, OpenAILogo, GroqLogo, AnthropicLogo, OllamaLogo } from "./BrandLogos";
 
@@ -555,8 +556,13 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                   </span>
                 </div>
                 <p className="text-[11px] opacity-90 leading-relaxed">
-                  Small Language Models execute completely offline on your device&apos;s GPU via WebGPU. No API key or cloud network connection required.
+                  Small Language Models execute on your device&apos;s GPU via WebGPU. No API key or external cloud connection required.
                 </p>
+                {isDesktopApp() && isMacOS() && (
+                  <div className="p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-[11px] text-amber-900 dark:text-amber-200">
+                    <span className="font-semibold">macOS Desktop Notice:</span> macOS desktop webview restricts WebGPU storage buffers to 9 (WebLLM requires 10). For local private models on macOS, we recommend using <strong>Ollama</strong> (select above) which runs natively with full GPU speed.
+                  </div>
+                )}
                 {onOpenLocalModel && (
                   <div className="pt-2 flex items-center justify-between border-t border-purple-500/20">
                     <span className="text-[11px] text-purple-800 dark:text-purple-300 font-medium">

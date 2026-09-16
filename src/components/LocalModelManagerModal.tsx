@@ -30,6 +30,7 @@ import {
   DEFAULT_LOCAL_MODEL,
   LocalModelProgress,
 } from "@/lib/webllm/webllm-service";
+import { isDesktopApp, isMacOS } from "@/lib/desktop";
 
 interface LocalModelManagerModalProps {
   isOpen: boolean;
@@ -88,6 +89,7 @@ export function LocalModelManagerModal({ isOpen, onClose }: LocalModelManagerMod
     };
   }, [selectedModel, isOpen, status.state]);
 
+  const isMacDesktop = isDesktopApp() && isMacOS();
   const isBufferConstrained = Boolean(gpuCapability?.supported && !gpuCapability?.meetsBufferRequirement);
   const isWebGPUAvailable = gpuCapability ? Boolean(gpuCapability.supported && gpuCapability.meetsBufferRequirement) : true;
 
@@ -184,10 +186,14 @@ export function LocalModelManagerModal({ isOpen, onClose }: LocalModelManagerMod
                 <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
                 <div>
                   <div className="font-semibold text-amber-950 dark:text-amber-100">
-                    Browser WebGPU Storage Buffer Limit Detected ({gpuCapability?.storageBufferLimit ?? 9}/10 Buffers)
+                    {isMacDesktop
+                      ? `macOS WebGPU Storage Buffer Limit Detected (${gpuCapability?.storageBufferLimit ?? 9}/10 Buffers)`
+                      : `Browser WebGPU Storage Buffer Limit Detected (${gpuCapability?.storageBufferLimit ?? 9}/10 Buffers)`}
                   </div>
                   <div className="opacity-90 text-[11px] mt-0.5 leading-relaxed">
-                    Your current browser (Safari / WebKit) restricts WebGPU storage buffers to {gpuCapability?.storageBufferLimit ?? 9} for privacy fingerprinting protection. WebLLM requires 10 storage buffers to run model shaders.
+                    {isMacDesktop
+                      ? `macOS desktop webview restricts WebGPU storage buffers to ${gpuCapability?.storageBufferLimit ?? 9}. WebLLM requires 10 storage buffers to run model shaders. For local native models on macOS, Ollama is recommended.`
+                      : `Your current browser (Safari / WebKit) restricts WebGPU storage buffers to ${gpuCapability?.storageBufferLimit ?? 9} for privacy fingerprinting protection. WebLLM requires 10 storage buffers to run model shaders.`}
                   </div>
                 </div>
               </div>
@@ -197,15 +203,29 @@ export function LocalModelManagerModal({ isOpen, onClose }: LocalModelManagerMod
             </div>
 
             <div className="pl-6 pt-1 border-t border-amber-500/15 text-[11px] flex flex-col sm:flex-row sm:items-center gap-2">
-              <span className="font-medium text-neutral-700 dark:text-neutral-300">How to run offline SLM:</span>
+              <span className="font-medium text-neutral-700 dark:text-neutral-300">How to run local models:</span>
               <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
-                <span className="px-2 py-0.5 rounded-md bg-white dark:bg-black/30 border border-amber-500/30 text-amber-900 dark:text-amber-100 font-sans font-medium">
-                  Open in Google Chrome or Edge
-                </span>
-                <span className="text-neutral-400">or</span>
-                <span className="px-2 py-0.5 rounded-md bg-white dark:bg-black/30 border border-amber-500/30 text-amber-900 dark:text-amber-100 font-sans font-medium">
-                  Use ManuView Desktop
-                </span>
+                {isMacDesktop ? (
+                  <>
+                    <span className="px-2 py-0.5 rounded-md bg-white dark:bg-black/30 border border-amber-500/30 text-amber-900 dark:text-amber-100 font-sans font-medium">
+                      Use Ollama (Native Local Engine)
+                    </span>
+                    <span className="text-neutral-400">or</span>
+                    <span className="px-2 py-0.5 rounded-md bg-white dark:bg-black/30 border border-amber-500/30 text-amber-900 dark:text-amber-100 font-sans font-medium">
+                      Open in Chrome / Edge (WebGPU)
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="px-2 py-0.5 rounded-md bg-white dark:bg-black/30 border border-amber-500/30 text-amber-900 dark:text-amber-100 font-sans font-medium">
+                      Open in Google Chrome or Edge
+                    </span>
+                    <span className="text-neutral-400">or</span>
+                    <span className="px-2 py-0.5 rounded-md bg-white dark:bg-black/30 border border-amber-500/30 text-amber-900 dark:text-amber-100 font-sans font-medium">
+                      Use Ollama (Self-Hosted)
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -358,7 +378,9 @@ export function LocalModelManagerModal({ isOpen, onClose }: LocalModelManagerMod
                   }`}
                   title={
                     isBufferConstrained
-                      ? "Safari / WebKit limits WebGPU storage buffers to 9. Please open in Google Chrome or ManuView Desktop to run local models."
+                      ? isMacDesktop
+                        ? "macOS desktop webview restricts WebGPU buffers to 9. Use Ollama (Settings -> Provider) or open in Google Chrome."
+                        : "Safari / WebKit limits WebGPU storage buffers to 9. Please open in Google Chrome / Edge or use Ollama."
                       : undefined
                   }
                 >
@@ -370,7 +392,7 @@ export function LocalModelManagerModal({ isOpen, onClose }: LocalModelManagerMod
                   ) : isBufferConstrained ? (
                     <>
                       <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
-                      <span>Requires Chrome / Desktop App</span>
+                      <span>{isMacDesktop ? "Requires Ollama / Chrome" : "Requires Chrome / Edge"}</span>
                     </>
                   ) : (
                     <>

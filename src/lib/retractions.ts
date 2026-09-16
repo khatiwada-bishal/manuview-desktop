@@ -9,7 +9,7 @@ import retractionDb from "./data/retraction_watch_compact.json";
  * - Scope: 61,000+ verified retractions, 3,300+ expressions of concern, 61,000+ notice DOIs.
  * - Refresh Cadence: Rebuilt from Crossref GitLab open dataset repository.
  *
- * Provides deterministic on-device offline detection for all published retractions.
+ * Provides deterministic on-device local detection for all published retractions.
  */
 export interface RetractionCheckResult {
   isRetracted: boolean;

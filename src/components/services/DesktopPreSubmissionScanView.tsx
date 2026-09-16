@@ -375,6 +375,18 @@ export function DesktopPreSubmissionScanView({
       return;
     }
 
+    const providerConfig = await resolveActiveConfig();
+    const isConfigUsable =
+      Boolean(providerConfig.apiKey && providerConfig.apiKey.trim().length > 0) ||
+      Boolean(providerConfig.hasSecureKey) ||
+      providerConfig.provider === "ollama" ||
+      providerConfig.provider === "webllm";
+
+    if (!isConfigUsable) {
+      setError("No AI model provider configured. A review requires one configured provider: Ollama (local server), Local SLM (WebLLM), or Cloud LLM API. Please open Settings to configure a provider.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setReport(null);
@@ -870,9 +882,20 @@ export function DesktopPreSubmissionScanView({
             </div>
 
             {error && (
-              <div className="p-3.5 rounded-xl bg-[#FEF2F2] dark:bg-rose-950/40 border border-[#FECACA] dark:border-rose-800 text-[#991B1B] dark:text-rose-300 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                <span>{error}</span>
+              <div className="p-3.5 rounded-xl bg-[#FEF2F2] dark:bg-rose-950/40 border border-[#FECACA] dark:border-rose-800 text-[#991B1B] dark:text-rose-300 text-xs flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span className="break-words">{error}</span>
+                </div>
+                {onOpenSettings && (error.toLowerCase().includes("provider") || error.toLowerCase().includes("settings") || error.toLowerCase().includes("key")) && (
+                  <button
+                    type="button"
+                    onClick={onOpenSettings}
+                    className="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-medium text-xs whitespace-nowrap transition cursor-pointer shrink-0"
+                  >
+                    Configure Provider
+                  </button>
+                )}
               </div>
             )}
 
@@ -1167,10 +1190,10 @@ export function DesktopPreSubmissionScanView({
                         </div>
                         <div className="my-1.5 flex items-center justify-center gap-1.5 text-blue-600 dark:text-blue-400 font-bold text-sm">
                           <ShieldCheck className="w-5 h-5" />
-                          <span>Deterministic Audit</span>
+                          <span>Scope Screening</span>
                         </div>
                         <div className="mt-1 px-2.5 py-0.5 rounded text-[10px] font-semibold bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700">
-                          Scores Suppressed (Offline)
+                          External Review Bypassed
                         </div>
                       </>
                     )}
@@ -1195,8 +1218,8 @@ export function DesktopPreSubmissionScanView({
                   {report.dimensions && (
                     <div className="space-y-4">
                       <div className="flex items-center gap-2 text-sm font-bold text-[#111827] dark:text-white">
-                        <BarChart3 className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
-                        <span>The 6 Evaluation Dimensions (1–5 Scale)</span>
+                        <BarChart3 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <span>6-Dimension Scholarly Rubric Evaluation</span>
                       </div>
 
                       {/* Interactive 6-Dimension Radar / Spider Chart */}
@@ -1210,7 +1233,6 @@ export function DesktopPreSubmissionScanView({
                             el.scrollIntoView({ behavior: "smooth", block: "center" });
                           }
                         }}
-                        isHeuristicOnly={Boolean(report.executionMode === "heuristic_offline")}
                       />
 
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -70,7 +70,7 @@ export function buildScopeMismatchIssue(params: {
   targetJournalName: string;
   targetDiscipline: string;
   realisticJournalName?: string;
-  /** Pass "" to suppress the quote (heuristic-offline mode); omit for the default. */
+  /** Pass "" to suppress the quote; omit for the default. */
   reviewerQuote?: string;
 }): PriorityIssue {
   const { detectedDiscipline, targetJournalName, targetDiscipline, realisticJournalName } = params;
