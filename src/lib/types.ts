@@ -89,6 +89,7 @@ export interface ReferenceVerification {
   journal?: string;
   status: ReferenceStatus;
   isRetracted: boolean;
+  isRetractionNotice?: boolean;
   retractionDetails?: string;
   crossrefUrl?: string;
   resolutionMethod?: 'doi' | 'bibliographic_search' | 'unresolved';

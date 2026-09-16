@@ -75,6 +75,9 @@ export function extractReferencesFromText(text: string): string[] {
     }
   }
 
+  // G5: Repair DOIs split across line breaks or hyphens from two-column PDF extractions
+  refSection = refSection.replace(/(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]*?)[-\s]*[\r\n]+[ \t]*([-._;()/:A-Za-z0-9]+)/g, "$1$2");
+
   // 2. Parse individual reference items from refSection
   const rawLines = refSection
     .split(/\r?\n/)
@@ -195,5 +198,106 @@ export function isSubstantiveReviewerObservation(item: string): boolean {
   if (words.length < 4) return false;
 
   return true;
+}
+
+/**
+ * G4: Deduplicates manuscript references by normalized DOI or normalized text fingerprint
+ */
+export function deduplicateReferences<T extends string | { raw?: string }>(
+  references: T[]
+): {
+  unique: T[];
+  totalCount: number;
+  duplicateCount: number;
+} {
+  const seenKeys = new Set<string>();
+  const unique: T[] = [];
+  let duplicateCount = 0;
+
+  for (const item of references) {
+    const raw = typeof item === "string" ? item : item?.raw || "";
+    if (!raw.trim()) continue;
+
+    // Check for DOI first as canonical identifier
+    const doiMatch = raw.match(/\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)\b/i);
+    let key: string;
+    if (doiMatch) {
+      key = "doi:" + doiMatch[1].trim().toLowerCase().replace(/[.,;)\]]+$/, "");
+    } else {
+      // Alphanumeric normalized title / start key (strip numbering like "[1]", "1.")
+      const cleanText = raw
+        .replace(/^(?:\[\d+\]|\(\d+\)|\d+[\.\)]|[-*•])\s*/, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "")
+        .slice(0, 100);
+      key = "text:" + cleanText;
+    }
+
+    if (key.length > 5 && seenKeys.has(key)) {
+      duplicateCount++;
+    } else {
+      if (key.length > 5) seenKeys.add(key);
+      unique.push(item);
+    }
+  }
+
+  return {
+    unique,
+    totalCount: references.length,
+    duplicateCount,
+  };
+}
+
+export interface ReferenceExtractionFidelity {
+  isHighConfidence: boolean;
+  warnings: string[];
+  extractedCount: number;
+  abnormallyLongCount: number;
+  abnormallyShortCount: number;
+}
+
+/**
+ * G5: Assesses extraction fidelity and detects potential section truncation or paragraph merging
+ */
+export function detectReferenceExtractionQuality(
+  fullText: string,
+  extractedRefs: string[]
+): ReferenceExtractionFidelity {
+  const warnings: string[] = [];
+  const extractedCount = extractedRefs.length;
+
+  let abnormallyLongCount = 0;
+  let abnormallyShortCount = 0;
+
+  for (const r of extractedRefs) {
+    if (r.length > 800) abnormallyLongCount++;
+    if (r.length < 25) abnormallyShortCount++;
+  }
+
+  if (abnormallyLongCount > 0) {
+    warnings.push(`${abnormallyLongCount} reference entry appears abnormally long (>800 chars), suggesting merged citations.`);
+  }
+
+  if (abnormallyShortCount > 0) {
+    warnings.push(`${abnormallyShortCount} reference fragment is under 25 chars.`);
+  }
+
+  // Count in-text numeric citations like [1], [2], [1-5]
+  const inTextMatches = fullText.match(/\[\d{1,3}(?:[–-]\d{1,3}|,\s*\d{1,3})*\]/g) || [];
+  const inTextCitations = inTextMatches.length;
+
+  if (inTextCitations >= 15 && extractedCount < Math.min(5, inTextCitations * 0.2)) {
+    warnings.push(`Manuscript has ~${inTextCitations} in-text citation markers, but only ${extractedCount} bibliography reference(s) were parsed.`);
+  }
+
+  const isHighConfidence = warnings.length === 0 && extractedCount > 0;
+
+  return {
+    isHighConfidence,
+    warnings,
+    extractedCount,
+    abnormallyLongCount,
+    abnormallyShortCount,
+  };
 }
 

@@ -15,29 +15,32 @@ import {
   Download,
   Search,
 } from "lucide-react";
-import { ReferenceVerification, FullReviewReport } from "@/lib/types";
+import { ReferenceVerification, FullReviewReport, CitationIntegritySummary } from "@/lib/types";
 import { batchVerifyReferences } from "@/lib/crossref";
-import { extractReferencesFromText } from "@/lib/utils";
+import { extractReferencesFromText, deduplicateReferences, detectReferenceExtractionQuality } from "@/lib/utils";
+import { computeCitationIntegrity } from "@/lib/engine/citation-audit";
 import { exportBibTeX } from "@/lib/export-generator";
 
 const SAMPLE_BIBLIOGRAPHY = `1. Saunders D, et al. A DLL3-targeted antibody-drug conjugate for small cell lung cancer. Sci Transl Med. 2015. DOI: 10.1126/scitranslmed.aac9459
 2. Wakefield AJ, et al. Ileal-lymphoid-nodular hyperplasia and pervasive developmental disorder in children. Lancet. 1998. DOI: 10.1016/S0140-6736(97)11096-0
 3. NonExistent A, Hallucination B. Synthetic AI generated citation. J Bio. 2024. DOI: 10.1038/s41586-999-hallucinated01
-4. Rudin CM, et al. Molecular subtypes of small cell lung cancer. Nat Rev Cancer. 2019. DOI: 10.1038/s41568-019-0133-9`;
+4. Rudin CM, et al. Molecular subtypes of small cell lung cancer. Nat Rev Cancer. 2019. DOI: 10.1038/s41568-019-0133-9
+5. Obokata H, et al. Retraction: Stimulus-triggered fate conversion of somatic cells into pluripotency. Nature. 2014. DOI: 10.1038/nature13598`;
 
 export function DesktopReferenceView() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [streamProgress, setStreamProgress] = useState<{ completed: number; total: number } | null>(null);
   const [results, setResults] = useState<{
-    total: number;
-    retractedCount: number;
-    unresolvableCount: number;
-    uncheckedCount: number;
+    summary: CitationIntegritySummary;
     verified: ReferenceVerification[];
+    duplicateCount: number;
+    rawCount: number;
+    extractionWarnings: string[];
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "valid" | "retracted" | "unresolvable" | "unchecked">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "valid" | "retracted" | "expression_of_concern" | "unresolvable" | "unchecked">("all");
 
   const handleSample = () => {
     setInput(SAMPLE_BIBLIOGRAPHY);
@@ -52,6 +55,7 @@ export function DesktopReferenceView() {
 
     setLoading(true);
     setError(null);
+    setStreamProgress(null);
 
     try {
       const refList = extractReferencesFromText(input);
@@ -59,23 +63,39 @@ export function DesktopReferenceView() {
         throw new Error("No references detected. Please provide references with numbers, DOIs, or author citations.");
       }
 
-      // Audit all parsed references (supporting up to 200)
-      const verified = await batchVerifyReferences(refList.slice(0, 200));
-      const retractedCount = verified.filter((v) => v.isRetracted || v.status === "retracted").length;
-      const unresolvableCount = verified.filter((v) => v.status === "unresolvable").length;
-      const uncheckedCount = verified.filter((v) => v.status === "unchecked").length;
+      // G5: Extraction fidelity check
+      const extractionQuality = detectReferenceExtractionQuality(input, refList);
+
+      // G4: Deduplicate references before counting & verification
+      const dedupeResult = deduplicateReferences(refList);
+      const uniqueRefs = dedupeResult.unique;
+
+      // E5: Cap policy — verify up to 200 with Crossref, with honest coverage disclosure (G6)
+      const MAX_CROSSREF_AUDIT = 200;
+      const refsToVerify = uniqueRefs.slice(0, MAX_CROSSREF_AUDIT);
+
+      setStreamProgress({ completed: 0, total: refsToVerify.length });
+
+      // E3: Stream progressive results
+      const verified = await batchVerifyReferences(refsToVerify, (item, completed, total) => {
+        setStreamProgress({ completed, total });
+      });
+
+      // C1: Compute identical unified citation integrity summary
+      const summary = computeCitationIntegrity(verified, uniqueRefs.length);
 
       setResults({
-        total: verified.length,
-        retractedCount,
-        unresolvableCount,
-        uncheckedCount,
+        summary,
         verified,
+        duplicateCount: dedupeResult.duplicateCount,
+        rawCount: refList.length,
+        extractionWarnings: extractionQuality.warnings,
       });
     } catch (err: any) {
       setError(err.message || "Failed to audit references.");
     } finally {
       setLoading(false);
+      setStreamProgress(null);
     }
   };
 
@@ -85,6 +105,8 @@ export function DesktopReferenceView() {
     if (statusFilter !== "all") {
       if (statusFilter === "retracted") {
         list = list.filter((r) => r.isRetracted || r.status === "retracted");
+      } else if (statusFilter === "expression_of_concern") {
+        list = list.filter((r) => r.status === "expression_of_concern");
       } else if (statusFilter === "valid") {
         list = list.filter((r) => r.status === "valid" && !r.isRetracted);
       } else {
@@ -112,13 +134,13 @@ export function DesktopReferenceView() {
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-950/40 dark:text-teal-400 dark:border-teal-800">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Crossref Open API &amp; Retraction Watch</span>
+            <span>Crossref Open API &amp; Retraction Watch (61k+ offline catalog)</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0F172A] dark:text-white">
             Reference Integrity &amp; Retraction Hazard Audit
           </h1>
           <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 max-w-2xl">
-            Audit manuscript bibliographies against live scholarly registers. Identify unresolvable citations, phantom DOIs, and retracted studies before peer review.
+            Audit manuscript bibliographies against live scholarly registers and the exhaustive Retraction Watch index. Identify unresolvable citations, phantom DOIs, and retracted studies before peer review.
           </p>
         </div>
 
@@ -153,6 +175,27 @@ export function DesktopReferenceView() {
             </div>
           )}
 
+          {/* E3: Live Streaming Progress Bar */}
+          {loading && streamProgress && (
+            <div className="p-3.5 rounded-2xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200/80 dark:border-blue-900/40 space-y-2 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-600 dark:text-blue-400" />
+                  <span>Auditing references with Crossref &amp; Retraction Watch...</span>
+                </span>
+                <span className="font-mono font-bold text-blue-600 dark:text-blue-400">
+                  {streamProgress.completed} / {streamProgress.total} ({Math.round((streamProgress.completed / Math.max(1, streamProgress.total)) * 100)}%)
+                </span>
+              </div>
+              <div className="w-full bg-neutral-200 dark:bg-neutral-800 rounded-full h-1.5 overflow-hidden">
+                <div
+                  className="bg-blue-600 dark:bg-blue-400 h-full rounded-full transition-all duration-200 ease-out"
+                  style={{ width: `${Math.round((streamProgress.completed / Math.max(1, streamProgress.total)) * 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-end pt-1">
             <button
               type="submit"
@@ -162,7 +205,7 @@ export function DesktopReferenceView() {
               {loading ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Resolving DOIs with Crossref...</span>
+                  <span>Resolving DOIs...</span>
                 </>
               ) : (
                 <>
@@ -177,13 +220,34 @@ export function DesktopReferenceView() {
         {/* Audit Results */}
         {results && (
           <div className="space-y-6 animate-in fade-in duration-300">
+            {/* G6: Honest Coverage Disclosure Banner */}
+            <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#161F30] border border-neutral-200 dark:border-[#334155] flex items-start gap-3 text-xs leading-relaxed text-neutral-600 dark:text-neutral-400">
+              <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <div className="font-semibold text-neutral-900 dark:text-white">
+                  Audit Coverage &amp; Verification Note
+                </div>
+                <div>{results.summary.coverageNote}</div>
+                {results.duplicateCount > 0 && (
+                  <div className="text-[11px] text-amber-700 dark:text-amber-300 font-medium">
+                    Consolidated {results.duplicateCount} duplicate reference(s) (analyzed {results.summary.totalReferences} unique entries from {results.rawCount} total citations).
+                  </div>
+                )}
+                {results.extractionWarnings.length > 0 && (
+                  <div className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
+                    Extraction Warning: {results.extractionWarnings.join(" ")}
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Retraction Alert Banner */}
-            {results.retractedCount > 0 && (
+            {results.summary.retractedCount > 0 && (
               <div className="p-4 rounded-2xl bg-red-50 dark:bg-rose-950/30 border-2 border-red-300 dark:border-rose-800 flex items-start gap-3 text-red-900 dark:text-rose-200 shadow-xs">
                 <AlertTriangle className="w-5 h-5 text-red-600 dark:text-rose-400 shrink-0 mt-0.5" />
                 <div>
                   <h3 className="font-bold text-sm">
-                    {results.retractedCount} Retracted Publication(s) Detected!
+                    {results.summary.retractedCount} Retracted Publication(s) Detected!
                   </h3>
                   <p className="text-xs text-red-700 dark:text-rose-300 mt-1">
                     Citing retracted studies is one of the most critical desk-rejection triggers in scholarly publishing. Immediately replace or remove these citations.
@@ -192,44 +256,77 @@ export function DesktopReferenceView() {
               </div>
             )}
 
-            {/* Metrics */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* C1 Unified Metrics Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               <div className="p-4 rounded-2xl liquid-glass-card">
-                <div className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Total Audited</div>
-                <div className="text-2xl font-bold text-neutral-900 dark:text-white mt-1">{results.total}</div>
+                <div className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Unique Refs</div>
+                <div className="text-2xl font-bold text-neutral-900 dark:text-white mt-1">
+                  {results.summary.totalReferences}
+                </div>
               </div>
               <div className="p-4 rounded-2xl liquid-glass-card border border-emerald-500/20 bg-emerald-500/5">
                 <div className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase">Verified Valid</div>
                 <div className="text-2xl font-bold text-emerald-800 dark:text-emerald-300 mt-1">
-                  {results.total - results.unresolvableCount - results.retractedCount - (results.uncheckedCount || 0)}
+                  {results.summary.verifiedCount}
                 </div>
-              </div>
-              <div className="p-4 rounded-2xl liquid-glass-card border border-amber-500/20 bg-amber-500/5">
-                <div className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 uppercase">Unresolvable</div>
-                <div className="text-2xl font-bold text-amber-800 dark:text-amber-300 mt-1">{results.unresolvableCount}</div>
               </div>
               <div className="p-4 rounded-2xl liquid-glass-card border border-rose-500/20 bg-rose-500/5">
                 <div className="text-[11px] font-semibold text-rose-700 dark:text-rose-400 uppercase">Retracted</div>
-                <div className="text-2xl font-bold text-rose-800 dark:text-rose-300 mt-1">{results.retractedCount}</div>
+                <div className="text-2xl font-bold text-rose-800 dark:text-rose-300 mt-1">
+                  {results.summary.retractedCount}
+                </div>
+              </div>
+              <div className="p-4 rounded-2xl liquid-glass-card border border-amber-500/20 bg-amber-500/5">
+                <div className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 uppercase">Unresolvable (404)</div>
+                <div className="text-2xl font-bold text-amber-800 dark:text-amber-300 mt-1">
+                  {results.summary.unresolvableCount}
+                </div>
+              </div>
+              <div className="p-4 rounded-2xl liquid-glass-card border border-neutral-300 dark:border-neutral-700">
+                <div className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Unchecked</div>
+                <div className="text-2xl font-bold text-neutral-700 dark:text-neutral-300 mt-1">
+                  {results.summary.uncheckedCount}
+                </div>
               </div>
             </div>
+
+            {/* Recency Profile (when available) */}
+            {results.summary.recencyProfile && (
+              <div className="p-4 rounded-2xl liquid-glass-card flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div>
+                  <span className="font-bold text-neutral-800 dark:text-neutral-200 block">Citation Recency Profile</span>
+                  <span className="text-neutral-500 dark:text-neutral-400">
+                    Distribution of publication dates across verified bibliography items
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-semibold">
+                    Last 5 Years: {results.summary.recencyProfile.last5YearsPercent}%
+                  </span>
+                  <span className="px-2.5 py-1 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 font-semibold">
+                    Older: {results.summary.recencyProfile.olderThan5YearsPercent}%
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Citations Controls & Table */}
             <div className="space-y-3 pt-2">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="space-y-1">
                   <h3 className="text-sm font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider">
-                    Audited Reference Registry ({filteredVerified.length} of {results.total})
+                    Audited Reference Registry ({filteredVerified.length} of {results.summary.sampledCount})
                   </h3>
                   {/* Status filter pills */}
                   <div className="flex items-center gap-1.5 flex-wrap pt-1">
                     {(
                       [
-                        { id: "all", label: `All (${results.total})` },
-                        { id: "valid", label: `Verified (${results.total - results.unresolvableCount - results.retractedCount - (results.uncheckedCount || 0)})` },
-                        { id: "retracted", label: `Retracted (${results.retractedCount})` },
-                        { id: "unresolvable", label: `Unresolvable (${results.unresolvableCount})` },
-                        { id: "unchecked", label: `Unchecked (${results.uncheckedCount || 0})` },
+                        { id: "all", label: `All (${results.summary.sampledCount})` },
+                        { id: "valid", label: `Verified (${results.summary.verifiedCount})` },
+                        { id: "retracted", label: `Retracted (${results.summary.retractedCount})` },
+                        { id: "expression_of_concern", label: `Concern (${results.summary.expressionOfConcernCount || 0})` },
+                        { id: "unresolvable", label: `Unresolvable (${results.summary.unresolvableCount})` },
+                        { id: "unchecked", label: `Unchecked (${results.summary.uncheckedCount})` },
                       ] as const
                     ).map((tab) => (
                       <button
@@ -272,15 +369,7 @@ export function DesktopReferenceView() {
                         overallScore: 80,
                         summary: "Audited Bibliography",
                         citationIntegrity: {
-                          totalReferences: results.total,
-                          sampledCount: results.total,
-                          checkedCount: results.verified.length,
-                          coverageNote: "Live Crossref verification",
-                          verifiedCount: results.verified.filter((v) => v.status === "valid").length,
-                          unresolvableCount: results.unresolvableCount,
-                          uncheckedCount: results.uncheckedCount || 0,
-                          retractedCount: results.retractedCount,
-                          retractionCheckAvailable: true,
+                          ...results.summary,
                           references: results.verified,
                         },
                         priorityIssues: [],

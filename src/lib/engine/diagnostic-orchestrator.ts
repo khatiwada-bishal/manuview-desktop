@@ -41,7 +41,7 @@ import {
   ScoreDimension,
   TargetJournalEvaluation,
 } from "../types";
-import { isSubstantiveReviewerObservation } from "../utils";
+import { isSubstantiveReviewerObservation, deduplicateReferences } from "../utils";
 import {
   batchVerifyReferences,
   computeCitationIntegrity,
@@ -887,12 +887,15 @@ export async function runManuscriptDiagnostic(
   
   // P0 §2.1: Reference & Retraction Verification in Main Review Flow
   let verifiedRefs: ReferenceVerification[] = [];
+  const dedupeResult = deduplicateReferences(manuscript.references || []);
+  const uniqueReferences = dedupeResult.unique;
+
   if (!isConfigUsable) {
-    // Offline mode: deterministic format check + local curated retraction check
-    verifiedRefs = (manuscript.references || []).map((raw) => {
+    // Offline mode: deterministic format check + local Retraction Watch database check (100% coverage)
+    verifiedRefs = uniqueReferences.map((raw) => {
       const rawStr = typeof raw === "string" ? raw : (raw as any)?.raw || "";
       const doiMatch = rawStr.match(/\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)\b/i);
-      const doi = doiMatch ? doiMatch[1].replace(/[.,;)\]]+$/, '') : undefined;
+      const doi = doiMatch ? doiMatch[1].replace(/[.,;)\]]+$/, "") : undefined;
       const retCheck = checkRetractionStatus(doi, rawStr);
       if (retCheck.isRetracted || retCheck.isExpressionOfConcern) {
         return {
@@ -900,6 +903,7 @@ export async function runManuscriptDiagnostic(
           doi,
           status: retCheck.isRetracted ? ("retracted" as const) : ("expression_of_concern" as const),
           isRetracted: retCheck.isRetracted,
+          isRetractionNotice: retCheck.isRetractionNotice || false,
           retractionDetails: retCheck.reason,
           resolutionMethod: "unresolved" as const,
         };
@@ -909,37 +913,79 @@ export async function runManuscriptDiagnostic(
         doi,
         status: "unchecked" as const,
         isRetracted: false,
-        retractionDetails: "Offline mode: Crossref resolution not performed. Reference status unverified.",
+        isRetractionNotice: retCheck.isRetractionNotice || false,
+        retractionDetails: retCheck.isRetractionNotice
+          ? "Reference is a formal retraction notice, not a retracted article."
+          : "Offline mode: Crossref resolution not performed. Reference status unverified.",
         resolutionMethod: "unresolved" as const,
       };
     });
   } else {
-    // Online mode: verify references via Crossref and live retraction flags
-    if (manuscript.references && manuscript.references.length > 0) {
+    // Online mode: verify sampled references via Crossref and live retraction flags, and screen remaining locally (E5)
+    if (uniqueReferences.length > 0) {
+      const sampledToVerify = uniqueReferences.slice(0, DEFAULT_MAX_SAMPLED_REFS);
+      const remainingRefs = uniqueReferences.slice(DEFAULT_MAX_SAMPLED_REFS);
+
       onProgress?.({
         stage: "classifying",
-        message: `Stage 0: Cross-verifying ${Math.min(manuscript.references.length, DEFAULT_MAX_SAMPLED_REFS)} references with Crossref & retraction catalog...`,
+        message: `Stage 0: Cross-verifying ${sampledToVerify.length} references with Crossref & Retraction Watch...`,
         percent: 18,
       });
+
+      let verifiedSampled: ReferenceVerification[] = [];
       try {
-        const refsToVerify = manuscript.references.slice(0, DEFAULT_MAX_SAMPLED_REFS);
-        verifiedRefs = await batchVerifyReferences(refsToVerify);
+        verifiedSampled = await batchVerifyReferences(sampledToVerify);
       } catch (err) {
         console.warn("Crossref reference verification encountered network error:", err);
-        verifiedRefs = (manuscript.references || []).map((raw) => ({
-          raw: typeof raw === "string" ? raw : (raw as any)?.raw || "",
-          status: "unchecked" as const,
-          isRetracted: false,
-          retractionDetails: "Network lookup unavailable. Reference status unverified.",
-          resolutionMethod: "unresolved" as const,
-        }));
+        verifiedSampled = sampledToVerify.map((raw) => {
+          const rawStr = typeof raw === "string" ? raw : (raw as any)?.raw || "";
+          const doiMatch = rawStr.match(/\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)\b/i);
+          const doi = doiMatch ? doiMatch[1].replace(/[.,;)\]]+$/, "") : undefined;
+          const retCheck = checkRetractionStatus(doi, rawStr);
+          return {
+            raw: rawStr,
+            doi,
+            status: retCheck.isRetracted
+              ? ("retracted" as const)
+              : retCheck.isExpressionOfConcern
+              ? ("expression_of_concern" as const)
+              : ("unchecked" as const),
+            isRetracted: retCheck.isRetracted,
+            isRetractionNotice: retCheck.isRetractionNotice || false,
+            retractionDetails: retCheck.reason || "Network lookup unavailable. Reference status unverified.",
+            resolutionMethod: "unresolved" as const,
+          };
+        });
       }
+
+      // E5: 100% Retraction coverage on remaining references beyond DEFAULT_MAX_SAMPLED_REFS
+      const verifiedRemaining: ReferenceVerification[] = remainingRefs.map((raw) => {
+        const rawStr = typeof raw === "string" ? raw : (raw as any)?.raw || "";
+        const doiMatch = rawStr.match(/\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)\b/i);
+        const doi = doiMatch ? doiMatch[1].replace(/[.,;)\]]+$/, "") : undefined;
+        const retCheck = checkRetractionStatus(doi, rawStr);
+        return {
+          raw: rawStr,
+          doi,
+          status: retCheck.isRetracted
+            ? ("retracted" as const)
+            : retCheck.isExpressionOfConcern
+            ? ("expression_of_concern" as const)
+            : ("unchecked" as const),
+          isRetracted: retCheck.isRetracted,
+          isRetractionNotice: retCheck.isRetractionNotice || false,
+          retractionDetails: retCheck.reason || "Beyond sampled audit limit; retraction screened locally.",
+          resolutionMethod: "unresolved" as const,
+        };
+      });
+
+      verifiedRefs = [...verifiedSampled, ...verifiedRemaining];
     }
   }
 
   const citationIntegrity = computeCitationIntegrity(
     verifiedRefs,
-    manuscript.references.length,
+    uniqueReferences.length,
     manuscript.authors
   );
 

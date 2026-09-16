@@ -56,6 +56,18 @@ async function fetchCrossrefWithRetry(
   return null;
 }
 
+// High-performance session in-memory DOI verification cache (E1)
+const DOI_VERIFICATION_CACHE = new Map<string, Partial<ReferenceVerification>>();
+
+export function clearDoiCache(): void {
+  DOI_VERIFICATION_CACHE.clear();
+}
+
+export function getCachedDoiVerification(doi: string): Partial<ReferenceVerification> | undefined {
+  const clean = doi.trim().toLowerCase().replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, "").replace(/[.,;)\]]+$/, "");
+  return DOI_VERIFICATION_CACHE.get(clean);
+}
+
 export async function searchReferenceBibliographic(referenceText: string): Promise<ReferenceVerification | null> {
   const cleanRef = referenceText.trim();
   if (!cleanRef || cleanRef.length < 15) return null;
@@ -96,14 +108,40 @@ export async function searchReferenceBibliographic(referenceText: string): Promi
     const familyNames = item.author
       ?.map((a: { family?: string }) => a.family?.trim())
       .filter((f: string | undefined): f is string => Boolean(f));
+
+    // G3: Year corroboration (±1 year agreement when year is present in citation)
+    const refYearMatch = cleanRef.match(/\b(19\d\d|20\d\d)\b/);
+    if (refYearMatch && year) {
+      const refYear = parseInt(refYearMatch[1], 10);
+      if (Math.abs(refYear - year) > 1) {
+        return null; // Year mismatch: avoid attributing wrong DOI
+      }
+    }
+
+    // G3: Author surname corroboration (≥1 author surname match in reference string)
+    if (familyNames && familyNames.length > 0) {
+      const refLower = cleanRef.toLowerCase();
+      const hasAuthorSurnameMatch = familyNames.some((fam: string) => {
+        const cleanFam = fam.toLowerCase().replace(/[^a-z]/g, "");
+        if (cleanFam.length < 3) return false;
+        const wordRegex = new RegExp(`\\b${cleanFam}\\b`, "i");
+        return wordRegex.test(refLower);
+      });
+
+      if (!hasAuthorSurnameMatch) {
+        return null; // Author mismatch: avoid attributing wrong DOI
+      }
+    }
+
     const matchConfidence = Math.round(Math.max(sim, containmentRatio) * 100) / 100;
 
     let isRetracted = false;
     let isExpressionOfConcern = false;
+    let isRetractionNotice = false;
     let retractionDetails: string | undefined = undefined;
 
-    // Inspect update records
-    const updates = item["updated-by"] || [];
+    // G2 Fix: ONLY inspect updated-by for retraction status of THIS target paper
+    const updates = Array.isArray(item["updated-by"]) ? item["updated-by"] : [];
     for (const update of updates) {
       const uType = String(update.type || "").toLowerCase();
       const uLabel = String(update.label || "").toLowerCase();
@@ -121,9 +159,17 @@ export async function searchReferenceBibliographic(referenceText: string): Promi
       }
     }
 
+    // G2: Check update-to (this work retracts another work -> this work is a retraction notice)
+    const updateTo = Array.isArray(item["update-to"]) ? item["update-to"] : [];
+    for (const ut of updateTo) {
+      const uType = String(ut.type || "").toLowerCase();
+      if (uType === "retraction" || uType.includes("retract")) {
+        isRetractionNotice = true;
+      }
+    }
+
     if (item.type === "retraction") {
-      isRetracted = true;
-      retractionDetails = retractionDetails || "Crossref work type is classified as retraction";
+      isRetractionNotice = true;
     }
 
     const titleStr = typeof matchedTitle === "string" ? matchedTitle : "";
@@ -135,6 +181,7 @@ export async function searchReferenceBibliographic(referenceText: string): Promi
       retractionDetails = retractionDetails || "Article title explicitly marked with Expression of Concern";
     }
 
+    // E2: Consult local Retraction Watch database
     const knownStatus = checkRetractionStatus(doi, matchedTitle);
     if (knownStatus.isRetracted) {
       isRetracted = true;
@@ -143,6 +190,9 @@ export async function searchReferenceBibliographic(referenceText: string): Promi
       isExpressionOfConcern = true;
       retractionDetails = knownStatus.reason || retractionDetails;
     }
+    if (knownStatus.isRetractionNotice) {
+      isRetractionNotice = true;
+    }
 
     const status: ReferenceStatus = isRetracted
       ? "retracted"
@@ -150,7 +200,7 @@ export async function searchReferenceBibliographic(referenceText: string): Promi
       ? "expression_of_concern"
       : "valid";
 
-    return {
+    const result: ReferenceVerification = {
       raw: referenceText,
       doi,
       title: matchedTitle,
@@ -161,74 +211,113 @@ export async function searchReferenceBibliographic(referenceText: string): Promi
       matchConfidence,
       status,
       isRetracted,
+      isRetractionNotice,
       retractionDetails,
       crossrefUrl: item.URL || `https://doi.org/${doi}`,
       resolutionMethod: "bibliographic_search",
     };
+
+    // Cache bibliographic match DOI
+    if (doi) {
+      const cleanKey = doi.trim().toLowerCase().replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, "").replace(/[.,;)\]]+$/, "");
+      DOI_VERIFICATION_CACHE.set(cleanKey, result);
+    }
+
+    return result;
   } catch {
     return null;
   }
 }
 
 export async function verifyDOIWithCrossref(doi: string): Promise<Partial<ReferenceVerification>> {
-  const cleanDoi = encodeURIComponent(doi.trim());
+  const cleanDoiKey = doi
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, "")
+    .replace(/[.,;)\]]+$/, "");
+
+  // E1: Check in-memory cache first
+  if (DOI_VERIFICATION_CACHE.has(cleanDoiKey)) {
+    return { ...DOI_VERIFICATION_CACHE.get(cleanDoiKey)! };
+  }
+
+  // E2: Local-first retraction lookup (instant offline resolution)
+  const localRetraction = checkRetractionStatus(cleanDoiKey);
+
+  const cleanDoi = encodeURIComponent(cleanDoiKey);
   // Append mailto parameter so polite pool works reliably even when browser fetch strips custom User-Agent headers
   const url = `https://api.crossref.org/works/${cleanDoi}?mailto=${encodeURIComponent(POLITE_MAILTO)}`;
 
   try {
     const res = await fetchCrossrefWithRetry(url);
     if (!res) {
-      return {
-        doi,
-        status: "unchecked",
-        isRetracted: false,
-        retractionDetails: "Crossref lookup timed out or rate-limited. Status unconfirmed.",
+      const fallbackResult: Partial<ReferenceVerification> = {
+        doi: cleanDoiKey,
+        status: localRetraction.isRetracted
+          ? "retracted"
+          : localRetraction.isExpressionOfConcern
+          ? "expression_of_concern"
+          : "unchecked",
+        isRetracted: localRetraction.isRetracted,
+        isRetractionNotice: localRetraction.isRetractionNotice,
+        retractionDetails: localRetraction.reason || "Crossref lookup timed out or rate-limited. Status unconfirmed.",
         resolutionMethod: "doi",
       };
+      DOI_VERIFICATION_CACHE.set(cleanDoiKey, fallbackResult);
+      return fallbackResult;
     }
 
     // Only genuine 404 indicates an unresolvable / nonexistent DOI
     if (res.status === 404) {
-      return {
-        doi,
-        status: "unresolvable",
-        isRetracted: false,
-        retractionDetails: "DOI not found in Crossref registry (HTTP 404)",
+      const notFoundResult: Partial<ReferenceVerification> = {
+        doi: cleanDoiKey,
+        status: localRetraction.isRetracted ? "retracted" : "unresolvable",
+        isRetracted: localRetraction.isRetracted,
+        isRetractionNotice: localRetraction.isRetractionNotice,
+        retractionDetails: localRetraction.reason || "DOI not found in Crossref registry (HTTP 404)",
         resolutionMethod: "doi",
       };
+      DOI_VERIFICATION_CACHE.set(cleanDoiKey, notFoundResult);
+      return notFoundResult;
     }
 
     // Rate limit after retries exhausted - do NOT accuse user of AI hallucination
     if (res.status === 429) {
-      return {
-        doi,
-        status: "unchecked",
-        isRetracted: false,
-        retractionDetails: "Crossref rate limit reached (HTTP 429). Reference remains unconfirmed.",
+      const rateLimitedResult: Partial<ReferenceVerification> = {
+        doi: cleanDoiKey,
+        status: localRetraction.isRetracted ? "retracted" : "unchecked",
+        isRetracted: localRetraction.isRetracted,
+        isRetractionNotice: localRetraction.isRetractionNotice,
+        retractionDetails: localRetraction.reason || "Crossref rate limit reached (HTTP 429). Reference remains unconfirmed.",
         resolutionMethod: "doi",
       };
+      return rateLimitedResult;
     }
 
     if (!res.ok) {
-      return {
-        doi,
-        status: "unchecked",
-        isRetracted: false,
-        retractionDetails: `Crossref registry lookup encountered HTTP ${res.status}. Status unconfirmed.`,
+      const errResult: Partial<ReferenceVerification> = {
+        doi: cleanDoiKey,
+        status: localRetraction.isRetracted ? "retracted" : "unchecked",
+        isRetracted: localRetraction.isRetracted,
+        isRetractionNotice: localRetraction.isRetractionNotice,
+        retractionDetails: localRetraction.reason || `Crossref registry lookup encountered HTTP ${res.status}. Status unconfirmed.`,
         resolutionMethod: "doi",
       };
+      return errResult;
     }
 
     const data = await res.json();
     const message = data.message;
     if (!message) {
-      return {
-        doi,
-        status: "unchecked",
-        isRetracted: false,
-        retractionDetails: "Crossref returned empty payload. Status unconfirmed.",
+      const emptyResult: Partial<ReferenceVerification> = {
+        doi: cleanDoiKey,
+        status: localRetraction.isRetracted ? "retracted" : "unchecked",
+        isRetracted: localRetraction.isRetracted,
+        isRetractionNotice: localRetraction.isRetractionNotice,
+        retractionDetails: localRetraction.reason || "Crossref returned empty payload. Status unconfirmed.",
         resolutionMethod: "doi",
       };
+      return emptyResult;
     }
 
     const title = message.title?.[0];
@@ -241,28 +330,24 @@ export async function verifyDOIWithCrossref(doi: string): Promise<Partial<Refere
       ?.map((a: { family?: string }) => a.family?.trim())
       .filter((f: string | undefined): f is string => Boolean(f));
 
-    let isRetracted = false;
-    let isExpressionOfConcern = false;
-    let retractionDetails: string | undefined = undefined;
+    let isRetracted = localRetraction.isRetracted;
+    let isExpressionOfConcern = localRetraction.isExpressionOfConcern;
+    let isRetractionNotice = Boolean(localRetraction.isRetractionNotice);
+    let retractionDetails: string | undefined = localRetraction.reason;
 
-    // Check Crossref update metadata:
-    // 'updated-by' contains records that update THIS work (retraction notices, errata, expressions of concern)
-    // 'update-to' contains records that this work updates (if this record is itself a notice)
-    const updatedBy = Array.isArray(message['updated-by']) ? message['updated-by'] : [];
-    const updateTo = Array.isArray(message['update-to']) ? message['update-to'] : [];
-    const allUpdates = [...updatedBy, ...updateTo];
+    // G2 Fix: ONLY updated-by contains records that update THIS work (retraction notices, errata, expressions of concern)
+    const updatedBy = Array.isArray(message["updated-by"]) ? message["updated-by"] : [];
+    for (const update of updatedBy) {
+      const uType = String(update.type || "").toLowerCase();
+      const uLabel = String(update.label || "").toLowerCase();
 
-    for (const update of allUpdates) {
-      const uType = String(update.type || '').toLowerCase();
-      const uLabel = String(update.label || '').toLowerCase();
-
-      if (uType === 'retraction' || uLabel.includes('retract')) {
+      if (uType === "retraction" || uLabel.includes("retract")) {
         isRetracted = true;
         retractionDetails = update.doi
           ? `Crossref metadata indicates retraction (Notice DOI: ${update.doi})`
           : "Crossref metadata indicates article has been retracted";
         break;
-      } else if (uType === 'expression_of_concern' || uLabel.includes('expression of concern')) {
+      } else if (uType === "expression_of_concern" || uLabel.includes("expression of concern")) {
         isExpressionOfConcern = true;
         retractionDetails = update.doi
           ? `Crossref metadata indicates Expression of Concern (Notice DOI: ${update.doi})`
@@ -270,14 +355,21 @@ export async function verifyDOIWithCrossref(doi: string): Promise<Partial<Refere
       }
     }
 
-    // Also check if publication type is retraction
-    if (message.type === 'retraction') {
-      isRetracted = true;
-      retractionDetails = retractionDetails || "Crossref work type is classified as retraction";
+    // G2 Fix: update-to contains records that THIS work updates -> this work is a retraction notice, not a retracted paper
+    const updateTo = Array.isArray(message["update-to"]) ? message["update-to"] : [];
+    for (const ut of updateTo) {
+      const uType = String(ut.type || "").toLowerCase();
+      if (uType === "retraction" || uType.includes("retract")) {
+        isRetractionNotice = true;
+      }
     }
 
-    // Check for explicit title prefix/marker (handles publisher deposits where update links weren't linked)
-    const titleStr = typeof title === 'string' ? title : '';
+    if (message.type === "retraction") {
+      isRetractionNotice = true;
+    }
+
+    // Check for explicit title prefix/marker
+    const titleStr = typeof title === "string" ? title : "";
     if (/^retracted\b/i.test(titleStr) || /[\[(]retracted[\])]/i.test(titleStr)) {
       isRetracted = true;
       retractionDetails = retractionDetails || "Article title explicitly marked as RETRACTED";
@@ -286,14 +378,13 @@ export async function verifyDOIWithCrossref(doi: string): Promise<Partial<Refere
       retractionDetails = retractionDetails || "Article title explicitly marked with Expression of Concern";
     }
 
-    // Also cross-reference against curated high-profile retractions database
-    const knownStatus = checkRetractionStatus(doi, title);
-    if (knownStatus.isRetracted) {
-      isRetracted = true;
-      retractionDetails = knownStatus.reason || retractionDetails;
-    } else if (knownStatus.isExpressionOfConcern && !isRetracted) {
-      isExpressionOfConcern = true;
-      retractionDetails = knownStatus.reason || retractionDetails;
+    // Also check title against Retraction Watch
+    if (!isRetracted) {
+      const titleRetraction = checkRetractionStatus(undefined, titleStr);
+      if (titleRetraction.isRetracted) {
+        isRetracted = true;
+        retractionDetails = titleRetraction.reason || retractionDetails;
+      }
     }
 
     const finalStatus: ReferenceStatus = isRetracted
@@ -302,8 +393,8 @@ export async function verifyDOIWithCrossref(doi: string): Promise<Partial<Refere
       ? "expression_of_concern"
       : "valid";
 
-    return {
-      doi,
+    const verifiedResult: Partial<ReferenceVerification> = {
+      doi: cleanDoiKey,
       title,
       journal,
       year,
@@ -312,26 +403,40 @@ export async function verifyDOIWithCrossref(doi: string): Promise<Partial<Refere
       matchConfidence: 1.0,
       status: finalStatus,
       isRetracted,
+      isRetractionNotice,
       retractionDetails,
-      crossrefUrl: message.URL || `https://doi.org/${doi}`,
+      crossrefUrl: message.URL || `https://doi.org/${cleanDoiKey}`,
       resolutionMethod: "doi",
     };
+
+    DOI_VERIFICATION_CACHE.set(cleanDoiKey, verifiedResult);
+    return verifiedResult;
   } catch {
     // If request timed out or network error, mark as unchecked, NOT unresolvable
-    return {
-      doi,
-      status: "unchecked",
-      isRetracted: false,
-      retractionDetails: "Crossref lookup timed out or network unavailable. Status unconfirmed.",
+    const netErrResult: Partial<ReferenceVerification> = {
+      doi: cleanDoiKey,
+      status: localRetraction.isRetracted
+        ? "retracted"
+        : localRetraction.isExpressionOfConcern
+        ? "expression_of_concern"
+        : "unchecked",
+      isRetracted: localRetraction.isRetracted,
+      isRetractionNotice: localRetraction.isRetractionNotice,
+      retractionDetails: localRetraction.reason || "Crossref lookup timed out or network unavailable. Status unconfirmed.",
       resolutionMethod: "doi",
     };
+    return netErrResult;
   }
 }
 
-export async function batchVerifyReferences(rawReferences: (string | { raw?: string })[]): Promise<ReferenceVerification[]> {
+export async function batchVerifyReferences(
+  rawReferences: (string | { raw?: string })[],
+  onProgress?: (verified: ReferenceVerification, completedIndex: number, total: number) => void
+): Promise<ReferenceVerification[]> {
   const results: ReferenceVerification[] = new Array(rawReferences.length);
   const concurrency = 6;
   let currentIndex = 0;
+  let completedCount = 0;
 
   async function worker() {
     while (currentIndex < rawReferences.length) {
@@ -341,7 +446,7 @@ export async function batchVerifyReferences(rawReferences: (string | { raw?: str
 
       // Extract DOI if present, stripping trailing punctuation (dots, commas, semicolons, brackets)
       const doiMatch = raw.match(/\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)\b/i);
-      const doi = doiMatch ? doiMatch[1].replace(/[.,;)\]]+$/, '') : undefined;
+      const doi = doiMatch ? doiMatch[1].replace(/[.,;)\]]+$/, "") : undefined;
 
       if (doi) {
         const crossrefData = await verifyDOIWithCrossref(doi);
@@ -356,52 +461,60 @@ export async function batchVerifyReferences(rawReferences: (string | { raw?: str
           matchConfidence: crossrefData.matchConfidence,
           status: crossrefData.status || "unchecked",
           isRetracted: crossrefData.isRetracted || false,
+          isRetractionNotice: crossrefData.isRetractionNotice || false,
           retractionDetails: crossrefData.retractionDetails,
           crossrefUrl: crossrefData.crossrefUrl,
           resolutionMethod: crossrefData.resolutionMethod || "doi",
         };
       } else {
-        // 1. Check for explicit textual retraction or expression of concern markers
+        // 1. E2: Check for explicit textual retraction or local database markers
         const retractionCheck = checkRetractionStatus(undefined, raw);
         if (retractionCheck.isRetracted || retractionCheck.isExpressionOfConcern) {
           results[idx] = {
             raw,
             status: retractionCheck.isRetracted ? "retracted" : "expression_of_concern",
             isRetracted: retractionCheck.isRetracted,
+            isRetractionNotice: retractionCheck.isRetractionNotice || false,
             retractionDetails: retractionCheck.reason,
             resolutionMethod: "unresolved",
           };
-          continue;
-        }
-
-        // 2. A7: Attempt Crossref bibliographic query resolution for DOI-less citations
-        const resolvedBibliographic = await searchReferenceBibliographic(raw);
-        if (resolvedBibliographic && resolvedBibliographic.doi) {
-          results[idx] = {
-            raw,
-            doi: resolvedBibliographic.doi,
-            title: resolvedBibliographic.title,
-            journal: resolvedBibliographic.journal,
-            year: resolvedBibliographic.year,
-            authors: resolvedBibliographic.authors,
-            familyNames: resolvedBibliographic.familyNames,
-            matchConfidence: resolvedBibliographic.matchConfidence,
-            status: resolvedBibliographic.status || "valid",
-            isRetracted: resolvedBibliographic.isRetracted || false,
-            retractionDetails: resolvedBibliographic.retractionDetails,
-            crossrefUrl: resolvedBibliographic.crossrefUrl,
-            resolutionMethod: "bibliographic_search",
-          };
         } else {
-          // Without a confident DOI or bibliographic match, references are UNCHECKED
-          results[idx] = {
-            raw,
-            status: "unchecked",
-            isRetracted: false,
-            retractionDetails: "No explicit DOI identified and bibliographic match unconfirmed. Status unverified.",
-            resolutionMethod: "unresolved",
-          };
+          // 2. A7: Attempt Crossref bibliographic query resolution for DOI-less citations with G3 corroboration
+          const resolvedBibliographic = await searchReferenceBibliographic(raw);
+          if (resolvedBibliographic && resolvedBibliographic.doi) {
+            results[idx] = {
+              raw,
+              doi: resolvedBibliographic.doi,
+              title: resolvedBibliographic.title,
+              journal: resolvedBibliographic.journal,
+              year: resolvedBibliographic.year,
+              authors: resolvedBibliographic.authors,
+              familyNames: resolvedBibliographic.familyNames,
+              matchConfidence: resolvedBibliographic.matchConfidence,
+              status: resolvedBibliographic.status || "valid",
+              isRetracted: resolvedBibliographic.isRetracted || false,
+              isRetractionNotice: resolvedBibliographic.isRetractionNotice || false,
+              retractionDetails: resolvedBibliographic.retractionDetails,
+              crossrefUrl: resolvedBibliographic.crossrefUrl,
+              resolutionMethod: "bibliographic_search",
+            };
+          } else {
+            // Without a confident DOI or corroborated bibliographic match, references are UNCHECKED (honest)
+            results[idx] = {
+              raw,
+              status: "unchecked",
+              isRetracted: false,
+              isRetractionNotice: false,
+              retractionDetails: "No explicit DOI identified and bibliographic match unconfirmed. Status unverified.",
+              resolutionMethod: "unresolved",
+            };
+          }
         }
+      }
+
+      completedCount++;
+      if (onProgress) {
+        onProgress(results[idx], completedCount, rawReferences.length);
       }
     }
   }
