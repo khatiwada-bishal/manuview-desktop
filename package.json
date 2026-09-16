@@ -13,6 +13,10 @@
     "desktop:build": "tauri build",
     "desktop:build:mac": "./scripts/build-mac.sh",
     "test": "tsx --test test/**/*.test.ts",
+    "benchmark": "tsx benchmarks/runners/run-all.ts",
+    "benchmark:gold": "tsx benchmarks/runners/run-all.ts --layer=A",
+    "benchmark:corpus": "tsx benchmarks/runners/run-all.ts --layer=B",
+    "benchmark:llm": "tsx benchmarks/llm-eval/run-llm-eval.ts",
     "audit:npm": "npm audit --audit-level=high"
   },
   "dependencies": {

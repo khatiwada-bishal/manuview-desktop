@@ -1,0 +1,158 @@
+{
+  "detector": "prior_publication",
+  "engineFn": "extractPublicationMarkers",
+  "version": "1.0.0",
+  "description": "Prior publication detection cases: published articles, preprints, and hard negative unpublished manuscripts",
+  "cases": [
+    {
+      "id": "pub-01",
+      "text": "Nature | Vol 580 | 23 April 2020\nArticle\nhttps://doi.org/10.1038/s41586-020-2180-5\nReceived: 15 November 2019 / Accepted: 12 March 2020 / Published online: 8 April 2020\n© 2020 Springer Nature Limited\n\nTitle: Structure of the SARS-CoV-2 spike glycoprotein",
+      "label": { "isPublished": true, "isPreprint": false }
+    },
+    {
+      "id": "pub-02",
+      "text": "The Lancet • Vol 395 • February 15, 2020\nArticles\ndoi: 10.1016/S0140-6736(20)30183-5\nPublished Online January 24, 2020\nCopyright © 2020 Elsevier Ltd. All rights reserved.\n\nTitle: Clinical features of patients infected with 2019 novel coronavirus in Wuhan, China",
+      "label": { "isPublished": true, "isPreprint": false }
+    },
+    {
+      "id": "pub-03",
+      "text": "Science 368, 77–81 (2020) 3 April 2020\nRESEARCH ARTICLE\nDOI: 10.1126/science.abb2507\nReceived for publication 12 January 2020. Accepted 18 March 2020.\nCopyright © 2020 The Authors, some rights reserved; exclusive licensee AAAS.\n\nTitle: Crystal structure of SARS-CoV-2 main protease",
+      "label": { "isPublished": true, "isPreprint": false }
+    },
+    {
+      "id": "pub-04",
+      "text": "Cell 181, 271–280, April 16, 2020\nArticle\nhttps://doi.org/10.1016/j.cell.2020.02.052\nReceived: February 4, 2020 / Revised: February 21, 2020 / Accepted: February 26, 2020 / Published: March 4, 2020\n© 2020 Elsevier Inc.\n\nTitle: SARS-CoV-2 Cell Entry Depends on ACE2 and TMPRSS2",
+      "label": { "isPublished": true, "isPreprint": false }
+    },
+    {
+      "id": "pub-05",
+      "text": "IEEE Transactions on Pattern Analysis and Machine Intelligence, Vol. 42, No. 8, August 2020\nDOI: 10.1109/TPAMI.2019.2913372\nManuscript received 10 Aug. 2018, revised 15 Jan. 2019, accepted 18 Apr. 2019. Date of publication 26 Apr. 2019.\n© 2019 IEEE. Personal use is permitted.\n\nTitle: Deep Residual Learning for Image Recognition",
+      "label": { "isPublished": true, "isPreprint": false }
+    },
+    {
+      "id": "pub-06",
+      "text": "Journal of the American Chemical Society 2021 143 (12), 4688-4699\nDOI: 10.1021/jacs.0c13280\nReceived: December 21, 2020 / Published online: March 17, 2021\nCopyright © 2021 American Chemical Society\n\nTitle: Direct Catalytic Synthesis of Functionalized Heterocycles",
+      "label": { "isPublished": true, "isPreprint": false }
+    },
+    {
+      "id": "pub-07",
+      "text": "Physical Review Letters 124, 161101 (2020)\nDOI: 10.1103/PhysRevLett.124.161101\nReceived 20 January 2020; accepted 25 March 2020; published 24 April 2020\n© 2020 American Physical Society\n\nTitle: Observation of Gravitational Waves from a Binary Black Hole Coalescence",
+      "label": { "isPublished": true, "isPreprint": false }
+    },
+    {
+      "id": "pub-08",
+      "text": "Nucleic Acids Research, 2021, Vol. 49, No. 1 D1-D8\nhttps://doi.org/10.1093/nar/gkaa1058\nReceived September 15, 2020; Revised October 20, 2020; Accepted October 22, 2020; Published: 25 November 2020\n© The Author(s) 2020. Published by Oxford University Press.\n\nTitle: The UniProt Consortium in 2021",
+      "label": { "isPublished": true, "isPreprint": false }
+    },
+    {
+      "id": "pub-09",
+      "text": "PLOS ONE | https://doi.org/10.1371/journal.pone.0245000 January 15, 2021\nRESEARCH ARTICLE\nReceived: July 10, 2020 / Accepted: December 22, 2020 / Published: January 15, 2021\nCopyright: © 2021 Author et al. This is an open access article.\n\nTitle: Automated Analysis of Genomic Variation in Cohort Studies",
+      "label": { "isPublished": true, "isPreprint": false }
+    },
+    {
+      "id": "pub-10",
+      "text": "Bioinformatics, 37(15), 2021, 2150–2158\ndoi: 10.1093/bioinformatics/btab088\nAdvance Access Publication Date: 12 February 2021\n© The Author(s) 2021. Published by Oxford University Press.\n\nTitle: Fast and accurate sequence alignment algorithm",
+      "label": { "isPublished": true, "isPreprint": false }
+    },
+    {
+      "id": "prep-01",
+      "text": "arXiv:2303.08774v1 [cs.CL] 15 Mar 2023\n\nGPT-4 Technical Report\nOpenAI\n\nAbstract: We report the development of GPT-4, a large-scale multimodal model.",
+      "label": { "isPublished": false, "isPreprint": true }
+    },
+    {
+      "id": "prep-02",
+      "text": "bioRxiv preprint doi: https://doi.org/10.1101/2020.01.22.914952; this version posted January 23, 2020.\nThe copyright holder for this preprint is the author/funder. It is made available under a CC-BY-NC-ND 4.0 International license.\n\nTitle: Discovery of a novel coronavirus associated with the recent pneumonia outbreak in humans",
+      "label": { "isPublished": false, "isPreprint": true }
+    },
+    {
+      "id": "prep-03",
+      "text": "medRxiv preprint doi: https://doi.org/10.1101/2020.03.03.20029983; this version posted March 6, 2020.\nThis article is a preprint and has not been certified by peer review.\n\nTitle: Clinical characteristics of 138 hospitalized patients with 2019 novel coronavirus-infected pneumonia",
+      "label": { "isPublished": false, "isPreprint": true }
+    },
+    {
+      "id": "prep-04",
+      "text": "ChemRxiv preprint https://doi.org/10.26434/chemrxiv.12345678.v1\nThis preprint is under review.\n\nTitle: Total Synthesis of Complex Polycyclic Natural Products via Photoredox Catalysis",
+      "label": { "isPublished": false, "isPreprint": true }
+    },
+    {
+      "id": "prep-05",
+      "text": "SSRN Electronic Journal\nhttps://dx.doi.org/10.2139/ssrn.3546789\nPreprint posted 10 Feb 2022\n\nTitle: Central Bank Digital Currencies and Financial Stability in Open Economies",
+      "label": { "isPublished": false, "isPreprint": true }
+    },
+    {
+      "id": "prep-06",
+      "text": "Research Square preprint\nDOI: 10.21203/rs.3.rs-123456/v1\nThis manuscript is a preprint submitted to Nature Portfolio and is not yet peer-reviewed.\n\nTitle: High-resolution cryo-EM structures of mammalian membrane transporters",
+      "label": { "isPublished": false, "isPreprint": true }
+    },
+    {
+      "id": "prep-07",
+      "text": "Preprints 2021, 2021050123 (doi: 10.20944/preprints202105.0123.v1).\nNot peer-reviewed. Posted: 12 May 2021.\n\nTitle: Machine Learning Approaches to Early Flood Warning Systems",
+      "label": { "isPublished": false, "isPreprint": true }
+    },
+    {
+      "id": "prep-08",
+      "text": "arXiv:2106.09685v2 [cs.CV] 18 Jun 2021\n\nLoRA: Low-Rank Adaptation of Large Language Models\nEdward J. Hu et al.\n\nAbstract: An important paradigm of natural language processing consists of large-scale pre-training.",
+      "label": { "isPublished": false, "isPreprint": true }
+    },
+    {
+      "id": "prep-09",
+      "text": "bioRxiv preprint doi: https://doi.org/10.1101/2021.08.15.456321\nThis manuscript is a preprint and has not been peer-reviewed.\n\nTitle: Epigenetic profiling of regulatory T cells during autoimmune neuroinflammation",
+      "label": { "isPublished": false, "isPreprint": true }
+    },
+    {
+      "id": "prep-10",
+      "text": "medRxiv preprint doi: https://doi.org/10.1101/2022.01.10.22269001\nPosted January 12, 2022. Not certified by peer review.\n\nTitle: Longitudinal antibody kinetics following three doses of mRNA vaccine against SARS-CoV-2",
+      "label": { "isPublished": false, "isPreprint": true }
+    },
+    {
+      "id": "unpub-01",
+      "text": "Deep Learning for Medical Image Segmentation: A Robust Hybrid Architecture\n\nAlice Smith, Bob Jones\nDepartment of Computer Science, University of Technology\n\nAbstract: Image segmentation is essential in clinical diagnostics. Here we propose a hybrid vision transformer.\n\n1. Introduction\nAutomated delineation of anatomical structures reduces manual burden.",
+      "label": { "isPublished": false, "isPreprint": false }
+    },
+    {
+      "id": "unpub-02",
+      "text": "Synthesis and Characterization of Graphene Oxide Nanocomposites for Water Purification\n\nCarlos Martinez, Elena Rostova\nSchool of Chemical Engineering\n\nAbstract: Heavy metal contamination poses severe environmental challenges. We demonstrate high adsorption capacity.\n\n1. Introduction\nAccess to potable water is a global imperative.",
+      "label": { "isPublished": false, "isPreprint": false }
+    },
+    {
+      "id": "unpub-03",
+      "text": "A Systematic Review of Natural Language Processing in Clinical Electronic Health Records\n\nDavid Kim, Sarah Jenkins\nDivision of Biomedical Informatics\n\nAbstract: Clinical EHR narratives contain rich phenotypic observations.\n\n1. Background\nUnstructured clinical text comprises the majority of health records.",
+      "label": { "isPublished": false, "isPreprint": false }
+    },
+    {
+      "id": "unpub-04",
+      "text": "Optimal Portfolio Allocation Under Regime-Switching Volatility Models\n\nMarcus Aurelius, Julia Vance\nDepartment of Financial Mathematics\n\nAbstract: We investigate dynamic asset allocation when market regimes follow a hidden Markov chain.\n\n1. Introduction\nFinancial market volatility exhibits persistent clustering.",
+      "label": { "isPublished": false, "isPreprint": false }
+    },
+    {
+      "id": "unpub-05",
+      "text": "Investigation of Soil Microbial Diversity Along an Altitudinal Gradient in the Eastern Himalayas\n\nPema Tsering, Anil Sharma\nDepartment of Environmental Sciences\n\nAbstract: Alpine ecosystems are highly vulnerable to climate change. High-throughput sequencing revealed novel taxa.\n\n1. Introduction\nMountain gradients offer natural laboratories for ecological study.",
+      "label": { "isPublished": false, "isPreprint": false }
+    },
+    {
+      "id": "unpub-06",
+      "text": "Quantum Error Correction Thresholds for Surface Codes Under Biased Pauli Noise\n\nLiam O'Connor, Wei Chen\nDepartment of Physics, Quantum Institute\n\nAbstract: Surface codes represent the leading architectural candidate for fault-tolerant quantum computing.\n\n1. Introduction\nScalable quantum computing requires robust syndrome extraction.",
+      "label": { "isPublished": false, "isPreprint": false }
+    },
+    {
+      "id": "unpub-07",
+      "text": "Comparative Efficacy of Cognitive Behavioral Therapy and Mindfulness-Based Stress Reduction\n\nRachel Adams, Thomas Wright\nSchool of Psychology\n\nAbstract: Chronic anxiety affects over 300 million individuals globally. A randomized pilot trial was conducted.\n\n1. Introduction\nAnxiety disorders represent a primary cause of non-fatal health burden.",
+      "label": { "isPublished": false, "isPreprint": false }
+    },
+    {
+      "id": "unpub-08",
+      "text": "Energy-Efficient Task Scheduling in Heterogeneous Fog Computing Environments\n\nKenji Sato, Hiroshi Tanaka\nDepartment of Information and Communication Engineering\n\nAbstract: Fog computing bridges the latency gap between IoT end-devices and centralized cloud servers.\n\n1. Introduction\nThe proliferation of Internet of Things devices has accelerated data generation.",
+      "label": { "isPublished": false, "isPreprint": false }
+    },
+    {
+      "id": "unpub-09",
+      "text": "CRISPR-Cas9 Mediated Disruption of Angiotensinogen in Spontaneously Hypertensive Rats\n\nFatima Al-Mansoor, Tariq Hassan\nCenter for Cardiovascular Genomics\n\nAbstract: Hypertension remains a leading risk factor for stroke and coronary artery disease.\n\n1. Introduction\nThe renin-angiotensin-aldosterone system regulates arterial pressure.",
+      "label": { "isPublished": false, "isPreprint": false }
+    },
+    {
+      "id": "unpub-10",
+      "text": "Blockchain-Enabled Traceability Framework for Agri-Food Supply Chains\n\nGiuseppe Rossi, Marco Conti\nDepartment of Agricultural Economics\n\nAbstract: Food safety incidents cause substantial economic and public health harm.\n\n1. Introduction\nSupply chain visibility is critical for brand integrity and consumer trust.",
+      "label": { "isPublished": false, "isPreprint": false }
+    }
+  ]
+}

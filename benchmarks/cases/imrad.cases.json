@@ -1,0 +1,30 @@
+{
+  "detector": "imrad_sectioning",
+  "engineFn": "parseRawTextToManuscript",
+  "version": "1.0.0",
+  "description": "IMRaD sectioning ground truth for evaluating section extraction and boundary alignment",
+  "cases": [
+    {
+      "id": "imrad-01",
+      "text": "Deep Learning for Genomic Variant Calling\n\nAbstract\nHigh-throughput DNA sequencing produces vast amounts of genomic read data. Here we demonstrate a convolutional transformer network that accurately identifies single-nucleotide polymorphisms.\n\n1. Introduction\nAccurate identification of genetic variants is fundamental to precision medicine and clinical genomics.\n\n2. Methods\nWe trained the neural network on 30x coverage whole-genome sequencing datasets from Genome in a Bottle.\n\n3. Results\nOur model achieved an F1-score of 0.998 on benchmark SNP calls, outperforming traditional Bayesian callers by 12%.\n\n4. Discussion\nDeep learning architectures effectively capture complex sequencing error modes and local context.",
+      "expectedSections": {
+        "abstract": "High-throughput DNA sequencing produces vast amounts of genomic read data. Here we demonstrate a convolutional transformer network that accurately identifies single-nucleotide polymorphisms.",
+        "introduction": "Accurate identification of genetic variants is fundamental to precision medicine and clinical genomics.",
+        "methodology": "We trained the neural network on 30x coverage whole-genome sequencing datasets from Genome in a Bottle.",
+        "results": "Our model achieved an F1-score of 0.998 on benchmark SNP calls, outperforming traditional Bayesian callers by 12%.",
+        "discussion": "Deep learning architectures effectively capture complex sequencing error modes and local context."
+      }
+    },
+    {
+      "id": "imrad-02",
+      "text": "Pharmacokinetics of Novel GLP-1 Receptor Agonists in Murine Obesity Models\n\nSummary\nObesity is a major metabolic epidemic. We investigate the half-life and glycemic control of a lipidated peptide.\n\nBackground\nGlucagon-like peptide-1 (GLP-1) stimulates glucose-dependent insulin secretion.\n\nMaterials and Methods\nMale C57BL/6J mice were placed on a 60% high-fat diet for 16 weeks prior to subcutaneous peptide administration.\n\nFindings\nAdministration resulted in a 24% reduction in cumulative food intake and normalized oral glucose tolerance.\n\nConclusion\nThese findings support translational advancement of long-acting metabolic therapeutics.",
+      "expectedSections": {
+        "abstract": "Obesity is a major metabolic epidemic. We investigate the half-life and glycemic control of a lipidated peptide.",
+        "introduction": "Glucagon-like peptide-1 (GLP-1) stimulates glucose-dependent insulin secretion.",
+        "methodology": "Male C57BL/6J mice were placed on a 60% high-fat diet for 16 weeks prior to subcutaneous peptide administration.",
+        "results": "Administration resulted in a 24% reduction in cumulative food intake and normalized oral glucose tolerance.",
+        "conclusion": "These findings support translational advancement of long-acting metabolic therapeutics."
+      }
+    }
+  ]
+}

@@ -61,6 +61,14 @@ export function extractPreprintMarkers(rawText: string, doi?: string): {
     return { isPreprint: true, serverName: "Research Square" };
   }
 
+  if (/\bSSRN\b/i.test(headerSlice) && /preprint/i.test(headerSlice)) {
+    return { isPreprint: true, serverName: "SSRN" };
+  }
+
+  if (/\bpreprints\.org\b/i.test(headerSlice) || /\bpreprints\s+\d{4},\s+\d+/i.test(headerSlice)) {
+    return { isPreprint: true, serverName: "Preprints.org" };
+  }
+
   if (/this\s+(?:article|paper|manuscript)\s+is\s+a\s+preprint/i.test(headerSlice) ||
       /not\s+(?:been\s+)?certified\s+by\s+peer\s+review/i.test(headerSlice) ||
       /preprint\s+under\s+review/i.test(headerSlice)) {

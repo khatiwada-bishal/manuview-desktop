@@ -157,44 +157,33 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
   const ext = filename ? filename.split('.').pop()?.toLowerCase() : '';
 
   // =========================================================================
-  // 1. Very short, fragmented, or list-dominated text (Shopping lists, To-Do, Notes)
+  // 1. Source Code / Software Script Detection
+  // Evaluated first so code with short lines is not confused with unstructured lists
   // =========================================================================
-  const rawLines = clean.split('\n').map(l => l.trim()).filter(Boolean);
-  const isShortOrFragment = wordCount < 50;
-  
-  const shoppingListKeywords = [
-    'buy', 'milk', 'eggs', 'bread', 'apples', 'groceries', 'store', 'tomorrow', 
-    'meeting', 'reminder', 'supermarket', 'todo', 'to-do', 'shopping', 'ingredient', 
-    'ingredients', 'recipe', 'chicken', 'potatoes', 'cheese', 'coffee', 'bananas', 
-    'hardware', 'screws', 'inventory', 'supplies', 'pack'
-  ];
-  const matchedShopping = shoppingListKeywords.filter(k => lower.includes(k)).length;
+  const codeExtensions = ['py', 'js', 'ts', 'tsx', 'jsx', 'java', 'cpp', 'c', 'h', 'cs', 'go', 'rs', 'rb', 'php', 'swift', 'kt', 'sh', 'bash', 'sql'];
+  const isCodeFileExt = codeExtensions.includes(ext || '');
 
-  const isBulletOrNumbered = (line: string) => /^[-*•–—\d+\.)\]]/.test(line);
-  const bulletLines = rawLines.filter(isBulletOrNumbered);
-  const shortLines = rawLines.filter(l => l.split(/\s+/).length <= 7);
-  const isListDominated = rawLines.length >= 4 && (
-    bulletLines.length / rawLines.length > 0.55 || 
-    shortLines.length / rawLines.length > 0.70
+  const lines = clean.split('\n').map(l => l.trim()).filter(Boolean);
+  const codeLines = lines.filter(l => 
+    /^(?:import\s+[\w\.\,\s\{\}\*]+|from\s+\w+\s+import|const\s+\w+\s*=|let\s+\w+\s*=|var\s+\w+\s*=|def\s+\w+\(|function\s+\w*\(|public\s+class\s+\w+|class\s+\w+[\s\w\(\)]*[:\{]|#include\s+<|package\s+[\w\.]+;|console\.log\(|return\b|if\s*[\(\w]|}\s*else|\/\*|\*\/|\/\/|#\s+|self\.\w+\s*=)/.test(l)
   );
-  const hasAcademicStructure = /(?:abstract|introduction|materials and methods|methodology|results|discussion|conclusion|references\s*:|doi:\s*10\.)/i.test(clean);
+  const codeRatio = lines.length > 0 ? codeLines.length / lines.length : 0;
+  const isCode = isCodeFileExt || (codeRatio > 0.35 && lines.length > 5);
 
-  if ((matchedShopping >= 2 && !hasAcademicStructure) || 
-      (isListDominated && !hasAcademicStructure) || 
-      (isShortOrFragment && !/(?:doi:\s*10\.|p\s*[<=]\s*0\.\d+|abstract)/i.test(clean))) {
+  if (isCode) {
     return {
-      category: 'random_unstructured',
-      categoryLabel: 'Unstructured / Random Text',
+      category: 'source_code',
+      categoryLabel: 'Source Code / Software Script',
       isAcademicManuscript: false,
-      confidence: 0.96,
+      confidence: 0.95,
       detectedFeatures: [
-        isListDominated ? 'Bulleted / itemized list structure detected' : `Word count is very low (${wordCount} words)`,
-        'No scholarly structure (Title, Abstract, Methods, Results, or References)',
-        'Informal or fragmented phrasing'
+        'Programming language syntax and structure detected',
+        'Functions, classes, or package declarations identified',
+        'Absence of empirical scholarly IMRaD sections'
       ],
-      salutation: 'Attention: Unstructured or Non-Academic Text Detected',
-      advisoryMessage: 'The submitted content consists of unstructured text, shopping/to-do lists, casual notes, or brief fragments rather than a scholarly manuscript. Academic peer review requires a coherent research narrative: a title, research context (abstract/introduction), formal methodology, empirical findings, and references.',
-      customGuidance: "To see how ManuView evaluates a genuine research paper, click 'Load Sample Preprint' above or upload a complete .docx or .pdf manuscript with Title, Abstract, Methods, and References."
+      salutation: 'Hello Developer / Software Engineer',
+      advisoryMessage: 'We detected that this file is source code or a software script rather than an academic research manuscript. While computational code is critical for reproducibility, ManuView is calibrated for scientific peer review of empirical and theoretical manuscripts (research hypotheses, experimental design, causal inferences, and reference integrity).',
+      customGuidance: 'If you are preparing a computational methods paper or software article for a journal (e.g., Nature Methods, Bioinformatics, JOSS), please provide the full manuscript draft including Abstract, Methodology, Benchmarking, and Literature Citations alongside your code.'
     };
   }
 
@@ -207,6 +196,8 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
   const contactPatternRegex = /(?:email\s*:|phone\s*:|linkedin\.com\/|github\.com\/|\bgpa\s*:\s*\d|\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b)/i;
   
   const cvHeadingMatches = (clean.match(/(?:\bcurriculum\s+vitae\b|\bresume\b|work\s+experience|professional\s+experience|employment\s+history|education\s*(?::|\n)|technical\s+skills|skills\s*&?\s*expertise|teaching\s+experience|honors\s*(&|and)\s*awards|grants\s+and\s+fellowships)/gi) || []).length;
+
+  const hasAcademicStructure = /(?:abstract|introduction|materials and methods|methodology|results|discussion|conclusion|references\s*:|doi:\s*10\.)/i.test(clean);
 
   const isResume = 
     lower.includes('curriculum vitae') || 
@@ -232,37 +223,7 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
   }
 
   // =========================================================================
-  // 3. Source Code / Software Script Detection
-  // =========================================================================
-  const codeExtensions = ['py', 'js', 'ts', 'tsx', 'jsx', 'java', 'cpp', 'c', 'h', 'cs', 'go', 'rs', 'rb', 'php', 'swift', 'kt', 'sh', 'bash', 'sql'];
-  const isCodeFileExt = codeExtensions.includes(ext || '');
-
-  const lines = clean.split('\n').map(l => l.trim()).filter(Boolean);
-  const codeLines = lines.filter(l => 
-    /^(?:import\s+.+from|from\s+\w+\s+import|const\s+\w+\s*=|let\s+\w+\s*=|var\s+\w+\s*=|def\s+\w+\(|function\s+\w*\(|public\s+class\s+\w+|class\s+\w+[\s\w]*\{|#include\s+<|package\s+[\w\.]+;|console\.log\(|return\s+.*;|if\s*\(.+\)\s*\{|}\s*else\s*\{|\/\*|\*\/|\/\/)/.test(l)
-  );
-  const codeRatio = lines.length > 0 ? codeLines.length / lines.length : 0;
-  const isCode = isCodeFileExt || (codeRatio > 0.35 && lines.length > 5);
-
-  if (isCode) {
-    return {
-      category: 'source_code',
-      categoryLabel: 'Source Code / Software Script',
-      isAcademicManuscript: false,
-      confidence: 0.95,
-      detectedFeatures: [
-        'Programming language syntax and structure detected',
-        'Functions, classes, or package declarations identified',
-        'Absence of empirical scholarly IMRaD sections'
-      ],
-      salutation: 'Hello Developer / Software Engineer',
-      advisoryMessage: 'We detected that this file is source code or a software script rather than an academic research manuscript. While computational code is critical for reproducibility, ManuView is calibrated for scientific peer review of empirical and theoretical manuscripts (research hypotheses, experimental design, causal inferences, and reference integrity).',
-      customGuidance: 'If you are preparing a computational methods paper or software article for a journal (e.g., Nature Methods, Bioinformatics, JOSS), please provide the full manuscript draft including Abstract, Methodology, Benchmarking, and Literature Citations alongside your code.'
-    };
-  }
-
-  // =========================================================================
-  // 4. Grant / Research Project Proposal
+  // 3. Grant / Research Project Proposal
   // =========================================================================
   const grantProposalRegex = /(?:specific\s+aims|broader\s+impacts|intellectual\s+merit|project\s+narrative|budget\s+justification|principal\s+investigator|co-pi\b|nih\s+grant|nsf\s+proposal|funding\s+opportunity)/i;
   if (grantProposalRegex.test(clean) && !lower.includes('journal') && !lower.includes('peer review')) {
@@ -282,10 +243,30 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
   }
 
   // =========================================================================
+  // 4. Technical Documentation / Whitepaper
+  // =========================================================================
+  const techDocRegex = /(?:api\s+reference|endpoints?\s*:|installation\s+guide|getting\s+started|sdk\s+reference|architecture\s+overview|prerequisites\s*:|quickstart)/i;
+  if (techDocRegex.test(clean) && !hasAcademicStructure) {
+    return {
+      category: 'technical_doc',
+      categoryLabel: 'Technical Documentation / Whitepaper',
+      isAcademicManuscript: false,
+      confidence: 0.85,
+      detectedFeatures: [
+        'Technical documentation or software specification headings found',
+        'Instructional or API reference structure'
+      ],
+      salutation: 'Hello Technical Author / Documentation Lead',
+      advisoryMessage: 'We detected technical documentation or product specifications. While technically rigorous, documentation differs from peer-reviewed scientific literature where hypotheses, statistical power, and academic literature citations are systematically audited.',
+      customGuidance: 'If this technical work introduces a novel algorithm or system architecture for academic submission, structure it with empirical baselines, related work citations, and ablation studies for venues like IEEE, ACM, or NeurIPS.'
+    };
+  }
+
+  // =========================================================================
   // 5. Business or Administrative Document
   // =========================================================================
-  const businessAdminRegex = /(?:invoice\s*#|bill\s+to\s*:|total\s+due\s*:|statement\s+of\s+work|\bnda\b|non-disclosure\s+agreement|balance\s+sheet|purchase\s+order|meeting\s+minutes|terms\s+and\s+conditions)/i;
-  if (businessAdminRegex.test(clean)) {
+  const businessAdminRegex = /(?:invoice\s*#|bill\s+to\s*:|total\s+due\s*:|statement\s+of\s+work|\bnda\b|non-disclosure\s+agreement|purchase\s+order|meeting\s+minutes|payment\s+terms)/i;
+  if (businessAdminRegex.test(clean) && !hasAcademicStructure) {
     return {
       category: 'business_or_admin',
       categoryLabel: 'Administrative / Business Document',
@@ -302,22 +283,43 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
   }
 
   // =========================================================================
-  // 6. Technical Documentation / Whitepaper
+  // 6. Very short, fragmented, or list-dominated text (Shopping lists, To-Do, Notes)
   // =========================================================================
-  const techDocRegex = /(?:api\s+reference|endpoints?\s*:|installation\s+guide|getting\s+started|sdk\s+reference|architecture\s+overview|prerequisites\s*:|quickstart)/i;
-  if (techDocRegex.test(clean)) {
+  const rawLines = clean.split('\n').map(l => l.trim()).filter(Boolean);
+  const isShortOrFragment = wordCount < 50;
+  
+  const shoppingListKeywords = [
+    'buy', 'milk', 'eggs', 'bread', 'apples', 'groceries', 'store', 'tomorrow', 
+    'meeting', 'reminder', 'supermarket', 'todo', 'to-do', 'shopping', 'ingredient', 
+    'ingredients', 'recipe', 'chicken', 'potatoes', 'cheese', 'coffee', 'bananas', 
+    'hardware', 'screws', 'inventory', 'supplies', 'pack'
+  ];
+  const matchedShopping = shoppingListKeywords.filter(k => lower.includes(k)).length;
+
+  const isBulletOrNumbered = (line: string) => /^[-*•–—\d+\.)\]]/.test(line);
+  const bulletLines = rawLines.filter(isBulletOrNumbered);
+  const shortLines = rawLines.filter(l => l.split(/\s+/).length <= 7);
+  const isListDominated = rawLines.length >= 4 && (
+    bulletLines.length / rawLines.length > 0.55 || 
+    shortLines.length / rawLines.length > 0.70
+  );
+
+  if ((matchedShopping >= 2 && !hasAcademicStructure) || 
+      (isListDominated && !hasAcademicStructure) || 
+      (isShortOrFragment && !/(?:doi:\s*10\.|p\s*[<=]\s*0\.\d+|abstract)/i.test(clean))) {
     return {
-      category: 'technical_doc',
-      categoryLabel: 'Technical Documentation / Whitepaper',
+      category: 'random_unstructured',
+      categoryLabel: 'Unstructured / Random Text',
       isAcademicManuscript: false,
-      confidence: 0.85,
+      confidence: 0.96,
       detectedFeatures: [
-        'Technical documentation or software specification headings found',
-        'Instructional or API reference structure'
+        isListDominated ? 'Bulleted / itemized list structure detected' : `Word count is very low (${wordCount} words)`,
+        'No scholarly structure (Title, Abstract, Methods, Results, or References)',
+        'Informal or fragmented phrasing'
       ],
-      salutation: 'Hello Technical Author / Documentation Lead',
-      advisoryMessage: 'We detected technical documentation or product specifications. While technically rigorous, documentation differs from peer-reviewed scientific literature where hypotheses, statistical power, and academic literature citations are systematically audited.',
-      customGuidance: 'If this technical work introduces a novel algorithm or system architecture for academic submission, structure it with empirical baselines, related work citations, and ablation studies for venues like IEEE, ACM, or NeurIPS.'
+      salutation: 'Attention: Unstructured or Non-Academic Text Detected',
+      advisoryMessage: 'The submitted content consists of unstructured text, shopping/to-do lists, casual notes, or brief fragments rather than a scholarly manuscript. Academic peer review requires a coherent research narrative: a title, research context (abstract/introduction), formal methodology, empirical findings, and references.',
+      customGuidance: "To see how ManuView evaluates a genuine research paper, click 'Load Sample Preprint' above or upload a complete .docx or .pdf manuscript with Title, Abstract, Methods, and References."
     };
   }
 
@@ -506,8 +508,9 @@ export function detectPdfExtractionQuality(rawText: string): {
   const streamArtifacts = (clean.match(/\b(?:BT|ET|Tj|TJ|Do|rg|RG)\b/g) || []).length;
   const words = clean.split(/\s+/).filter(Boolean);
   const avgWordLength = words.length > 0 ? clean.length / words.length : 0;
+  const artifactRatio = words.length > 0 ? streamArtifacts / words.length : 0;
 
-  if (streamArtifacts > 25 || avgWordLength > 40 || avgWordLength < 2) {
+  if (streamArtifacts > 25 || artifactRatio > 0.15 || avgWordLength > 40 || avgWordLength < 2) {
     return {
       isHighQuality: false,
       warning: "Low extraction confidence: document text contains fragmented glyphs, excessive replacement characters, or PDF stream artifacts. Ensure the PDF contains a selectable text layer rather than scanned raster images.",
@@ -540,6 +543,13 @@ export function sanitizePromptInjectionAndHiddenContent(rawText: string): {
   const hiddenStyleRegex = /<(?:span|p|div|font)[^>]*?(?:display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*0|color\s*:\s*(?:#ffffff|#fff|white|rgba\([^)]*0\)))[^>]*>([\s\S]*?)<\/(?:span|p|div|font)>/gi;
   text = text.replace(hiddenStyleRegex, (_match, hiddenContent) => {
     suspicionFlags.push(`Hidden CSS text layer stripped: "${hiddenContent.trim().slice(0, 50)}..."`);
+    return "";
+  });
+
+  // 2b. Detect and strip hidden HTML comment injection attempts
+  const commentRegex = /<!--([\s\S]*?)-->/g;
+  text = text.replace(commentRegex, (_match, commentContent) => {
+    suspicionFlags.push(`Hidden HTML comment stripped: "${commentContent.trim().slice(0, 50)}..."`);
     return "";
   });
 
@@ -701,9 +711,9 @@ export function parseManuscriptText(inputRawText: string, filename?: string): Pa
   const resultsRegex =
     /(?:^|\n)\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Results|Findings|Numerical Example|Numerical Analysis|Numerical Results|Simulation Results|Computational Experiments|Experimental Results|Performance Evaluation|Sensitivity Analysis|Case Study|Empirical Analysis)\s*[:\n\r]+([\s\S]*?)(?=(?:\n\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Discussion|Managerial Insights|Practical Implications|Limitations|Conclusion|Conclusions|4[\.\s]|IV[\.\s]|10[\.\s]|11[\.\s]|References)))/i;
   const discussionRegex =
-    /(?:^|\n)\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Discussion|Managerial Insights|Practical Implications|Limitations|Discussion and Conclusion)\s*[:\n\r]+([\s\S]*?)(?=(?:\n\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Conclusion|Conclusions|References|Bibliography|5[\.\s]|V[\.\s]|11[\.\s])))/i;
+    /(?:^|\n)\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Discussion|Managerial Insights|Practical Implications|Limitations|Discussion and Conclusion)\s*[:\n\r]+([\s\S]*?)(?=(?:\n\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Conclusion|Conclusions|References|Bibliography|5[\.\s]|V[\.\s]|11[\.\s])|$))/i;
   const conclusionRegex =
-    /(?:^|\n)\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Conclusion|Conclusions|Concluding Remarks|Summary and Conclusions|Future Work)\s*[:\n\r]+([\s\S]*?)(?=(?:\n\s*(?:#{1,3}\s*)?(?:References|Bibliography|Acknowledgments|Appendix)))/i;
+    /(?:^|\n)\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Conclusion|Conclusions|Concluding Remarks|Summary and Conclusions|Future Work)\s*[:\n\r]+([\s\S]*?)(?=(?:\n\s*(?:#{1,3}\s*)?(?:References|Bibliography|Acknowledgments|Appendix)|$))/i;
 
   const introMatch = rawText.match(introRegex);
   if (introMatch && introMatch[1]) {

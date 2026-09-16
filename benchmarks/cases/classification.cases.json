@@ -1,0 +1,68 @@
+{
+  "detector": "document_classification",
+  "engineFn": "classifyDocument",
+  "version": "1.0.0",
+  "description": "Multi-class document classification benchmark cases",
+  "cases": [
+    {
+      "id": "doc-acad-01",
+      "expectedCategory": "academic_manuscript",
+      "text": "Neural Network Pruning via Hessian Eigenspectrum Analysis\n\nAbstract\nOverparameterized neural networks contain significant redundancy. In this work, we propose a second-order pruning criterion based on the Hessian eigenspectrum.\n\n1. Introduction\nModern deep networks achieve high accuracy at the cost of substantial compute.\n\n2. Methods\nWe compute the top eigenvalues of the empirical Fisher information matrix across 50 epochs.\n\n3. Results\nOur method achieves 85% sparsity on ResNet-50 while maintaining 99.2% of baseline ImageNet accuracy.\n\n4. Discussion\nSecond-order curvature provides superior sensitivity compared to magnitude pruning.\n\nReferences\n1. LeCun, Y. et al. (1990). Optimal Brain Damage. NIPS."
+    },
+    {
+      "id": "doc-acad-02",
+      "expectedCategory": "academic_manuscript",
+      "text": "Efficacy of Monoclonal Antibodies in Mild-to-Moderate Ulcerative Colitis: A Randomized Controlled Trial\n\nAbstract\nBackground: Biologic therapies have transformed inflammatory bowel disease management. Methods: We conducted a double-blind, placebo-controlled phase III trial (N=420).\n\nIntroduction\nUlcerative colitis causes chronic relapsing mucosal inflammation.\n\nMethods\nPatients were randomized 1:1 to subcutaneous antibody or placebo for 52 weeks.\n\nResults\nClinical remission at week 12 was achieved in 48% vs 21% (p < 0.001).\n\nDiscussion\nThe safety profile was consistent with previous trials.\n\nReferences\n1. Rutgeerts, P. et al. (2005). Infliximab for induction and maintenance therapy. NEJM."
+    },
+    {
+      "id": "doc-acad-03",
+      "expectedCategory": "academic_manuscript",
+      "text": "Thermodynamic Limits of Atmospheric Carbon Dioxide Mineralization in Basaltic Formations\n\nAbstract\nIn situ carbon mineralization in mafic and ultramafic rocks offers permanent carbon sequestration. We model dissolution kinetics.\n\n1. Introduction\nMitigating anthropogenic emissions requires gigaton-scale carbon removal.\n\n2. Methodology\nReactive transport modeling was performed using TOUGHREACT.\n\n3. Results\nOver 95% of injected CO2 is converted to carbonate minerals within 24 months.\n\nReferences\n1. Matter, J.M. et al. (2016). Rapid carbon mineralization for permanent disposal. Science."
+    },
+    {
+      "id": "doc-acad-04",
+      "expectedCategory": "academic_manuscript",
+      "text": "Monetary Policy Transmission and Bank Liquidity Hoarding in Post-Crisis Economies\n\nAbstract\nWe examine how central bank balance sheet expansion impacts interbank lending markets.\n\n1. Introduction\nUnconventional monetary policy has reshaped credit intermediation.\n\n2. Empirical Strategy\nUsing administrative loan records from 150 European banks, we estimate a difference-in-differences specification.\n\n3. Findings\nBanks with higher sovereign debt exposure curtailed commercial lending.\n\nReferences\n1. Bernanke, B.S. (2020). The New Tools of Monetary Policy. AER."
+    },
+    {
+      "id": "doc-cv-01",
+      "expectedCategory": "resume_cv",
+      "text": "Jane Doe, Ph.D.\nEmail: jane.doe@university.edu | Phone: (555) 123-4567 | GitHub: github.com/janedoe\n\nCurriculum Vitae\n\nEducation\nPh.D. in Computer Science, Stanford University, 2021\nB.S. in Electrical Engineering, MIT, 2016\n\nWork Experience\nPostdoctoral Fellow, AI Research Lab, 2021-Present\n- Developed novel distributed optimization algorithms\n\nTechnical Skills\nPython, PyTorch, C++, CUDA, Linux, Git\n\nHonors and Awards\nNSF Graduate Research Fellowship, 2017"
+    },
+    {
+      "id": "doc-cv-02",
+      "expectedCategory": "resume_cv",
+      "text": "Alexandre Dumas\nContact: alex.dumas@techcorp.com | LinkedIn: linkedin.com/in/adumas\n\nProfessional Resume\n\nProfessional Experience\nSenior Software Architect, CloudSystems Inc., 2020-Present\n- Architected microservices handling 50,000 requests/sec\nLead Developer, WebScale Corp, 2016-2020\n\nEducation:\nM.S. Computer Engineering, UC Berkeley, 2016\n\nSkills & Expertise\nKubernetes, Golang, AWS, Distributed Systems, Terraform"
+    },
+    {
+      "id": "doc-code-01",
+      "expectedCategory": "source_code",
+      "text": "import torch\nimport torch.nn as nn\nimport torch.optim as optim\n\nclass ResidualBlock(nn.Module):\n    def __init__(self, channels):\n        super(ResidualBlock, self).__init__()\n        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, padding=1)\n        self.relu = nn.ReLU(inplace=True)\n        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, padding=1)\n\n    def forward(self, x):\n        residual = x\n        out = self.conv1(x)\n        out = self.relu(out)\n        out = self.conv2(out)\n        out += residual\n        return self.relu(out)\n\ndef train_epoch(model, dataloader, optimizer, criterion):\n    model.train()\n    total_loss = 0.0\n    for batch_idx, (data, target) in enumerate(dataloader):\n        optimizer.zero_grad()\n        output = model(data)\n        loss = criterion(output, target)\n        loss.backward()\n        optimizer.step()\n        total_loss += loss.item()\n    return total_loss / len(dataloader)"
+    },
+    {
+      "id": "doc-code-02",
+      "expectedCategory": "source_code",
+      "text": "import express from 'express';\nimport cors from 'cors';\n\nconst app = express();\nconst PORT = process.env.PORT || 3000;\n\napp.use(cors());\napp.use(express.json());\n\napp.get('/api/health', (req, res) => {\n  return res.status(200).json({ status: 'ok', uptime: process.uptime() });\n});\n\napp.post('/api/compute', async (req, res) => {\n  try {\n    const { data } = req.body;\n    const result = await processPayload(data);\n    return res.json({ success: true, result });\n  } catch (error) {\n    return res.status(500).json({ error: error.message });\n  }\n});\n\napp.listen(PORT, () => console.log(`Server listening on port ${PORT}`));"
+    },
+    {
+      "id": "doc-grant-01",
+      "expectedCategory": "grant_proposal",
+      "text": "NIH Grant Application R01-HL150240\nPrincipal Investigator: Dr. Robert Vance\nFunding Opportunity: PA-20-185 Research Project Grant\n\nSpecific Aims\nHeart failure with preserved ejection fraction (HFpEF) represents an unmet clinical need lacking targeted therapies. Our overarching hypothesis is that microvascular endothelial stiffening drives myocardial diastolic dysfunction.\n\nAim 1: Determine the molecular mechanism of endothelial mechanotransduction via Piezo1 channels.\nAim 2: Evaluate the therapeutic efficacy of selective Piezo1 antagonists in a murine multi-hit HFpEF model.\n\nProject Narrative\nHeart disease remains the primary cause of mortality in the United States.\n\nBudget Justification\nPersonnel costs include 25% effort for Principal Investigator and a full-time postdoctoral fellow."
+    },
+    {
+      "id": "doc-bus-01",
+      "expectedCategory": "business_or_admin",
+      "text": "INVOICE #INV-2024-8841\nDate: October 14, 2024\nBill To: Global Logistics Inc.\nPayment Terms: Net 30 Days\n\nDescription of Services:\n1. Cloud Infrastructure Consulting - 40 hours @ $150/hr - Total: $6,000.00\n2. Security Compliance Audit - Flat Fee - Total: $4,500.00\n\nTotal Due: $10,500.00\nPlease remit payment to Acme Corporation Bank Details: Routing #123456789."
+    },
+    {
+      "id": "doc-tech-01",
+      "expectedCategory": "technical_doc",
+      "text": "Vector Database API Reference & Quickstart\n\nGetting Started\nPrerequisites: Node.js 18+, Docker\n\nInstallation Guide\nRun `npm install @vectordb/client` to install the official SDK.\n\nAPI Reference\nEndpoints:\n- POST /v1/indexes/{index_name}/query\n  Query parameters: vector, top_k, include_metadata\n- POST /v1/indexes/{index_name}/upsert\n  Inserts or updates vector embeddings.\n\nArchitecture Overview\nThe distributed storage layer utilizes Raft consensus across three availability zones."
+    },
+    {
+      "id": "doc-rand-01",
+      "expectedCategory": "random_unstructured",
+      "text": "grocery list:\n- milk 2% gallon\n- bananas\n- sourdough bread\n- eggs 1 dozen\n- olive oil\n- coffee beans dark roast\ncall dentist at 3pm tomorrow remember pickup dry cleaning!"
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "timestamp": "2026-09-16T03:04:27.221Z",
+  "engineCommit": "HEAD",
+  "manifestVersion": "1.0.0",
+  "summary": {
+    "totalDetectors": 6,
+    "passedDetectors": 6,
+    "failedDetectors": 0
+  },
+  "entries": [
+    {
+      "id": "statcheck_math",
+      "detector": "pValueFromT/F/ChiSquare/Z/R",
+      "layer": "A",
+      "metric": "Max abs error",
+      "scoreFormatted": "6.59e-4",
+      "scoreNumeric": 0.000659,
+      "targetFormatted": "< 2e-3",
+      "targetNumeric": 0.002,
+      "targetOperator": "<=",
+      "passed": true,
+      "coverage": 1,
+      "details": "Evaluated 28 test configurations. MAE: 6.40e-5",
+      "deltaVsBase": "0.00"
+    },
+    {
+      "id": "statcheck_audit",
+      "detector": "runStatcheckAudit (inconsistency flags)",
+      "layer": "A",
+      "metric": "F1",
+      "scoreFormatted": "0.89 [1.00 prec, 0.80 rec]",
+      "scoreNumeric": 0.8889,
+      "targetFormatted": "≥ 0.85",
+      "targetNumeric": 0.85,
+      "targetOperator": ">=",
+      "passed": true,
+      "coverage": 1,
+      "details": "TP: 4, FP: 0, TN: 5, FN: 1",
+      "deltaVsBase": "0.00"
+    },
+    {
+      "id": "grim_test",
+      "detector": "testGrim (granularity of means)",
+      "layer": "A",
+      "metric": "Accuracy",
+      "scoreFormatted": "1.00 [0.89–1.00]",
+      "scoreNumeric": 1,
+      "targetFormatted": "≥ 0.98",
+      "targetNumeric": 0.98,
+      "targetOperator": ">=",
+      "passed": true,
+      "coverage": 1,
+      "details": "30 cases evaluated. Correct: 30/30",
+      "deltaVsBase": "0.00"
+    },
+    {
+      "id": "citation_recency",
+      "detector": "analyzeCitationRecency",
+      "layer": "A",
+      "metric": "Max abs error",
+      "scoreFormatted": "0.00",
+      "scoreNumeric": 0,
+      "targetFormatted": "0.00 (exact)",
+      "targetNumeric": 0.0001,
+      "targetOperator": "<=",
+      "passed": true,
+      "coverage": 1,
+      "details": "Evaluated 10 exact numerical properties across 2 distributions.",
+      "deltaVsBase": "0.00"
+    },
+    {
+      "id": "structural_grounding",
+      "detector": "isStructuralAnchorResolvable (grounding gate)",
+      "layer": "A",
+      "metric": "Precision",
+      "scoreFormatted": "1.00 [0.65–1.00]",
+      "scoreNumeric": 1,
+      "targetFormatted": "≥ 0.95",
+      "targetNumeric": 0.95,
+      "targetOperator": ">=",
+      "passed": true,
+      "coverage": 1,
+      "details": "Suppression accuracy: 100.0%. Recall: 100.0%. FPR: 0.0%",
+      "deltaVsBase": "0.00"
+    },
+    {
+      "id": "catalog_lookup",
+      "detector": "lookupJournalInCatalog",
+      "layer": "A",
+      "metric": "Precision",
+      "scoreFormatted": "1.00 [0.78–1.00]",
+      "scoreNumeric": 1,
+      "targetFormatted": "≥ 0.98",
+      "targetNumeric": 0.98,
+      "targetOperator": ">=",
+      "passed": true,
+      "coverage": 1,
+      "details": "Hallucination rejection: 100% (8/8 fake venues rejected). Recall: 100.0%",
+      "deltaVsBase": "0.00"
+    }
+  ]
+}

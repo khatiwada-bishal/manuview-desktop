@@ -1,0 +1,33 @@
+{
+  "detector": "scope_match",
+  "engineFn": "isDisciplineMatch",
+  "version": "1.0.0",
+  "description": "Discipline matching and scope desk-reject validation pairs (matched vs mismatched pairs)",
+  "cases": [
+    { "id": "scope-01", "paperDiscipline": "Computer Science", "targetDiscipline": "Computer Science", "isMatch": true },
+    { "id": "scope-02", "paperDiscipline": "Medicine", "targetDiscipline": "Medicine", "isMatch": true },
+    { "id": "scope-03", "paperDiscipline": "Physics", "targetDiscipline": "Physics", "isMatch": true },
+    { "id": "scope-04", "paperDiscipline": "Chemistry", "targetDiscipline": "Chemistry", "isMatch": true },
+    { "id": "scope-05", "paperDiscipline": "Biology", "targetDiscipline": "Biology", "isMatch": true },
+    { "id": "scope-06", "paperDiscipline": "Economics", "targetDiscipline": "Economics", "isMatch": true },
+    { "id": "scope-07", "paperDiscipline": "Computer Science", "targetDiscipline": "Multidisciplinary", "isMatch": true },
+    { "id": "scope-08", "paperDiscipline": "Medicine", "targetDiscipline": "Multidisciplinary", "isMatch": true },
+    { "id": "scope-09", "paperDiscipline": "Neuroscience", "targetDiscipline": "Neuroscience", "isMatch": true },
+    { "id": "scope-10", "paperDiscipline": "Cardiology", "targetDiscipline": "Cardiology", "isMatch": true },
+    { "id": "scope-11", "paperDiscipline": "Oncology", "targetDiscipline": "Oncology", "isMatch": true },
+    { "id": "scope-12", "paperDiscipline": "Bioinformatics", "targetDiscipline": "Bioinformatics", "isMatch": true },
+    { "id": "scope-13", "paperDiscipline": "Material Science", "targetDiscipline": "Material Science", "isMatch": true },
+    { "id": "scope-14", "paperDiscipline": "Immunology", "targetDiscipline": "Immunology", "isMatch": true },
+    { "id": "scope-15", "paperDiscipline": "Psychology", "targetDiscipline": "Psychology", "isMatch": true },
+    { "id": "scope-16", "paperDiscipline": "Economics", "targetDiscipline": "Oncology", "isMatch": false },
+    { "id": "scope-17", "paperDiscipline": "Physics", "targetDiscipline": "Oncology", "isMatch": false },
+    { "id": "scope-18", "paperDiscipline": "Chemistry", "targetDiscipline": "Economics", "isMatch": false },
+    { "id": "scope-19", "paperDiscipline": "Sociology", "targetDiscipline": "Physical Sciences & Mathematics", "isMatch": false },
+    { "id": "scope-20", "paperDiscipline": "Psychology", "targetDiscipline": "Chemistry", "isMatch": false },
+    { "id": "scope-21", "paperDiscipline": "Operations Research", "targetDiscipline": "Cardiology", "isMatch": false },
+    { "id": "scope-22", "paperDiscipline": "Political Science", "targetDiscipline": "Oncology", "isMatch": false },
+    { "id": "scope-23", "paperDiscipline": "Education", "targetDiscipline": "Physical Sciences & Mathematics", "isMatch": false },
+    { "id": "scope-24", "paperDiscipline": "Civil Engineering", "targetDiscipline": "Gastroenterology", "isMatch": false },
+    { "id": "scope-25", "paperDiscipline": "Philosophy", "targetDiscipline": "Metabolism", "isMatch": false }
+  ]
+}

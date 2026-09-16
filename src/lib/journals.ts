@@ -3045,11 +3045,15 @@ export function lookupJournalInCatalog(name: string): JournalEntry | undefined {
   });
   if (normMatch) return normMatch;
 
-  // 3. Substring match for substantial titles (> 6 chars)
+  // 3. Substring match for substantial titles (> 6 chars) with length ratio guard (>= 0.75)
+  // to prevent common single words like "Research" from matching "The Phantom Research Herald"
   if (normClean.length > 6) {
     const subMatch = JOURNAL_CATALOG.find((j) => {
       const jNorm = j.name.toLowerCase().replace(/^the\s+/i, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-      return (jNorm.length > 5 && (jNorm.includes(normClean) || normClean.includes(jNorm)));
+      if (jNorm.length <= 5) return false;
+      const lengthRatio = Math.min(normClean.length, jNorm.length) / Math.max(normClean.length, jNorm.length);
+      if (lengthRatio < 0.75) return false;
+      return jNorm.includes(normClean) || normClean.includes(jNorm);
     });
     if (subMatch) return subMatch;
   }

@@ -1,0 +1,27 @@
+{
+  "description": "Catalog lookup benchmark cases testing exact matching, normalization/variants, and rejection of hallucinated venues",
+  "cases": [
+    { "name": "Nature", "shouldMatch": true, "expectedTitle": "Nature" },
+    { "name": "Science", "shouldMatch": true, "expectedTitle": "Science" },
+    { "name": "Cell", "shouldMatch": true, "expectedTitle": "Cell" },
+    { "name": "The Lancet", "shouldMatch": true, "expectedTitle": "The Lancet" },
+    { "name": "Physical Review Letters", "shouldMatch": true, "expectedTitle": "Physical Review Letters" },
+    { "name": "Nature Biotechnology", "shouldMatch": true, "expectedTitle": "Nature Biotechnology" },
+    { "name": "IEEE Transactions on Pattern Analysis and Machine Intelligence", "shouldMatch": true, "expectedTitle": "IEEE Transactions on Pattern Analysis and Machine Intelligence" },
+    { "name": "nature", "shouldMatch": true, "expectedTitle": "Nature" },
+    { "name": "SCIENCE", "shouldMatch": true, "expectedTitle": "Science" },
+    { "name": "cell", "shouldMatch": true, "expectedTitle": "Cell" },
+    { "name": "the lancet", "shouldMatch": true, "expectedTitle": "The Lancet" },
+    { "name": "The New England Journal of Medicine", "shouldMatch": true, "expectedTitle": "The New England Journal of Medicine" },
+    { "name": "Journal of the American Chemical Society", "shouldMatch": true, "expectedTitle": "Journal of the American Chemical Society" },
+    { "name": "Nucleic Acids Research", "shouldMatch": true, "expectedTitle": "Nucleic Acids Research" },
+    { "name": "International Journal of Random LLM Hallucinations", "shouldMatch": false },
+    { "name": "Journal of Fabricated Medical Insights", "shouldMatch": false },
+    { "name": "Universal Predatory Journal of Advanced Algorithms", "shouldMatch": false },
+    { "name": "Global Archives of Invented Discoveries", "shouldMatch": false },
+    { "name": "Fake Science Letters", "shouldMatch": false },
+    { "name": "Journal of Unvalidated Findings", "shouldMatch": false },
+    { "name": "Nonexistent Biomedical Review", "shouldMatch": false },
+    { "name": "The Phantom Research Herald", "shouldMatch": false }
+  ]
+}

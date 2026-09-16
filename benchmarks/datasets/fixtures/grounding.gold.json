@@ -1,0 +1,30 @@
+{
+  "description": "Grounding verification test cases for real vs hallucinated structural anchors",
+  "document": {
+    "rawText": "Title: Impact of Pre-training on Inference Latency\n\nAbstract: We evaluate model latency across workloads.\n\n1. Introduction\nLarge language models require extensive evaluation. As detailed in Table 1, our benchmark spans multiple parameter scales.\n\n2. Methodology\nWe measure memory throughput. The formal latency relationship is given in Equation 1.\n\n3. Results\nFigure 1 illustrates the comparative speedups across GPUs. Table 2 details the token throughput rates.\n\n4. Discussion\nSection 2 highlighted the architectural limitations.",
+    "sections": {
+      "abstract": "We evaluate model latency across workloads.",
+      "introduction": "Large language models require extensive evaluation. As detailed in Table 1, our benchmark spans multiple parameter scales.",
+      "methodology": "We measure memory throughput. The formal latency relationship is given in Equation 1.",
+      "results": "Figure 1 illustrates the comparative speedups across GPUs. Table 2 details the token throughput rates.",
+      "discussion": "Section 2 highlighted the architectural limitations."
+    }
+  },
+  "anchors": [
+    { "anchor": "Table 1", "resolvable": true },
+    { "anchor": "Table 2", "resolvable": true },
+    { "anchor": "Figure 1", "resolvable": true },
+    { "anchor": "Equation 1", "resolvable": true },
+    { "anchor": "Section 2", "resolvable": true },
+    { "anchor": "table: Table 1", "resolvable": true },
+    { "anchor": "fig: Figure 1", "resolvable": true },
+    { "anchor": "Table 3", "resolvable": false },
+    { "anchor": "Table 9", "resolvable": false },
+    { "anchor": "Figure 2", "resolvable": false },
+    { "anchor": "Figure 5", "resolvable": false },
+    { "anchor": "Equation 3", "resolvable": false },
+    { "anchor": "Section 5", "resolvable": false },
+    { "anchor": "Appendix A", "resolvable": false },
+    { "anchor": "Table S1", "resolvable": false }
+  ]
+}

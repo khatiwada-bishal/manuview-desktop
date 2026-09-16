@@ -1,0 +1,49 @@
+{
+  "description": "Citation recency benchmark cases with exact reference year distributions",
+  "cases": [
+    {
+      "id": "recency-fresh",
+      "references": [
+        "Author A. (2025). Title. Journal of Science, 12(3), 45-50.",
+        "Author B. (2024). Title. Nature, 580, 100-105.",
+        "Author C. (2024). Title. Cell, 184, 200-210.",
+        "Author D. (2023). Title. Lancet, 397, 300-310.",
+        "Author E. (2022). Title. Science, 372, 400-410.",
+        "Author F. (2021). Title. PNAS, 118, 500-510.",
+        "Author G. (2020). Title. JACS, 142, 600-610.",
+        "Author H. (2019). Title. IEEE TPAMI, 41, 700-710.",
+        "Author I. (2018). Title. Bioinformatics, 34, 800-810.",
+        "Author J. (2015). Title. PLOS ONE, 10, e0123456."
+      ],
+      "expected": {
+        "totalReferences": 10,
+        "medianYear": 2022,
+        "last5YearsCount": 6,
+        "last5YearsPercent": 60
+      }
+    },
+    {
+      "id": "recency-vintage",
+      "references": [
+        "Classic 1. (1990). Foundations. J. Theory, 1, 1-10.",
+        "Classic 2. (1992). Core theory. J. Theory, 3, 20-30.",
+        "Classic 3. (1995). Landmark study. Science, 267, 40-50.",
+        "Study 4. (2000). Empirical test. Nature, 403, 60-70.",
+        "Study 5. (2005). Extension. Cell, 120, 80-90.",
+        "Study 6. (2010). Survey. ACM CSUR, 42, 100-110.",
+        "Study 7. (2015). Review. Lancet, 385, 120-130.",
+        "Modern 8. (2021). Replication. PNAS, 118, 140-150.",
+        "Modern 9. (2023). Recent note. Science, 379, 160-170.",
+        "Modern 10. (2025). Application. Nature, 630, 180-190."
+      ],
+      "expected": {
+        "totalReferences": 10,
+        "medianYear": 2008,
+        "classicCount": 6,
+        "classicPercent": 60,
+        "last5YearsCount": 3,
+        "last5YearsPercent": 30
+      }
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "description": "Gold benchmark cases for statcheck mathematical functions and text inconsistency auditing",
+  "referencePValues": [
+    { "test": "t", "val": 0.0, "df": 10, "expectedP": 1.0, "tolerance": 0.0001 },
+    { "test": "t", "val": 2.228, "df": 10, "expectedP": 0.05, "tolerance": 0.001 },
+    { "test": "t", "val": 3.169, "df": 10, "expectedP": 0.01, "tolerance": 0.001 },
+    { "test": "t", "val": 2.086, "df": 20, "expectedP": 0.05, "tolerance": 0.001 },
+    { "test": "t", "val": 2.845, "df": 20, "expectedP": 0.01, "tolerance": 0.001 },
+    { "test": "t", "val": 2.000, "df": 60, "expectedP": 0.05, "tolerance": 0.002 },
+    { "test": "t", "val": 2.660, "df": 60, "expectedP": 0.01, "tolerance": 0.001 },
+    { "test": "t", "val": 1.960, "df": 1000, "expectedP": 0.05, "tolerance": 0.001 },
+    { "test": "F", "val": 4.08, "df1": 1, "df2": 40, "expectedP": 0.05, "tolerance": 0.002 },
+    { "test": "F", "val": 7.31, "df1": 1, "df2": 40, "expectedP": 0.01, "tolerance": 0.002 },
+    { "test": "F", "val": 3.23, "df1": 2, "df2": 40, "expectedP": 0.05, "tolerance": 0.002 },
+    { "test": "F", "val": 5.18, "df1": 2, "df2": 40, "expectedP": 0.01, "tolerance": 0.002 },
+    { "test": "F", "val": 2.84, "df1": 3, "df2": 40, "expectedP": 0.05, "tolerance": 0.002 },
+    { "test": "F", "val": 4.31, "df1": 3, "df2": 40, "expectedP": 0.01, "tolerance": 0.002 },
+    { "test": "chi2", "val": 3.841, "df": 1, "expectedP": 0.05, "tolerance": 0.001 },
+    { "test": "chi2", "val": 6.635, "df": 1, "expectedP": 0.01, "tolerance": 0.001 },
+    { "test": "chi2", "val": 5.991, "df": 2, "expectedP": 0.05, "tolerance": 0.001 },
+    { "test": "chi2", "val": 9.210, "df": 2, "expectedP": 0.01, "tolerance": 0.001 },
+    { "test": "chi2", "val": 7.815, "df": 3, "expectedP": 0.05, "tolerance": 0.001 },
+    { "test": "chi2", "val": 11.345, "df": 3, "expectedP": 0.01, "tolerance": 0.001 },
+    { "test": "z", "val": 0.0, "expectedP": 1.0, "tolerance": 0.0001 },
+    { "test": "z", "val": 1.645, "expectedP": 0.10, "tolerance": 0.002 },
+    { "test": "z", "val": 1.960, "expectedP": 0.05, "tolerance": 0.002 },
+    { "test": "z", "val": 2.576, "expectedP": 0.01, "tolerance": 0.002 },
+    { "test": "r", "val": 0.279, "n": 50, "expectedP": 0.05, "tolerance": 0.002 },
+    { "test": "r", "val": 0.361, "n": 50, "expectedP": 0.01, "tolerance": 0.002 },
+    { "test": "r", "val": 0.196, "n": 100, "expectedP": 0.05, "tolerance": 0.002 },
+    { "test": "r", "val": 0.256, "n": 100, "expectedP": 0.01, "tolerance": 0.002 }
+  ],
+  "auditCases": [
+    {
+      "id": "stat-01",
+      "text": "The intervention group showed significant improvement, t(28) = 2.45, p = .02, compared to control.",
+      "hasInconsistency": false
+    },
+    {
+      "id": "stat-02",
+      "text": "Results showed a large effect, t(28) = 2.45, p = .12, suggesting lack of significance.",
+      "hasInconsistency": true
+    },
+    {
+      "id": "stat-03",
+      "text": "ANOVA revealed a main effect across conditions, F(1, 40) = 4.08, p = .049.",
+      "hasInconsistency": false
+    },
+    {
+      "id": "stat-04",
+      "text": "ANOVA revealed no difference, F(1, 40) = 4.08, p = .25, in primary outcomes.",
+      "hasInconsistency": true
+    },
+    {
+      "id": "stat-05",
+      "text": "The distribution was non-uniform, chi2(2) = 5.99, p = .05, rejecting the null.",
+      "hasInconsistency": false
+    },
+    {
+      "id": "stat-06",
+      "text": "The distribution showed disparity, chi2(2) = 5.99, p = .001, at high significance.",
+      "hasInconsistency": true
+    },
+    {
+      "id": "stat-07",
+      "text": "Pearson correlation between variables was moderate, r(48) = .36, p = .01.",
+      "hasInconsistency": false
+    },
+    {
+      "id": "stat-08",
+      "text": "Correlation was not detected, r(48) = .36, p = .40.",
+      "hasInconsistency": true
+    },
+    {
+      "id": "stat-09",
+      "text": "A standard z-test demonstrated difference, z = 1.96, p = .05.",
+      "hasInconsistency": false
+    },
+    {
+      "id": "stat-10",
+      "text": "The standardized test found z = 1.96, p = .18, failing significance.",
+      "hasInconsistency": true
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "manifestVersion": "1.0.0",
+  "engineCommitPin": "476b02dcb3ee86c84783cc7f4a47275e7e064e3d",
+  "created": "2026-09-16T08:00:00.000Z",
+  "datasets": {
+    "fixtures": {
+      "statcheck.gold.json": {
+        "description": "Synthetic gold p-value cases (t, F, chi-square, Z, r) validated against SciPy/R reference values",
+        "layer": "A",
+        "caseCount": 40
+      },
+      "grim.gold.json": {
+        "description": "Granularity-related Inconsistency of Means (GRIM) test cases from Brown & Heathers (2017) and synthetic pairs",
+        "layer": "A",
+        "caseCount": 30
+      },
+      "recency.gold.json": {
+        "description": "Known citation year distributions for reference recency and uncited classic calculations",
+        "layer": "A",
+        "caseCount": 20
+      },
+      "grounding.gold.json": {
+        "description": "Real vs synthetic hallucinated structural anchors (tables, figures, equations) for suppression gating",
+        "layer": "A",
+        "caseCount": 30
+      },
+      "catalog.gold.json": {
+        "description": "Catalog names, case/punctuation variants, and predatory/fake journal names for catalog grounding",
+        "layer": "A",
+        "caseCount": 50
+      }
+    },
+    "cases": {
+      "prior_publication.cases.json": {
+        "description": "Preprint vs published vs hard-negative unpublished collision manuscripts for prior publication gate",
+        "layer": "B",
+        "caseCount": 45
+      },
+      "scope.cases.json": {
+        "description": "Discipline matching and scope desk-reject validation pairs (matched vs mismatched journals)",
+        "layer": "B",
+        "caseCount": 35
+      },
+      "classification.cases.json": {
+        "description": "Multi-class document classification corpus (manuscript, CV, code, grant, business, technical)",
+        "layer": "B",
+        "caseCount": 40
+      },
+      "imrad.cases.json": {
+        "description": "IMRaD section boundary ground truth for character-level IoU and section extraction",
+        "layer": "B",
+        "caseCount": 20
+      },
+      "integrity.cases.json": {
+        "description": "Retraction matching, self-citation ratio, prompt injection red-team, language, and degraded PDF samples",
+        "layer": "B",
+        "caseCount": 40
+      }
+    }
+  }
+}
