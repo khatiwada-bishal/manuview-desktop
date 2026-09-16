@@ -20,6 +20,13 @@ import { batchVerifyReferences } from "@/lib/crossref";
 import { extractReferencesFromText, deduplicateReferences, detectReferenceExtractionQuality } from "@/lib/utils";
 import { computeCitationIntegrity } from "@/lib/engine/citation-audit";
 import { exportBibTeX } from "@/lib/export-generator";
+import { ReferenceStatusDonut } from "@/components/charts/ReferenceStatusDonut";
+import { useCountUp } from "@/lib/motion";
+
+function StatCounter({ value }: { value: number }) {
+  const count = useCountUp({ end: value, duration: 500 });
+  return <>{count}</>;
+}
 
 const SAMPLE_BIBLIOGRAPHY = `1. Saunders D, et al. A DLL3-targeted antibody-drug conjugate for small cell lung cancer. Sci Transl Med. 2015. DOI: 10.1126/scitranslmed.aac9459
 2. Wakefield AJ, et al. Ileal-lymphoid-nodular hyperplasia and pervasive developmental disorder in children. Lancet. 1998. DOI: 10.1016/S0140-6736(97)11096-0
@@ -200,7 +207,7 @@ export function DesktopReferenceView() {
             <button
               type="submit"
               disabled={loading || !input.trim()}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl liquid-glass-btn-primary disabled:opacity-50 text-white text-xs font-semibold tracking-wide transition cursor-pointer shadow-xs"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl liquid-glass-btn-primary disabled:opacity-50 text-white text-xs font-semibold tracking-wide transition cursor-pointer shadow-xs btn-interactive"
             >
               {loading ? (
                 <>
@@ -256,36 +263,50 @@ export function DesktopReferenceView() {
               </div>
             )}
 
+            {/* Reference Status Donut Infographic */}
+            <ReferenceStatusDonut
+              data={{
+                valid: results.summary.verifiedCount,
+                retracted: results.summary.retractedCount,
+                concern: results.summary.expressionOfConcernCount || 0,
+                unresolvable: results.summary.unresolvableCount,
+                unchecked: results.summary.uncheckedCount,
+                total: results.summary.totalReferences,
+              }}
+              activeFilter={statusFilter}
+              onSelectFilter={(f) => setStatusFilter(f as typeof statusFilter)}
+            />
+
             {/* C1 Unified Metrics Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-              <div className="p-4 rounded-2xl liquid-glass-card">
+              <div className="p-4 rounded-2xl liquid-glass-card card-interactive-lift">
                 <div className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Unique Refs</div>
                 <div className="text-2xl font-bold text-neutral-900 dark:text-white mt-1">
-                  {results.summary.totalReferences}
+                  <StatCounter value={results.summary.totalReferences} />
                 </div>
               </div>
-              <div className="p-4 rounded-2xl liquid-glass-card border border-emerald-500/20 bg-emerald-500/5">
+              <div className="p-4 rounded-2xl liquid-glass-card border border-emerald-500/20 bg-emerald-500/5 card-interactive-lift">
                 <div className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase">Verified Valid</div>
                 <div className="text-2xl font-bold text-emerald-800 dark:text-emerald-300 mt-1">
-                  {results.summary.verifiedCount}
+                  <StatCounter value={results.summary.verifiedCount} />
                 </div>
               </div>
-              <div className="p-4 rounded-2xl liquid-glass-card border border-rose-500/20 bg-rose-500/5">
+              <div className="p-4 rounded-2xl liquid-glass-card border border-rose-500/20 bg-rose-500/5 card-interactive-lift">
                 <div className="text-[11px] font-semibold text-rose-700 dark:text-rose-400 uppercase">Retracted</div>
                 <div className="text-2xl font-bold text-rose-800 dark:text-rose-300 mt-1">
-                  {results.summary.retractedCount}
+                  <StatCounter value={results.summary.retractedCount} />
                 </div>
               </div>
-              <div className="p-4 rounded-2xl liquid-glass-card border border-amber-500/20 bg-amber-500/5">
+              <div className="p-4 rounded-2xl liquid-glass-card border border-amber-500/20 bg-amber-500/5 card-interactive-lift">
                 <div className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 uppercase">Unresolvable (404)</div>
                 <div className="text-2xl font-bold text-amber-800 dark:text-amber-300 mt-1">
-                  {results.summary.unresolvableCount}
+                  <StatCounter value={results.summary.unresolvableCount} />
                 </div>
               </div>
-              <div className="p-4 rounded-2xl liquid-glass-card border border-neutral-300 dark:border-neutral-700">
+              <div className="p-4 rounded-2xl liquid-glass-card border border-neutral-300 dark:border-neutral-700 card-interactive-lift">
                 <div className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase">Unchecked</div>
                 <div className="text-2xl font-bold text-neutral-700 dark:text-neutral-300 mt-1">
-                  {results.summary.uncheckedCount}
+                  <StatCounter value={results.summary.uncheckedCount} />
                 </div>
               </div>
             </div>

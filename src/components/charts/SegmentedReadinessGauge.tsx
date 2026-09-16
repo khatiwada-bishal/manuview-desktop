@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { READINESS_BAND_THEME } from "@/lib/charts/theme";
 import { ShieldAlert, AlertTriangle, CheckCircle2, TrendingUp, Info } from "lucide-react";
+import { usePrefersReducedMotion } from "@/lib/motion";
 
 interface SegmentedReadinessGaugeProps {
   currentBand: string; // e.g. "Competitive / Moderate Readiness"
@@ -23,6 +24,13 @@ export function SegmentedReadinessGauge({
   className = "",
 }: SegmentedReadinessGaugeProps) {
   const [inspectedBand, setInspectedBand] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const prefersReducedMotion = usePrefersReducedMotion();
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), 50);
+    return () => clearTimeout(timer);
+  }, []);
 
   const activeTheme = READINESS_BAND_THEME[currentBand] || READINESS_BAND_THEME["Competitive / Moderate Readiness"];
   const activeIndex = activeTheme.stepIndex;
@@ -81,7 +89,7 @@ export function SegmentedReadinessGauge({
                 onMouseLeave={() => setInspectedBand(null)}
                 className={`h-3 rounded-lg border transition-all duration-200 cursor-pointer ${segmentClass} ${
                   isInspected ? "scale-y-125" : ""
-                }`}
+                } ${isCurrent && mounted && !prefersReducedMotion ? "animate-scale-in" : ""}`}
                 title={`${theme.label}: ${theme.description}`}
                 aria-label={theme.label}
               />

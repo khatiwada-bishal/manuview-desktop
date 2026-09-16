@@ -976,7 +976,7 @@ export function DesktopSidebar({
                             <button
                               type="button"
                               onClick={() => onSelectView("personas")}
-                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer ${
+                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer btn-interactive ${
                                 activeView === "personas"
                                   ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
                                   : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
@@ -997,7 +997,7 @@ export function DesktopSidebar({
                             <button
                               type="button"
                               onClick={() => onSelectView("dimensions")}
-                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer ${
+                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer btn-interactive ${
                                 activeView === "dimensions"
                                   ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
                                   : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
@@ -1010,7 +1010,7 @@ export function DesktopSidebar({
                             <button
                               type="button"
                               onClick={() => onSelectView("issues")}
-                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer ${
+                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer btn-interactive ${
                                 activeView === "issues"
                                   ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
                                   : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
@@ -1023,7 +1023,7 @@ export function DesktopSidebar({
                             <button
                               type="button"
                               onClick={() => onSelectView("journals")}
-                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer ${
+                              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer btn-interactive ${
                                 activeView === "journals" || activeView === "recommendations"
                                   ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
                                   : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"

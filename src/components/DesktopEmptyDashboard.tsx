@@ -130,7 +130,7 @@ export function DesktopEmptyDashboard({
             <button
               type="button"
               onClick={() => onOpenService("ai-review")}
-              className="px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md hover:shadow-lg transition cursor-pointer flex items-center gap-2.5 shrink-0"
+              className="px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md hover:shadow-lg transition cursor-pointer flex items-center gap-2.5 shrink-0 btn-interactive"
             >
               <Plus className="w-4 h-4" />
               <span>New Review Scan</span>
@@ -225,7 +225,7 @@ export function DesktopEmptyDashboard({
                         onOpenArticle(paper.id);
                       }
                     }}
-                    className={`group relative rounded-2xl liquid-glass-card liquid-glass-card-interactive p-4 transition cursor-pointer flex flex-col justify-between ${
+                    className={`group relative rounded-2xl liquid-glass-card liquid-glass-card-interactive card-interactive-lift p-4 transition cursor-pointer flex flex-col justify-between ${
                       isSelected
                         ? "border-blue-500/80 bg-blue-500/10 dark:bg-blue-950/30 ring-2 ring-blue-500/30 shadow-sm"
                         : isDeskReject
@@ -331,6 +331,33 @@ export function DesktopEmptyDashboard({
           </div>
         )}
 
+        {/* EMPTY STATE ILLUSTRATION (when no manuscripts exist) */}
+        {papers.length === 0 && (
+          <div className="rounded-3xl liquid-glass-card p-8 sm:p-10 text-center space-y-4 border border-dashed border-black/[0.1] dark:border-white/[0.1]">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center animate-float-1 border border-blue-500/20">
+              <FileText className="w-8 h-8" />
+            </div>
+            <div className="space-y-1.5 max-w-md mx-auto">
+              <h3 className="text-base font-bold text-[#0F172A] dark:text-white">
+                No Manuscripts in Workspace Yet
+              </h3>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                Initiate a complete pre-submission review scan, or run standalone citation audits and journal matching from the specialized diagnostic tools below.
+              </p>
+            </div>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => onOpenService("ai-review")}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition cursor-pointer btn-interactive shadow-xs"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Start First Review Scan</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* QUICK SERVICES */}
         <div className="space-y-3">
           <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 px-1">
@@ -340,7 +367,7 @@ export function DesktopEmptyDashboard({
             {/* 1. Journal Fit Predictor */}
             <div
               onClick={() => onOpenService("journal-fit")}
-              className="rounded-2xl liquid-glass-card liquid-glass-card-interactive p-5 transition cursor-pointer group space-y-2.5"
+              className="rounded-2xl liquid-glass-card liquid-glass-card-interactive card-interactive-lift p-5 transition cursor-pointer group space-y-2.5"
             >
               <div className="flex items-center justify-between">
                 <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-500/20">
@@ -363,7 +390,7 @@ export function DesktopEmptyDashboard({
             {/* 2. Reference Integrity Audit */}
             <div
               onClick={() => onOpenService("reference-checker")}
-              className="rounded-2xl liquid-glass-card liquid-glass-card-interactive p-5 transition cursor-pointer group space-y-2.5"
+              className="rounded-2xl liquid-glass-card liquid-glass-card-interactive card-interactive-lift p-5 transition cursor-pointer group space-y-2.5"
             >
               <div className="flex items-center justify-between">
                 <div className="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center border border-teal-500/20">
@@ -386,7 +413,7 @@ export function DesktopEmptyDashboard({
             {/* 3. Citation Claim Validator */}
             <div
               onClick={() => onOpenService("citation-claim")}
-              className="rounded-2xl liquid-glass-card liquid-glass-card-interactive p-5 transition cursor-pointer group space-y-2.5"
+              className="rounded-2xl liquid-glass-card liquid-glass-card-interactive card-interactive-lift p-5 transition cursor-pointer group space-y-2.5"
             >
               <div className="flex items-center justify-between">
                 <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-500/20">
@@ -409,7 +436,7 @@ export function DesktopEmptyDashboard({
             {/* 4. PRISMA Flow Diagram */}
             <div
               onClick={() => onOpenService("prisma")}
-              className="rounded-2xl liquid-glass-card liquid-glass-card-interactive p-5 transition cursor-pointer group space-y-2.5"
+              className="rounded-2xl liquid-glass-card liquid-glass-card-interactive card-interactive-lift p-5 transition cursor-pointer group space-y-2.5"
             >
               <div className="flex items-center justify-between">
                 <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center border border-purple-500/20">
@@ -432,7 +459,7 @@ export function DesktopEmptyDashboard({
             {/* 5. Journal Cover Letter */}
             <div
               onClick={() => onOpenService("cover-letter")}
-              className="rounded-2xl liquid-glass-card liquid-glass-card-interactive p-5 transition cursor-pointer group space-y-2.5"
+              className="rounded-2xl liquid-glass-card liquid-glass-card-interactive card-interactive-lift p-5 transition cursor-pointer group space-y-2.5"
             >
               <div className="flex items-center justify-between">
                 <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-500/20">
@@ -455,7 +482,7 @@ export function DesktopEmptyDashboard({
             {/* 6. Review Response Builder */}
             <div
               onClick={() => onOpenService("response-builder")}
-              className="rounded-2xl liquid-glass-card liquid-glass-card-interactive p-5 transition cursor-pointer group space-y-2.5"
+              className="rounded-2xl liquid-glass-card liquid-glass-card-interactive card-interactive-lift p-5 transition cursor-pointer group space-y-2.5"
             >
               <div className="flex items-center justify-between">
                 <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center border border-rose-500/20">

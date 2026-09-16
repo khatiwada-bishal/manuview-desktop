@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import type { DecisionCategoryDistribution } from "@/lib/types";
 import { DECISION_CATEGORY_THEME } from "@/lib/charts/theme";
 import { AlertCircle, HelpCircle } from "lucide-react";
+import { usePrefersReducedMotion } from "@/lib/motion";
 
 interface DecisionDistributionBarProps {
   distribution: DecisionCategoryDistribution;
@@ -26,6 +27,13 @@ export function DecisionDistributionBar({
   className = "",
 }: DecisionDistributionBarProps) {
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const prefersReducedMotion = usePrefersReducedMotion();
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), 50);
+    return () => clearTimeout(timer);
+  }, []);
 
   const activeKey = hoveredKey || "p_major_revision";
   const activeTheme = DECISION_CATEGORY_THEME[activeKey];
@@ -65,8 +73,11 @@ export function DecisionDistributionBar({
                 key={key}
                 onMouseEnter={() => setHoveredKey(key)}
                 onMouseLeave={() => setHoveredKey(null)}
-                style={{ width: `${val}%`, backgroundColor: theme.color }}
-                className={`h-full first:rounded-l-lg last:rounded-r-lg transition-all duration-200 cursor-pointer ${
+                style={{
+                  width: mounted || prefersReducedMotion ? `${val}%` : "0%",
+                  backgroundColor: theme.color,
+                }}
+                className={`h-full first:rounded-l-lg last:rounded-r-lg transition-all duration-500 ease-out cursor-pointer ${
                   isHovered ? "brightness-110 scale-y-110 shadow-xs" : "opacity-90 hover:opacity-100"
                 }`}
                 title={`${theme.label}: ${val}% — ${theme.description}`}
@@ -108,9 +119,9 @@ export function DecisionDistributionBar({
               type="button"
               onMouseEnter={() => setHoveredKey(key)}
               onMouseLeave={() => setHoveredKey(null)}
-              className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-xl border transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-xl border transition-all cursor-pointer btn-interactive ${
                 isHovered
-                  ? "bg-neutral-100 dark:bg-neutral-800 border-neutral-400 dark:border-neutral-600 font-bold"
+                  ? "bg-neutral-100 dark:bg-neutral-800 border-neutral-400 dark:border-neutral-600 font-bold shadow-xs"
                   : "bg-white dark:bg-[#1E293B] border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400"
               }`}
             >

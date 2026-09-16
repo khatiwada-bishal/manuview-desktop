@@ -80,6 +80,8 @@ export function ScanPipelineStepper({
 
   const displayPercent = typeof percent === "number" ? Math.max(5, Math.min(100, Math.round(percent))) : (activeIndex + 1) * 25;
 
+  const isDone = typeof percent === "number" ? percent >= 100 : false;
+
   return (
     <div
       className={`w-full max-w-2xl mx-auto space-y-6 text-center ${className}`}
@@ -103,8 +105,8 @@ export function ScanPipelineStepper({
         />
 
         {SCAN_STAGES.map((stage, idx) => {
-          const isCompleted = idx < activeIndex;
-          const isActive = idx === activeIndex;
+          const isCompleted = idx < activeIndex || (isDone && idx === 3);
+          const isActive = idx === activeIndex && !isDone;
           const isPending = idx > activeIndex;
           const Icon = stage.icon;
 
@@ -113,7 +115,9 @@ export function ScanPipelineStepper({
               {/* Node Circle */}
               <div
                 className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-300 ${
-                  isCompleted
+                  isDone && idx === 3
+                    ? "bg-emerald-600 text-white shadow-md ring-4 ring-emerald-200 dark:ring-emerald-800 animate-check-pop"
+                    : isCompleted
                     ? "bg-emerald-600 text-white shadow-sm ring-4 ring-emerald-50 dark:ring-emerald-950/40"
                     : isActive
                     ? "bg-blue-600 text-white shadow-md ring-4 ring-blue-100 dark:ring-blue-900/40 animate-pulse"
@@ -133,7 +137,9 @@ export function ScanPipelineStepper({
               <div className="mt-2.5 hidden sm:block">
                 <span
                   className={`text-[11px] font-bold block transition-colors ${
-                    isActive
+                    isDone && idx === 3
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : isActive
                       ? "text-blue-600 dark:text-blue-400"
                       : isCompleted
                       ? "text-neutral-900 dark:text-neutral-200 font-semibold"
@@ -152,13 +158,32 @@ export function ScanPipelineStepper({
       </div>
 
       {/* Dynamic Status Display Card */}
-      <div className="p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 backdrop-blur-xs space-y-2">
+      <div
+        className={`p-4 rounded-2xl border backdrop-blur-xs space-y-2 transition-colors duration-300 ${
+          isDone
+            ? "bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/50"
+            : "bg-blue-50/50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/40"
+        }`}
+      >
         <div className="flex items-center justify-between text-xs">
           <span className="font-bold text-neutral-900 dark:text-white flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 animate-ping" />
-            Stage {activeIndex + 1} of 4: {SCAN_STAGES[activeIndex].title}
+            {isDone ? (
+              <>
+                <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 stroke-[2.5]" />
+                <span>Diagnostic Scan Complete</span>
+              </>
+            ) : (
+              <>
+                <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 animate-ping" />
+                <span>Stage {activeIndex + 1} of 4: {SCAN_STAGES[activeIndex].title}</span>
+              </>
+            )}
           </span>
-          <span className="font-mono text-xs font-extrabold text-blue-600 dark:text-blue-400">
+          <span
+            className={`font-mono text-xs font-extrabold ${
+              isDone ? "text-emerald-600 dark:text-emerald-400" : "text-blue-600 dark:text-blue-400"
+            }`}
+          >
             {displayPercent}%
           </span>
         </div>
@@ -171,7 +196,9 @@ export function ScanPipelineStepper({
         {/* Micro progress line */}
         <div className="w-full bg-neutral-200/80 dark:bg-neutral-800 rounded-full h-1.5 overflow-hidden">
           <div
-            className="bg-blue-600 dark:bg-blue-400 h-full rounded-full transition-all duration-300 ease-out"
+            className={`h-full rounded-full transition-all duration-300 ease-out ${
+              isDone ? "bg-emerald-600 dark:bg-emerald-400" : "bg-blue-600 dark:bg-blue-400"
+            }`}
             style={{ width: `${displayPercent}%` }}
           />
         </div>

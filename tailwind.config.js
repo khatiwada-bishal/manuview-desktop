@@ -75,6 +75,48 @@ export default {
         sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
         mono: ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "monospace"],
       },
+      transitionDuration: {
+        'instant': '100ms',
+        'fast': '150ms',
+        'base': '220ms',
+        'slow': '320ms',
+        'ambient': '600ms',
+      },
+      transitionTimingFunction: {
+        'standard': 'cubic-bezier(0.2, 0, 0, 1)',
+        'decelerate': 'cubic-bezier(0, 0, 0, 1)',
+        'spring': 'cubic-bezier(0.34, 1.45, 0.64, 1)',
+      },
+      keyframes: {
+        'scale-in': {
+          '0%': { opacity: '0', transform: 'scale(0.96)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        'slide-up': {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'shimmer': {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
+        'pulse-soft': {
+          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+          '50%': { opacity: '0.88', transform: 'scale(0.99)' },
+        },
+        'check-pop': {
+          '0%': { transform: 'scale(0.6)', opacity: '0' },
+          '70%': { transform: 'scale(1.15)' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
+      },
+      animation: {
+        'scale-in': 'scale-in 220ms cubic-bezier(0.2, 0, 0, 1) forwards',
+        'slide-up': 'slide-up 220ms cubic-bezier(0.2, 0, 0, 1) forwards',
+        'shimmer': 'shimmer 2s infinite linear',
+        'pulse-soft': 'pulse-soft 3s ease-in-out infinite',
+        'check-pop': 'check-pop 320ms cubic-bezier(0.34, 1.45, 0.64, 1) forwards',
+      },
     },
   },
   plugins: [],

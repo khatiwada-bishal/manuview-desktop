@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import type { ScoreDimension, DimensionScore } from "@/lib/types";
 import {
   DIMENSION_AXES,
@@ -9,6 +9,7 @@ import {
   formatPolygonPoints,
 } from "@/lib/charts/theme";
 import { Info } from "lucide-react";
+import { usePrefersReducedMotion } from "@/lib/motion";
 
 interface DimensionRadarChartProps {
   dimensions: Record<string, DimensionScore>;
@@ -82,6 +83,13 @@ export function DimensionRadarChart({
   isHeuristicOnly = false,
 }: DimensionRadarChartProps) {
   const [hoveredDim, setHoveredDim] = useState<ScoreDimension | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const prefersReducedMotion = usePrefersReducedMotion();
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), 40);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Self-contained geometric coordinate space with generous margins
   const width = 380;
@@ -99,7 +107,8 @@ export function DimensionRadarChart({
       const dimData = dimensions[dim];
       const rawScore = dimData?.score ?? 3;
       const clamped = Math.max(1, Math.min(5, rawScore));
-      const r = (maxRadius * clamped) / 5;
+      const targetR = (maxRadius * clamped) / 5;
+      const r = (!mounted && !prefersReducedMotion) ? maxRadius * 0.15 : targetR;
       return {
         dim,
         coord: getRadarVertexCoordinate(cx, cy, r, i),
@@ -109,7 +118,7 @@ export function DimensionRadarChart({
         source: dimData?.source,
       };
     });
-  }, [dimensions, cx, cy, maxRadius]);
+  }, [dimensions, cx, cy, maxRadius, mounted, prefersReducedMotion]);
 
   const activeFocusDim = hoveredDim || selectedDimension;
   const activeDetail = activeFocusDim
@@ -326,7 +335,7 @@ export function DimensionRadarChart({
                 onClick={() => onSelectDimension?.(s.dim)}
                 onMouseEnter={() => setHoveredDim(s.dim)}
                 onMouseLeave={() => setHoveredDim(null)}
-                className={`text-[10.5px] font-medium px-2.5 py-1 rounded-xl border transition-all cursor-pointer ${
+                className={`text-[10.5px] font-medium px-2.5 py-1 rounded-xl border transition-all btn-interactive cursor-pointer ${
                   isSelected
                     ? "bg-blue-600 text-white border-blue-600 shadow-xs"
                     : `bg-white dark:bg-[#1E293B] hover:bg-neutral-50 dark:hover:bg-neutral-800 ${scoreColor}`
