@@ -157,7 +157,7 @@ CRITICAL ANTI-HALLUCINATION & STRICT GROUNDING MANDATE:
    - "Reach": An aspirational, premier venue (+30% to +100% higher impact/selectivity than the realistic benchmark).
    - "Realistic": The target-calibrated peer benchmark matching scope and empirical standards.
    - "Fallback": A reliable, indexed specialty journal in the EXACT SAME field with a higher acceptance rate (35-55%) or rapid turnaround.
-   - Every recommendation MUST include: realistic current impactFactor, publisher, calibrated fitScore (0-100), authentic scopeRationale, rejectionRisks, and requiredRevisionsForFit.
+   - Every recommendation MUST include: calibrated fitScore (0-100), authentic scopeRationale, rejectionRisks, and requiredRevisionsForFit. (Do not output impactFactor or publisher; these are resolved deterministically against verified journal catalogs).
 8. Return your output ONLY as valid JSON matching the requested schema.`;
 }
 
@@ -1186,7 +1186,6 @@ export async function runManuscriptDiagnostic(
       editorialTriage: enrichedEditorialTriage,
       calibratedAcceptance,
       overallScore: undefined,
-      scoreUncertaintyMargin: undefined,
       panelConsensus: undefined,
       complianceAudit: domainSynthesis.complianceAudit,
       isEligibleForReview: false,
@@ -1732,7 +1731,6 @@ export async function runManuscriptDiagnostic(
   });
 
   const panelConsensus = computePanelConsensus(finalPersonas, finalOverallScore);
-  const scoreUncertaintyMargin = panelConsensus?.uncertaintyMargin;
 
   const report: FullReviewReport = {
     mode: "full",
@@ -1749,7 +1747,6 @@ export async function runManuscriptDiagnostic(
     isEligibleForReview: !isDeskRejectByScope,
     ineligibilityReason: isDeskRejectByScope ? "scope_mismatch" : undefined,
     overallScore: isDeskRejectByScope ? undefined : finalOverallScore,
-    scoreUncertaintyMargin: isDeskRejectByScope ? undefined : scoreUncertaintyMargin,
     panelConsensus: isDeskRejectByScope ? undefined : panelConsensus,
     complianceAudit: domainSynthesis.complianceAudit,
     summary: finalSummary,

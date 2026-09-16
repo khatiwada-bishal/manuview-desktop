@@ -407,8 +407,6 @@ export interface PanelConsensus {
   };
   consensusLevel: 'unanimous' | 'majority' | 'split';
   borderlineDiagnosis: string;
-  uncertaintyMargin?: number;
-  scoreRange?: [number, number];
 }
 
 export interface FullReviewReport {
@@ -424,7 +422,6 @@ export interface FullReviewReport {
   /** Calibrated Acceptance Probability & Selectivity Analysis */
   calibratedAcceptance?: CalibratedAcceptanceRating;
   overallScore?: number; // 0 to 100 (omitted if non-academic, already published, or heuristic-sourced)
-  scoreUncertaintyMargin?: number; // e.g., ±3 (unanimous) to ±10 (split panel)
   panelConsensus?: PanelConsensus;
   complianceAudit?: DeterministicComplianceAudit;
   isEligibleForReview?: boolean; // false if already published OR non-academic manuscript OR scope mismatch desk reject

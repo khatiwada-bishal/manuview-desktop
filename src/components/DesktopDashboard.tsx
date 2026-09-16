@@ -2951,19 +2951,9 @@ export function DesktopDashboard({
                         <span className="text-3xl sm:text-4xl font-black text-[#0F172A] dark:text-white">
                           {overallScore}
                         </span>
-                        {fullReport?.scoreUncertaintyMargin !== undefined && (
-                          <span className="text-sm font-semibold text-neutral-500 dark:text-neutral-400 ml-1.5">
-                            ±{fullReport.scoreUncertaintyMargin}
-                          </span>
-                        )}
                         <span className="text-xs sm:text-sm font-bold text-[#64748B] dark:text-neutral-400 uppercase tracking-wider ml-2">
                           / 100 OVERALL ACCEPTANCE POTENTIAL
                         </span>
-                        {fullReport?.scoreUncertaintyMargin !== undefined && (
-                          <span className="text-[11px] ml-2 px-2.5 py-0.5 rounded-full font-mono bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">
-                            Band: [{Math.max(0, overallScore - fullReport.scoreUncertaintyMargin)} - {Math.min(100, overallScore + fullReport.scoreUncertaintyMargin)}]
-                          </span>
-                        )}
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">

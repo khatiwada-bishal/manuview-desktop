@@ -1130,11 +1130,6 @@ export function DesktopPreSubmissionScanView({
                         </div>
                         <div className="flex items-baseline gap-1 my-1">
                           <span className="text-4xl font-extrabold text-[#111827] dark:text-white">{report.overallScore}</span>
-                          {report.scoreUncertaintyMargin !== undefined && (
-                            <span className="text-sm font-bold text-neutral-500 dark:text-neutral-400">
-                              ±{report.scoreUncertaintyMargin}
-                            </span>
-                          )}
                           <span className="text-neutral-400 text-sm font-semibold">/100</span>
                         </div>
                         <div
