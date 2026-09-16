@@ -41,8 +41,11 @@ export interface PriorityIssue {
   location?: string;
   evidenceAnchor?: string; // Typed anchor: text: §X "...", equation: Eq. Y, absence: ...
   reviewerQuote: string; // How a reviewer or editor would formulate this critique
-  actionableFix: string; // Specific concrete step to resolve before submission
-  rebuttalStrategy?: string; // Point-by-point author rebuttal framing for journal response letter
+  impactAssessment?: string; // In-depth scholarly & editorial impact analysis explaining why handling editors or specialist referees will object
+  actionableFix: string; // Exhaustive, operational, step-by-step pre-submission fix detailing exact textual, statistical, or control changes
+  suggestedRewrite?: string; // Concrete, ready-to-use manuscript excerpt, equation, or protocol rewrite
+  rebuttalStrategy?: string; // Structured, point-by-point author rebuttal framing for journal response letter
+  expectedEffort?: string; // e.g. "Immediate (1-2 hours)" | "Moderate (1-2 days)" | "Substantial (1-2 weeks)" | "Major (New Experiments/Data)"
   source?: 'llm' | 'heuristic' | 'crossref';
 }
 

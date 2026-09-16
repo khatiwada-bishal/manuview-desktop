@@ -40,6 +40,7 @@ import {
   X,
   Copy,
   Check,
+  Clock,
 } from "lucide-react";
 import { DesktopActiveView } from "./DesktopSidebar";
 import {
@@ -821,6 +822,13 @@ export function DesktopDashboard({
                         {issue.source === "crossref" ? "Registry" : issue.source === "llm" ? "AI" : "Heuristic"}
                       </span>
                     )}
+
+                    {issue.expectedEffort && (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-neutral-500 shrink-0" />
+                        <span>Effort: {issue.expectedEffort}</span>
+                      </span>
+                    )}
                   </div>
 
                   <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">
@@ -836,6 +844,20 @@ export function DesktopDashboard({
                     {issue.description}
                   </p>
                 </div>
+
+                {issue.impactAssessment && (
+                  <div className="p-3.5 rounded-xl bg-amber-500/10 dark:bg-amber-950/20 border border-amber-500/20 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <span className="font-bold text-[#0F172A] dark:text-amber-200 block text-xs">
+                        Editorial Risk &amp; Scholarly Consequence (Why Reviewers Object):
+                      </span>
+                      <p className="leading-relaxed text-amber-950/90 dark:text-amber-300/90 font-light">
+                        {issue.impactAssessment}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {issue.evidenceAnchor && (
                   <div className="p-2.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.04] border border-[#CBD5E1] dark:border-[#334155] text-xs font-mono text-[#0F172A] dark:text-neutral-200 flex items-center gap-2">
@@ -856,20 +878,37 @@ export function DesktopDashboard({
                 {issue.actionableFix && (
                   <div className="p-3.5 rounded-xl bg-[#F0FDF4] dark:bg-emerald-950/30 border border-[#BBF7D0] dark:border-emerald-800/60 text-xs text-[#166534] dark:text-emerald-300 flex items-start gap-2.5">
                     <CheckCircle2 className="w-4 h-4 text-[#16A34A] dark:text-emerald-400 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-bold text-[#0F172A] dark:text-white block mb-0.5">
-                        Required Pre-Submission Fix:
+                    <div className="space-y-1 w-full">
+                      <span className="font-bold text-[#0F172A] dark:text-white block text-xs">
+                        Required Pre-Submission Operational Fix:
                       </span>
-                      <span className="leading-relaxed">{issue.actionableFix}</span>
+                      <div className="leading-relaxed whitespace-pre-line text-[#166534] dark:text-emerald-300 font-light">
+                        {issue.actionableFix}
+                      </div>
                     </div>
+                  </div>
+                )}
+
+                {issue.suggestedRewrite && (
+                  <div className="p-3.5 rounded-xl bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-700/60 text-xs text-neutral-800 dark:text-neutral-200 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-[#0F172A] dark:text-neutral-100 flex items-center gap-1.5 text-xs">
+                        <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                        Ready-to-Use Manuscript Revision / Specification:
+                      </span>
+                      <span className="text-[10px] text-neutral-400 font-mono">Suggested Draft</span>
+                    </div>
+                    <pre className="text-xs font-mono bg-black/[0.03] dark:bg-black/30 p-3 rounded-lg border border-black/5 dark:border-white/5 whitespace-pre-wrap leading-relaxed text-neutral-800 dark:text-neutral-200 overflow-x-auto">
+                      {issue.suggestedRewrite}
+                    </pre>
                   </div>
                 )}
 
                 {issue.rebuttalStrategy && (
                   <div className="p-3.5 rounded-xl bg-[#EFF6FF] dark:bg-blue-950/30 border border-[#BFDBFE] dark:border-blue-800/60 text-xs text-[#1E40AF] dark:text-blue-300 flex items-start gap-2.5">
                     <MessageSquare className="w-4 h-4 text-[#2563EB] dark:text-blue-400 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-bold text-[#1E3A8A] dark:text-blue-200 block mb-0.5">
+                    <div className="space-y-1 w-full">
+                      <span className="font-bold text-[#1E3A8A] dark:text-blue-200 block text-xs">
                         Point-by-Point Author Rebuttal Framing (for Journal Response Letter):
                       </span>
                       <p className="leading-relaxed font-light whitespace-pre-line text-[#1E40AF] dark:text-blue-300">

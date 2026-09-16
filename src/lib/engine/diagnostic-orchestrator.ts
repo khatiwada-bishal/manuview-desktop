@@ -171,9 +171,21 @@ CRITICAL ANTI-HALLUCINATION & STRICT GROUNDING MANDATE:
    - "evidenceAnchors": Specific quotes or section references from the text grounding the critique.
    - "counterArguments": 1-2 points on how the author should frame their rebuttal or defense in a formal response letter.
    - For Reviewer 1: "confidentialEditorNote" providing a candid editorial board memo.
-5. TYPED EVIDENCE ANCHORS & REBUTTAL STRATEGIES:
-   - Every priority issue MUST have a typed "evidenceAnchor": text: §X "<quote up to 25 words>", equation: Eq. Y, or absence: §Z lacks ...
-   - Every priority issue MUST have a "rebuttalStrategy" detailing the point-by-point author defense and revision roadmap for the formal journal response letter.
+5. MANDATE FOR DEEP, EXHAUSTIVE PRIORITIZED ACTION PLAN BEFORE SUBMISSION:
+   Authors rely on the Prioritized Action Plan before Submission as their primary operational pre-submission checklist to prevent rejection. DO NOT produce brief, superficial, or generic 1-sentence summaries.
+   Every priority issue MUST be an in-depth, publication-grade, fully contextualized action item containing:
+   - "priority": "A" (Desk-Reject / Fatal Flaw), "B" (Major Reviewer Objection / Rigor Vulnerability), or "C" (Presentation / Reporting Refinement).
+   - "title": Specific, descriptive academic title identifying the precise methodological, statistical, empirical, or scoping weakness.
+   - "category": "Methodology" | "Causal Claims" | "Statistics" | "Citations" | "Scope/Fit" | "Clarity".
+   - "location": Specific section, heading, table, or equation in the manuscript.
+   - "evidenceAnchor": Typed excerpt grounding the critique: text: §X "<exact excerpt up to 25 words>", equation: Eq. Y, or absence: §Z lacks ...
+   - "reviewerQuote": An authentic, candid 2-3 sentence quote capturing exactly how a skeptical handling editor or specialist referee will phrase this objection in their decision letter.
+   - "description": An in-depth, multi-sentence academic critique (75-150 words) diagnosing the underlying theoretical or methodological flaw, referencing the specific variables, controls, or claims in the text, and explaining why existing evidence fails to support the author's stance.
+   - "impactAssessment": A comprehensive editorial impact analysis (50-100 words) explaining WHY this issue damages the submission's review outcome: specify the exact risk (e.g. desk reject at triage, fatal flaw raised by Statistician, rejection during second round) and which evaluation criteria are degraded.
+   - "actionableFix": An exhaustive, operational, step-by-step pre-submission fix (3-5 numbered steps) detailing the exact revisions, additional statistical tests, sensitivity analyses, or control experiments the author must execute.
+   - "suggestedRewrite": A concrete, ready-to-use sentence, paragraph, or model specification that the authors can adapt directly into their manuscript to resolve the issue.
+   - "rebuttalStrategy": A structured, numbered point-by-point author rebuttal framing (3-4 points) for the formal Response to Reviewers, providing polite, authoritative academic language to defend the revised study.
+   - "expectedEffort": Realistic effort required: "Immediate (1-2 hours)" | "Moderate (1-2 days)" | "Substantial (1-2 weeks)" | "Major (New Experiments/Data)".
 6. REPORTING GUIDELINES COMPLIANCE AUDIT:
    Evaluate the manuscript against the applicable international reporting standard (STROBE, CONSORT, PRISMA, ARRIVE, or Econometric/OR guidelines). Provide guidelineName, standardType, scorePercent (0-100), compliantItems, and missingOrPartialItems.
 7. TARGET JOURNALS & STRATEGIC TIERING:
@@ -301,7 +313,7 @@ You MUST strictly reflect this reality:
     "prior_work": { "score": 1-5, "label": "Prior Work & Reference Integrity", "verdict": string, "strengths": string[], "vulnerabilities": string[] }
   },
   "priorityIssues": [
-    { "id": string, "priority": "A"|"B"|"C", "title": string, "category": "Methodology"|"Causal Claims"|"Statistics"|"Citations"|"Scope/Fit"|"Clarity", "description": string, "location": string, "evidenceAnchor": string, "reviewerQuote": string, "actionableFix": string, "rebuttalStrategy": string }
+    { "id": string, "priority": "A"|"B"|"C", "title": string, "category": "Methodology"|"Causal Claims"|"Statistics"|"Citations"|"Scope/Fit"|"Clarity", "location": string, "evidenceAnchor": string, "reviewerQuote": string, "description": string (in-depth 75-150 word diagnostic), "impactAssessment": string (editorial risk & why reviewers object), "actionableFix": string (exhaustive 3-5 numbered operational steps), "suggestedRewrite": string (concrete manuscript draft or protocol rewrite), "rebuttalStrategy": string (numbered point-by-point rebuttal framing), "expectedEffort": "Immediate (1-2 hours)"|"Moderate (1-2 days)"|"Substantial (1-2 weeks)"|"Major (New Experiments/Data)" }
   ],
   "reviewerPersonas": [
     {
@@ -345,12 +357,15 @@ You MUST strictly reflect this reality:
       "priority": "A" | "B" | "C",
       "title": string,
       "category": "Methodology" | "Causal Claims" | "Statistics" | "Citations" | "Scope/Fit" | "Clarity",
-      "description": string,
       "location": string,
       "evidenceAnchor": string,
       "reviewerQuote": string,
-      "actionableFix": string,
-      "rebuttalStrategy": string
+      "description": string (in-depth 75-150 word academic critique diagnosing the underlying theoretical/empirical flaw with specific variable/model references),
+      "impactAssessment": string (comprehensive 50-100 word editorial risk analysis explaining why handling editors or specialist referees will object),
+      "actionableFix": string (exhaustive 3-5 numbered operational steps detailing exact revisions, statistical tests, or control additions required),
+      "suggestedRewrite": string (concrete, publication-ready sentence, paragraph, or protocol rewrite ready for manuscript insertion),
+      "rebuttalStrategy": string (structured, numbered point-by-point author defense for formal journal response letter),
+      "expectedEffort": "Immediate (1-2 hours)" | "Moderate (1-2 days)" | "Substantial (1-2 weeks)" | "Major (New Experiments/Data)"
     }
   ],
   "reviewerPersonas": [

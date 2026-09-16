@@ -685,7 +685,10 @@ export function generateFullReportHtml(r: FullReviewReport): string {
           <div class="issue-item" data-priority="${escapeHtml(priority)}">
             <div class="issue-header">
               <span class="badge-${priorityClass}">Priority ${escapeHtml(priority)}: ${escapeHtml(iss.category || "General")}</span>
-              <span style="font-size: 11px; color: var(--text-muted); font-mono;">${escapeHtml(iss.id || "")}</span>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                ${iss.expectedEffort ? `<span style="font-size: 11px; background: #F1F5F9; color: #475569; padding: 2px 8px; border-radius: 9999px; border: 1px solid #E2E8F0;">Effort: ${escapeHtml(iss.expectedEffort)}</span>` : ""}
+                <span style="font-size: 11px; color: var(--text-muted); font-mono;">${escapeHtml(iss.id || "")}</span>
+              </div>
             </div>
             <h4 style="font-size: 15px; margin: 6px 0;">${escapeHtml(iss.title || "")}</h4>
             ${iss.evidenceAnchor ? `
@@ -693,12 +696,23 @@ export function generateFullReportHtml(r: FullReviewReport): string {
                 Anchor: ${escapeHtml(iss.evidenceAnchor)}
               </div>
             ` : ""}
-            <p style="font-size: 13px; color: #334155;">${escapeHtml(iss.description || "")}</p>
+            <p style="font-size: 13px; color: #334155; line-height: 1.6;">${escapeHtml(iss.description || "")}</p>
+            ${iss.impactAssessment ? `
+              <div style="margin: 8px 0; background: #FFFBEB; border-left: 3px solid #F59E0B; padding: 8px 12px; font-size: 12px; color: #92400E; border-radius: 0 6px 6px 0; line-height: 1.5;">
+                <strong>Editorial Risk & Scholarly Consequence:</strong> ${escapeHtml(iss.impactAssessment)}
+              </div>
+            ` : ""}
             ${iss.reviewerQuote ? `<div class="quote-box">Reviewer Anticipated Reaction: ${escapeHtml(iss.reviewerQuote)}</div>` : ""}
-            ${iss.actionableFix ? `<div class="fix-box"><strong>Actionable Fix:</strong> ${escapeHtml(iss.actionableFix)}</div>` : ""}
+            ${iss.actionableFix ? `<div class="fix-box" style="white-space: pre-line;"><strong>Required Pre-Submission Fix:</strong>\n${escapeHtml(iss.actionableFix)}</div>` : ""}
+            ${iss.suggestedRewrite ? `
+              <div style="margin: 8px 0; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 10px 12px; border-radius: 6px; font-size: 12px; color: #1E293B;">
+                <div style="font-weight: 700; font-size: 11px; color: #2563EB; text-transform: uppercase; margin-bottom: 4px;">Ready-to-Use Manuscript Revision / Template:</div>
+                <pre style="margin: 0; font-family: monospace; font-size: 11px; white-space: pre-wrap; word-break: break-word; color: #334155;">${escapeHtml(iss.suggestedRewrite)}</pre>
+              </div>
+            ` : ""}
             ${iss.rebuttalStrategy ? `
-              <div style="margin-top: 8px; background: #F5F3FF; border-left: 3px solid #8B5CF6; padding: 8px 12px; font-size: 12px; color: #5B21B6; border-radius: 0 6px 6px 0;">
-                <strong>Author Rebuttal Strategy:</strong> ${escapeHtml(iss.rebuttalStrategy)}
+              <div style="margin-top: 8px; background: #EFF6FF; border-left: 3px solid #2563EB; padding: 8px 12px; font-size: 12px; color: #1E40AF; border-radius: 0 6px 6px 0; white-space: pre-line;">
+                <strong>Author Point-by-Point Rebuttal Strategy:</strong>\n${escapeHtml(iss.rebuttalStrategy)}
               </div>
             ` : ""}
           </div>
@@ -967,16 +981,23 @@ export function generateFullReportWord(r: FullReviewReport): string {
       const priorityClass = priority.toLowerCase();
       return `
       <tr>
-        <td class="badge-${priorityClass}">Priority ${escapeHtml(priority)}</td>
+        <td class="badge-${priorityClass}">
+          Priority ${escapeHtml(priority)}
+          ${iss.expectedEffort ? `<br><span style="font-size: 8pt; color: #475569;">(${escapeHtml(iss.expectedEffort)})</span>` : ""}
+        </td>
         <td>
           <strong>${escapeHtml(iss.title || "")}</strong><br>
           <span style="font-size: 9pt; color: #64748B;">${escapeHtml(iss.category || "")}</span>
           ${iss.evidenceAnchor ? `<br><code style="font-size: 8pt; color: #475569;">${escapeHtml(iss.evidenceAnchor)}</code>` : ""}
         </td>
-        <td>${escapeHtml(iss.description || "")}</td>
         <td>
-          <div><strong>Fix:</strong> ${escapeHtml(iss.actionableFix || "")}</div>
-          ${iss.rebuttalStrategy ? `<div style="margin-top: 4pt; color: #5B21B6; font-size: 9pt;"><strong>Rebuttal Framing:</strong> ${escapeHtml(iss.rebuttalStrategy)}</div>` : ""}
+          <div>${escapeHtml(iss.description || "")}</div>
+          ${iss.impactAssessment ? `<div style="margin-top: 4pt; font-size: 8.5pt; color: #92400E; background: #FFFBEB; padding: 4pt; border-left: 2pt solid #F59E0B;"><strong>Editorial Risk:</strong> ${escapeHtml(iss.impactAssessment)}</div>` : ""}
+        </td>
+        <td>
+          <div style="white-space: pre-line;"><strong>Operational Fix:</strong><br>${escapeHtml(iss.actionableFix || "")}</div>
+          ${iss.suggestedRewrite ? `<div style="margin-top: 4pt; font-size: 8.5pt; color: #1E293B; background: #F8FAFC; padding: 4pt; border: 1px solid #E2E8F0; font-family: monospace; white-space: pre-wrap;"><strong>Draft Revision:</strong><br>${escapeHtml(iss.suggestedRewrite)}</div>` : ""}
+          ${iss.rebuttalStrategy ? `<div style="margin-top: 4pt; color: #1E40AF; background: #EFF6FF; padding: 4pt; border-left: 2pt solid #2563EB; font-size: 8.5pt; white-space: pre-line;"><strong>Rebuttal Framing:</strong><br>${escapeHtml(iss.rebuttalStrategy)}</div>` : ""}
         </td>
       </tr>
     `;}).join("")}

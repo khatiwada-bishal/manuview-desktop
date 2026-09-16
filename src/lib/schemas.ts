@@ -54,8 +54,11 @@ export const PriorityIssueSchema = z.object({
   location: z.string().default("Manuscript Structure"),
   evidenceAnchor: z.string().default("text: §General"),
   reviewerQuote: z.string().default(""),
+  impactAssessment: z.string().optional(),
   actionableFix: z.string().default("Clarify and document this aspect in the revision."),
+  suggestedRewrite: z.string().optional(),
   rebuttalStrategy: z.string().default("Address in revision and clarify methodology bounds"),
+  expectedEffort: z.string().optional(),
 });
 
 export const ReviewerPersonaTypeSchema = z.string().transform((val) => {
@@ -218,6 +221,10 @@ export function validatePriorityIssues(
         actionableFix: item.actionableFix || item.actionable_fix || item.proposedFix || item.fix || item.solution || item.recommendation || "Address in revision",
         category: item.category || "Methodology",
         priority: item.priority || "B",
+        impactAssessment: item.impactAssessment || item.impact_assessment || item.editorialImpact || item.risk || undefined,
+        suggestedRewrite: item.suggestedRewrite || item.suggested_rewrite || item.exampleRewrite || item.example_rewrite || undefined,
+        rebuttalStrategy: item.rebuttalStrategy || item.rebuttal_strategy || item.rebuttal || undefined,
+        expectedEffort: item.expectedEffort || item.expected_effort || item.effort || undefined,
       };
       const parsed = PriorityIssueSchema.safeParse(normalizedItem);
       if (parsed.success) {

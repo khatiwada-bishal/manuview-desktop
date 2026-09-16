@@ -36,6 +36,9 @@ import {
   Lock,
   ArrowRight,
   Copy,
+  Clock,
+  MessageSquare,
+  FileCode,
 } from "lucide-react";
 import {
   FullReviewReport,
@@ -1286,13 +1289,13 @@ export function DesktopPreSubmissionScanView({
                   <span>Prioritized Action Plan before Submission</span>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {report.priorityIssues.map((issue: PriorityIssue) => (
                     <div
                       key={issue.id}
-                      className="p-5 rounded-2xl bg-white border border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937] space-y-3 shadow-2xs"
+                      className="p-5 sm:p-6 rounded-2xl bg-white border border-[#E5E7EB] dark:bg-[#111827] dark:border-[#1F2937] space-y-3.5 shadow-2xs"
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <span
                             className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
@@ -1308,6 +1311,12 @@ export function DesktopPreSubmissionScanView({
                           <span className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
                             {issue.category}
                           </span>
+                          {issue.expectedEffort && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-neutral-500 shrink-0" />
+                              <span>Effort: {issue.expectedEffort}</span>
+                            </span>
+                          )}
                         </div>
                         <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">
                           {issue.priority === "A" ? "Desk-Reject Vulnerability" : "Major Reviewer Challenge"}
@@ -1315,19 +1324,80 @@ export function DesktopPreSubmissionScanView({
                       </div>
 
                       <h4 className="text-sm font-bold text-[#111827] dark:text-white">{issue.title}</h4>
-                      <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">{issue.description}</p>
+                      <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed font-light">{issue.description}</p>
 
-                      <div className="border-l-2 border-neutral-300 dark:border-neutral-600 pl-3 py-1 text-xs italic text-neutral-700 dark:text-neutral-400 bg-neutral-50/50 dark:bg-[#161F30] rounded-r-lg">
-                        &ldquo;{issue.reviewerQuote}&rdquo;
-                      </div>
-
-                      <div className="p-3.5 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0] dark:bg-emerald-950/30 dark:border-emerald-800/50 text-xs text-[#166534] dark:text-emerald-300 flex items-start gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <span className="font-bold text-[#111827] dark:text-white block mb-0.5">Required Pre-Submission Fix:</span>
-                          {issue.actionableFix}
+                      {issue.impactAssessment && (
+                        <div className="p-3.5 rounded-xl bg-amber-500/10 dark:bg-amber-950/20 border border-amber-500/20 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
+                          <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                          <div className="space-y-1">
+                            <span className="font-bold text-[#111827] dark:text-amber-200 block text-xs">
+                              Editorial Risk &amp; Scholarly Consequence (Why Reviewers Object):
+                            </span>
+                            <p className="leading-relaxed text-amber-950/90 dark:text-amber-300/90 font-light">
+                              {issue.impactAssessment}
+                            </p>
+                          </div>
                         </div>
-                      </div>
+                      )}
+
+                      {issue.evidenceAnchor && (
+                        <div className="p-2.5 rounded-xl bg-neutral-50 dark:bg-[#161F30] border border-[#E5E7EB] dark:border-[#1F2937] text-xs font-mono text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
+                          <FileCode className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                          <span className="font-bold text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 text-neutral-500 dark:text-neutral-400">
+                            Anchor
+                          </span>
+                          <span className="truncate">{issue.evidenceAnchor}</span>
+                        </div>
+                      )}
+
+                      {issue.reviewerQuote && (
+                        <div className="border-l-2 border-neutral-300 dark:border-neutral-600 pl-3.5 py-1 text-xs italic text-neutral-700 dark:text-neutral-300 bg-neutral-50/50 dark:bg-[#161F30] rounded-r-lg font-serif">
+                          &ldquo;{issue.reviewerQuote}&rdquo;
+                        </div>
+                      )}
+
+                      {issue.actionableFix && (
+                        <div className="p-3.5 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0] dark:bg-emerald-950/30 dark:border-emerald-800/50 text-xs text-[#166534] dark:text-emerald-300 flex items-start gap-2.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                          <div className="space-y-1 w-full">
+                            <span className="font-bold text-[#111827] dark:text-white block text-xs">
+                              Required Pre-Submission Operational Fix:
+                            </span>
+                            <div className="leading-relaxed whitespace-pre-line text-[#166534] dark:text-emerald-300 font-light">
+                              {issue.actionableFix}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {issue.suggestedRewrite && (
+                        <div className="p-3.5 rounded-xl bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-700/60 text-xs text-neutral-800 dark:text-neutral-200 space-y-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-bold text-[#111827] dark:text-neutral-100 flex items-center gap-1.5 text-xs">
+                              <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                              Ready-to-Use Manuscript Revision / Specification:
+                            </span>
+                            <span className="text-[10px] text-neutral-400 font-mono">Suggested Draft</span>
+                          </div>
+                          <pre className="text-xs font-mono bg-black/[0.03] dark:bg-black/30 p-3 rounded-lg border border-black/5 dark:border-white/5 whitespace-pre-wrap leading-relaxed text-neutral-800 dark:text-neutral-200 overflow-x-auto">
+                            {issue.suggestedRewrite}
+                          </pre>
+                        </div>
+                      )}
+
+                      {issue.rebuttalStrategy && (
+                        <div className="p-3.5 rounded-xl bg-[#EFF6FF] border border-[#BFDBFE] dark:bg-blue-950/30 dark:border-blue-800/50 text-xs text-[#1E40AF] dark:text-blue-300 flex items-start gap-2.5">
+                          <MessageSquare className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                          <div className="space-y-1 w-full">
+                            <span className="font-bold text-[#1E3A8A] dark:text-blue-200 block text-xs">
+                              Point-by-Point Author Rebuttal Framing (for Journal Response Letter):
+                            </span>
+                            <p className="leading-relaxed font-light whitespace-pre-line text-[#1E40AF] dark:text-blue-300">
+                              {issue.rebuttalStrategy}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
