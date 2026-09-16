@@ -472,25 +472,16 @@ export function calculateCalibratedAcceptanceProbability(
     compositeScore = Math.round(overallScore);
   }
 
-  // 3. Dimensional Multiplier M_Q = (Score / 65)^2.2
-  const dimensionalMultiplier = Math.max(
-    0.05,
-    Math.min(3.5, Math.pow(Math.max(1, compositeScore) / 65, 2.2))
-  );
-
-  // 4. Critical Hazard Multipliers
-  let hazardMultiplier = 1.0;
+  // 3. Critical Hazard Identification
   let primaryHazard: string | undefined;
   let keyOpportunity: string | undefined;
 
   if (isScopeMismatch) {
-    hazardMultiplier *= 0.05;
     primaryHazard = "Out-of-Scope Target Venue: Manuscript domain diverges from target journal editorial remit.";
-    keyOpportunity = "Retarget submission to a discipline-aligned journal to immediately eliminate the 95% scope triage barrier.";
+    keyOpportunity = "Retarget submission to a discipline-aligned journal to immediately eliminate the scope triage barrier.";
   }
 
   if (isMethodsMissing) {
-    hazardMultiplier *= 0.20;
     if (!primaryHazard) {
       primaryHazard = "Missing Materials and Methods Section: Referees cannot verify experimental protocol or reproducibility.";
     }
@@ -501,7 +492,6 @@ export function calculateCalibratedAcceptanceProbability(
 
   const hasRetraction = Boolean(citationIntegrity && citationIntegrity.retractedCount > 0);
   if (hasRetraction) {
-    hazardMultiplier *= 0.35;
     if (!primaryHazard) {
       primaryHazard = `Retracted Citations Detected: Bibliography contains ${citationIntegrity?.retractedCount} formally retracted paper(s).`;
     }
@@ -509,7 +499,6 @@ export function calculateCalibratedAcceptanceProbability(
       keyOpportunity = "Replace all retracted citations with recent, verified peer-reviewed publications before submission.";
     }
   } else if (citationIntegrity && citationIntegrity.unresolvableCount > 5) {
-    hazardMultiplier *= 0.75;
     if (!primaryHazard) {
       primaryHazard = `High Proportion of Unresolvable References (${citationIntegrity.unresolvableCount} unverified citations).`;
     }
@@ -519,7 +508,6 @@ export function calculateCalibratedAcceptanceProbability(
   }
 
   if (empiricalCues && (!empiricalCues.statisticalMetrics?.length && !empiricalCues.sampleSizes?.length)) {
-    hazardMultiplier *= 0.85;
     if (!primaryHazard && lowestDim?.dim === "methodology") {
       primaryHazard = "Absence of explicit sample size metrics (n) or formal statistical reporting.";
       keyOpportunity = "Report precise sample sizes (n), degrees of freedom, and statistical power metrics.";
@@ -534,59 +522,31 @@ export function calculateCalibratedAcceptanceProbability(
     keyOpportunity = "Address reviewer line-level critiques and provide explicit author rebuttal letters.";
   }
 
-  // 5. Calibrated Acceptance Probability
-  const rawProb = baselineRate * dimensionalMultiplier * hazardMultiplier;
-  const calibratedProb = Math.max(1, Math.min(95, Math.round(rawProb)));
-
-  // 6. Confidence bounds range
-  const halfWidth = Math.max(2, Math.min(7, Math.round(calibratedProb * 0.18)));
-  const probabilityRange: [number, number] = [
-    Math.max(1, calibratedProb - halfWidth),
-    Math.min(99, calibratedProb + halfWidth),
-  ];
-
-  // 7. Decision Outcome
+  // 4. Deterministic Editorial Readiness Band & Decision Outcome
   let decisionOutcome: ExpectedDecisionOutcome;
-  if (calibratedProb < 10 || isScopeMismatch || isMethodsMissing) {
+  let readinessBand: "Desk Reject Hazard" | "Substantial Revision Needed" | "Competitive / Moderate Readiness" | "Strong Submission Readiness";
+
+  if (isScopeMismatch || isMethodsMissing || hasRetraction) {
     decisionOutcome = "Desk Reject Hazard";
-  } else if (calibratedProb < 25) {
+    readinessBand = "Desk Reject Hazard";
+  } else if (compositeScore < 50 || (lowestDim && lowestDim.score <= 2)) {
     decisionOutcome = "High Risk / Substantial Rebuttal Required";
-  } else if (calibratedProb < 55) {
+    readinessBand = "Substantial Revision Needed";
+  } else if (compositeScore < 72) {
     decisionOutcome = "Competitive with Major Revisions";
+    readinessBand = "Competitive / Moderate Readiness";
   } else {
     decisionOutcome = "Strong Candidate / Likely Acceptance";
+    readinessBand = "Strong Submission Readiness";
   }
-
-  // 8. 5-Category Probability Distribution
-  const decisionDistribution = calculateDecisionCategoryDistribution({
-    compositeScore,
-    baselineRate,
-    isScopeMismatch,
-    isMethodsMissing,
-    hasRetraction,
-  });
-
-  const readinessBand =
-    decisionOutcome === "Desk Reject Hazard"
-      ? ("Desk Reject Hazard" as const)
-      : decisionOutcome === "High Risk / Substantial Rebuttal Required"
-      ? ("Substantial Revision Needed" as const)
-      : decisionOutcome === "Competitive with Major Revisions"
-      ? ("Competitive / Moderate Readiness" as const)
-      : ("Strong Submission Readiness" as const);
 
   return {
     overallScore: compositeScore,
-    acceptanceProbabilityPercent: calibratedProb,
-    probabilityRange,
     baselineJournalRatePercent: baselineRate,
     decisionOutcome,
     readinessBand,
     calibrationAdvisory:
-      "Advisory Readiness Tier: Estimated relative to historical selectivity base rates and detected technical barriers. Real-world peer-review decisions exhibit variance dependent on referee assignment.",
-    decisionDistribution,
-    dimensionalMultiplier: Number(dimensionalMultiplier.toFixed(2)),
-    hazardPenaltyMultiplier: Number(hazardMultiplier.toFixed(2)),
+      "Qualitative Pre-Submission Readiness Assessment — Quantitative acceptance probability percentages are suppressed because pre-submission predictive calibration has not been statistically validated against real-world journal accept/reject datasets. Evaluated on editorial scope, methodological completeness, and verified reference integrity.",
     primaryHazard,
     keyOpportunity,
   };

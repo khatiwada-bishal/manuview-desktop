@@ -3,6 +3,7 @@ import {
   inferJournalDiscipline,
   isDisciplineMatch,
   JOURNAL_CATALOG,
+  lookupJournalInCatalog,
   MatchedJournalItem,
   TargetJournalTierResults,
 } from "../journals";
@@ -341,15 +342,15 @@ Please return your analysis as a JSON object matching this schema:
     {
       "tier": "Reach" | "Realistic" | "Fallback",
       "journalName": string,
-      "impactFactor": number,
-      "publisher": string,
       "fitScore": number,
       "scopeRationale": string,
       "rejectionRisks": string[],
       "requiredRevisionsForFit": string[]
     }
   ]
-}`;
+}
+
+CRITICAL METRIC GROUNDING: Do NOT invent or output numerical impact factors or publisher details. Authoritative verified journal metrics are bound directly from the catalog.`;
 }
 
 export function buildLocalSLMSystemPrompt(boundaryDelimiter = BOUNDARY_DELIMITER): string {
@@ -1714,10 +1715,21 @@ export async function runManuscriptDiagnostic(
   });
   calibratedAcceptance.verificationCoverage = verificationCoverage;
 
-  const finalRecommendations: JournalRecommendation[] =
+  const rawRecommendations: JournalRecommendation[] =
     recsValidation.isValid && recsValidation.data
       ? recsValidation.data
       : domainSynthesis.journalRecommendations;
+
+  // Ground journal metrics strictly in the curated catalog (§1.3)
+  const finalRecommendations: JournalRecommendation[] = rawRecommendations.map((rec) => {
+    const catalogEntry = lookupJournalInCatalog(rec.journalName);
+    return {
+      ...rec,
+      journalName: catalogEntry ? catalogEntry.name : rec.journalName,
+      impactFactor: catalogEntry ? catalogEntry.impactFactor : undefined,
+      publisher: catalogEntry ? catalogEntry.publisher : (rec.publisher && rec.publisher !== "Academic Publisher" ? rec.publisher : "Non-catalog venue"),
+    };
+  });
 
   const panelConsensus = computePanelConsensus(finalPersonas, finalOverallScore);
   const scoreUncertaintyMargin = panelConsensus?.uncertaintyMargin;

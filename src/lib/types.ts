@@ -118,7 +118,7 @@ export interface CitationIntegritySummary {
 export interface JournalRecommendation {
   tier: 'Reach' | 'Realistic' | 'Fallback';
   journalName: string;
-  impactFactor: number | string;
+  impactFactor?: number | string;
   publisher: string;
   fitScore: number; // percentage 0-100
   scopeRationale: string;
@@ -175,6 +175,8 @@ export interface SectionProvenance {
   introductionInferred?: boolean;
   discussionInferred?: boolean;
   structureNotDetected?: boolean;
+  pdfExtractionWarning?: string;
+  nonEnglishWarning?: string;
 }
 
 export interface ParsedManuscript {
@@ -339,17 +341,17 @@ export interface VerificationCoverageSummary {
 
 export interface CalibratedAcceptanceRating {
   overallScore: number; // 0-100 composite academic quality score
-  acceptanceProbabilityPercent: number; // e.g. 15 (%)
-  probabilityRange: [number, number]; // e.g. [11, 19] confidence bounds
-  baselineJournalRatePercent: number; // Target journal baseline selectivity, e.g. 7.5 (%)
+  acceptanceProbabilityPercent?: number; // Optional; suppressed in favor of qualitative readinessBand to avoid false precision
+  probabilityRange?: [number, number]; // Optional; suppressed in favor of qualitative readinessBand
+  baselineJournalRatePercent?: number; // Target journal baseline historical selectivity (e.g. 7.5% from catalog)
   decisionOutcome: ExpectedDecisionOutcome;
-  readinessBand?: 'Desk Reject Hazard' | 'Substantial Revision Needed' | 'Competitive / Moderate Readiness' | 'Strong Submission Readiness';
-  calibrationAdvisory?: string;
-  decisionDistribution: DecisionCategoryDistribution;
-  dimensionalMultiplier: number; // Composite quality multiplier MQ (e.g. 1.85)
-  hazardPenaltyMultiplier: number; // Compounded deficit penalty (e.g. 0.85)
-  primaryHazard?: string; // Leading bottleneck suppressing probability
-  keyOpportunity?: string; // Highest-leverage fix to boost acceptance odds
+  readinessBand: 'Desk Reject Hazard' | 'Substantial Revision Needed' | 'Competitive / Moderate Readiness' | 'Strong Submission Readiness';
+  calibrationAdvisory: string;
+  decisionDistribution?: DecisionCategoryDistribution;
+  dimensionalMultiplier?: number;
+  hazardPenaltyMultiplier?: number;
+  primaryHazard?: string; // Leading bottleneck
+  keyOpportunity?: string; // Highest-leverage fix to elevate submission readiness
   verificationCoverage?: VerificationCoverageSummary;
 }
 
@@ -394,7 +396,7 @@ export interface DeterministicComplianceAudit {
 }
 
 /**
- * Panel consensus and decision variance distribution across the simulated reviewers (P0-3).
+ * Reviewer recommendation distribution across the simulated evaluation tracks.
  */
 export interface PanelConsensus {
   distribution: {
@@ -405,8 +407,8 @@ export interface PanelConsensus {
   };
   consensusLevel: 'unanimous' | 'majority' | 'split';
   borderlineDiagnosis: string;
-  uncertaintyMargin: number; // e.g. ±3 (unanimous) to ±10 (split)
-  scoreRange?: [number, number]; // [minScore, maxScore]
+  uncertaintyMargin?: number;
+  scoreRange?: [number, number];
 }
 
 export interface FullReviewReport {

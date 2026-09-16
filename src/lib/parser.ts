@@ -386,16 +386,22 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
       subType = 'Empirical Economic & Statistical Investigation';
     }
 
+    const langCheck = detectLanguageIntegrity(clean);
+    if (!langCheck.isEnglish && langCheck.warning) {
+      detected.unshift("Non-English text detected (reduced confidence for English-calibrated rubrics)");
+    }
+
     const featuresSummary = detected.length > 0 ? detected.slice(0, 3).join(', ') : 'standard scholarly architecture';
+    const langPrefix = (!langCheck.isEnglish && langCheck.warning) ? `NOTE: ${langCheck.warning}\n\n` : '';
 
     return {
       category: 'academic_manuscript',
       categoryLabel: `Academic Manuscript (${subType})`,
       isAcademicManuscript: true,
-      confidence: Math.min(0.85 + (academicScore * 0.02), 0.99),
+      confidence: !langCheck.isEnglish ? 0.70 : Math.min(0.85 + (academicScore * 0.02), 0.99),
       detectedFeatures: detected,
       salutation: 'Dear Author / Contributing Researcher',
-      advisoryMessage: `Your submission has been verified as an authentic ${subType}. Structural analysis confirmed ${featuresSummary}. ManuView has evaluated your work against calibrated peer-review rubrics across 6 core dimensions, screening for causal overclaims, empirical/statistical rigor, reference integrity, and journal desk-rejection hazards.`,
+      advisoryMessage: `${langPrefix}Your submission has been verified as an authentic ${subType}. Structural analysis confirmed ${featuresSummary}. ManuView has evaluated your work against calibrated peer-review rubrics across 6 core dimensions, screening for causal overclaims, empirical/statistical rigor, reference integrity, and journal desk-rejection hazards.`,
       customGuidance: 'Review the prioritized action items (Priority A desk-reject hazards and Priority B reviewer pushback) and consult the 5 simulated peer-reviewer personas before submitting to your target journal.'
     };
   }
@@ -417,6 +423,98 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
     advisoryMessage: 'We detected a general essay, opinion piece, or informational text without empirical scientific methodology or peer-reviewed literature citations. ManuView is calibrated for scientific preprints and journal submissions.',
     customGuidance: 'If this is intended as an academic perspective or review article, ensure formal literature citations, scholarly framing, and structured theoretical or empirical analysis are incorporated.'
   };
+}
+
+const ENGLISH_STOPWORDS = new Set([
+  "the", "of", "and", "in", "to", "with", "for", "as", "by", "on",
+  "that", "is", "was", "are", "from", "at", "it", "this", "be", "an",
+  "which", "we", "our", "were", "or", "have", "has", "not", "their",
+  "can", "between", "these", "such", "using", "study", "used", "results",
+  "data", "model", "analysis", "method", "methods", "paper", "based"
+]);
+
+/**
+ * Detects English language dominance in text (§5.3).
+ * Flags non-English manuscripts so authors are transparently notified that
+ * deterministic audits (Statcheck, GRIM, IMRaD, hedging) require English.
+ */
+export function detectLanguageIntegrity(text: string): {
+  isEnglish: boolean;
+  stopwordRatio: number;
+  nonLatinCharRatio: number;
+  warning?: string;
+} {
+  const clean = (text || "").trim();
+  // Non-Latin scripts (CJK, Cyrillic, Arabic, Devanagari, etc.)
+  const nonLatinMatches = clean.match(/[\u0400-\u04FF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\u0600-\u06FF\u0900-\u097F]/g);
+  const nonLatinCharRatio = nonLatinMatches ? nonLatinMatches.length / Math.max(1, clean.length) : 0;
+
+  if (nonLatinCharRatio >= 0.20 && clean.length >= 20) {
+    return {
+      isEnglish: false,
+      stopwordRatio: 0,
+      nonLatinCharRatio: Math.round(nonLatinCharRatio * 100) / 100,
+      warning: "Non-English Text Detected: ManuView's deterministic rule engines (Statcheck, GRIM, IMRaD section detection, and hedging lexicons) are calibrated for English-language scholarly manuscripts. Diagnostic confidence is reduced for non-English submissions.",
+    };
+  }
+
+  const tokens = clean.toLowerCase().split(/\s+/).filter(Boolean);
+  if (tokens.length < 15) {
+    return { isEnglish: true, stopwordRatio: 1.0, nonLatinCharRatio: 0 };
+  }
+
+  let englishStopwordCount = 0;
+  for (const token of tokens) {
+    const stripped = token.replace(/[^a-z]/g, "");
+    if (ENGLISH_STOPWORDS.has(stripped)) {
+      englishStopwordCount++;
+    }
+  }
+
+  const stopwordRatio = englishStopwordCount / tokens.length;
+  const isEnglish = stopwordRatio >= 0.07;
+  const warning = !isEnglish
+    ? "Non-English Text Detected: ManuView's deterministic rule engines (Statcheck, GRIM, IMRaD section detection, and hedging lexicons) are calibrated for English-language scholarly manuscripts. Diagnostic confidence is reduced for non-English submissions."
+    : undefined;
+
+  return {
+    isEnglish,
+    stopwordRatio: Math.round(stopwordRatio * 100) / 100,
+    nonLatinCharRatio: Math.round(nonLatinCharRatio * 100) / 100,
+    warning,
+  };
+}
+
+/**
+ * Detects PDF text extraction anomalies or degraded stream tokens (§5.2).
+ */
+export function detectPdfExtractionQuality(rawText: string): {
+  isHighQuality: boolean;
+  warning?: string;
+} {
+  const clean = (rawText || "").trim();
+  const replacementCharCount = (clean.match(/[\uFFFD\u0000]/g) || []).length;
+  if (replacementCharCount > 10) {
+    return {
+      isHighQuality: false,
+      warning: "Low extraction confidence: document text contains fragmented glyphs or replacement characters. Ensure the PDF contains a selectable text layer rather than scanned raster images.",
+    };
+  }
+
+  if (clean.length < 50) return { isHighQuality: true };
+
+  const streamArtifacts = (clean.match(/\b(?:BT|ET|Tj|TJ|Do|rg|RG)\b/g) || []).length;
+  const words = clean.split(/\s+/).filter(Boolean);
+  const avgWordLength = words.length > 0 ? clean.length / words.length : 0;
+
+  if (streamArtifacts > 25 || avgWordLength > 40 || avgWordLength < 2) {
+    return {
+      isHighQuality: false,
+      warning: "Low extraction confidence: document text contains fragmented glyphs, excessive replacement characters, or PDF stream artifacts. Ensure the PDF contains a selectable text layer rather than scanned raster images.",
+    };
+  }
+
+  return { isHighQuality: true };
 }
 
 /**
@@ -585,6 +683,15 @@ export function parseManuscriptText(inputRawText: string, filename?: string): Pa
     introductionInferred: false,
     discussionInferred: false,
   };
+
+  const langCheck = detectLanguageIntegrity(rawText);
+  if (!langCheck.isEnglish && langCheck.warning) {
+    sectionProvenance.nonEnglishWarning = langCheck.warning;
+  }
+  const pdfQuality = detectPdfExtractionQuality(rawText);
+  if (!pdfQuality.isHighQuality && pdfQuality.warning) {
+    sectionProvenance.pdfExtractionWarning = pdfQuality.warning;
+  }
 
   // Normalize text for segmenting
   const introRegex =

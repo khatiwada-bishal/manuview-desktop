@@ -106,7 +106,7 @@ export const JournalRecommendationSchema = z.object({
     })
     .default("Realistic"),
   journalName: z.string().min(1),
-  impactFactor: z.union([z.number(), z.string()]).default("N/A"),
+  impactFactor: z.union([z.number(), z.string()]).optional(),
   publisher: z.string().default("Academic Publisher"),
   fitScore: z.number().transform((v) => Math.min(100, Math.max(0, Math.round(v)))).default(75),
   scopeRationale: z.string().min(1),

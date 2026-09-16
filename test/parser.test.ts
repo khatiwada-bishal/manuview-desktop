@@ -86,3 +86,38 @@ References
   assert.equal(parsed.sectionProvenance?.methodsInferred, true, "methodsInferred must be true when headings are absent");
   assert.equal(parsed.sectionProvenance?.structureNotDetected, true, "structureNotDetected must be true when body slicing fallback is triggered");
 });
+
+test("detectLanguageIntegrity accurately discriminates English from non-English manuscripts", async () => {
+  const { detectLanguageIntegrity } = await import("../src/lib/parser.ts");
+
+  const englishText = "The study investigates whether the application of machine learning models improves diagnosis in clinical healthcare systems.";
+  const engResult = detectLanguageIntegrity(englishText);
+  assert.equal(engResult.isEnglish, true);
+  assert.equal(engResult.warning, undefined);
+
+  // Spanish scholarly text
+  const spanishText = "El presente estudio analiza el impacto de las redes neuronales en la optimización de procesos industriales según los datos recopilados durante el año anterior.";
+  const esResult = detectLanguageIntegrity(spanishText);
+  assert.equal(esResult.isEnglish, false);
+  assert.ok(esResult.warning?.includes("Non-English Text Detected"));
+
+  // Chinese text
+  const chineseText = "本研究探讨了深度神经网络在自然语言处理任务中的性能表现，并对模型参数进行了系统优化。";
+  const zhResult = detectLanguageIntegrity(chineseText);
+  assert.equal(zhResult.isEnglish, false);
+  assert.ok(zhResult.warning?.includes("Non-English Text Detected"));
+});
+
+test("detectPdfExtractionQuality flags degraded stream artifacts and corrupted glyphs", async () => {
+  const { detectPdfExtractionQuality } = await import("../src/lib/parser.ts");
+
+  const cleanText = "This is a clean, well-formatted scholarly text extracted from a searchable PDF with standard fonts.";
+  assert.equal(detectPdfExtractionQuality(cleanText).isHighQuality, true);
+
+  // Corrupted stream with repeated replacement characters
+  const corruptedText = "Study \uFFFD\uFFFD\uFFFD\uFFFD of \uFFFD\uFFFD\uFFFD\uFFFD polymers \uFFFD\uFFFD\uFFFD\uFFFD with \uFFFD\uFFFD\uFFFD\uFFFD " + "\uFFFD".repeat(20);
+  const corResult = detectPdfExtractionQuality(corruptedText);
+  assert.equal(corResult.isHighQuality, false);
+  assert.ok(corResult.warning?.includes("Low extraction confidence"));
+});
+

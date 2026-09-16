@@ -1154,7 +1154,7 @@ export function DesktopPreSubmissionScanView({
                         </div>
                         {report.panelConsensus && (
                           <div className="text-[10px] text-neutral-500 dark:text-neutral-400 font-medium mt-1">
-                            Band: {report.panelConsensus.scoreRange?.[0]}–{report.panelConsensus.scoreRange?.[1]} ({report.panelConsensus.consensusLevel})
+                            Outlook: {report.panelConsensus.consensusLevel.toUpperCase()}
                           </div>
                         )}
                       </>
@@ -1401,7 +1401,7 @@ export function DesktopPreSubmissionScanView({
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider">
-                          Panel Consensus:
+                          Reviewer Perspectives:
                         </span>
                         <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
                           report.panelConsensus.consensusLevel === "unanimous"
@@ -1410,7 +1410,7 @@ export function DesktopPreSubmissionScanView({
                             ? "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800"
                             : "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
                         }`}>
-                          {report.panelConsensus.consensusLevel.toUpperCase()} (±{report.panelConsensus.uncertaintyMargin} Margin)
+                          {report.panelConsensus.consensusLevel.toUpperCase()} OUTLOOK
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 text-[11px] font-medium text-neutral-600 dark:text-neutral-400 flex-wrap">

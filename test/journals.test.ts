@@ -52,3 +52,25 @@ test("Recommendation Consistency Guarantee: recommended journals match scope", (
     assert.equal(result.isMatch, true, `Recommended journal ${item.journal.name} (${item.journal.discipline}) should be discipline-compatible with CS`);
   }
 });
+
+test("lookupJournalInCatalog grounds journal metrics and rejects hallucinated entries", async () => {
+  const { lookupJournalInCatalog } = await import("../src/lib/journals.ts");
+
+  // Exact match
+  const nature = lookupJournalInCatalog("Nature");
+  assert.ok(nature !== undefined);
+  assert.equal(nature?.name, "Nature");
+  assert.equal(typeof nature?.impactFactor, "number");
+  assert.ok(nature?.impactFactor > 50);
+
+  // Normalized match with "The" prefix and case insensitivity
+  const lancet = lookupJournalInCatalog("the lancet");
+  assert.ok(lancet !== undefined);
+  assert.equal(lancet?.name, "The Lancet");
+  assert.equal(typeof lancet?.impactFactor, "number");
+
+  // Non-catalog / fabricated journal returns undefined (refusing hallucinated IFs)
+  const fakeJournal = lookupJournalInCatalog("Journal of Completely Fabricated Studies 2026");
+  assert.equal(fakeJournal, undefined);
+});
+

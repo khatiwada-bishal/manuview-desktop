@@ -3025,6 +3025,39 @@ export function calculateDynamicFitScore(
 }
 
 /**
+ * Looks up a journal in the authoritative curated JOURNAL_CATALOG (§1.3).
+ * Prevents LLM-invented impact factors and publishers from being accepted as facts.
+ */
+export function lookupJournalInCatalog(name: string): JournalEntry | undefined {
+  if (!name || typeof name !== "string") return undefined;
+  const clean = name.trim().toLowerCase();
+  if (!clean) return undefined;
+
+  // 1. Exact case-insensitive match
+  const exact = JOURNAL_CATALOG.find((j) => j.name.toLowerCase() === clean);
+  if (exact) return exact;
+
+  // 2. Normalized match (strip leading "the ", punctuation, excessive spaces)
+  const normClean = clean.replace(/^the\s+/i, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  const normMatch = JOURNAL_CATALOG.find((j) => {
+    const jNorm = j.name.toLowerCase().replace(/^the\s+/i, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    return jNorm === normClean;
+  });
+  if (normMatch) return normMatch;
+
+  // 3. Substring match for substantial titles (> 6 chars)
+  if (normClean.length > 6) {
+    const subMatch = JOURNAL_CATALOG.find((j) => {
+      const jNorm = j.name.toLowerCase().replace(/^the\s+/i, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+      return (jNorm.length > 5 && (jNorm.includes(normClean) || normClean.includes(jNorm)));
+    });
+    if (subMatch) return subMatch;
+  }
+
+  return undefined;
+}
+
+/**
  * Genuine Target Journal Recommendation Engine:
  * - Detects manuscript study area / discipline strictly from manuscript content
  * - Anchors tiers (Reach, Realistic, Fallback) relative to the author's specified Target Journal when in-field,
