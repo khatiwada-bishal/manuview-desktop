@@ -35,9 +35,10 @@ import { isDesktopApp, isMacOS } from "@/lib/desktop";
 interface LocalModelManagerModalProps {
   isOpen: boolean;
   onClose: () => void;
+  isScanning?: boolean;
 }
 
-export function LocalModelManagerModal({ isOpen, onClose }: LocalModelManagerModalProps) {
+export function LocalModelManagerModal({ isOpen, onClose, isScanning = false }: LocalModelManagerModalProps) {
   const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_LOCAL_MODEL);
   const [gpuCapability, setGpuCapability] = useState<WebGPUCapabilityCheck | null>(null);
   const [isCached, setIsCached] = useState<boolean>(false);
@@ -177,6 +178,19 @@ export function LocalModelManagerModal({ isOpen, onClose }: LocalModelManagerMod
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Scan Active Banner */}
+        {isScanning && (
+          <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl flex items-center gap-3 text-xs text-amber-800 dark:text-amber-200">
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <div>
+              <div className="font-semibold">Manuscript Review in Progress</div>
+              <div className="text-[11px] text-amber-700 dark:text-amber-300">
+                A background scan is currently utilizing the AI engine. Modifying or loading local models is locked until the review completes.
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* WebGPU Status Check */}
         {isBufferConstrained ? (
@@ -360,8 +374,13 @@ export function LocalModelManagerModal({ isOpen, onClose }: LocalModelManagerMod
                 <button
                   type="button"
                   onClick={handleDelete}
-                  disabled={isDownloading}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-500/10 border border-red-500/20 transition cursor-pointer"
+                  disabled={isDownloading || isScanning}
+                  title={isScanning ? "Model management is locked during an active scan" : undefined}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition ${
+                    isScanning
+                      ? "text-neutral-400 border-neutral-200 dark:border-neutral-800 cursor-not-allowed opacity-50"
+                      : "text-red-600 hover:text-red-700 hover:bg-red-500/10 border-red-500/20 cursor-pointer"
+                  }`}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>Free Disk Space</span>
@@ -370,14 +389,16 @@ export function LocalModelManagerModal({ isOpen, onClose }: LocalModelManagerMod
                 <button
                   type="button"
                   onClick={handleDownload}
-                  disabled={!isWebGPUAvailable || isDownloading}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer ${
-                    !isWebGPUAvailable
-                      ? "bg-black/5 dark:bg-white/5 text-neutral-400 dark:text-neutral-500 border border-black/10 dark:border-white/10 cursor-not-allowed"
-                      : "bg-purple-600 hover:bg-purple-700 text-white"
+                  disabled={!isWebGPUAvailable || isDownloading || isScanning}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold shadow-xs transition ${
+                    !isWebGPUAvailable || isScanning
+                      ? "bg-black/5 dark:bg-white/5 text-neutral-400 dark:text-neutral-500 border border-black/10 dark:border-white/10 cursor-not-allowed opacity-60"
+                      : "bg-purple-600 hover:bg-purple-700 text-white cursor-pointer"
                   }`}
                   title={
-                    isBufferConstrained
+                    isScanning
+                      ? "Model download/activation is locked during an active scan"
+                      : isBufferConstrained
                       ? isMacDesktop
                         ? "macOS desktop webview restricts WebGPU buffers to 9. Use Ollama (Settings -> Provider) or open in Google Chrome."
                         : "Safari / WebKit limits WebGPU storage buffers to 9. Please open in Google Chrome / Edge or use Ollama."

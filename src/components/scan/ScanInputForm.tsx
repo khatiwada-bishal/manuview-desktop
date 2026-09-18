@@ -48,6 +48,7 @@ interface ScanInputFormProps {
   handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleRunReview: (e?: React.FormEvent) => void;
   onOpenSettings?: () => void;
+  isScanning?: boolean;
 }
 
 export function ScanInputForm({
@@ -74,6 +75,7 @@ export function ScanInputForm({
   handleFileChange,
   handleRunReview,
   onOpenSettings,
+  isScanning = false,
 }: ScanInputFormProps) {
   return (
     <form onSubmit={handleRunReview} className="rounded-3xl liquid-glass-card p-6 sm:p-7 space-y-6 relative z-10 border border-black/[0.06] dark:border-white/[0.08] shadow-sm">
@@ -363,10 +365,18 @@ export function ScanInputForm({
         ) : (
           <button
             type="submit"
-            className="w-full py-4 px-6 rounded-2xl font-bold text-xs sm:text-sm bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transition-all duration-300 flex items-center justify-center gap-2.5 cursor-pointer isolate relative overflow-hidden select-none group hover:scale-[1.003] active:scale-[0.995]"
+            disabled={isScanning}
+            title={isScanning ? "A manuscript review is actively running in the background" : undefined}
+            className={`w-full py-4 px-6 rounded-2xl font-bold text-xs sm:text-sm text-white shadow-lg transition-all duration-300 flex items-center justify-center gap-2.5 select-none ${
+              isScanning
+                ? "bg-neutral-400 dark:bg-neutral-700 cursor-not-allowed opacity-60 shadow-none"
+                : "bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 shadow-indigo-500/20 hover:shadow-indigo-500/30 cursor-pointer isolate relative overflow-hidden group hover:scale-[1.003] active:scale-[0.995]"
+            }`}
           >
             <Sparkles className="w-4 h-4 text-amber-300 shrink-0 group-hover:rotate-12 transition-transform duration-300" />
-            <span className="truncate">Run Pre-Submission AI Review &amp; 5-Persona Simulation</span>
+            <span className="truncate">
+              {isScanning ? "Review in Progress in Background..." : "Run Pre-Submission AI Review & 5-Persona Simulation"}
+            </span>
             <ArrowRight className="w-4 h-4 shrink-0 group-hover:translate-x-0.5 transition-transform duration-300" />
           </button>
         )}

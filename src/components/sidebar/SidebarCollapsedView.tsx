@@ -12,6 +12,7 @@ import {
   Users,
   BarChart3,
   Cpu,
+  Loader2,
 } from "lucide-react";
 import { isDesktopApp } from "@/lib/desktop";
 import type { PaperItem, DesktopActiveView } from "@/components/DesktopSidebar";
@@ -28,6 +29,7 @@ interface SidebarCollapsedViewProps {
   services?: SidebarServiceItem[];
   connectionStatus: "connected" | "connecting" | "disconnected";
   connectionLabel: string;
+  isScanning?: boolean;
   onSelectPaper: (id: string) => void;
   onSelectView: (view: DesktopActiveView) => void;
   onNewReview: () => void;
@@ -47,6 +49,7 @@ export function SidebarCollapsedView({
   services,
   connectionStatus,
   connectionLabel,
+  isScanning = false,
   onSelectPaper,
   onSelectView,
   onNewReview,
@@ -121,7 +124,12 @@ export function SidebarCollapsedView({
               <button
                 type="button"
                 onClick={onNewReview}
-                className="flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline transition cursor-pointer"
+                disabled={isScanning}
+                className={`flex items-center gap-1 text-[11px] font-semibold transition ${
+                  isScanning
+                    ? "text-neutral-400 dark:text-neutral-600 cursor-not-allowed opacity-50"
+                    : "text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer"
+                }`}
               >
                 <Plus className="w-3 h-3" />
                 <span>New</span>
@@ -147,6 +155,8 @@ export function SidebarCollapsedView({
                     </div>
                     {groupPapers.map((paper) => {
                       const isSelected = paper.id === activePaperId;
+                      const isReviewing = paper.status === "reviewing";
+                      const isFailed = paper.status === "failed";
                       const isDeskReject =
                         paper.editorialTriage?.outcome === "desk_reject" ||
                         paper.ineligibilityReason === "scope_mismatch" ||
@@ -168,22 +178,34 @@ export function SidebarCollapsedView({
                             }`}
                           >
                             <div className="flex items-center gap-2 min-w-0 pr-2">
-                              <FileText
-                                className={`w-3.5 h-3.5 shrink-0 ${
-                                  isSelected ? "text-blue-600 dark:text-blue-400" : "text-neutral-400 dark:text-neutral-500"
-                                }`}
-                              />
+                              {isReviewing ? (
+                                <Loader2 className="w-3.5 h-3.5 shrink-0 text-blue-600 dark:text-blue-400 animate-spin" />
+                              ) : (
+                                <FileText
+                                  className={`w-3.5 h-3.5 shrink-0 ${
+                                    isSelected ? "text-blue-600 dark:text-blue-400" : "text-neutral-400 dark:text-neutral-500"
+                                  }`}
+                                />
+                              )}
                               <div className="truncate">
                                 <div className="truncate font-medium text-xs text-[#111827] dark:text-neutral-100">
                                   {paper.shortName}
                                 </div>
                                 <div className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate">
-                                  {paper.journal}
+                                  {isReviewing ? (paper.scanStep || "Reviewing...") : paper.journal}
                                 </div>
                               </div>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
-                              {isDeskReject ? (
+                              {isReviewing ? (
+                                <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 animate-pulse">
+                                  {paper.scanPercent ? `${paper.scanPercent}%` : "Scan"}
+                                </span>
+                              ) : isFailed ? (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20">
+                                  Failed
+                                </span>
+                              ) : isDeskReject ? (
                                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20">
                                   Rejected
                                 </span>
@@ -218,8 +240,27 @@ export function SidebarCollapsedView({
                             </div>
                           </div>
 
+                          {/* Status notification when selected for reviewing/failed papers */}
+                          {isSelected && isReviewing && (
+                            <div className="pl-3 pr-1 py-1 space-y-0.5">
+                              <div className="flex items-center gap-1.5 text-[10px] text-blue-700 dark:text-blue-400 font-medium bg-blue-50/70 dark:bg-blue-950/40 px-2 py-1 rounded border border-blue-200/50 dark:border-blue-800/50">
+                                <Loader2 className="w-3 h-3 text-blue-600 dark:text-blue-400 animate-spin shrink-0" />
+                                <span className="truncate">{paper.scanStep || "Analyzing manuscript..."}</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {isSelected && isFailed && (
+                            <div className="pl-3 pr-1 py-1 space-y-0.5">
+                              <div className="flex items-center gap-1.5 text-[10px] text-rose-700 dark:text-rose-400 font-medium bg-rose-50/70 dark:bg-rose-950/40 px-2 py-1 rounded border border-rose-200/50 dark:border-rose-800/50">
+                                <AlertCircle className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0" />
+                                <span className="truncate">Scan Halted</span>
+                              </div>
+                            </div>
+                          )}
+
                           {/* Status notification when selected for ineligible papers */}
-                          {isSelected && paper.isEligibleForReview === false && !isDeskReject && (
+                          {isSelected && !isReviewing && !isFailed && paper.isEligibleForReview === false && !isDeskReject && (
                             <div className="pl-3 pr-1 py-1 space-y-0.5">
                               {paper.ineligibilityReason === "already_published" ? (
                                 <div className="flex items-center gap-1.5 text-[10px] text-emerald-700 dark:text-emerald-400 font-medium bg-emerald-50/70 dark:bg-emerald-950/40 px-2 py-1 rounded border border-emerald-200/50 dark:border-emerald-800/50">
@@ -235,8 +276,8 @@ export function SidebarCollapsedView({
                             </div>
                           )}
 
-                          {/* 4 Sub-menus in flyout when selected (Only for eligible manuscripts) */}
-                          {isSelected && paper.isEligibleForReview !== false && (
+                          {/* 4 Sub-menus in flyout when selected (Only for eligible manuscripts not reviewing/failed) */}
+                          {isSelected && !isReviewing && !isFailed && paper.isEligibleForReview !== false && (
                             <div className="pl-3 space-y-0.5 pt-0.5 pb-1">
                               <button
                                 type="button"
@@ -322,8 +363,13 @@ export function SidebarCollapsedView({
             <button
               type="button"
               onClick={onOpenLocalModel}
-              title="Local On-Device AI (WebGPU SLM)"
-              className="w-10 h-10 rounded-full border border-purple-500/20 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 transition shadow-2xs flex items-center justify-center cursor-pointer active:scale-95"
+              disabled={isScanning}
+              title={isScanning ? "Model switching is disabled during an active scan" : "Local On-Device AI (WebGPU SLM)"}
+              className={`w-10 h-10 rounded-full border transition shadow-2xs flex items-center justify-center ${
+                isScanning
+                  ? "border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-900 text-neutral-400 cursor-not-allowed opacity-50"
+                  : "border-purple-500/20 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 cursor-pointer active:scale-95"
+              }`}
             >
               <Cpu className="w-4 h-4" />
             </button>

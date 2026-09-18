@@ -13,6 +13,7 @@ import {
   Check,
   X,
   Square,
+  Loader2,
 } from "lucide-react";
 import type { PaperItem, DesktopActiveView } from "@/components/DesktopSidebar";
 import type { GroupedPapers } from "./sidebarUtils";
@@ -23,6 +24,7 @@ interface SidebarPaperListProps {
   activePaperId: string | null;
   activeView: DesktopActiveView;
   selectedPaperIds: Set<string>;
+  isScanning?: boolean;
   onToggleSelectPaper: (paperId: string) => void;
   onClearSelection: () => void;
   onSelectPaper: (id: string) => void;
@@ -37,6 +39,7 @@ export function SidebarPaperList({
   activePaperId,
   activeView,
   selectedPaperIds,
+  isScanning = false,
   onToggleSelectPaper,
   onClearSelection,
   onSelectPaper,
@@ -104,11 +107,17 @@ export function SidebarPaperList({
             <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">Run a review to track your paper</p>
             <button
               type="button"
+              disabled={isScanning}
               onClick={onNewReview}
-              className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition cursor-pointer"
+              title={isScanning ? "A manuscript review is currently running in the background" : "Start Review"}
+              className={`mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold ${
+                isScanning
+                  ? "opacity-50 cursor-not-allowed bg-neutral-200 dark:bg-neutral-800 text-neutral-400"
+                  : "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition cursor-pointer"
+              }`}
             >
               <Plus className="w-3 h-3" />
-              <span>Start Review</span>
+              <span>{isScanning ? "Reviewing..." : "Start Review"}</span>
             </button>
           </div>
         ) : (
@@ -127,11 +136,16 @@ export function SidebarPaperList({
               {groupPapers.map((paper) => {
                 const isSelected = paper.id === activePaperId;
                 const isSelectedInBatch = selectedPaperIds.has(paper.id);
+                const isReviewing = paper.status === "reviewing";
+                const isFailed = paper.status === "failed";
                 const isDeskReject =
-                  paper.editorialTriage?.outcome === "desk_reject" ||
-                  paper.ineligibilityReason === "scope_mismatch" ||
-                  paper.targetJournalEvaluation?.isDisciplinaryMismatch === true ||
-                  paper.isDeskReject === true;
+                  !isReviewing &&
+                  !isFailed &&
+                  (paper.editorialTriage?.outcome === "desk_reject" ||
+                    paper.ineligibilityReason === "scope_mismatch" ||
+                    paper.targetJournalEvaluation?.isDisciplinaryMismatch === true ||
+                    paper.isDeskReject === true);
+
                 return (
                   <div key={paper.id} className="space-y-0.5 group/article">
                     <div
@@ -161,7 +175,11 @@ export function SidebarPaperList({
                             onToggleSelectPaper(paper.id);
                           }}
                           className={`relative w-6 h-6 rounded-lg flex items-center justify-center shrink-0 cursor-pointer transition shadow-2xs ${
-                            isDeskReject
+                            isReviewing
+                              ? "bg-blue-600 text-white animate-pulse"
+                              : isFailed
+                              ? "bg-rose-500 text-white"
+                              : isDeskReject
                               ? "bg-rose-500 text-white"
                               : paper.isEligibleForReview === false && paper.ineligibilityReason === "already_published"
                               ? "bg-emerald-500 text-white"
@@ -191,7 +209,11 @@ export function SidebarPaperList({
                           {/* Squircle Icon visible when NOT batch selected */}
                           {!isSelectedInBatch && (
                             <div className="absolute inset-0 flex items-center justify-center transition-opacity group-hover/article:opacity-0">
-                              {isDeskReject ? (
+                              {isReviewing ? (
+                                <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+                              ) : isFailed ? (
+                                <AlertCircle className="w-3.5 h-3.5 text-white" />
+                              ) : isDeskReject ? (
                                 <ShieldAlert className="w-3.5 h-3.5 text-white" />
                               ) : paper.isEligibleForReview === false && paper.ineligibilityReason === "already_published" ? (
                                 <CheckCircle2 className="w-3.5 h-3.5 text-white" />
@@ -207,7 +229,16 @@ export function SidebarPaperList({
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {isDeskReject ? (
+                        {isReviewing ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60 animate-pulse flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400 animate-ping" />
+                            <span>{paper.scanPercent ? `${paper.scanPercent}%` : "Reviewing"}</span>
+                          </span>
+                        ) : isFailed ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/60">
+                            Failed
+                          </span>
+                        ) : isDeskReject ? (
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/60">
                             Desk
                           </span>
@@ -229,8 +260,27 @@ export function SidebarPaperList({
                       </div>
                     </div>
 
+                    {/* Status notification when selected for reviewing or failed papers */}
+                    {selectedPaperIds.size === 0 && isSelected && isReviewing && (
+                      <div className="pl-4 pr-2 py-1 space-y-0.5">
+                        <div className="flex items-center gap-1.5 text-[11px] text-blue-700 dark:text-blue-400 font-medium bg-blue-500/10 px-2 py-1.5 rounded-lg border border-blue-500/20">
+                          <Loader2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0 animate-spin" />
+                          <span className="truncate">{paper.scanStep || "Reviewing in background..."}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedPaperIds.size === 0 && isSelected && isFailed && (
+                      <div className="pl-4 pr-2 py-1 space-y-0.5">
+                        <div className="flex items-center gap-1.5 text-[11px] text-rose-700 dark:text-rose-400 font-medium bg-rose-500/10 px-2 py-1.5 rounded-lg border border-rose-500/20">
+                          <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+                          <span className="truncate">{paper.scanError?.title || "Review interrupted"}</span>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Status notification when selected for ineligible papers */}
-                    {selectedPaperIds.size === 0 && isSelected && paper.isEligibleForReview === false && !isDeskReject && (
+                    {selectedPaperIds.size === 0 && isSelected && !isReviewing && !isFailed && paper.isEligibleForReview === false && !isDeskReject && (
                       <div className="pl-4 pr-2 py-1 space-y-0.5">
                         {paper.ineligibilityReason === "already_published" ? (
                           <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400 font-medium bg-emerald-500/10 px-2 py-1.5 rounded-lg border border-emerald-500/20">
@@ -246,8 +296,8 @@ export function SidebarPaperList({
                       </div>
                     )}
 
-                    {/* Sub-views list for currently selected paper */}
-                    {isSelected && (paper.isEligibleForReview !== false || isDeskReject) && (
+                    {/* Sub-views list for currently selected paper (only for completed papers) */}
+                    {isSelected && !isReviewing && !isFailed && (paper.isEligibleForReview !== false || isDeskReject) && (
                       <div className="pl-4 pr-2 py-1 space-y-0.5">
                         <button
                           type="button"

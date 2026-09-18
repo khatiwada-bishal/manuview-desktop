@@ -37,6 +37,7 @@ import { ScanModelPickerBar } from "@/components/scan/ScanModelPickerBar";
 import { ScanInputForm } from "@/components/scan/ScanInputForm";
 import { ScanFullResultsView } from "@/components/scan/ScanFullResultsView";
 import { DashboardGlassIllustration } from "@/components/dashboard/DashboardGlassIllustration";
+import { useScanManager } from "@/context/ScanContext";
 
 const SAMPLE_PREPRINT_TITLE = "Single-cell transcriptional profiling of DLL3 activation in neuroendocrine lung carcinoma";
 const SAMPLE_PREPRINT_JOURNAL = "Nature Communications";
@@ -100,6 +101,8 @@ export function DesktopPreSubmissionScanView({
     parsed: ParsedManuscript;
     liveScope: JournalScopeProfile | null;
   } | null>(null);
+
+  const { isScanning, startScan } = useScanManager();
 
   const {
     status: apiStatus,
@@ -333,6 +336,8 @@ export function DesktopPreSubmissionScanView({
   const handleRunReview = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
+    if (isScanning) return;
+
     if (!targetJournal.trim()) {
       setTargetJournalError(true);
       setError("Target Journal is required for calibrated rubric evaluation.");
@@ -347,72 +352,22 @@ export function DesktopPreSubmissionScanView({
       return;
     }
 
-    const providerConfig = await resolveActiveConfig();
-    const isConfigUsable =
-      Boolean(providerConfig.apiKey && providerConfig.apiKey.trim().length > 0) ||
-      Boolean(providerConfig.hasSecureKey) ||
-      providerConfig.provider === "ollama" ||
-      providerConfig.provider === "webllm";
-
-    if (!isConfigUsable) {
-      setError("No AI model provider configured. A review requires one configured provider: Ollama (local server), Local SLM (WebLLM), or Cloud LLM API. Please open Settings to configure a provider.");
-      return;
-    }
-
-    setLoading(true);
     setError(null);
-    setReport(null);
-    setLoadingStep("Extracting manuscript structure & sections...");
-    setLoadingPercent(15);
-
     try {
-      let parsed: ParsedManuscript;
-      if (isFileScan) {
-        setLoadingStep("Extracting sections and parsing bibliography...");
-        setLoadingPercent(20);
-        const extracted = await extractTextFromFile(file);
-        parsed = parseManuscriptText(extracted, file.name || "manuscript.txt");
-        if (manuscriptTitle.trim()) parsed.title = manuscriptTitle.trim();
-        if (manuscriptAbstract.trim()) parsed.abstract = manuscriptAbstract.trim();
-      } else {
-        const rawText = `Title: ${manuscriptTitle}\n\nAbstract:\n${manuscriptAbstract}\n\nKeywords: ${manuscriptKeywords}`;
-        parsed = parseManuscriptText(rawText, "manuscript.txt");
-        parsed.title = manuscriptTitle.trim();
-        parsed.abstract = manuscriptAbstract.trim();
-      }
-
-      setLoadingStep(`Searching aims & scope for "${targetJournal}" via scholarly registries...`);
-      setLoadingPercent(35);
-      const liveScope = await fetchLiveJournalScope(targetJournal);
-
-      setLoadingStep("Commissioning 5-persona peer review panel & running deep diagnostic scan...");
-      setLoadingPercent(50);
-      const activeConfig = await resolveActiveConfig();
-
-      const fullReport = await runManuscriptDiagnostic(
-        parsed,
-        activeConfig,
-        targetJournal,
-        (update) => {
-          setLoadingStep(update.message);
-          if (update.percent !== undefined) setLoadingPercent(update.percent);
-        },
-        liveScope
-      );
-
-      setReport(fullReport);
-      registerCompletedScan(fullReport);
+      await startScan({
+        title: manuscriptTitle.trim() || (file?.name ? file.name.replace(/\.[^/.]+$/, "") : "Untitled Manuscript"),
+        abstract: manuscriptAbstract.trim(),
+        keywords: manuscriptKeywords.trim(),
+        targetJournal: targetJournal.trim(),
+        file: file,
+      });
     } catch (err: any) {
-      console.error("Diagnostic scan error:", err);
+      console.error("Diagnostic scan initiation error:", err);
       setError(
         sanitizeErrorMessage(
-          err?.message || "Failed to generate diagnostic report. Please verify your AI provider credentials."
+          err?.message || "Failed to initiate diagnostic scan. Please verify your AI provider credentials."
         )
       );
-    } finally {
-      setLoading(false);
-      setLoadingStep("");
-      setLoadingPercent(undefined);
     }
   };
 
@@ -537,6 +492,7 @@ export function DesktopPreSubmissionScanView({
             handleSelectModel={handleSelectModel}
             checkProviderStatus={checkProviderStatus}
             onOpenSettings={onOpenSettings}
+            isScanning={isScanning}
           />
         </div>
 
@@ -566,6 +522,7 @@ export function DesktopPreSubmissionScanView({
             handleFileChange={handleFileChange}
             handleRunReview={handleRunReview}
             onOpenSettings={onOpenSettings}
+            isScanning={isScanning}
           />
         )}
 

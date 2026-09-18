@@ -27,6 +27,7 @@ import { FullReviewReport, ProviderConfig, ParsedManuscript } from "@/lib/types"
 import { useApiConnection } from "@/lib/useApiConnection";
 import { sanitizeErrorMessage, getSavedClientConfig, resolveActiveConfig } from "@/lib/llm";
 import { ScanPipelineStepper } from "@/components/charts/ScanPipelineStepper";
+import { useScanManager } from "@/context/ScanContext";
 
 interface DesktopScanModalProps {
   isOpen: boolean;
@@ -49,6 +50,7 @@ export function DesktopScanModal({
   onComplete,
   onOpenSettings,
 }: DesktopScanModalProps) {
+  const { isScanning, startScan } = useScanManager();
   const { isConnected, modelName, provider } = useApiConnection();
   const [journal, setJournal] = useState("");
   const [title, setTitle] = useState("");
@@ -296,43 +298,19 @@ export function DesktopScanModal({
   // Step J: Click 'Submit for Review' button
   const handleSubmitForReview = async () => {
     if (!compatibilityMatch) return;
-
-    const savedConfig = await resolveActiveConfig();
-    const isConfigUsable =
-      Boolean(savedConfig.apiKey && savedConfig.apiKey.trim().length > 0) ||
-      Boolean(savedConfig.hasSecureKey) ||
-      savedConfig.provider === "ollama" ||
-      savedConfig.provider === "webllm";
-
-    if (!isConfigUsable) {
-      setError("No AI model provider configured. A review requires one configured provider: Ollama (local server), Local SLM (WebLLM), or Cloud LLM API. Please open Settings to configure a provider.");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setLoadingStep("Commissioning 5-persona peer review panel (Methods, Domain, Editor, Stats, Devil's Advocate)...");
-    setLoadingPercent(40);
+    if (isScanning) return;
 
     try {
-      const fullReport = await runManuscriptDiagnostic(
-        compatibilityMatch.parsed,
-        savedConfig,
-        journal,
-        (update) => {
-          setLoadingStep(update.message);
-          if (update.percent !== undefined) setLoadingPercent(update.percent);
-        },
-        compatibilityMatch.liveScope
-      );
-
-      finishScanAndOpenDashboard(fullReport);
+      await startScan({
+        title: compatibilityMatch.parsed.title || title || (selectedFile?.name ? selectedFile.name.replace(/\.[^/.]+$/, "") : "Untitled Manuscript"),
+        abstract: compatibilityMatch.parsed.abstract || abstract,
+        keywords,
+        targetJournal: journal,
+        file: selectedFile,
+      });
+      onClose();
     } catch (err: any) {
-      setError(sanitizeErrorMessage(err.message || "Peer review simulation failed."));
-    } finally {
-      setLoading(false);
-      setLoadingStep("");
-      setLoadingPercent(undefined);
+      setError(sanitizeErrorMessage(err?.message || "Peer review simulation failed to start."));
     }
   };
 
@@ -560,20 +538,32 @@ export function DesktopScanModal({
                   <button
                     type="button"
                     onClick={handleSubmitForReview}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs cursor-pointer transition hover:scale-[1.02] active:scale-[0.98]"
+                    disabled={isScanning}
+                    title={isScanning ? "A manuscript review is actively running" : undefined}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-semibold shadow-xs transition ${
+                      isScanning
+                        ? "bg-neutral-400 dark:bg-neutral-700 cursor-not-allowed opacity-60"
+                        : "bg-emerald-600 hover:bg-emerald-700 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                    }`}
                   >
                     <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                    <span>Submit for Review</span>
+                    <span>{isScanning ? "Review in Progress..." : "Submit for Review"}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </>
               ) : (
                 <button
                   type="submit"
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs cursor-pointer transition hover:scale-[1.02] active:scale-[0.98]"
+                  disabled={isScanning}
+                  title={isScanning ? "A manuscript review is actively running" : undefined}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-semibold shadow-xs transition ${
+                    isScanning
+                      ? "bg-neutral-400 dark:bg-neutral-700 cursor-not-allowed opacity-60"
+                      : "bg-blue-600 hover:bg-blue-700 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                  }`}
                 >
                   <Search className="w-3.5 h-3.5" />
-                  <span>Check Compatibility</span>
+                  <span>{isScanning ? "Review Running..." : "Check Compatibility"}</span>
                 </button>
               )}
             </div>

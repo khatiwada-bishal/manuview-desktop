@@ -48,6 +48,25 @@ export interface PaperItem {
   isDeskReject?: boolean;
   createdAt?: string;
   updatedAt?: string;
+
+  // Background Scanning Lifecycle status:
+  status?: "completed" | "reviewing" | "failed";
+  scanStep?: string;
+  scanPercent?: number;
+  scanError?: {
+    title: string;
+    explanation: string;
+    action: string;
+    technical?: string;
+    category?: string;
+  };
+  scanParams?: {
+    title: string;
+    abstract?: string;
+    keywords?: string;
+    targetJournal: string;
+    rawText?: string;
+  };
 }
 
 export { getTimeCategory, groupPapersByTime };
@@ -62,6 +81,7 @@ interface DesktopSidebarProps {
   provider?: string | null;
   activeModelName?: string | null;
   isCollapsed?: boolean;
+  isScanning?: boolean;
   onToggleCollapse?: () => void;
   onSelectPaper: (id: string) => void;
   onSelectView: (view: DesktopActiveView) => void;
@@ -87,6 +107,7 @@ export function DesktopSidebar({
   provider,
   activeModelName,
   isCollapsed = false,
+  isScanning = false,
   onToggleCollapse,
   onSelectPaper,
   onSelectView,
@@ -220,6 +241,7 @@ export function DesktopSidebar({
         onOpenSettings={onOpenSettings}
         onOpenLocalModel={onOpenLocalModel}
         onDeletePaper={onDeletePaper}
+        isScanning={isScanning}
       />
 
       {/* ------------------------------------------------------------- */}
@@ -306,6 +328,7 @@ export function DesktopSidebar({
             onSelectView={onSelectView}
             onNewReview={onNewReview}
             onDeleteMultiplePapers={onDeleteMultiplePapers}
+            isScanning={isScanning}
           />
         </div>
 
@@ -348,9 +371,18 @@ export function DesktopSidebar({
             {onOpenLocalModel && (
               <button
                 type="button"
+                disabled={isScanning}
                 onClick={onOpenLocalModel}
-                title="Local On-Device AI (WebGPU SLM)"
-                className="h-[46px] px-2.5 rounded-xl border border-purple-500/20 bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 transition cursor-pointer flex flex-col items-center justify-center gap-0.5 shrink-0 active:scale-95 shadow-2xs"
+                title={
+                  isScanning
+                    ? "Model switching is disabled during an active scan"
+                    : "Local On-Device AI (WebGPU SLM)"
+                }
+                className={`h-[46px] px-2.5 rounded-xl border border-purple-500/20 bg-purple-500/10 text-purple-700 dark:text-purple-300 transition flex flex-col items-center justify-center gap-0.5 shrink-0 shadow-2xs ${
+                  isScanning
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:bg-purple-500/20 cursor-pointer active:scale-95"
+                }`}
               >
                 <Cpu className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                 <span className="text-[9px] font-bold tracking-tight">Local AI</span>

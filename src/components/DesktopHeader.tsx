@@ -56,6 +56,7 @@ interface DesktopHeaderProps {
   onToggleSidebar?: () => void;
   sidebarOpen?: boolean;
   onGoHome?: () => void;
+  isScanning?: boolean;
 }
 
 const AppleIcon = ({ className }: { className?: string }) => (
@@ -137,6 +138,7 @@ export function DesktopHeader({
   onToggleSidebar,
   sidebarOpen = true,
   onGoHome,
+  isScanning = false,
 }: DesktopHeaderProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const tabsScrollRef = React.useRef<HTMLDivElement>(null);
@@ -470,32 +472,49 @@ export function DesktopHeader({
                 </span>
               </div>
               <div className="space-y-0.5 mt-1.5">
-                {HEADER_SERVICES.map((srv) => (
-                  <button
-                    key={srv.id}
-                    type="button"
-                    data-no-drag
-                    onClick={() => {
-                      setServicesDropdownOpen(false);
-                      onSelectService?.(srv.id);
-                    }}
-                    className="w-full text-left p-2 rounded-xl transition flex items-center gap-2.5 hover:bg-black/5 dark:hover:bg-white/10 text-neutral-800 dark:text-neutral-200 group cursor-pointer"
-                  >
-                    <div
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${srv.squircleBg}`}
+                {HEADER_SERVICES.map((srv) => {
+                  const isServiceDisabled = isScanning && (srv.id === "ai-review" || srv.id === "pre-submission" || srv.id === "triage");
+                  return (
+                    <button
+                      key={srv.id}
+                      type="button"
+                      data-no-drag
+                      disabled={isServiceDisabled}
+                      onClick={() => {
+                        if (!isServiceDisabled) {
+                          setServicesDropdownOpen(false);
+                          onSelectService?.(srv.id);
+                        }
+                      }}
+                      title={isServiceDisabled ? "A manuscript scan is already in progress" : undefined}
+                      className={`w-full text-left p-2 rounded-xl transition flex items-center gap-2.5 ${
+                        isServiceDisabled
+                          ? "opacity-50 cursor-not-allowed text-neutral-400 dark:text-neutral-500"
+                          : "hover:bg-black/5 dark:hover:bg-white/10 text-neutral-800 dark:text-neutral-200 group cursor-pointer"
+                      }`}
                     >
-                      <srv.icon className="w-3.5 h-3.5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-xs font-semibold truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
-                        {srv.name}
+                      <div
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${srv.squircleBg}`}
+                      >
+                        <srv.icon className="w-3.5 h-3.5" />
                       </div>
-                      <div className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">
-                        {srv.description}
+                      <div className="min-w-0 flex-1">
+                        <div
+                          className={`text-xs font-semibold truncate ${
+                            isServiceDisabled
+                              ? ""
+                              : "group-hover:text-blue-600 dark:group-hover:text-blue-400"
+                          } transition`}
+                        >
+                          {srv.name}
+                        </div>
+                        <div className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">
+                          {isServiceDisabled ? "Review scan in progress..." : srv.description}
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Integrated AI Advisory & Disclaimer Footer */}

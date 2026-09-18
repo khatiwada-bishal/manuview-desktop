@@ -24,6 +24,7 @@ interface Props {
   onClose: () => void;
   onSave?: (config: ProviderConfig) => void;
   onOpenLocalModel?: () => void;
+  isScanning?: boolean;
 }
 
 export const DEFAULT_CONFIG: ProviderConfig = {
@@ -33,7 +34,7 @@ export const DEFAULT_CONFIG: ProviderConfig = {
   apiKey: "",
 };
 
-export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalModel }: Props) {
+export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalModel, isScanning = false }: Props) {
   const [config, setConfig] = useState<ProviderConfig>(DEFAULT_CONFIG);
   const [providerCategory, setProviderCategory] = useState<"cloud" | "local">("cloud");
   const [cachedModels, setCachedModels] = useState<Record<string, boolean>>({});
@@ -365,6 +366,18 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
             </p>
           </div>
         </div>
+
+        {isScanning && (
+          <div className="mb-4 p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl flex items-center gap-3 text-xs text-amber-800 dark:text-amber-200">
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <div>
+              <div className="font-semibold">Review Scan in Progress</div>
+              <div className="text-[11px] text-amber-700 dark:text-amber-300">
+                A manuscript scan is actively running in the background. Changing providers, keys, or models is locked until it finishes.
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-5">
           {/* 1. Provider Selection Grid with Cloud vs Local Tabs */}
@@ -1173,7 +1186,13 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
               <button
                 type="button"
                 onClick={handleSave}
-                className="px-5 py-2 rounded-xl liquid-glass-btn-primary font-medium text-xs transition cursor-pointer"
+                disabled={isScanning}
+                title={isScanning ? "Settings cannot be modified while a scan is in progress" : undefined}
+                className={`px-5 py-2 rounded-xl font-medium text-xs transition ${
+                  isScanning
+                    ? "bg-neutral-200 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 cursor-not-allowed opacity-60"
+                    : "liquid-glass-btn-primary cursor-pointer"
+                }`}
               >
                 {savedSuccess ? "Saved!" : "Save & Activate"}
               </button>

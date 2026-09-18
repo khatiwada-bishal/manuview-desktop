@@ -27,6 +27,7 @@ interface ScanModelPickerBarProps {
   handleSelectModel: (id: string) => void;
   checkProviderStatus: () => void;
   onOpenSettings?: () => void;
+  isScanning?: boolean;
 }
 
 export function ScanModelPickerBar({
@@ -43,6 +44,7 @@ export function ScanModelPickerBar({
   handleSelectModel,
   checkProviderStatus,
   onOpenSettings,
+  isScanning = false,
 }: ScanModelPickerBarProps) {
   const filteredModels = React.useMemo(() => {
     if (!modelSearchQuery.trim()) return availableModels;
@@ -68,14 +70,20 @@ export function ScanModelPickerBar({
             <div className="relative inline-block">
               <button
                 type="button"
-                onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#ECFDF5] dark:bg-emerald-950/50 text-[#065F46] dark:text-emerald-300 border border-[#A7F3D0] dark:border-emerald-800 hover:bg-[#D1FAE5] dark:hover:bg-emerald-900/50 transition shadow-2xs cursor-pointer"
+                disabled={isScanning}
+                onClick={() => !isScanning && setModelDropdownOpen(!modelDropdownOpen)}
+                title={isScanning ? "Model switching is disabled during an active scan" : undefined}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition shadow-2xs ${
+                  isScanning
+                    ? "bg-neutral-100 dark:bg-neutral-850 text-neutral-400 dark:text-neutral-500 border-neutral-200 dark:border-neutral-700 cursor-not-allowed opacity-60"
+                    : "bg-[#ECFDF5] dark:bg-emerald-950/50 text-[#065F46] dark:text-emerald-300 border-[#A7F3D0] dark:border-emerald-800 hover:bg-[#D1FAE5] dark:hover:bg-emerald-900/50 cursor-pointer"
+                }`}
               >
-                <span className="w-2 h-2 rounded-full bg-[#10B981]" />
+                <span className={`w-2 h-2 rounded-full ${isScanning ? "bg-neutral-400" : "bg-[#10B981]"}`} />
                 <span>
                   {activeProviderInfo.name}: <span className="font-mono">{activeProviderInfo.model}</span>
                 </span>
-                <ChevronDown className="w-3.5 h-3.5 text-[#065F46] dark:text-emerald-300 ml-0.5" />
+                <ChevronDown className="w-3.5 h-3.5 ml-0.5" />
               </button>
 
               {modelDropdownOpen && (

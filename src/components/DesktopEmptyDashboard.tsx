@@ -32,6 +32,7 @@ interface DesktopEmptyDashboardProps {
   onToggleSelectPaper?: (id: string) => void;
   onSelectAllPapers?: () => void;
   onClearSelectedPapers?: () => void;
+  isScanning?: boolean;
 }
 
 export function DesktopEmptyDashboard({
@@ -44,6 +45,7 @@ export function DesktopEmptyDashboard({
   onToggleSelectPaper,
   onSelectAllPapers,
   onClearSelectedPapers,
+  isScanning = false,
 }: DesktopEmptyDashboardProps) {
   const [localSelectedPaperIds, setLocalSelectedPaperIds] = useState<Set<string>>(new Set());
   const selectedPaperIds = controlledSelectedPaperIds ?? localSelectedPaperIds;
@@ -142,11 +144,17 @@ export function DesktopEmptyDashboard({
               <div className="flex flex-wrap items-center gap-3 pt-1">
                 <button
                   type="button"
-                  onClick={() => onOpenService("ai-review")}
-                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md hover:shadow-lg transition cursor-pointer flex items-center gap-2"
+                  onClick={() => !isScanning && onOpenService("ai-review")}
+                  disabled={isScanning}
+                  title={isScanning ? "A manuscript scan is already in progress" : undefined}
+                  className={`px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-2 ${
+                    isScanning
+                      ? "bg-neutral-600 text-neutral-400 cursor-not-allowed opacity-60 shadow-none"
+                      : "bg-blue-600 hover:bg-blue-500 text-white hover:shadow-lg cursor-pointer"
+                  }`}
                 >
                   <Plus className="w-4 h-4" />
-                  <span>New Review Scan</span>
+                  <span>{isScanning ? "Review in Progress..." : "New Review Scan"}</span>
                 </button>
                 <span className="text-xs text-white/60 font-medium">
                   {papers.length} manuscript{papers.length === 1 ? "" : "s"} in library

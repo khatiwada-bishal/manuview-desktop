@@ -24,6 +24,10 @@ import { ProviderSettingsModal } from "@/components/ProviderSettingsModal";
 import { LocalModelManagerModal } from "@/components/LocalModelManagerModal";
 import { DashboardErrorBoundary } from "@/components/DashboardErrorBoundary";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { ScanProvider, useScanManager } from "@/context/ScanContext";
+import { ScanProgressView } from "@/components/dashboard/ScanProgressView";
+import { ScanErrorView } from "@/components/dashboard/ScanErrorView";
+import { HumanReadableScanError } from "@/lib/scanErrorTranslator";
 import { useApiConnection } from "@/lib/useApiConnection";
 import { FullReviewReport } from "@/lib/types";
 import { isDesktopApp } from "@/lib/desktop";
@@ -325,31 +329,70 @@ export default function App() {
     }
   };
 
-  // Global desktop keyboard shortcuts (Cmd/Ctrl + K, N, W, comma)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA";
+  // Scan lifecycle callbacks for non-blocking background scanner
+  const handleScanStarted = (pendingPaper: PaperItem) => {
+    setPapers((prev) => [pendingPaper, ...prev.filter((p) => p.id !== pendingPaper.id)]);
+    setOpenTabs((prev) => {
+      if (prev.some((t) => t.id === pendingPaper.id)) return prev;
+      return [
+        ...prev,
+        {
+          id: pendingPaper.id,
+          type: "article",
+          title: pendingPaper.title,
+          shortName: pendingPaper.shortName,
+        },
+      ];
+    });
+    setActiveTabId(pendingPaper.id);
+    setActiveView("overview");
+  };
 
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setIsSearchOpen((prev) => !prev);
-      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "n" && !isInput) {
-        e.preventDefault();
-        setIsScanOpen(true);
-      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "w" && !isInput) {
-        e.preventDefault();
-        if (activeTabId) {
-          handleCloseTab(activeTabId);
-        }
-      } else if ((e.metaKey || e.ctrlKey) && e.key === ",") {
-        e.preventDefault();
-        setIsSettingsOpen((prev) => !prev);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeTabId, openTabs]);
+  const handleScanProgress = (paperId: string, step: string, percent?: number) => {
+    setPapers((prev) =>
+      prev.map((p) =>
+        p.id === paperId
+          ? {
+              ...p,
+              status: "reviewing",
+              scanStep: step,
+              scanPercent: percent ?? p.scanPercent,
+            }
+          : p
+      )
+    );
+  };
+
+  const handleScanCompleted = (
+    paperId: string,
+    updatedPaper: PaperItem,
+    data: DesktopDashboardData,
+    fullReport?: FullReviewReport
+  ) => {
+    saveProject(updatedPaper, data, fullReport);
+    setPapers((prev) =>
+      prev.map((p) => (p.id === paperId ? updatedPaper : p))
+    );
+    setDashboardStore((prev) => ({ ...prev, [paperId]: data }));
+    if (fullReport) {
+      setFullReportsStore((prev) => ({ ...prev, [paperId]: fullReport }));
+    }
+  };
+
+  const handleScanFailed = (paperId: string, error: HumanReadableScanError) => {
+    setPapers((prev) =>
+      prev.map((p) =>
+        p.id === paperId
+          ? {
+              ...p,
+              status: "failed",
+              scanError: error,
+              scanStep: "Review halted",
+            }
+          : p
+      )
+    );
+  };
 
   // Handle project deletion confirmed by user
   const handleDeleteProjectConfirm = () => {
@@ -394,16 +437,13 @@ export default function App() {
     setPapersToDelete(null);
   };
 
-  // When live scan completes
+  // When live scan completes manually from modal
   const handleScanComplete = (
     newPaper: PaperItem,
     data: DesktopDashboardData,
     fullReport?: FullReviewReport
   ) => {
-    // 1. Persist to local computer storage
     saveProject(newPaper, data, fullReport);
-
-    // 2. Update state
     setPapers((prev) => [newPaper, ...prev]);
     setDashboardStore((prev) => ({ ...prev, [newPaper.id]: data }));
     if (fullReport) {
@@ -422,6 +462,190 @@ export default function App() {
     setActiveView("overview");
   };
 
+  // Render Web Landing Page in browser mode (or when navigated to landing)
+  if (viewMode === "landing") {
+    return (
+      <ThemeProvider>
+        <DesktopWebLandingPage
+          onLaunchApp={() => setViewMode("app")}
+          onOpenScan={() => {
+            setViewMode("app");
+            setIsScanOpen(true);
+          }}
+          onOpenService={(serviceId) => {
+            setViewMode("app");
+            handleOpenService(serviceId);
+          }}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          isConnected={isConnected}
+          isApiLoading={isApiLoading}
+          modelName={modelName}
+          latencyMs={latencyMs}
+        />
+        <ProviderSettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          onOpenLocalModel={() => setIsLocalModelOpen(true)}
+        />
+        <LocalModelManagerModal
+          isOpen={isLocalModelOpen}
+          onClose={() => setIsLocalModelOpen(false)}
+        />
+      </ThemeProvider>
+    );
+  }
+
+  return (
+    <ThemeProvider>
+      <ScanProvider
+        onScanStarted={handleScanStarted}
+        onScanProgress={handleScanProgress}
+        onScanCompleted={handleScanCompleted}
+        onScanFailed={handleScanFailed}
+      >
+        <AppWorkspace
+          papers={papers}
+          setPapers={setPapers}
+          dashboardStore={dashboardStore}
+          setDashboardStore={setDashboardStore}
+          fullReportsStore={fullReportsStore}
+          setFullReportsStore={setFullReportsStore}
+          openTabs={openTabs}
+          setOpenTabs={setOpenTabs}
+          activeTabId={activeTabId}
+          setActiveTabId={setActiveTabId}
+          activeView={activeView}
+          setActiveView={setActiveView}
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          isConnected={isConnected}
+          isApiLoading={isApiLoading}
+          modelName={modelName}
+          latencyMs={latencyMs}
+          provider={provider}
+          selectedPaperIds={selectedPaperIds}
+          onToggleSelectPaper={handleToggleSelectPaper}
+          onClearSelectedPapers={handleClearSelectedPapers}
+          onSelectAllPapers={handleSelectAllPapers}
+          papersToDelete={papersToDelete}
+          setPapersToDelete={setPapersToDelete}
+          handleDeleteProjectConfirm={handleDeleteProjectConfirm}
+          handleScanComplete={handleScanComplete}
+          handleOpenArticle={handleOpenArticle}
+          handleOpenService={handleOpenService}
+          handleCloseTab={handleCloseTab}
+          setViewMode={setViewMode}
+        />
+      </ScanProvider>
+    </ThemeProvider>
+  );
+}
+
+interface AppWorkspaceProps {
+  papers: PaperItem[];
+  setPapers: React.Dispatch<React.SetStateAction<PaperItem[]>>;
+  dashboardStore: Record<string, DesktopDashboardData>;
+  setDashboardStore: React.Dispatch<React.SetStateAction<Record<string, DesktopDashboardData>>>;
+  fullReportsStore: Record<string, FullReviewReport>;
+  setFullReportsStore: React.Dispatch<React.SetStateAction<Record<string, FullReviewReport>>>;
+  openTabs: TabItem[];
+  setOpenTabs: React.Dispatch<React.SetStateAction<TabItem[]>>;
+  activeTabId: string | null;
+  setActiveTabId: React.Dispatch<React.SetStateAction<string | null>>;
+  activeView: DesktopActiveView;
+  setActiveView: React.Dispatch<React.SetStateAction<DesktopActiveView>>;
+  sidebarOpen: boolean;
+  setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  isConnected: boolean;
+  isApiLoading: boolean;
+  modelName: string | null;
+  latencyMs: number | null;
+  provider: any;
+  selectedPaperIds: Set<string>;
+  onToggleSelectPaper: (id: string) => void;
+  onClearSelectedPapers: () => void;
+  onSelectAllPapers: () => void;
+  papersToDelete: PaperItem[] | null;
+  setPapersToDelete: React.Dispatch<React.SetStateAction<PaperItem[] | null>>;
+  handleDeleteProjectConfirm: () => void;
+  handleScanComplete: (newPaper: PaperItem, data: DesktopDashboardData, fullReport?: FullReviewReport) => void;
+  handleOpenArticle: (id: string) => void;
+  handleOpenService: (serviceId: string) => void;
+  handleCloseTab: (id: string, e?: React.MouseEvent) => void;
+  setViewMode: React.Dispatch<React.SetStateAction<"landing" | "app">>;
+}
+
+function AppWorkspace({
+  papers,
+  setPapers,
+  dashboardStore,
+  setDashboardStore,
+  fullReportsStore,
+  setFullReportsStore,
+  openTabs,
+  setOpenTabs,
+  activeTabId,
+  setActiveTabId,
+  activeView,
+  setActiveView,
+  sidebarOpen,
+  setSidebarOpen,
+  isConnected,
+  isApiLoading,
+  modelName,
+  latencyMs,
+  provider,
+  selectedPaperIds,
+  onToggleSelectPaper,
+  onClearSelectedPapers,
+  onSelectAllPapers,
+  papersToDelete,
+  setPapersToDelete,
+  handleDeleteProjectConfirm,
+  handleScanComplete,
+  handleOpenArticle,
+  handleOpenService,
+  handleCloseTab,
+  setViewMode,
+}: AppWorkspaceProps) {
+  const { isScanning } = useScanManager();
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isScanOpen, setIsScanOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isLocalModelOpen, setIsLocalModelOpen] = useState(false);
+
+  // Global desktop keyboard shortcuts (Cmd/Ctrl + K, N, W, comma)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA";
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "n" && !isInput) {
+        e.preventDefault();
+        if (!isScanning) {
+          setIsScanOpen(true);
+        }
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "w" && !isInput) {
+        e.preventDefault();
+        if (activeTabId) {
+          handleCloseTab(activeTabId);
+        }
+      } else if ((e.metaKey || e.ctrlKey) && e.key === ",") {
+        e.preventDefault();
+        setIsSettingsOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeTabId, openTabs, isScanning, handleCloseTab]);
+
+  const currentPaper = papers.find((p) => p.id === activeTabId) || null;
+  const currentDashboardData =
+    (activeTabId && dashboardStore[activeTabId]) || null;
+
   // Render view corresponding to active tab
   const renderActiveTabContent = () => {
     if (!activeTabId) {
@@ -432,6 +656,11 @@ export default function App() {
           onOpenService={handleOpenService}
           onDeletePaper={(paper) => setPapersToDelete([paper])}
           onDeleteMultiplePapers={(targets) => setPapersToDelete(targets)}
+          selectedPaperIds={selectedPaperIds}
+          onToggleSelectPaper={onToggleSelectPaper}
+          onSelectAllPapers={onSelectAllPapers}
+          onClearSelectedPapers={onClearSelectedPapers}
+          isScanning={isScanning}
         />
       );
     }
@@ -463,7 +692,28 @@ export default function App() {
       return <DesktopResponseBuilderView onOpenSettings={() => setIsSettingsOpen(true)} />;
     }
 
-    // Default: Article Review Dashboard
+    // Article Review Lifecycle: Active in-progress background scan
+    if (currentPaper && currentPaper.status === "reviewing") {
+      return (
+        <ScanProgressView
+          paper={currentPaper}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+        />
+      );
+    }
+
+    // Article Review Lifecycle: Scan halted / failed with actionable guidance
+    if (currentPaper && currentPaper.status === "failed") {
+      return (
+        <ScanErrorView
+          paper={currentPaper}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onDeleteArticle={() => setPapersToDelete([currentPaper])}
+        />
+      );
+    }
+
+    // Default: Completed Article Review Dashboard
     if (currentPaper && (currentDashboardData || (activeTabId && fullReportsStore[activeTabId]))) {
       return (
         <DashboardErrorBoundary fallbackTitle="Review Dashboard Display Error">
@@ -489,7 +739,7 @@ export default function App() {
             activeModelName={modelName}
             latencyMs={latencyMs}
             onSelectView={(view) => setActiveView(view)}
-            onNewScan={() => handleOpenService("ai-review")}
+            onNewScan={() => !isScanning && handleOpenService("ai-review")}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onDeleteArticle={() => setPapersToDelete(currentPaper ? [currentPaper] : null)}
             onUpdateFullReport={(updatedReport, updatedData) => {
@@ -536,139 +786,109 @@ export default function App() {
         onDeletePaper={(paper) => setPapersToDelete([paper])}
         onDeleteMultiplePapers={(targets) => setPapersToDelete(targets)}
         selectedPaperIds={selectedPaperIds}
-        onToggleSelectPaper={handleToggleSelectPaper}
-        onSelectAllPapers={handleSelectAllPapers}
-        onClearSelectedPapers={handleClearSelectedPapers}
+        onToggleSelectPaper={onToggleSelectPaper}
+        onSelectAllPapers={onSelectAllPapers}
+        onClearSelectedPapers={onClearSelectedPapers}
+        isScanning={isScanning}
       />
     );
   };
 
-  // Render Web Landing Page in browser mode (or when navigated to landing)
-  if (viewMode === "landing") {
-    return (
-      <ThemeProvider>
-        <DesktopWebLandingPage
-          onLaunchApp={() => setViewMode("app")}
-          onOpenScan={() => {
-            setViewMode("app");
-            setIsScanOpen(true);
-          }}
-          onOpenService={(serviceId) => {
-            setViewMode("app");
-            handleOpenService(serviceId);
-          }}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-          isConnected={isConnected}
-          isApiLoading={isApiLoading}
-          modelName={modelName}
-          latencyMs={latencyMs}
-        />
-        <ProviderSettingsModal
-          isOpen={isSettingsOpen}
-          onClose={() => setIsSettingsOpen(false)}
-          onOpenLocalModel={() => setIsLocalModelOpen(true)}
-        />
-        <LocalModelManagerModal
-          isOpen={isLocalModelOpen}
-          onClose={() => setIsLocalModelOpen(false)}
-        />
-      </ThemeProvider>
-    );
-  }
-
   return (
-    <ThemeProvider>
-      <div className="h-screen w-screen flex flex-col liquid-glass-canvas text-[#111827] dark:text-[#F8FAFC] overflow-hidden select-none font-sans relative">
-        {/* Top Window Header with Browser-style Tabs */}
-        <DesktopHeader
-          openTabs={openTabs}
-          activeTabId={activeTabId}
-          onSelectTab={(id) => setActiveTabId(id)}
-          onCloseTab={handleCloseTab}
-          onNewTab={() => handleOpenService("ai-review")}
-          onSelectService={handleOpenService}
+    <div className="h-screen w-screen flex flex-col liquid-glass-canvas text-[#111827] dark:text-[#F8FAFC] overflow-hidden select-none font-sans relative">
+      {/* Top Window Header with Browser-style Tabs */}
+      <DesktopHeader
+        openTabs={openTabs}
+        activeTabId={activeTabId}
+        onSelectTab={(id) => setActiveTabId(id)}
+        onCloseTab={handleCloseTab}
+        onNewTab={() => !isScanning && handleOpenService("ai-review")}
+        onSelectService={handleOpenService}
+        isConnected={isConnected}
+        isLoading={isApiLoading}
+        activeModelName={modelName}
+        latencyMs={latencyMs}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+        sidebarOpen={sidebarOpen}
+        onGoHome={!isDesktopApp() ? () => setViewMode("landing") : undefined}
+        isScanning={isScanning}
+      />
+
+      {/* Main Layout: Sidebar + Active View */}
+      <div className="flex-1 flex overflow-hidden">
+        <DesktopSidebar
+          papers={papers}
+          activePaperId={activeTabId}
+          activeView={activeView}
           isConnected={isConnected}
           isLoading={isApiLoading}
+          provider={provider}
           activeModelName={modelName}
-          latencyMs={latencyMs}
+          isCollapsed={!sidebarOpen}
+          onToggleCollapse={() => setSidebarOpen((prev) => !prev)}
+          onSelectPaper={handleOpenArticle}
+          onSelectView={(view) => setActiveView(view)}
+          onOpenSearch={() => setIsSearchOpen(true)}
+          onNewReview={() => !isScanning && handleOpenService("ai-review")}
           onOpenSettings={() => setIsSettingsOpen(true)}
-          onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
-          sidebarOpen={sidebarOpen}
-          onGoHome={!isDesktopApp() ? () => setViewMode("landing") : undefined}
-        />
-
-        {/* Main Layout: Sidebar + Active View */}
-        <div className="flex-1 flex overflow-hidden">
-          <DesktopSidebar
-            papers={papers}
-            activePaperId={activeTabId}
-            activeView={activeView}
-            isConnected={isConnected}
-            isLoading={isApiLoading}
-            provider={provider}
-            activeModelName={modelName}
-            isCollapsed={!sidebarOpen}
-            onToggleCollapse={() => setSidebarOpen((prev) => !prev)}
-            onSelectPaper={handleOpenArticle}
-            onSelectView={(view) => setActiveView(view)}
-            onOpenSearch={() => setIsSearchOpen(true)}
-            onNewReview={() => handleOpenService("ai-review")}
-            onOpenSettings={() => setIsSettingsOpen(true)}
-            onOpenLocalModel={() => setIsLocalModelOpen(true)}
-            onSelectService={handleOpenService}
-            onDeletePaper={(paper) => setPapersToDelete([paper])}
-            onDeleteMultiplePapers={(targets) => setPapersToDelete(targets)}
-            onGoHome={!isDesktopApp() ? () => setViewMode("landing") : undefined}
-            selectedPaperIds={selectedPaperIds}
-            onToggleSelectPaper={handleToggleSelectPaper}
-            onClearSelectedPapers={handleClearSelectedPapers}
-          />
-
-          {/* View Content */}
-          {renderActiveTabContent()}
-        </div>
-
-        {/* Modals */}
-        <DesktopSearchModal
-          isOpen={isSearchOpen}
-          onClose={() => setIsSearchOpen(false)}
-          papers={papers}
-          onSelectItem={(id) => {
-            if (papers.some((p) => p.id === id)) {
-              handleOpenArticle(id);
-            } else if (id.startsWith("tool-")) {
-              handleOpenService(id.replace("tool-", ""));
-            }
-          }}
-        />
-
-        {/* Live Pre-Submission AI Review Scan Modal */}
-        <DesktopScanModal
-          isOpen={isScanOpen}
-          onClose={() => setIsScanOpen(false)}
-          onComplete={handleScanComplete}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-        />
-
-        {/* Project Deletion Confirmation Modal */}
-        <DeleteConfirmationModal
-          papers={papersToDelete}
-          isOpen={Boolean(papersToDelete && papersToDelete.length > 0)}
-          onClose={() => setPapersToDelete(null)}
-          onConfirm={handleDeleteProjectConfirm}
-        />
-
-        <ProviderSettingsModal
-          isOpen={isSettingsOpen}
-          onClose={() => setIsSettingsOpen(false)}
           onOpenLocalModel={() => setIsLocalModelOpen(true)}
+          onSelectService={handleOpenService}
+          onDeletePaper={(paper) => setPapersToDelete([paper])}
+          onDeleteMultiplePapers={(targets) => setPapersToDelete(targets)}
+          onGoHome={!isDesktopApp() ? () => setViewMode("landing") : undefined}
+          selectedPaperIds={selectedPaperIds}
+          onToggleSelectPaper={onToggleSelectPaper}
+          onClearSelectedPapers={onClearSelectedPapers}
+          isScanning={isScanning}
         />
 
-        <LocalModelManagerModal
-          isOpen={isLocalModelOpen}
-          onClose={() => setIsLocalModelOpen(false)}
-        />
+        {/* View Content */}
+        {renderActiveTabContent()}
       </div>
-    </ThemeProvider>
+
+      {/* Modals */}
+      <DesktopSearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        papers={papers}
+        onSelectItem={(id) => {
+          if (papers.some((p) => p.id === id)) {
+            handleOpenArticle(id);
+          } else if (id.startsWith("tool-")) {
+            handleOpenService(id.replace("tool-", ""));
+          }
+        }}
+      />
+
+      {/* Live Pre-Submission AI Review Scan Modal */}
+      <DesktopScanModal
+        isOpen={isScanOpen}
+        onClose={() => setIsScanOpen(false)}
+        onComplete={handleScanComplete}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+      />
+
+      {/* Project Deletion Confirmation Modal */}
+      <DeleteConfirmationModal
+        papers={papersToDelete}
+        isOpen={Boolean(papersToDelete && papersToDelete.length > 0)}
+        onClose={() => setPapersToDelete(null)}
+        onConfirm={handleDeleteProjectConfirm}
+      />
+
+      <ProviderSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onOpenLocalModel={() => setIsLocalModelOpen(true)}
+        isScanning={isScanning}
+      />
+
+      <LocalModelManagerModal
+        isOpen={isLocalModelOpen}
+        onClose={() => setIsLocalModelOpen(false)}
+        isScanning={isScanning}
+      />
+    </div>
   );
 }
