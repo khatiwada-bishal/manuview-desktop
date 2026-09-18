@@ -211,6 +211,7 @@ export function DesktopEmptyDashboard({
               {papers.map((paper) => {
                 const isDeskReject =
                   paper.isDeskReject === true ||
+                  paper.targetJournalEvaluation?.isDisciplinaryMismatch === true ||
                   paper.editorialTriage?.outcome === "desk_reject" ||
                   paper.ineligibilityReason === "scope_mismatch";
                 const isSelected = selectedPaperIds.has(paper.id);

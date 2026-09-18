@@ -55,9 +55,13 @@ export const DashboardPersonasSection: React.FC<DashboardPersonasSectionProps> =
   journalsCount,
 }) => {
   const triage = fullReport?.editorialTriage || currentReport?.editorialTriage || editorialTriage;
-  const isDeskReject = triage?.outcome === "desk_reject";
+  const isDeskReject =
+    triage?.outcome === "desk_reject" ||
+    currentReport?.ineligibilityReason === "scope_mismatch" ||
+    fullReport?.ineligibilityReason === "scope_mismatch" ||
+    matchingJournalsData?.targetJournalEvaluation?.isDisciplinaryMismatch === true;
 
-  if (isDeskReject && personas.length <= 1) {
+  if (isDeskReject) {
     const mismatch = matchingJournalsData?.targetJournalEvaluation;
     const targetJournalDiscipline = mismatch?.journalDiscipline || "Different Academic Discipline";
     const paperDiscipline = matchingJournalsData?.detectedDiscipline || "Scholarly Research";

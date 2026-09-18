@@ -8,6 +8,7 @@ import {
   Users,
   BarChart3,
   ShieldCheck,
+  ShieldAlert,
   ExternalLink,
   CheckSquare,
   GraduationCap,
@@ -62,6 +63,12 @@ export function ScanFullResultsView({
   scanMatchingData,
   exportToast,
 }: ScanFullResultsViewProps) {
+  const isDeskReject = Boolean(
+    report.editorialTriage?.outcome === "desk_reject" ||
+    report.ineligibilityReason === "scope_mismatch" ||
+    report.targetJournalEvaluation?.isDisciplinaryMismatch
+  );
+
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Top Navigation Bar in Results */}
@@ -123,7 +130,7 @@ export function ScanFullResultsView({
       </div>
 
       {/* Document Classification (Only for review-eligible manuscripts) */}
-      {report.isEligibleForReview !== false && report.classification?.isAcademicManuscript && (
+      {!isDeskReject && report.isEligibleForReview !== false && report.classification?.isAcademicManuscript && (
         <div
           className={`p-5 rounded-2xl border text-xs space-y-3 ${
             report.classification.isAcademicManuscript
@@ -152,8 +159,33 @@ export function ScanFullResultsView({
         </div>
       )}
 
-      {/* Ineligibility Banner OR Score & Editorial Triage Block */}
-      {report.isEligibleForReview === false ? (
+      {/* Ineligibility Banner OR Desk Reject Banner OR Score & Editorial Triage Block */}
+      {isDeskReject ? (
+        <div className="p-6 rounded-2xl bg-rose-50/80 border border-rose-200 dark:bg-rose-950/30 dark:border-rose-800/50 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-rose-950 dark:text-rose-200">
+                  Editorial Triage: Immediate Desk Reject
+                </h3>
+                <p className="text-xs text-rose-800 dark:text-rose-400">
+                  Target Journal Scope Mismatch &bull; External Peer-Review Panel Bypassed
+                </p>
+              </div>
+            </div>
+            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-900/50 dark:text-rose-300 dark:border-rose-700">
+              Desk Reject
+            </span>
+          </div>
+          <p className="text-xs sm:text-sm text-rose-900/90 dark:text-rose-300/90 leading-relaxed pt-2 border-t border-rose-200/70 dark:border-rose-800/40">
+            {report.editorialTriage?.summary ||
+              `The manuscript's substantive domain falls outside the published aims and scope of "${report.targetJournal || "the target journal"}". In scholarly publishing, out-of-scope manuscripts are declined during preliminary editorial screening and do not proceed to peer review.`}
+          </p>
+        </div>
+      ) : report.isEligibleForReview === false ? (
         report.ineligibilityReason === "already_published" ? (
           <div className="p-6 rounded-2xl bg-emerald-50/80 border border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800/50 shadow-2xs space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
@@ -592,7 +624,7 @@ export function ScanFullResultsView({
                 <div className="flex items-center gap-2 text-sm font-bold text-[#111827] dark:text-white">
                   <Users className="w-4 h-4 text-neutral-500 dark:text-neutral-400" />
                   <span>
-                    {report.editorialTriage?.outcome === "desk_reject"
+                    {isDeskReject
                       ? (report.reviewerPersonas.length <= 1 ? "Editorial Triage Decision" : "5-Persona Peer-Review Simulation (Editorial Scope Triage)")
                       : "5-Persona Peer-Review Simulation"}
                   </span>
@@ -601,7 +633,7 @@ export function ScanFullResultsView({
                   </span>
                 </div>
                 <span className="text-xs text-neutral-400">
-                  {report.editorialTriage?.outcome === "desk_reject"
+                  {isDeskReject
                     ? (report.reviewerPersonas.length <= 1 ? "Handling editor screening only — no peer reviewers engaged" : "Editorial scope triage with multi-disciplinary stress tests")
                     : "Independent domain evaluations"}
                 </span>

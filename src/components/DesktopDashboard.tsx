@@ -310,14 +310,41 @@ export function DesktopDashboard({
 
   // Normalized values prioritizing fullReport
   const title = currentReport?.title || data.paperTitle || data.headlineTitle;
-  const isDeskReject =
-    currentReport?.editorialTriage?.outcome === "desk_reject" ||
+  const targetJournal =
+    currentReport?.targetJournal || data.targetJournal || "Target Journal";
+  const summary = currentReport?.summary;
+  const classification = currentReport?.classification;
+  const dimensions = currentReport?.dimensions || {};
+
+  // Extract cited journals from full report if available
+  const citedJournals = useMemo(() => {
+    const refs = fullReport?.citationIntegrity?.references || [];
+    return refs.map((r) => r.journal || "").filter(Boolean);
+  }, [fullReport]);
+
+  // Match journals from catalog to guarantee 3 tiered cards + 10+ list matches
+  const matchingJournalsData = useMemo(() => {
+    return findMatchingJournals(title, typeof summary === "string" ? summary : "", targetJournal, citedJournals);
+  }, [title, summary, targetJournal, citedJournals]);
+
+  const targetJournalEval =
+    currentReport?.targetJournalEvaluation ||
+    fullReport?.targetJournalEvaluation ||
+    matchingJournalsData?.targetJournalEvaluation;
+
+  const isScopeMismatch =
+    Boolean(targetJournalEval?.isDisciplinaryMismatch) ||
     currentReport?.ineligibilityReason === "scope_mismatch" ||
+    fullReport?.ineligibilityReason === "scope_mismatch";
+
+  const isDeskReject =
+    isScopeMismatch ||
+    currentReport?.editorialTriage?.outcome === "desk_reject" ||
     fullReport?.editorialTriage?.outcome === "desk_reject" ||
-    fullReport?.ineligibilityReason === "scope_mismatch" ||
     data?.editorialTriage?.outcome === "desk_reject" ||
     data?.statusText?.includes("Desk Reject") ||
     data?.isDeskReject === true;
+
   const isReviewEligible = !isDeskReject && currentReport?.isEligibleForReview !== false;
   const ineligibilityReason = isDeskReject ? "scope_mismatch" : currentReport?.ineligibilityReason;
   const isAlreadyPublished =
@@ -331,16 +358,118 @@ export function DesktopDashboard({
   const overallScore = isDeskReject
     ? undefined
     : (currentReport ? currentReport.overallScore : (isReviewEligible ? data.score : undefined));
-  const calibratedAcceptance: CalibratedAcceptanceRating | undefined =
+
+  const rawCalibratedAcceptance: CalibratedAcceptanceRating | undefined =
     currentReport?.calibratedAcceptance ||
     fullReport?.calibratedAcceptance ||
     data.calibratedAcceptance;
-  const targetJournal =
-    currentReport?.targetJournal || data.targetJournal || "Target Journal";
-  const summary = currentReport?.summary;
-  const classification = currentReport?.classification;
-  const dimensions = currentReport?.dimensions || {};
+
+  const calibratedAcceptance: CalibratedAcceptanceRating | undefined = useMemo(() => {
+    if (!rawCalibratedAcceptance) return undefined;
+    if (isDeskReject) {
+      return {
+        ...rawCalibratedAcceptance,
+        readinessBand: "Desk Reject Hazard",
+        decisionOutcome: "Desk Reject Hazard",
+        primaryHazard:
+          rawCalibratedAcceptance.primaryHazard ||
+          "Out-of-Scope Target Venue: Manuscript domain diverges from target journal editorial remit.",
+        keyOpportunity:
+          rawCalibratedAcceptance.keyOpportunity ||
+          "Retarget submission to a discipline-aligned journal to immediately eliminate the scope triage barrier.",
+        decisionDistribution: {
+          p_desk_reject: 85,
+          p_reject_after_review: 12,
+          p_major_revision: 3,
+          p_minor_revision: 0,
+          p_accept: 0,
+          confidence: "high",
+          messy_middle_flag: false,
+          baseRateDisclaimer: undefined,
+        },
+      };
+    }
+    return rawCalibratedAcceptance;
+  }, [rawCalibratedAcceptance, isDeskReject]);
+
+  // Synchronize desk reject state back to persistent storage if dynamically discovered via scope evaluation
+  useEffect(() => {
+    if (isDeskReject && onUpdateFullReport && currentReport) {
+      const needsReportUpdate =
+        currentReport.isEligibleForReview !== false ||
+        currentReport.overallScore !== undefined ||
+        currentReport.ineligibilityReason !== "scope_mismatch";
+      const needsDataUpdate = data.isDeskReject !== true || data.score !== undefined;
+      if (needsReportUpdate || needsDataUpdate) {
+        const updatedReport: FullReviewReport = {
+          ...currentReport,
+          isEligibleForReview: false,
+          ineligibilityReason: "scope_mismatch",
+          overallScore: undefined,
+          targetJournalEvaluation: targetJournalEval || currentReport.targetJournalEvaluation,
+          editorialTriage: currentReport.editorialTriage?.outcome === "desk_reject"
+            ? currentReport.editorialTriage
+            : {
+                outcome: "desk_reject",
+                sentToPeerReview: false,
+                deskRejectReason: "scope_mismatch",
+                handlingEditorDecision: "Desk Reject",
+                summary:
+                  currentReport.editorialTriage?.summary ||
+                  targetJournalEval?.mismatchWarning ||
+                  `Desk rejected at editorial triage: "${targetJournal}" remit is outside the substantive domain of this manuscript.`,
+                scopeComparison: currentReport.editorialTriage?.scopeComparison || {
+                  manuscriptDiscipline: matchingJournalsData.detectedDiscipline,
+                  manuscriptTopics: [matchingJournalsData.detectedDiscipline],
+                  journalName: targetJournal,
+                  journalDiscipline: targetJournalEval?.journalDiscipline || "Target Domain",
+                  isScopeMatch: false,
+                  suggestedVenues: [
+                    matchingJournalsData.realistic.name,
+                    matchingJournalsData.reach.name,
+                    matchingJournalsData.fallback.name,
+                  ],
+                },
+              },
+        };
+        const updatedData: DesktopDashboardData = {
+          ...data,
+          isDeskReject: true,
+          score: undefined,
+          statusText: "Editorial Desk Reject (Scope Mismatch)",
+        };
+        onUpdateFullReport(updatedReport, updatedData);
+      }
+    }
+  }, [isDeskReject, onUpdateFullReport, currentReport, data, targetJournalEval, targetJournal, matchingJournalsData]);
+
   const personas: ReviewerPersonaFeedback[] = useMemo(() => {
+    if (isDeskReject) {
+      const triage = currentReport?.editorialTriage || fullReport?.editorialTriage || data.editorialTriage;
+      const mismatchReason =
+        targetJournalEval?.mismatchWarning ||
+        `The manuscript domain is outside the publication remit of "${targetJournal}". In accordance with editorial policy, out-of-scope submissions cannot proceed to external peer review.`;
+      return [{
+        persona: "journal_editor" as const,
+        name: "Reviewer 1: Lead Handling Editor",
+        title: `Senior Handling Editor (${targetJournal})`,
+        affiliation: `Editorial Office, ${targetJournal}`,
+        expertise: "Aims & Scope, Editorial Screening & Desk-Reject Triage",
+        roleDescription: "Preliminary Screening & Scope Triage",
+        decisionRecommendation: "Desk Reject" as const,
+        keyChallenge: "Disciplinary scope mismatch with target journal remit.",
+        assessment: triage?.summary || mismatchReason,
+        majorCritiques: [
+          `Substantive research remit falls outside the aims and scope of ${targetJournal}.`,
+          "Redirect submission to a discipline-appropriate journal before engaging external peer reviewers.",
+        ],
+        missingControlsOrAnalyses: [],
+        mustAddressItems: ["Consult the Matching Journals tab and retarget prior to external peer review."],
+        evidenceAnchors: [],
+        counterArguments: [],
+        confidentialEditorNote: undefined,
+      }];
+    }
     if (fullReport?.reviewerPersonas && fullReport.reviewerPersonas.length > 0) {
       return fullReport.reviewerPersonas;
     }
@@ -361,7 +490,7 @@ export function DesktopDashboard({
         expertise: "Scholarly Evaluation",
         roleDescription: r.role || "Peer Reviewer",
         decisionRecommendation: (r.tag === "Critical"
-          ? (isDeskReject ? "Desk Reject" : "Reject / Resubmit")
+          ? "Reject / Resubmit"
           : "Major Revision") as ReviewerPersonaFeedback["decisionRecommendation"],
         keyChallenge: r.quote || "Methodological rigor",
         assessment: r.detail || r.quote || "Detailed evaluation required.",
@@ -373,44 +502,10 @@ export function DesktopDashboard({
         confidentialEditorNote: undefined,
       }));
     }
-    if (isDeskReject && (currentReport?.editorialTriage || data.editorialTriage)) {
-      const triage = currentReport?.editorialTriage || data.editorialTriage;
-      return [{
-        persona: "journal_editor" as const,
-        name: "Reviewer 1: Lead Handling Editor",
-        title: `Senior Handling Editor (${targetJournal})`,
-        affiliation: `Editorial Office, ${targetJournal}`,
-        expertise: "Aims & Scope, Editorial Screening & Desk-Reject Triage",
-        roleDescription: "Preliminary Screening & Scope Triage",
-        decisionRecommendation: "Desk Reject" as const,
-        keyChallenge: "Disciplinary scope mismatch with target journal remit.",
-        assessment: triage?.summary || `The manuscript domain is outside the publication remit of "${targetJournal}". In accordance with editorial policy, out-of-scope submissions cannot proceed to external peer review.`,
-        majorCritiques: [
-          `Substantive research remit falls outside the aims and scope of ${targetJournal}.`,
-          "Redirect submission to a discipline-appropriate journal before engaging external peer reviewers.",
-        ],
-        missingControlsOrAnalyses: [],
-        mustAddressItems: ["Consult the Matching Journals tab and retarget prior to external peer review."],
-        evidenceAnchors: [],
-        counterArguments: [],
-        confidentialEditorNote: undefined,
-      }];
-    }
     return [];
-  }, [fullReport?.reviewerPersonas, fullReport?.editorialTriage, currentReport?.editorialTriage, data?.reviewers, data?.editorialTriage, isDeskReject, targetJournal]);
+  }, [isDeskReject, fullReport?.reviewerPersonas, fullReport?.editorialTriage, currentReport?.editorialTriage, data?.reviewers, data?.editorialTriage, targetJournal, targetJournalEval]);
   const issues = fullReport?.priorityIssues || [];
   const journals = fullReport?.journalRecommendations || [];
-
-  // Extract cited journals from full report if available
-  const citedJournals = useMemo(() => {
-    const refs = fullReport?.citationIntegrity?.references || [];
-    return refs.map((r) => r.journal || "").filter(Boolean);
-  }, [fullReport]);
-
-  // Match journals from catalog to guarantee 3 tiered cards + 10+ list matches
-  const matchingJournalsData = useMemo(() => {
-    return findMatchingJournals(title, typeof summary === "string" ? summary : "", targetJournal, citedJournals);
-  }, [title, summary, targetJournal, citedJournals]);
 
   const otherJournals = useMemo(() => {
     return matchingJournalsData.otherMatches || [];

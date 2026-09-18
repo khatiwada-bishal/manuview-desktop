@@ -3,6 +3,7 @@ import { DesktopDashboardData } from "@/components/DesktopDashboard";
 import { TabItem } from "@/components/DesktopHeader";
 import { FullReviewReport } from "./types";
 import { idbSet, idbDelete, idbGetAll } from "./indexed-db";
+import { findMatchingJournals } from "./journals";
 
 export interface SavedProject {
   paper: PaperItem;
@@ -68,6 +69,58 @@ export function purgeLegacyDummyData(): void {
 }
 
 /**
+ * Sanitize project state to ensure scope mismatches are strictly classified as desk rejects
+ */
+export function sanitizeSavedProject(p: SavedProject): SavedProject {
+  let isMismatch =
+    p.fullReport?.targetJournalEvaluation?.isDisciplinaryMismatch === true ||
+    p.paper?.targetJournalEvaluation?.isDisciplinaryMismatch === true ||
+    p.paper?.ineligibilityReason === "scope_mismatch" ||
+    p.paper?.editorialTriage?.outcome === "desk_reject" ||
+    p.fullReport?.editorialTriage?.outcome === "desk_reject" ||
+    p.fullReport?.ineligibilityReason === "scope_mismatch" ||
+    p.dashboardData?.editorialTriage?.outcome === "desk_reject" ||
+    p.dashboardData?.statusText?.includes("Desk Reject") ||
+    p.paper?.isDeskReject === true ||
+    p.dashboardData?.isDeskReject === true;
+
+  if (!isMismatch && p.paper?.journal && p.paper?.title) {
+    try {
+      const match = findMatchingJournals(p.paper.title, p.fullReport?.summary || "", p.paper.journal, []);
+      if (match?.targetJournalEvaluation?.isDisciplinaryMismatch) {
+        isMismatch = true;
+      }
+    } catch {
+      // Graceful fallback
+    }
+  }
+
+  const paper: PaperItem = {
+    ...p.paper,
+    score: isMismatch ? undefined : p.paper.score,
+    isDeskReject: isMismatch || p.paper.isDeskReject,
+    isEligibleForReview: isMismatch ? false : p.paper.isEligibleForReview,
+    ineligibilityReason: isMismatch ? "scope_mismatch" : p.paper.ineligibilityReason,
+    targetJournalEvaluation: p.paper.targetJournalEvaluation || p.fullReport?.targetJournalEvaluation,
+    createdAt: p.paper.createdAt || p.createdAt,
+    updatedAt: p.paper.updatedAt || p.updatedAt,
+  };
+
+  const dashboardData: DesktopDashboardData = {
+    ...p.dashboardData,
+    score: isMismatch ? undefined : p.dashboardData?.score,
+    isDeskReject: isMismatch || p.dashboardData?.isDeskReject,
+    statusText: isMismatch ? "Editorial Desk Reject (Scope Mismatch)" : p.dashboardData?.statusText,
+  };
+
+  return {
+    ...p,
+    paper,
+    dashboardData,
+  };
+}
+
+/**
  * Load all saved projects from the user's computer
  */
 export function loadSavedProjects(): SavedProject[] {
@@ -79,14 +132,7 @@ export function loadSavedProjects(): SavedProject[] {
     }
     const parsed: SavedProject[] = JSON.parse(raw);
     const cleaned = parsed.filter((p) => !LEGACY_DUMMY_IDS.has(p.paper.id));
-    return cleaned.map((p) => ({
-      ...p,
-      paper: {
-        ...p.paper,
-        createdAt: p.paper.createdAt || p.createdAt,
-        updatedAt: p.paper.updatedAt || p.updatedAt,
-      },
-    }));
+    return cleaned.map(sanitizeSavedProject);
   } catch (err) {
     console.error("Error loading saved projects from localStorage:", err);
     return [];
@@ -108,17 +154,7 @@ export async function initIndexedDBStorage(): Promise<SavedProject[]> {
     const idbProjects = await idbGetAll<SavedProject & { id: string }>();
     const validIdb = idbProjects
       .filter((p) => !LEGACY_DUMMY_IDS.has(p.id))
-      .map(({ id, ...rest }) => {
-        const proj = rest as SavedProject;
-        return {
-          ...proj,
-          paper: {
-            ...proj.paper,
-            createdAt: proj.paper.createdAt || proj.createdAt,
-            updatedAt: proj.paper.updatedAt || proj.updatedAt,
-          },
-        };
-      });
+      .map(({ id, ...rest }) => sanitizeSavedProject(rest as SavedProject));
 
     // Reconcile the two stores by id, keeping whichever copy was updated most
     // recently (ISO timestamps compare lexicographically). This avoids clobbering

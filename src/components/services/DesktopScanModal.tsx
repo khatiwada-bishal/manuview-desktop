@@ -111,7 +111,8 @@ export function DesktopScanModal({
     const newId = `paper-${Date.now()}`;
     const isDeskReject =
       fullReport.editorialTriage?.outcome === "desk_reject" ||
-      fullReport.ineligibilityReason === "scope_mismatch";
+      fullReport.ineligibilityReason === "scope_mismatch" ||
+      fullReport.targetJournalEvaluation?.isDisciplinaryMismatch === true;
     const isEligible = !isDeskReject && fullReport.isEligibleForReview !== false;
     const isPublished =
       !isDeskReject &&
@@ -133,6 +134,7 @@ export function DesktopScanModal({
       isPublished: isPublished,
       publishedJournal: fullReport.publishedDetails?.journalName,
       editorialTriage: fullReport.editorialTriage,
+      targetJournalEvaluation: fullReport.targetJournalEvaluation,
       createdAt: fullReport.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

@@ -6,6 +6,9 @@ import {
   evaluateSixPillarDeskRejection,
 } from "../src/lib/engine/scope-triage-journals.ts";
 import type { ParsedManuscript } from "../src/lib/types.ts";
+import { findMatchingJournals } from "../src/lib/journals.ts";
+import { calculateCalibratedAcceptanceProbability } from "../src/lib/engine/scoring-dimensions.ts";
+import { sanitizeSavedProject } from "../src/lib/projectStorage.ts";
 
 test("Desk Reject Pillar Context: Qualitative cause framing without uncited percentage decimals", () => {
   // 1. Verify DESK_REJECT_CAUSE_CONTEXT is populated with qualitative text and no percentage symbols
@@ -96,4 +99,57 @@ test("evaluateSixPillarDeskRejection: handles soundness-only venues with explici
     `Soundness-only venue should disclaim novelty: ${noveltyPillar.editorialContext}`
   );
   assert.equal(noveltyPillar.editorialContext, noveltyPillar.baseRateContext);
+});
+
+test("Target Journal Scope Mismatch triggers immediate desk reject triage and suppresses acceptance score", () => {
+  const title = "Benchmarking Deep Convolutional and Vision Transformer Architectures for Autonomous E-Waste Component Classification in Mixed Scrap Streams";
+  const targetJournal = "Cancer";
+
+  // 1. findMatchingJournals detects scope mismatch
+  const matchResult = findMatchingJournals(title, "", targetJournal, []);
+  assert.ok(matchResult.targetJournalEvaluation, "Should evaluate target journal");
+  assert.equal(matchResult.targetJournalEvaluation.isDisciplinaryMismatch, true, "Cancer must be flagged as disciplinary mismatch for e-waste computer science paper");
+
+  // 2. sanitizeSavedProject retroactively repairs papers with numerical scores if target journal is out-of-scope
+  const staleSavedProject = {
+    paper: {
+      id: "paper-123",
+      title,
+      shortName: "Benchmarking Deep Convo",
+      journal: "Cancer",
+      score: 86,
+      isDeskReject: false,
+      isEligibleForReview: true,
+    },
+    dashboardData: {
+      paperTitle: title,
+      targetJournal: "Cancer",
+      score: 86,
+      isDeskReject: false,
+    },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  const sanitized = sanitizeSavedProject(staleSavedProject);
+  assert.equal(sanitized.paper.isDeskReject, true, "Paper must be marked as desk reject");
+  assert.equal(sanitized.paper.score, undefined, "Paper numerical score must be suppressed to undefined");
+  assert.equal(sanitized.paper.isEligibleForReview, false, "Review eligibility must be false");
+  assert.equal(sanitized.paper.ineligibilityReason, "scope_mismatch", "Ineligibility reason must be scope_mismatch");
+  assert.equal(sanitized.dashboardData.isDeskReject, true, "Dashboard data must be marked as desk reject");
+  assert.equal(sanitized.dashboardData.score, undefined, "Dashboard score must be undefined");
+
+  // 3. calculateCalibratedAcceptanceProbability returns Desk Reject Hazard
+  const calib = calculateCalibratedAcceptanceProbability({
+    overallScore: 86,
+    dimensions: undefined,
+    targetJournal: "Cancer",
+    targetJournalEvaluation: matchResult.targetJournalEvaluation,
+    isScopeMismatch: true,
+  });
+
+  assert.equal(calib.readinessBand, "Desk Reject Hazard", "Readiness band must be Desk Reject Hazard");
+  assert.equal(calib.decisionOutcome, "Desk Reject Hazard", "Decision outcome must be Desk Reject Hazard");
+  assert.equal(calib.decisionDistribution.p_desk_reject, 85, "Desk reject probability must be 85%");
+  assert.equal(calib.decisionDistribution.p_accept, 0, "Acceptance probability must be 0%");
 });

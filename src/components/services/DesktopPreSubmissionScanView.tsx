@@ -239,7 +239,8 @@ export function DesktopPreSubmissionScanView({
     if (!onComplete) return;
     const isDeskReject =
       fullReport.editorialTriage?.outcome === "desk_reject" ||
-      fullReport.ineligibilityReason === "scope_mismatch";
+      fullReport.ineligibilityReason === "scope_mismatch" ||
+      fullReport.targetJournalEvaluation?.isDisciplinaryMismatch === true;
     const isEligible = !isDeskReject && fullReport.isEligibleForReview !== false;
     const isPublished =
       !isDeskReject &&
@@ -261,6 +262,7 @@ export function DesktopPreSubmissionScanView({
       isPublished: isPublished,
       publishedJournal: fullReport.publishedDetails?.journalName,
       editorialTriage: fullReport.editorialTriage,
+      targetJournalEvaluation: fullReport.targetJournalEvaluation,
       createdAt: fullReport.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

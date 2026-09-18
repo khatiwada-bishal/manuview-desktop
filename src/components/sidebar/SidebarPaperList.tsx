@@ -139,6 +139,7 @@ export function SidebarPaperList({
                 const isDeskReject =
                   paper.editorialTriage?.outcome === "desk_reject" ||
                   paper.ineligibilityReason === "scope_mismatch" ||
+                  paper.targetJournalEvaluation?.isDisciplinaryMismatch === true ||
                   paper.isDeskReject === true;
                 return (
                   <div key={paper.id} className="space-y-0.5 group/article">

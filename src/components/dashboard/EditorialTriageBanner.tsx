@@ -42,7 +42,9 @@ export const EditorialTriageBanner: React.FC<EditorialTriageBannerProps> = ({
   onNewScan,
   handlePrint,
 }) => {
-  if (isDeskReject) {
+  const isEffectiveDeskReject = isDeskReject || Boolean(targetJournalEvaluation?.isDisciplinaryMismatch);
+
+  if (isEffectiveDeskReject) {
     return (
       <div className="p-5 sm:p-6 rounded-2xl border-2 border-rose-500/40 bg-gradient-to-br from-rose-50/90 via-white/80 to-rose-50/50 dark:from-rose-950/40 dark:via-[#161F30] dark:to-rose-950/20 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-rose-200/60 dark:border-rose-900/40 pb-3">
@@ -288,12 +290,6 @@ export const EditorialTriageBanner: React.FC<EditorialTriageBannerProps> = ({
             </span>
           </div>
         )}
-        {targetJournalEvaluation?.isDisciplinaryMismatch ? (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30">
-            <AlertTriangle className="w-3.5 h-3.5" />
-            Target Journal Scope Mismatch
-          </span>
-        ) : null}
       </div>
 
       <div className="flex items-center gap-2">

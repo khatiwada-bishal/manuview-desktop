@@ -147,6 +147,7 @@ export function SidebarCollapsedView({
                       const isDeskReject =
                         paper.editorialTriage?.outcome === "desk_reject" ||
                         paper.ineligibilityReason === "scope_mismatch" ||
+                        paper.targetJournalEvaluation?.isDisciplinaryMismatch === true ||
                         paper.isDeskReject === true;
                       return (
                         <div key={paper.id} className="space-y-0.5">
@@ -247,11 +248,11 @@ export function SidebarCollapsedView({
                                 }`}
                               >
                                 <Users className="w-3 h-3 text-blue-600 dark:text-blue-400 shrink-0" />
-                                <span className="truncate">
-                                  {paper.editorialTriage?.outcome === "desk_reject"
-                                    ? "Editorial Triage (Desk Reject)"
-                                    : "5-Persona Reviews"}
-                                </span>
+                                  <span className="truncate">
+                                    {isDeskReject
+                                      ? "Editorial Triage (Desk Reject)"
+                                      : "5-Persona Reviews"}
+                                  </span>
                               </button>
                               <button
                                 type="button"

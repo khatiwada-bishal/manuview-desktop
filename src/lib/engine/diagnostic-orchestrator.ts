@@ -622,7 +622,7 @@ export async function runManuscriptDiagnostic(
   );
 
   const isDeskRejectByScope = !isRecommendedVenue && Boolean(
-    isTargetScopeMismatch && journalMatches.targetJournalEvaluation?.isDisciplinaryMismatch
+    isTargetScopeMismatch || journalMatches.targetJournalEvaluation?.isDisciplinaryMismatch
   );
 
   // In academic publishing, if a submission does not meet the journal's scope, the handling editor
@@ -1332,6 +1332,7 @@ export async function runManuscriptDiagnostic(
   });
 
   const panelConsensus = computePanelConsensus(finalPersonas, finalOverallScore);
+  const isEffectiveDeskReject = isDeskRejectByScope || Boolean(journalMatches.targetJournalEvaluation?.isDisciplinaryMismatch);
 
   const report: FullReviewReport = {
     mode: "full",
@@ -1343,12 +1344,20 @@ export async function runManuscriptDiagnostic(
     targetJournalEvaluation: journalMatches.targetJournalEvaluation,
     funnelStageReached: "stage3_synthesis",
     verificationCoverage,
-    editorialTriage,
+    editorialTriage: isEffectiveDeskReject && editorialTriage.outcome !== "desk_reject"
+      ? {
+          ...editorialTriage,
+          outcome: "desk_reject",
+          sentToPeerReview: false,
+          deskRejectReason: "scope_mismatch",
+          handlingEditorDecision: "Desk Reject",
+        }
+      : editorialTriage,
     calibratedAcceptance,
-    isEligibleForReview: !isDeskRejectByScope,
-    ineligibilityReason: isDeskRejectByScope ? "scope_mismatch" : undefined,
-    overallScore: isDeskRejectByScope ? undefined : finalOverallScore,
-    panelConsensus: isDeskRejectByScope ? undefined : panelConsensus,
+    isEligibleForReview: !isEffectiveDeskReject,
+    ineligibilityReason: isEffectiveDeskReject ? "scope_mismatch" : undefined,
+    overallScore: isEffectiveDeskReject ? undefined : finalOverallScore,
+    panelConsensus: isEffectiveDeskReject ? undefined : panelConsensus,
     complianceAudit: domainSynthesis.complianceAudit,
     summary: finalSummary,
     classification: finalClassification,

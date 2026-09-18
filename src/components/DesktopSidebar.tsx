@@ -36,6 +36,7 @@ export interface PaperItem {
   isPublished?: boolean;
   publishedJournal?: string;
   editorialTriage?: EditorialTriageOutcome;
+  targetJournalEvaluation?: any;
   isDeskReject?: boolean;
   createdAt?: string;
   updatedAt?: string;

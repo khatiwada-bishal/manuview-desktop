@@ -500,7 +500,21 @@ export default function App() {
                 }
                 const paper = papers.find((p) => p.id === activeTabId);
                 if (paper) {
-                  saveProject(paper, updatedData || currentDashboardData || ({} as any), updatedReport);
+                  const isReportDeskReject =
+                    updatedReport.editorialTriage?.outcome === "desk_reject" ||
+                    updatedReport.ineligibilityReason === "scope_mismatch" ||
+                    updatedReport.targetJournalEvaluation?.isDisciplinaryMismatch === true ||
+                    updatedData?.isDeskReject === true;
+                  const updatedPaper: PaperItem = {
+                    ...paper,
+                    isDeskReject: isReportDeskReject || paper.isDeskReject,
+                    score: isReportDeskReject ? undefined : (updatedReport.overallScore ?? paper.score),
+                    isEligibleForReview: isReportDeskReject ? false : paper.isEligibleForReview,
+                    ineligibilityReason: isReportDeskReject ? "scope_mismatch" : paper.ineligibilityReason,
+                    targetJournalEvaluation: updatedReport.targetJournalEvaluation || paper.targetJournalEvaluation,
+                  };
+                  setPapers((prev) => prev.map((p) => (p.id === activeTabId ? updatedPaper : p)));
+                  saveProject(updatedPaper, updatedData || currentDashboardData || ({} as any), updatedReport);
                 }
               }
             }}
