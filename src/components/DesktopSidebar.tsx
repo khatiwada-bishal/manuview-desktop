@@ -378,7 +378,7 @@ export function DesktopSidebar({
               </div>
               <div className="flex items-center gap-1">
                 <span className="text-[10px] capitalize text-neutral-400 dark:text-neutral-500 font-semibold px-2 py-0.5 rounded-md bg-black/[0.04] dark:bg-white/[0.08]">
-                  {theme}
+                  {theme === "system" ? `System (${resolvedTheme})` : theme}
                 </span>
                 <ChevronDown
                   className={`w-3.5 h-3.5 text-neutral-400 transition-transform duration-150 ${
