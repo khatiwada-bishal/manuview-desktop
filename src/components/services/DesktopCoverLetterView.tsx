@@ -10,6 +10,7 @@ import {
   Sparkles,
   AlertCircle,
   BookOpen,
+  Loader2,
 } from "lucide-react";
 import JournalCombobox from "@/components/JournalCombobox";
 import { callLLM, sanitizeAuthorText, sanitizeErrorMessage, getSavedClientConfig, resolveActiveConfig } from "@/lib/llm";
@@ -326,12 +327,12 @@ IMPORTANT OUTPUT INSTRUCTIONS:
             >
               {loading ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin shrink-0 text-white/80" />
                   <span>{letter ? "Streaming Editorial Letter..." : "Calibrating with Editorial Standards..."}</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4" />
+                  <Sparkles className="w-4 h-4 shrink-0 text-white/90" />
                   <span>Generate AI Editorial Cover Letter</span>
                 </>
               )}

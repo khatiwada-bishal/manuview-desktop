@@ -38,6 +38,7 @@ import {
   Plus,
   ChevronLeft,
   X,
+  Loader2,
   Copy,
   Check,
   Clock,
@@ -807,7 +808,11 @@ export function DesktopDashboard({
                           onClick={(e) => handleExportFormat("word", e)}
                           className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2.5 cursor-pointer disabled:opacity-50"
                         >
-                          <FileText className="w-3.5 h-3.5 text-blue-500" />
+                          {activeExportFormat === "word" ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500 shrink-0" />
+                          ) : (
+                            <FileText className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                          )}
                           <span>{activeExportFormat === "word" ? "Exporting Word..." : "Word Document (.doc)"}</span>
                         </button>
                         <button
@@ -816,7 +821,11 @@ export function DesktopDashboard({
                           onClick={(e) => handleExportFormat("html", e)}
                           className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2.5 cursor-pointer disabled:opacity-50"
                         >
-                          <Globe className="w-3.5 h-3.5 text-emerald-500" />
+                          {activeExportFormat === "html" ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500 shrink-0" />
+                          ) : (
+                            <Globe className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                          )}
                           <span>{activeExportFormat === "html" ? "Exporting HTML..." : "Interactive HTML (.html)"}</span>
                         </button>
                         <div className="my-1 border-t border-neutral-100 dark:border-neutral-800" />
@@ -826,7 +835,11 @@ export function DesktopDashboard({
                           onClick={(e) => handleExportFormat("pdf", e)}
                           className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2.5 cursor-pointer disabled:opacity-50"
                         >
-                          <Printer className="w-3.5 h-3.5 text-rose-500" />
+                          {activeExportFormat === "pdf" ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-rose-500 shrink-0" />
+                          ) : (
+                            <Printer className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                          )}
                           <span>{activeExportFormat === "pdf" ? "Exporting PDF..." : "PDF Document (.pdf)"}</span>
                         </button>
                       </div>

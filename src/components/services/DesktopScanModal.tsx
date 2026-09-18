@@ -12,6 +12,7 @@ import {
   Search,
   ArrowRight,
   ShieldAlert,
+  Loader2,
 } from "lucide-react";
 import JournalCombobox, { JournalInfoTooltip } from "@/components/JournalCombobox";
 import { pickManuscriptFileDesktop, isDesktopApp } from "@/lib/desktop";
@@ -554,15 +555,24 @@ export function DesktopScanModal({
                     onClick={handleSubmitForReview}
                     disabled={isScanning}
                     title={isScanning ? "A manuscript review is actively running" : undefined}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-semibold shadow-xs transition ${
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-xs font-semibold shadow-xs transition cursor-pointer ${
                       isScanning
-                        ? "bg-neutral-400 dark:bg-neutral-700 cursor-not-allowed opacity-60"
-                        : "bg-emerald-600 hover:bg-emerald-700 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                        ? "bg-neutral-300 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 cursor-not-allowed opacity-60 pointer-events-none"
+                        : "liquid-glass-btn-primary active:scale-[0.98]"
                     }`}
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                    <span>{isScanning ? "Review in Progress..." : "Submit for Review"}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    {isScanning ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 text-white/80" />
+                        <span>Review in Progress...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5 text-white/90 shrink-0" />
+                        <span>Submit for Review</span>
+                        <ArrowRight className="w-3.5 h-3.5 shrink-0 opacity-80" />
+                      </>
+                    )}
                   </button>
                 </>
               ) : (
@@ -570,14 +580,23 @@ export function DesktopScanModal({
                   type="submit"
                   disabled={isScanning}
                   title={isScanning ? "A manuscript review is actively running" : undefined}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-semibold shadow-xs transition ${
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-xs font-semibold shadow-xs transition cursor-pointer ${
                     isScanning
-                      ? "bg-neutral-400 dark:bg-neutral-700 cursor-not-allowed opacity-60"
-                      : "bg-blue-600 hover:bg-blue-700 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                      ? "bg-neutral-300 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 cursor-not-allowed opacity-60 pointer-events-none"
+                      : "liquid-glass-btn-primary active:scale-[0.98]"
                   }`}
                 >
-                  <Search className="w-3.5 h-3.5" />
-                  <span>{isScanning ? "Review Running..." : "Check Compatibility"}</span>
+                  {isScanning ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 text-white/80" />
+                      <span>Review Running...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-3.5 h-3.5 shrink-0 text-white/90" />
+                      <span>Check Compatibility</span>
+                    </>
+                  )}
                 </button>
               )}
             </div>

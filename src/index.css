@@ -279,19 +279,51 @@ body {
 
 /* Liquid Glass Buttons */
 .liquid-glass-btn-primary {
+  background: linear-gradient(180deg, #2563EB 0%, #1D4ED8 100%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 
+    0 2px 6px -1px rgba(37, 99, 235, 0.35),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.35);
+  color: #FFFFFF;
+}
+
+.liquid-glass-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #3B82F6 0%, #2563EB 100%);
+  box-shadow: 
+    0 4px 12px -1px rgba(37, 99, 235, 0.45),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.5);
+}
+
+.liquid-glass-btn-primary:active:not(:disabled) {
+  background: linear-gradient(180deg, #1D4ED8 0%, #1E40AF 100%);
+  box-shadow: 
+    0 1px 3px 0 rgba(37, 99, 235, 0.3),
+    inset 0 1px 1px 0 rgba(0, 0, 0, 0.2);
+  transform: scale(0.99);
+}
+
+.liquid-glass-btn-primary:disabled,
+.liquid-glass-btn-primary[disabled] {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.dark .liquid-glass-btn-primary {
   background: linear-gradient(180deg, #3B82F6 0%, #2563EB 100%);
   border: 1px solid rgba(255, 255, 255, 0.25);
   box-shadow: 
     0 2px 8px -1px rgba(37, 99, 235, 0.4),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.4);
-  color: #FFFFFF;
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.25);
 }
 
-.liquid-glass-btn-primary:hover {
-  background: linear-gradient(180deg, #60A5FA 0%, #2563EB 100%);
+.dark .liquid-glass-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #60A5FA 0%, #3B82F6 100%);
   box-shadow: 
     0 4px 14px -1px rgba(37, 99, 235, 0.5),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.6);
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.4);
 }
 
 .liquid-glass-btn-secondary {
@@ -304,9 +336,23 @@ body {
     inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
 }
 
-.liquid-glass-btn-secondary:hover {
+.liquid-glass-btn-secondary:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.9);
   border-color: rgba(0, 0, 0, 0.12);
+}
+
+.liquid-glass-btn-secondary:active:not(:disabled) {
+  background: rgba(245, 245, 245, 0.9);
+  transform: scale(0.99);
+}
+
+.liquid-glass-btn-secondary:disabled,
+.liquid-glass-btn-secondary[disabled] {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  box-shadow: none !important;
+  transform: none !important;
 }
 
 .dark .liquid-glass-btn-secondary {
@@ -319,9 +365,14 @@ body {
     inset 0 1px 0 0 rgba(255, 255, 255, 0.16);
 }
 
-.dark .liquid-glass-btn-secondary:hover {
+.dark .liquid-glass-btn-secondary:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.15);
   border-color: rgba(255, 255, 255, 0.22);
+}
+
+.dark .liquid-glass-btn-secondary:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  transform: scale(0.99);
 }
 
 /* Glassmorphic Specular Panels */

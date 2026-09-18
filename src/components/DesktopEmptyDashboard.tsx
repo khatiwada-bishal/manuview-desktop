@@ -18,6 +18,7 @@ import {
   Square,
   Check,
   X,
+  Loader2,
 } from "lucide-react";
 import { PaperItem } from "./DesktopSidebar";
 import { DashboardGlassIllustration } from "./dashboard/DashboardGlassIllustration";
@@ -147,13 +148,17 @@ export function DesktopEmptyDashboard({
                   onClick={() => !isScanning && onOpenService("ai-review")}
                   disabled={isScanning}
                   title={isScanning ? "A manuscript scan is already in progress" : undefined}
-                  className={`px-5 py-2.5 rounded-xl font-bold text-xs shadow-md transition flex items-center gap-2 ${
+                  className={`px-5 py-2.5 rounded-xl font-semibold text-xs shadow-xs transition flex items-center gap-2 ${
                     isScanning
-                      ? "bg-neutral-600 text-neutral-400 cursor-not-allowed opacity-60 shadow-none"
-                      : "bg-blue-600 hover:bg-blue-500 text-white hover:shadow-lg cursor-pointer"
+                      ? "bg-neutral-600/70 text-neutral-400 cursor-not-allowed opacity-60 shadow-none pointer-events-none"
+                      : "liquid-glass-btn-primary cursor-pointer active:scale-95"
                   }`}
                 >
-                  <Plus className="w-4 h-4" />
+                  {isScanning ? (
+                    <Loader2 className="w-4 h-4 animate-spin shrink-0 text-white/80" />
+                  ) : (
+                    <Plus className="w-4 h-4 shrink-0 text-white/90" />
+                  )}
                   <span>{isScanning ? "Review in Progress..." : "New Review Scan"}</span>
                 </button>
                 <span className="text-xs text-white/60 font-medium">
@@ -371,9 +376,9 @@ export function DesktopEmptyDashboard({
               <button
                 type="button"
                 onClick={() => onOpenService("ai-review")}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition cursor-pointer btn-interactive shadow-xs"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl liquid-glass-btn-primary text-white font-semibold text-xs transition cursor-pointer shadow-xs active:scale-95"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 shrink-0 text-white/90" />
                 <span>Start First Review Scan</span>
               </button>
             </div>

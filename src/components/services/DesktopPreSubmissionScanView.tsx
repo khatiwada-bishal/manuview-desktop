@@ -80,6 +80,7 @@ export function DesktopPreSubmissionScanView({
   const [targetJournalError, setTargetJournalError] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [isInitiating, setIsInitiating] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState("");
   const [loadingPercent, setLoadingPercent] = useState<number | undefined>(undefined);
@@ -340,7 +341,7 @@ export function DesktopPreSubmissionScanView({
   const handleRunReview = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
-    if (isScanning) return;
+    if (isScanning || isInitiating) return;
 
     if (!targetJournal.trim()) {
       setTargetJournalError(true);
@@ -357,6 +358,7 @@ export function DesktopPreSubmissionScanView({
     }
 
     setError(null);
+    setIsInitiating(true);
     try {
       await startScan({
         title: manuscriptTitle.trim() || (file?.name ? file.name.replace(/\.[^/.]+$/, "") : "Untitled Manuscript"),
@@ -372,6 +374,8 @@ export function DesktopPreSubmissionScanView({
           err?.message || "Failed to initiate diagnostic scan. Please verify your AI provider credentials."
         )
       );
+    } finally {
+      setIsInitiating(false);
     }
   };
 
@@ -526,7 +530,7 @@ export function DesktopPreSubmissionScanView({
             handleFileChange={handleFileChange}
             handleRunReview={handleRunReview}
             onOpenSettings={onOpenSettings}
-            isScanning={isScanning}
+            isScanning={isScanning || isInitiating}
           />
         )}
 

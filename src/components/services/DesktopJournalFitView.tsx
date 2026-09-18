@@ -12,6 +12,7 @@ import {
   Clock,
   Award,
   AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { findMatchingJournals, JournalEntry, JOURNAL_CATALOG, TargetJournalTierResults } from "@/lib/journals";
 import JournalCombobox from "@/components/JournalCombobox";
@@ -167,7 +168,11 @@ export function DesktopJournalFitView() {
               disabled={loading || (!title.trim() && !abstract.trim())}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl liquid-glass-btn-primary disabled:opacity-50 text-white text-xs font-semibold tracking-wide transition cursor-pointer shadow-xs"
             >
-              <Compass className="w-4 h-4" />
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin shrink-0 text-white/80" />
+              ) : (
+                <Compass className="w-4 h-4 shrink-0 text-white/90" />
+              )}
               <span>{loading ? "Matching against 48,000+ journals..." : "Predict Journal Fit"}</span>
             </button>
           </div>

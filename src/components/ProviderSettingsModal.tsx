@@ -16,7 +16,7 @@ import {
 } from "@/lib/secureStorage";
 import { isModelCached, SUPPORTED_LOCAL_MODELS } from "@/lib/webllm/webllm-service";
 import { isDesktopApp, isMacOS } from "@/lib/desktop";
-import { Settings, ShieldCheck, X, CheckCircle2, Activity, RefreshCw, AlertCircle, Zap, Check, ChevronDown, Sparkles, Search, KeyRound, Cpu, Download } from "lucide-react";
+import { Settings, ShieldCheck, X, CheckCircle2, Activity, RefreshCw, AlertCircle, Zap, Check, ChevronDown, Sparkles, Search, KeyRound, Cpu, Download, Loader2 } from "lucide-react";
 import { GeminiLogo, OpenAILogo, GroqLogo, AnthropicLogo, OllamaLogo } from "./BrandLogos";
 
 interface Props {
@@ -699,12 +699,12 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                 >
                   {fetchingModels ? (
                     <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-white shrink-0" />
                       <span>Fetching...</span>
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                      <Sparkles className="w-3.5 h-3.5 text-white/90 shrink-0" />
                       <span>Fetch Models</span>
                     </>
                   )}
@@ -811,12 +811,12 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                 >
                   {fetchingModels ? (
                     <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-white shrink-0" />
                       <span>Fetching...</span>
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                      <Sparkles className="w-3.5 h-3.5 text-white/90 shrink-0" />
                       <span>Fetch Models</span>
                     </>
                   )}

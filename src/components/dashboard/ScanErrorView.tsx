@@ -13,6 +13,7 @@ import {
   ChevronDown,
   BookOpen,
   ShieldAlert,
+  Loader2,
 } from "lucide-react";
 import { PaperItem } from "@/components/DesktopSidebar";
 import { useScanManager } from "@/context/ScanContext";
@@ -107,9 +108,13 @@ export function ScanErrorView({
               type="button"
               disabled={isScanning}
               onClick={() => retryScan(paper)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition shadow-xs cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl liquid-glass-btn-primary text-white font-semibold text-xs transition shadow-xs cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <RotateCw className={`w-3.5 h-3.5 ${isScanning ? "animate-spin" : ""}`} />
+              {isScanning ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 text-white/80" />
+              ) : (
+                <RotateCw className="w-3.5 h-3.5 shrink-0" />
+              )}
               <span>{isScanning ? "Scan in progress..." : "Retry Review Scan"}</span>
             </button>
 
@@ -117,9 +122,9 @@ export function ScanErrorView({
               <button
                 type="button"
                 onClick={onOpenSettings}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.08] hover:bg-black/[0.08] dark:hover:bg-white/[0.12] text-neutral-800 dark:text-neutral-200 font-semibold text-xs transition cursor-pointer border border-black/[0.06] dark:border-white/[0.08]"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl liquid-glass-btn-secondary text-neutral-800 dark:text-neutral-200 font-semibold text-xs transition cursor-pointer"
               >
-                <Settings className="w-3.5 h-3.5" />
+                <Settings className="w-3.5 h-3.5 shrink-0" />
                 <span>Configure AI Provider (Cmd+,)</span>
               </button>
             )}

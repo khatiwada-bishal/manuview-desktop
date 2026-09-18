@@ -21,6 +21,7 @@ import {
   MessageSquare,
   FileCode,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 import type {
   FullReviewReport,
@@ -95,7 +96,11 @@ export function ScanFullResultsView({
             onClick={() => handleExport("html")}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-neutral-700 hover:bg-neutral-50 dark:bg-[#161F30] dark:hover:bg-[#1E293B] dark:text-neutral-300 dark:hover:text-white border border-[#E5E7EB] dark:border-[#334155] transition shadow-2xs cursor-pointer disabled:opacity-50"
           >
-            <Globe className="w-3.5 h-3.5 text-blue-600" />
+            {activeExportFormat === "html" ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600 shrink-0" />
+            ) : (
+              <Globe className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            )}
             <span>{activeExportFormat === "html" ? "Exporting..." : "Interactive HTML"}</span>
           </button>
 
@@ -105,7 +110,11 @@ export function ScanFullResultsView({
             onClick={() => handleExport("word")}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-neutral-700 hover:bg-neutral-50 dark:bg-[#161F30] dark:hover:bg-[#1E293B] dark:text-neutral-300 dark:hover:text-white border border-[#E5E7EB] dark:border-[#334155] transition shadow-2xs cursor-pointer disabled:opacity-50"
           >
-            <FileText className="w-3.5 h-3.5 text-indigo-600" />
+            {activeExportFormat === "word" ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600 shrink-0" />
+            ) : (
+              <FileText className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+            )}
             <span>{activeExportFormat === "word" ? "Exporting..." : "Word (.doc)"}</span>
           </button>
 
@@ -115,7 +124,11 @@ export function ScanFullResultsView({
             onClick={() => handleExport("pdf")}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#0F172A] hover:bg-[#1E293B] dark:bg-blue-600 dark:hover:bg-blue-500 text-white transition shadow-xs cursor-pointer disabled:opacity-50"
           >
-            <Printer className="w-3.5 h-3.5 text-rose-400" />
+            {activeExportFormat === "pdf" ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-white/80 shrink-0" />
+            ) : (
+              <Printer className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+            )}
             <span>{activeExportFormat === "pdf" ? "Preparing PDF..." : "PDF Report"}</span>
           </button>
         </div>

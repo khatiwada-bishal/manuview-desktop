@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   FileCode,
   Download,
+  Loader2,
 } from "lucide-react";
 import { callLLM, sanitizeAuthorText, sanitizeErrorMessage, getSavedClientConfig, resolveActiveConfig } from "@/lib/llm";
 import { cleanAndRepairJson } from "@/lib/json-repair";
@@ -240,12 +241,12 @@ ${rows}
             >
               {loading ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin shrink-0 text-white/80" />
                   <span>Synthesizing Rebuttal Matrix...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4" />
+                  <Sparkles className="w-4 h-4 shrink-0 text-white/90" />
                   <span>Generate Response Matrix (AI)</span>
                 </>
               )}

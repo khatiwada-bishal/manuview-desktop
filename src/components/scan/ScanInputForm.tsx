@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   ShieldCheck,
   ArrowRight,
+  Loader2,
   FileUp,
   Tag,
   Layers,
@@ -367,17 +368,24 @@ export function ScanInputForm({
             type="submit"
             disabled={isScanning}
             title={isScanning ? "A manuscript review is actively running in the background" : undefined}
-            className={`w-full py-4 px-6 rounded-2xl font-bold text-xs sm:text-sm text-white shadow-lg transition-all duration-300 flex items-center justify-center gap-2.5 select-none ${
+            className={`w-full py-3.5 px-6 rounded-xl font-semibold text-xs sm:text-sm text-white shadow-xs transition-all duration-200 flex items-center justify-center gap-2.5 select-none ${
               isScanning
-                ? "bg-neutral-400 dark:bg-neutral-700 cursor-not-allowed opacity-60 shadow-none"
-                : "bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 shadow-indigo-500/20 hover:shadow-indigo-500/30 cursor-pointer isolate relative overflow-hidden group hover:scale-[1.003] active:scale-[0.995]"
+                ? "bg-neutral-300 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 cursor-not-allowed opacity-70 pointer-events-none"
+                : "liquid-glass-btn-primary cursor-pointer active:scale-[0.99]"
             }`}
           >
-            <Sparkles className="w-4 h-4 text-amber-300 shrink-0 group-hover:rotate-12 transition-transform duration-300" />
-            <span className="truncate">
-              {isScanning ? "Review in Progress in Background..." : "Run Pre-Submission AI Review & 5-Persona Simulation"}
-            </span>
-            <ArrowRight className="w-4 h-4 shrink-0 group-hover:translate-x-0.5 transition-transform duration-300" />
+            {isScanning ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin shrink-0 text-white/80" />
+                <span className="truncate">Review in Progress in Background...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 text-white/90 shrink-0" />
+                <span className="truncate">Run Pre-Submission AI Review &amp; 5-Persona Simulation</span>
+                <ArrowRight className="w-4 h-4 shrink-0 opacity-80" />
+              </>
+            )}
           </button>
         )}
       </div>

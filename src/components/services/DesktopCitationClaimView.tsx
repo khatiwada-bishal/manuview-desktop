@@ -11,6 +11,7 @@ import {
   Sparkles,
   BookOpen,
   ArrowRight,
+  Loader2,
 } from "lucide-react";
 import { fetchWorkByDOI } from "@/lib/openalex";
 import { callLLM, sanitizeAuthorText, sanitizeErrorMessage, getSavedClientConfig, resolveActiveConfig } from "@/lib/llm";
@@ -214,12 +215,12 @@ Return a JSON object with:
             >
               {loading ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin shrink-0 text-white/80" />
                   <span>Evaluating Cited Evidence...</span>
                 </>
               ) : (
                 <>
-                  <ShieldCheck className="w-4 h-4" />
+                  <ShieldCheck className="w-4 h-4 shrink-0 text-white/90" />
                   <span>Validate Citation Claim</span>
                 </>
               )}

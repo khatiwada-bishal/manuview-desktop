@@ -14,6 +14,7 @@ import {
   Bookmark,
   Download,
   Search,
+  Loader2,
 } from "lucide-react";
 import { ReferenceVerification, FullReviewReport, CitationIntegritySummary } from "@/lib/types";
 import { batchVerifyReferences } from "@/lib/crossref";
@@ -187,7 +188,7 @@ export function DesktopReferenceView() {
             <div className="p-3.5 rounded-2xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200/80 dark:border-blue-900/40 space-y-2 animate-in fade-in duration-200">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-2">
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-600 dark:text-blue-400" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600 dark:text-blue-400 shrink-0" />
                   <span>Auditing references with Crossref &amp; Retraction Watch...</span>
                 </span>
                 <span className="font-mono font-bold text-blue-600 dark:text-blue-400">
@@ -211,12 +212,12 @@ export function DesktopReferenceView() {
             >
               {loading ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin shrink-0 text-white/80" />
                   <span>Resolving DOIs...</span>
                 </>
               ) : (
                 <>
-                  <ShieldCheck className="w-4 h-4" />
+                  <ShieldCheck className="w-4 h-4 shrink-0 text-white/90" />
                   <span>Audit References</span>
                 </>
               )}
