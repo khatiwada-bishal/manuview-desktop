@@ -1592,7 +1592,7 @@ export function DesktopWebLandingPage({
                   <span>Journal Fit</span>
                   <span className="text-neutral-400 group-hover:translate-x-0.5 transition-transform">&rarr;</span>
                 </div>
-                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">Match 1,300+ journals</p>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">Match 48,000+ journals</p>
               </div>
             </button>
 

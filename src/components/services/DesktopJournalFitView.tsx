@@ -53,7 +53,7 @@ export function DesktopJournalFitView() {
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800">
             <Compass className="w-3.5 h-3.5" />
-            <span>1,300+ Journal Catalog Matcher</span>
+            <span>48,000+ Journal Catalog Matcher</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0F172A] dark:text-white">
             Journal Fit Predictor &amp; Submission Strategy
@@ -168,7 +168,7 @@ export function DesktopJournalFitView() {
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl liquid-glass-btn-primary disabled:opacity-50 text-white text-xs font-semibold tracking-wide transition cursor-pointer shadow-xs"
             >
               <Compass className="w-4 h-4" />
-              <span>{loading ? "Matching against 1,300+ journals..." : "Predict Journal Fit"}</span>
+              <span>{loading ? "Matching against 48,000+ journals..." : "Predict Journal Fit"}</span>
             </button>
           </div>
         </form>

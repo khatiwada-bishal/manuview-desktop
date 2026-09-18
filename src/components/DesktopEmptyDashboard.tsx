@@ -396,7 +396,7 @@ export function DesktopEmptyDashboard({
                   <Compass className="w-5 h-5" />
                 </div>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
-                  1,300+ Catalogs
+                  48,000+ Catalogs
                 </span>
               </div>
               <div>

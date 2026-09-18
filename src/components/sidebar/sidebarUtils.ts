@@ -135,7 +135,7 @@ export function buildSidebarServices(params: {
     {
       id: "journal-fit",
       name: "Journal Fit Predictor",
-      description: "1,300+ catalog matcher",
+      description: "48,000+ catalog matcher",
       icon: Compass,
       color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 dark:text-emerald-400",
       squircleBg: "bg-emerald-500 text-white shadow-xs",

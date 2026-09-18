@@ -108,7 +108,7 @@ src/
 ├── lib/
 │   ├── engine/             # Diagnostic orchestrator, prompt builders, compliance audits
 │   ├── webllm/             # WebGPU on-device SLM execution engine (Qwen2.5-0.5B, etc.)
-│   ├── data/               # Retraction Watch compact DB, 1,300+ journal catalog
+│   ├── data/               # Retraction Watch compact DB, 48,000+ journal catalog
 │   ├── statcheck.ts        # Automated statistical consistency and GRIM test checks
 │   ├── citation-recency.ts # Reference recency and self-citation density metrics
 │   └── export-generator.ts # PDF, Word, LaTeX rebuttal, and BibTeX generators

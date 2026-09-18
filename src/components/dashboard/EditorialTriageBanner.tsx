@@ -478,7 +478,7 @@ export const EditorialTriageBanner: React.FC<EditorialTriageBannerProps> = ({
 
             <div className="flex items-center justify-between pt-1 border-t border-blue-200/40 dark:border-blue-900/30">
               <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-400">
-                1,300+ catalog grounded
+                48,000+ catalog grounded
               </span>
               <button
                 type="button"
