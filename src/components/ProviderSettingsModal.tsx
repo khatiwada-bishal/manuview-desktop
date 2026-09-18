@@ -340,11 +340,29 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
     }, 600);
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xl p-4 overflow-y-auto">
-      <div className="relative w-full max-w-xl rounded-3xl liquid-glass-modal p-6 sm:p-7 text-[#2F3437] dark:text-neutral-200 my-6 max-h-[90vh] overflow-y-auto">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[3px] p-4 overflow-y-auto cursor-default"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-xl rounded-3xl liquid-glass-modal p-6 sm:p-7 text-[#2F3437] dark:text-neutral-200 my-6 max-h-[90vh] overflow-y-auto cursor-auto"
+      >
         {/* Close Button */}
         <button
           onClick={onClose}

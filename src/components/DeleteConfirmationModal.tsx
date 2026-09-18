@@ -36,9 +36,14 @@ export function DeleteConfirmationModal({
   const singleItem = targetPapers[0];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xl p-4 animate-in fade-in duration-150">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[3px] p-4 animate-in fade-in duration-150 cursor-default"
+    >
       <div
-        className="w-full max-w-md rounded-3xl liquid-glass-modal p-6 space-y-5 animate-in zoom-in-95 duration-150"
+        className="w-full max-w-md rounded-3xl liquid-glass-modal p-6 space-y-5 animate-in zoom-in-95 duration-150 cursor-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

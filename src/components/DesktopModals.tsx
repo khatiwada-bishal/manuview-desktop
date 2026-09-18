@@ -66,8 +66,16 @@ export function DesktopSearchModal({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/50 backdrop-blur-xl p-4">
-      <div className="w-full max-w-xl rounded-3xl liquid-glass-modal overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/40 backdrop-blur-[3px] p-4 cursor-default"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-xl rounded-3xl liquid-glass-modal overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+      >
         <div className="flex items-center gap-3 px-4 py-3 border-b border-black/10 dark:border-white/10">
           <Search className="w-4 h-4 text-neutral-400 dark:text-neutral-500 shrink-0" />
           <input
@@ -139,6 +147,16 @@ export function DesktopNewReviewModal({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleNativePick = async () => {
@@ -155,8 +173,16 @@ export function DesktopNewReviewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xl p-4">
-      <div className="w-full max-w-lg rounded-3xl liquid-glass-modal p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[3px] p-4 cursor-default"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-lg rounded-3xl liquid-glass-modal p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150"
+      >
         <div className="flex items-center justify-between border-b border-black/10 dark:border-white/10 pb-3">
           <div className="flex items-center gap-2.5">
             <span className="text-xl">🪄</span>

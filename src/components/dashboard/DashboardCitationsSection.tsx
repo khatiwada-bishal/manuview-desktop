@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   CheckCircle2,
   RefreshCw,
@@ -58,6 +58,17 @@ export const DashboardCitationsSection: React.FC<DashboardCitationsSectionProps>
   const [showAllRefs, setShowAllRefs] = useState(false);
 
   const references = citationIntegrity?.references || [];
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isAddRefsOpen) {
+        setIsAddRefsOpen(false);
+        setPastedRefsError(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isAddRefsOpen]);
 
   const handleReauditReferences = async () => {
     if (references.length === 0) {
@@ -476,8 +487,19 @@ export const DashboardCitationsSection: React.FC<DashboardCitationsSectionProps>
 
       {/* Add / Paste References Modal */}
       {isAddRefsOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-2xl rounded-3xl liquid-glass-card p-6 sm:p-8 space-y-4 shadow-2xl bg-white/95 dark:bg-[#111827]/95 border border-black/10 dark:border-white/10">
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsAddRefsOpen(false);
+              setPastedRefsError(null);
+            }
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[3px] animate-in fade-in duration-200 cursor-default"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-2xl rounded-3xl liquid-glass-card p-6 sm:p-8 space-y-4 shadow-2xl bg-white/95 dark:bg-[#111827]/95 border border-black/10 dark:border-white/10 cursor-auto"
+          >
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <h3 className="text-base font-bold text-[#0F172A] dark:text-white flex items-center gap-2">

@@ -1,6 +1,4 @@
-"use client";
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Sparkles,
   X,
@@ -314,9 +312,25 @@ export function DesktopScanModal({
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xl p-4">
-      <div className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-3xl liquid-glass-modal p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200 overflow-hidden shadow-2xl">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[3px] p-4 cursor-default"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-3xl liquid-glass-modal p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200 overflow-hidden shadow-2xl cursor-auto"
+      >
         <div className="flex items-center justify-between border-b border-black/10 dark:border-white/10 pb-3 shrink-0">
           <div className="flex items-center gap-2.5">
             <span className="text-xl">🪄</span>

@@ -153,9 +153,25 @@ export function LocalModelManagerModal({ isOpen, onClose, isScanning = false }: 
 
   const isDownloading = status.state === "downloading" || status.state === "compiling";
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-2xl p-6 rounded-3xl bg-white dark:bg-[#0E1322] border border-black/10 dark:border-white/10 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[3px] animate-in fade-in duration-200 cursor-default"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-2xl p-6 rounded-3xl bg-white dark:bg-[#0E1322] border border-black/10 dark:border-white/10 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto cursor-auto"
+      >
         {/* Header */}
         <div className="flex items-start justify-between pb-3 border-b border-black/5 dark:border-white/5">
           <div className="space-y-1">
