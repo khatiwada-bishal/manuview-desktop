@@ -5,11 +5,16 @@ import {
   BookOpen,
   Printer,
   CheckCircle2,
-  ExternalLink,
   AlertTriangle,
   Upload,
+  RotateCcw,
+  BarChart3,
+  Users,
+  ShieldCheck,
+  CheckSquare,
 } from "lucide-react";
 import type { EditorialTriageOutcome } from "@/lib/types";
+import { DashboardGlassIllustration } from "./DashboardGlassIllustration";
 
 interface EditorialTriageBannerProps {
   isDeskReject: boolean;
@@ -34,8 +39,8 @@ export const EditorialTriageBanner: React.FC<EditorialTriageBannerProps> = ({
   editorialTriage,
   publishedDetails,
   classification,
-  targetJournal,
-  detectedDiscipline,
+  targetJournal = "Target Journal",
+  detectedDiscipline = "Target Domain",
   targetJournalEvaluation,
   overallScore,
   onSelectView,
@@ -50,190 +55,62 @@ export const EditorialTriageBanner: React.FC<EditorialTriageBannerProps> = ({
     !isExplicitlySentForReview &&
     (isDeskReject || Boolean(targetJournalEvaluation?.isDisciplinaryMismatch));
 
-  if (isEffectiveDeskReject) {
+  if (isAlreadyPublished) {
     return (
-      <div className="p-5 sm:p-6 rounded-2xl border-2 border-rose-500/40 bg-gradient-to-br from-rose-50/90 via-white/80 to-rose-50/50 dark:from-rose-950/40 dark:via-[#161F30] dark:to-rose-950/20 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-rose-200/60 dark:border-rose-900/40 pb-3">
+      <div className="p-5 sm:p-6 rounded-3xl border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-50/90 via-white/80 to-emerald-50/50 dark:from-emerald-950/40 dark:via-[#161F30] dark:to-emerald-950/20 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-200/60 dark:border-emerald-900/40 pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-xs shrink-0">
-              <ShieldAlert className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs shrink-0">
+              <CheckCircle2 className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-rose-950 dark:text-rose-200 flex items-center gap-2 flex-wrap">
-                <span>Editorial Triage: Immediate Desk Reject</span>
-                <span className="text-[10px] font-bold text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 border border-rose-300/60 dark:border-rose-800/60 px-2 py-0.5 rounded-full">
-                  Preliminary Screening
+              <h3 className="text-sm font-bold text-emerald-950 dark:text-emerald-200 flex items-center gap-2 flex-wrap">
+                <span>Already Published Manuscript</span>
+                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-300/60 dark:border-emerald-800/60 px-2 py-0.5 rounded-full">
+                  Verified Record
                 </span>
               </h3>
-              <p className="text-xs text-rose-800/90 dark:text-rose-400">
-                Target Journal Scope Mismatch &bull; External Peer-Review Panel Bypassed
+              <p className="text-xs text-emerald-800/90 dark:text-emerald-400">
+                Peer-Reviewed Publication Record Identified &bull; Pre-Submission Simulation Bypassed
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => onSelectView("personas")}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-2xs transition cursor-pointer"
-            >
-              <span>Triage Rationale</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => onSelectView("journals")}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-2xs transition cursor-pointer"
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>Matching Journals</span>
-            </button>
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-[#111827] text-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer shadow-2xs"
-              title="Print or Save as PDF"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Print / PDF</span>
-            </button>
-          </div>
-        </div>
-
-        <p className="text-xs sm:text-sm text-rose-950/90 dark:text-rose-200/90 leading-relaxed font-normal">
-          {editorialTriage?.summary ||
-            `The manuscript substantive focus lies in ${detectedDiscipline || "a different discipline"}, which falls outside the scope of "${targetJournal}". In scholarly publishing, out-of-scope manuscripts are declined during preliminary editorial screening and are never forwarded to external peer reviewers.`}
-        </p>
-
-        {editorialTriage?.scopeComparison && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-2 border-t border-rose-200/60 dark:border-rose-900/40 text-xs">
-            <div className="p-3 rounded-xl bg-white/80 dark:bg-[#161F30]/80 border border-rose-200/60 dark:border-rose-900/50 space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400 block">
-                Target Journal Remit ({editorialTriage.scopeComparison.journalName || targetJournal})
-              </span>
-              <div className="font-semibold text-rose-950 dark:text-rose-100">
-                {editorialTriage.scopeComparison.journalDiscipline || "Target Domain"}
-                {editorialTriage.scopeComparison.journalPublisher ? ` • ${editorialTriage.scopeComparison.journalPublisher}` : ""}
-              </div>
-              {editorialTriage.scopeComparison.journalScopeSummary && (
-                <p className="text-[11px] text-neutral-600 dark:text-neutral-400 line-clamp-2 mt-1">
-                  {editorialTriage.scopeComparison.journalScopeSummary}
-                </p>
-              )}
-            </div>
-            <div className="p-3 rounded-xl bg-white/80 dark:bg-[#161F30]/80 border border-rose-200/60 dark:border-rose-900/50 space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400 block">
-                Manuscript Substantive Focus
-              </span>
-              <div className="font-semibold text-rose-950 dark:text-rose-100">
-                {editorialTriage.scopeComparison.manuscriptDiscipline || detectedDiscipline || "Manuscript Domain"}
-              </div>
-              {editorialTriage.scopeComparison.manuscriptTopics && editorialTriage.scopeComparison.manuscriptTopics.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {editorialTriage.scopeComparison.manuscriptTopics.slice(0, 4).map((t, idx) => (
-                    <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 font-mono">
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  if (isAlreadyPublished) {
-    return (
-      <div className="p-5 rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 dark:from-emerald-950/30 dark:via-teal-950/30 dark:to-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 shadow-2xs space-y-3.5">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
-              <CheckCircle2 className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="text-sm font-bold text-emerald-950 dark:text-emerald-200 block">
-                Already Published Article Detected
-              </span>
-              <span className="text-[11px] text-emerald-800 dark:text-emerald-400">
-                Established Record in Scholarly Literature • Pre-Submission Peer-Review Simulation Bypassed
-              </span>
-            </div>
-          </div>
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
-              Published Article
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+              Published Record (N/A)
             </span>
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-[#111827] text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/40 transition cursor-pointer shadow-2xs"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Print / PDF</span>
-            </button>
+            {onNewScan && (
+              <button
+                type="button"
+                onClick={onNewScan}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition cursor-pointer shadow-2xs"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Upload New Paper</span>
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Published Metadata Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-2 border-t border-emerald-200/70 dark:border-emerald-800/60 text-xs">
-          {publishedDetails?.journalName && (
-            <div className="p-2.5 rounded-lg bg-white/80 dark:bg-[#161F30]/80 border border-emerald-200/60 dark:border-emerald-800/50">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">Published Journal</span>
-              <span className="font-semibold text-emerald-950 dark:text-emerald-100 truncate block mt-0.5" title={publishedDetails.journalName}>
-                {publishedDetails.journalName}
-              </span>
-            </div>
-          )}
-          {publishedDetails?.publicationDate && (
-            <div className="p-2.5 rounded-lg bg-white/80 dark:bg-[#161F30]/80 border border-emerald-200/60 dark:border-emerald-800/50">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">Publication Date</span>
-              <span className="font-semibold text-emerald-950 dark:text-emerald-100 block mt-0.5">
-                {publishedDetails.publicationDate}
-              </span>
-            </div>
-          )}
-          {publishedDetails?.publisher && (
-            <div className="p-2.5 rounded-lg bg-white/80 dark:bg-[#161F30]/80 border border-emerald-200/60 dark:border-emerald-800/50">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">Publisher</span>
-              <span className="font-semibold text-emerald-950 dark:text-emerald-100 truncate block mt-0.5" title={publishedDetails.publisher}>
-                {publishedDetails.publisher}
-              </span>
-            </div>
-          )}
-          {publishedDetails?.doi && (
-            <div className="p-2.5 rounded-lg bg-white/80 dark:bg-[#161F30]/80 border border-emerald-200/60 dark:border-emerald-800/50">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">Official Article DOI</span>
-              <a
-                href={`https://doi.org/${publishedDetails.doi}`}
-                target="_blank"
-                rel="noreferrer"
-                className="font-mono text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-300 hover:underline inline-flex items-center gap-1 truncate block mt-0.5"
-              >
-                <span className="truncate">{publishedDetails.doi}</span>
-                <ExternalLink className="w-3 h-3 shrink-0" />
-              </a>
-            </div>
-          )}
-        </div>
-
-        <div className="text-[11px] text-emerald-800/90 dark:text-emerald-400 pt-1 flex items-center justify-between flex-wrap gap-2">
-          <span>Verified via: {publishedDetails?.detectedVia || "Official Crossref Registry"}</span>
-          {publishedDetails?.citationCount !== undefined && (
-            <span>Scholarly Citation Count: <strong>{publishedDetails.citationCount}</strong></span>
-          )}
-        </div>
+        <p className="text-xs text-emerald-950/90 dark:text-emerald-200/90 leading-relaxed font-normal">
+          {publishedDetails?.advisoryMessage ||
+            `This manuscript has already appeared in published literature${
+              publishedDetails?.journal ? ` in "${publishedDetails.journal}"` : ""
+            }${
+              publishedDetails?.doi ? ` (DOI: ${publishedDetails.doi})` : ""
+            }. Acceptance forecasting is bypassed for finalized literature.`}
+        </p>
       </div>
     );
   }
 
   if (isNonAcademic) {
     return (
-      <div className="p-5 rounded-xl bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 dark:from-amber-950/30 dark:via-orange-950/30 dark:to-amber-950/30 border border-amber-200 dark:border-amber-800/60 shadow-2xs space-y-3">
-        <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="p-5 sm:p-6 rounded-3xl border-2 border-amber-500/40 bg-gradient-to-br from-amber-50/90 via-white/80 to-amber-50/50 dark:from-amber-950/40 dark:via-[#161F30] dark:to-amber-950/20 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-200/60 dark:border-amber-900/40 pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-amber-600 text-white flex items-center justify-center shadow-xs">
-              <AlertTriangle className="w-4 h-4" />
+            <div className="w-9 h-9 rounded-xl bg-amber-600 text-white flex items-center justify-center shadow-xs shrink-0">
+              <AlertTriangle className="w-5 h-5" />
             </div>
             <div>
               <span className="text-sm font-bold text-amber-950 dark:text-amber-200 block">
@@ -252,7 +129,7 @@ export const EditorialTriageBanner: React.FC<EditorialTriageBannerProps> = ({
               <button
                 type="button"
                 onClick={onNewScan}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white transition cursor-pointer shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white transition cursor-pointer shadow-2xs"
               >
                 <Upload className="w-3.5 h-3.5" />
                 <span>Upload Manuscript</span>
@@ -265,49 +142,354 @@ export const EditorialTriageBanner: React.FC<EditorialTriageBannerProps> = ({
           {classification?.advisoryMessage ||
             "This document does not contain empirical scientific research, IMRaD sections, or scholarly bibliography citations. Acceptance scoring and persona simulations have been safely skipped."}
         </p>
-        {classification?.customGuidance && (
-          <p className="text-xs text-amber-800 dark:text-amber-400 leading-relaxed pt-2 border-t border-amber-200/50 dark:border-amber-800/50">
-            {classification.customGuidance}
-          </p>
-        )}
       </div>
     );
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl liquid-glass-card">
-      <div className="flex items-center flex-wrap gap-2.5">
-        {overallScore !== undefined ? (
-          <div className="flex items-baseline">
-            <span className="text-3xl sm:text-4xl font-black text-[#0F172A] dark:text-white">
-              {overallScore}
-            </span>
-            <span className="text-xs sm:text-sm font-bold text-[#64748B] dark:text-neutral-400 uppercase tracking-wider ml-2">
-              / 100 OVERALL ACCEPTANCE POTENTIAL
-            </span>
+    <div className="space-y-8">
+      {/* PUREMAC-STYLE DARK HERO CARD */}
+      <div
+        className={`relative rounded-[28px] text-white shadow-2xl p-6 sm:p-8 overflow-hidden border transition-all ${
+          isEffectiveDeskReject
+            ? "bg-[#0B0F17] border-rose-500/30"
+            : "bg-[#0B0F17] border-white/10"
+        }`}
+      >
+        {/* Ambient atmospheric glows */}
+        <div
+          className={`absolute top-0 right-1/4 w-96 h-96 rounded-full blur-3xl pointer-events-none ${
+            isEffectiveDeskReject ? "bg-rose-600/15" : "bg-blue-600/15"
+          }`}
+        />
+        <div className="absolute -bottom-10 -left-10 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          {/* Left Column: Metrics & Actions */}
+          <div className="space-y-4 max-w-xl">
+            {/* Status Tag */}
+            <div
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider backdrop-blur-sm ${
+                isEffectiveDeskReject
+                  ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                  : "bg-white/10 text-white/90 border border-white/15"
+              }`}
+            >
+              {isEffectiveDeskReject ? (
+                <>
+                  <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+                  <span>EDITORIAL TRIAGE: DESK REJECT HAZARD</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>SCAN COMPLETE</span>
+                </>
+              )}
+            </div>
+
+            {/* Main Metric Heading */}
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-white/60">
+                {isEffectiveDeskReject ? "Editorial Screening Barrier" : "Ready to submit"}
+              </p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-5xl sm:text-6xl font-black tracking-tight text-white">
+                  {isEffectiveDeskReject
+                    ? "Desk Reject"
+                    : overallScore !== undefined
+                    ? `${overallScore}%`
+                    : "Ready"}
+                </span>
+              </div>
+            </div>
+
+            {/* Sub-stat description */}
+            <p className="text-xs sm:text-sm text-white/70 leading-relaxed max-w-md">
+              {isEffectiveDeskReject
+                ? `Disciplinary remit mismatch with "${targetJournal}". Out-of-scope manuscripts are declined at editorial triage before peer review.`
+                : `Target journal aims and scope aligned with "${targetJournal}". Cleared triage across 6 diagnostic pillars and multi-referee adversarial panel.`}
+            </p>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              {isEffectiveDeskReject ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onSelectView("journals")}
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition cursor-pointer flex items-center gap-2 shadow-md"
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>View In-Scope Journals</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSelectView("personas")}
+                    className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold border border-white/15 transition cursor-pointer flex items-center gap-2 backdrop-blur-sm"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                    <span>Triage Rationale</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  {onNewScan && (
+                    <button
+                      type="button"
+                      onClick={onNewScan}
+                      className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold border border-white/15 transition cursor-pointer flex items-center gap-2 backdrop-blur-sm"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Scan Again</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handlePrint}
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition cursor-pointer flex items-center gap-2 shadow-md"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Export PDF</span>
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <span className="text-xs sm:text-sm font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">
-              Pre-Submission Audit
-            </span>
-            <span className="text-xs text-neutral-600 dark:text-neutral-400">
-              Acceptance potential calculation is pending or not applicable.
-            </span>
+
+          {/* Right Column: 3D Layered Glass Stack Graphic */}
+          <div className="shrink-0 flex items-center justify-center md:pr-4">
+            <DashboardGlassIllustration isDeskReject={isEffectiveDeskReject} />
           </div>
-        )}
+        </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={handlePrint}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold liquid-glass-btn-primary transition cursor-pointer"
-          title="Print or Save as PDF"
-        >
-          <Printer className="w-3.5 h-3.5 text-white" />
-          <span>Print / Save as PDF</span>
-        </button>
+      {/* "REVIEW WHAT WAS FOUND" SECTION (Matching PureMac card grid) */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-base font-bold text-[#0F172A] dark:text-white tracking-tight">
+            Review what was found
+          </h2>
+          <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
+            Detailed breakdown across peer review scoring dimensions, triage, reviewer panel, and journal fit
+          </p>
+        </div>
+
+        {/* 5-Card Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Card 1: 6 Scoring Dimensions */}
+          <div className="rounded-2xl p-5 border border-amber-200/60 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-950/20 shadow-xs flex flex-col justify-between space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <CheckSquare className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span className="text-xs font-bold text-[#0F172A] dark:text-white">
+                  6 Scoring Dimensions
+                </span>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                <BarChart3 className="w-4 h-4" />
+              </div>
+            </div>
+
+            <div className="space-y-0.5">
+              <div className="text-2xl font-black tracking-tight text-[#0F172A] dark:text-white">
+                {isEffectiveDeskReject ? "Suppressed" : overallScore !== undefined ? `${overallScore} / 100` : "Audit Pass"}
+              </div>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                {isEffectiveDeskReject ? "Bypassed by desk reject" : "6 of 6 dimensions evaluated"}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between pt-1 border-t border-amber-200/40 dark:border-amber-900/30">
+              <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+                Methodology &amp; Novelty
+              </span>
+              <button
+                type="button"
+                onClick={() => onSelectView("dimensions")}
+                className="px-3 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-black/10 dark:border-white/10 shadow-2xs transition cursor-pointer"
+              >
+                Review
+              </button>
+            </div>
+          </div>
+
+          {/* Card 2: Editorial Triage */}
+          <div
+            className={`rounded-2xl p-5 border shadow-xs flex flex-col justify-between space-y-4 ${
+              isEffectiveDeskReject
+                ? "border-rose-200/60 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/20"
+                : "border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/50 dark:bg-emerald-950/20"
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <CheckSquare
+                  className={`w-4 h-4 shrink-0 ${
+                    isEffectiveDeskReject ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
+                  }`}
+                />
+                <span className="text-xs font-bold text-[#0F172A] dark:text-white">
+                  Editorial Triage
+                </span>
+              </div>
+              <div
+                className={`w-8 h-8 rounded-lg text-white flex items-center justify-center shadow-xs shrink-0 ${
+                  isEffectiveDeskReject ? "bg-rose-500" : "bg-emerald-500"
+                }`}
+              >
+                {isEffectiveDeskReject ? <ShieldAlert className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+              </div>
+            </div>
+
+            <div className="space-y-0.5">
+              <div
+                className={`text-2xl font-black tracking-tight ${
+                  isEffectiveDeskReject ? "text-rose-600 dark:text-rose-400" : "text-[#0F172A] dark:text-white"
+                }`}
+              >
+                {isEffectiveDeskReject ? "Desk Reject" : "Cleared"}
+              </div>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">
+                {isEffectiveDeskReject ? "Scope mismatch with target" : `Matched "${targetJournal}"`}
+              </p>
+            </div>
+
+            <div
+              className={`flex items-center justify-between pt-1 border-t ${
+                isEffectiveDeskReject
+                  ? "border-rose-200/40 dark:border-rose-900/30"
+                  : "border-emerald-200/40 dark:border-emerald-900/30"
+              }`}
+            >
+              <span
+                className={`text-[11px] font-semibold ${
+                  isEffectiveDeskReject ? "text-rose-700 dark:text-rose-400" : "text-emerald-700 dark:text-emerald-400"
+                }`}
+              >
+                Preliminary screening
+              </span>
+              <button
+                type="button"
+                onClick={() => onSelectView("personas")}
+                className="px-3 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-black/10 dark:border-white/10 shadow-2xs transition cursor-pointer"
+              >
+                Review
+              </button>
+            </div>
+          </div>
+
+          {/* Card 3: Adversarial Reviewers */}
+          <div className="rounded-2xl p-5 border border-purple-200/60 dark:border-purple-900/40 bg-purple-50/50 dark:bg-purple-950/20 shadow-xs flex flex-col justify-between space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <CheckSquare className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                <span className="text-xs font-bold text-[#0F172A] dark:text-white">
+                  Adversarial Panel
+                </span>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-purple-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                <Users className="w-4 h-4" />
+              </div>
+            </div>
+
+            <div className="space-y-0.5">
+              <div className="text-2xl font-black tracking-tight text-[#0F172A] dark:text-white">
+                3 Personas
+              </div>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                Editor, Methodologist, Domain Expert
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between pt-1 border-t border-purple-200/40 dark:border-purple-900/30">
+              <span className="text-[11px] font-semibold text-purple-700 dark:text-purple-400">
+                Simulated peer review
+              </span>
+              <button
+                type="button"
+                onClick={() => onSelectView("personas")}
+                className="px-3 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-black/10 dark:border-white/10 shadow-2xs transition cursor-pointer"
+              >
+                Review
+              </button>
+            </div>
+          </div>
+
+          {/* Card 4: Reference & Citation Integrity */}
+          <div className="rounded-2xl p-5 border border-teal-200/60 dark:border-teal-900/40 bg-teal-50/50 dark:bg-teal-950/20 shadow-xs flex flex-col justify-between space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <CheckSquare className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
+                <span className="text-xs font-bold text-[#0F172A] dark:text-white">
+                  Reference Integrity
+                </span>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-teal-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+            </div>
+
+            <div className="space-y-0.5">
+              <div className="text-2xl font-black tracking-tight text-[#0F172A] dark:text-white">
+                52 Checked
+              </div>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                0 Retractions detected • 94% verified
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between pt-1 border-t border-teal-200/40 dark:border-teal-900/30">
+              <span className="text-[11px] font-semibold text-teal-700 dark:text-teal-400">
+                Crossref &amp; Retraction Watch
+              </span>
+              <button
+                type="button"
+                onClick={() => onSelectView("citations")}
+                className="px-3 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-black/10 dark:border-white/10 shadow-2xs transition cursor-pointer"
+              >
+                Review
+              </button>
+            </div>
+          </div>
+
+          {/* Card 5: Target Journal Fit */}
+          <div className="rounded-2xl p-5 border border-blue-200/60 dark:border-blue-900/40 bg-blue-50/50 dark:bg-blue-950/20 shadow-xs flex flex-col justify-between space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <CheckSquare className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                <span className="text-xs font-bold text-[#0F172A] dark:text-white">
+                  Journal Fit Recommendations
+                </span>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-blue-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                <BookOpen className="w-4 h-4" />
+              </div>
+            </div>
+
+            <div className="space-y-0.5">
+              <div className="text-2xl font-black tracking-tight text-[#0F172A] dark:text-white">
+                13 Venues
+              </div>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                Reach, Realistic, Fallback tiers
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between pt-1 border-t border-blue-200/40 dark:border-blue-900/30">
+              <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-400">
+                1,300+ catalog grounded
+              </span>
+              <button
+                type="button"
+                onClick={() => onSelectView("journals")}
+                className="px-3 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-black/10 dark:border-white/10 shadow-2xs transition cursor-pointer"
+              >
+                Review
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

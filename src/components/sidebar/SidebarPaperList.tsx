@@ -152,72 +152,86 @@ export function SidebarPaperList({
                           onSelectView("overview");
                         }
                       }}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer ${
+                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition cursor-pointer ${
                         isSelectedInBatch
                           ? "bg-blue-600/15 dark:bg-blue-500/25 border border-blue-500/40 text-blue-700 dark:text-blue-300 font-semibold"
                           : isSelected && activeView === "overview"
-                          ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
+                          ? "bg-white dark:bg-white/10 shadow-xs border border-black/[0.06] dark:border-white/[0.08] font-bold text-[#0F172A] dark:text-white"
                           : isSelected
-                          ? "bg-blue-600/10 dark:bg-blue-500/20 font-medium text-blue-700 dark:text-blue-300 border border-blue-500/20"
-                          : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white border border-transparent"
+                          ? "bg-white/80 dark:bg-white/5 border border-black/[0.05] dark:border-white/[0.07] font-semibold text-[#0F172A] dark:text-white shadow-2xs"
+                          : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#0F172A] dark:hover:text-white border border-transparent"
                       }`}
                     >
-                      <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
-                        {/* Hover-to-reveal checkbox on file icon */}
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-1.5">
+                        {/* Squircle container with icon OR hover checkbox */}
                         <div
                           onClick={(e) => {
                             e.stopPropagation();
                             onToggleSelectPaper(paper.id);
                           }}
-                          className="relative w-4 h-4 shrink-0 flex items-center justify-center cursor-pointer"
+                          className={`relative w-6 h-6 rounded-lg flex items-center justify-center shrink-0 cursor-pointer transition shadow-2xs ${
+                            isDeskReject
+                              ? "bg-rose-500 text-white"
+                              : paper.isEligibleForReview === false && paper.ineligibilityReason === "already_published"
+                              ? "bg-emerald-500 text-white"
+                              : paper.isEligibleForReview === false
+                              ? "bg-amber-500 text-white"
+                              : isSelected
+                              ? "bg-gradient-to-br from-blue-600 to-indigo-600 text-white"
+                              : "bg-blue-500/90 text-white"
+                          }`}
                           title={isSelectedInBatch ? "Deselect article" : "Select article"}
                         >
-                          {/* Checkbox: visible when selected OR on article hover */}
+                          {/* Checkbox visible when batch selected or hover */}
                           <div
-                            className={`w-4 h-4 rounded flex items-center justify-center transition-all ${
+                            className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
                               isSelectedInBatch
-                                ? "bg-blue-600 text-white opacity-100 scale-100 shadow-xs"
-                                : "border border-neutral-400 dark:border-neutral-500 hover:border-blue-500 bg-white dark:bg-[#1e293b] opacity-0 group-hover/article:opacity-100 scale-95 hover:scale-100 shadow-xs"
+                                ? "bg-blue-600 text-white opacity-100 scale-100"
+                                : "border border-neutral-400 dark:border-neutral-500 hover:border-blue-500 bg-white dark:bg-[#1e293b] opacity-0 group-hover/article:opacity-100 scale-95 hover:scale-100"
                             }`}
                           >
                             {isSelectedInBatch ? (
-                              <Check className="w-3 h-3 stroke-[3]" />
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
                             ) : (
-                              <Square className="w-2.5 h-2.5 opacity-30 text-neutral-400 hover:text-blue-600" />
+                              <Square className="w-3 h-3 opacity-40 text-neutral-400 hover:text-blue-600" />
                             )}
                           </div>
 
-                          {/* File icon: visible when NOT selected and NOT hovered */}
+                          {/* Squircle Icon visible when NOT batch selected */}
                           {!isSelectedInBatch && (
-                            <FileText
-                              className={`w-4 h-4 absolute inset-0 transition-opacity group-hover/article:opacity-0 ${
-                                isSelected ? "text-blue-600 dark:text-blue-400" : "text-neutral-500 dark:text-neutral-400"
-                              }`}
-                            />
+                            <div className="absolute inset-0 flex items-center justify-center transition-opacity group-hover/article:opacity-0">
+                              {isDeskReject ? (
+                                <ShieldAlert className="w-3.5 h-3.5 text-white" />
+                              ) : paper.isEligibleForReview === false && paper.ineligibilityReason === "already_published" ? (
+                                <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                              ) : (
+                                <FileText className="w-3.5 h-3.5 text-white" />
+                              )}
+                            </div>
                           )}
                         </div>
 
-                        <span className="truncate">
+                        <span className="truncate font-medium">
                           {paper.shortName}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {isDeskReject ? (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20">
-                            Rejected
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/60">
+                            Desk
                           </span>
                         ) : paper.isEligibleForReview === false ? (
                           paper.ineligibilityReason === "already_published" ? (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
                               PUB
                             </span>
                           ) : (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60">
                               N/A
                             </span>
                           )
                         ) : (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-black/[0.04] dark:bg-white/[0.08] text-neutral-600 dark:text-neutral-300 border border-black/[0.06] dark:border-white/[0.1]">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60">
                             {paper.score ?? 0}%
                           </span>
                         )}

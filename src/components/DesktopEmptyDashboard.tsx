@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { PaperItem } from "./DesktopSidebar";
+import { DashboardGlassIllustration } from "./dashboard/DashboardGlassIllustration";
 
 interface DesktopEmptyDashboardProps {
   papers: PaperItem[];
@@ -111,41 +112,51 @@ export function DesktopEmptyDashboard({
   return (
     <div className="flex-1 overflow-y-auto p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC]">
       <div className="max-w-5xl mx-auto space-y-8">
-        {/* HERO / WELCOME CARD */}
-        <div className="relative rounded-3xl liquid-glass-card p-6 sm:p-8 space-y-6 overflow-hidden">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-            <div className="space-y-2 max-w-xl">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Pre-Submission Manuscript Intelligence</span>
+        {/* PUREMAC-STYLE DARK HERO CARD */}
+        <div className="relative rounded-[28px] bg-[#0B0F17] text-white shadow-2xl p-6 sm:p-8 overflow-hidden border border-white/10">
+          <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-10 -left-10 w-80 h-80 bg-purple-600/15 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-4 max-w-xl">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-white/10 text-white/90 border border-white/15 backdrop-blur-sm">
+                <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                <span>LOCAL INTELLIGENCE ACTIVE</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0F172A] dark:text-white">
-                Welcome to ManuView Desktop
-              </h1>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                Run pre-submission diagnostics, multi-reviewer simulations, reference audits, and journal fit matching completely locally on your machine.
+
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-white/60">
+                  Pre-Submission Review Suite
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl sm:text-5xl font-black tracking-tight text-white">
+                    100% Private
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-xs sm:text-sm text-white/70 leading-relaxed max-w-md">
+                Pre-submission diagnostics, multi-referee simulation panels, reference integrity audits, and target journal matching completely locally on your computer.
               </p>
+
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => onOpenService("ai-review")}
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md hover:shadow-lg transition cursor-pointer flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>New Review Scan</span>
+                </button>
+                <span className="text-xs text-white/60 font-medium">
+                  {papers.length} manuscript{papers.length === 1 ? "" : "s"} in library
+                </span>
+              </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => onOpenService("ai-review")}
-              className="px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md hover:shadow-lg transition cursor-pointer flex items-center gap-2.5 shrink-0 btn-interactive"
-            >
-              <Plus className="w-4 h-4" />
-              <span>New Review Scan</span>
-            </button>
-          </div>
-
-          <div className="pt-3 border-t border-black/[0.06] dark:border-white/[0.08] flex flex-wrap items-center gap-3.5 text-[11px] text-neutral-500 dark:text-neutral-400 font-medium">
-            <span className="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-300">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              100% Local &amp; Private Storage
-            </span>
-            <span>&bull;</span>
-            <span>All reports saved on your computer</span>
-            <span>&bull;</span>
-            <span>Fast Native Performance</span>
+            <div className="shrink-0 flex items-center justify-center md:pr-4">
+              <DashboardGlassIllustration isDeskReject={false} />
+            </div>
           </div>
         </div>
 
@@ -207,7 +218,7 @@ export function DesktopEmptyDashboard({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {papers.map((paper) => {
                 const isDeskReject =
                   paper.isDeskReject === true ||
@@ -226,104 +237,106 @@ export function DesktopEmptyDashboard({
                         onOpenArticle(paper.id);
                       }
                     }}
-                    className={`group relative rounded-2xl liquid-glass-card liquid-glass-card-interactive card-interactive-lift p-4 transition cursor-pointer flex flex-col justify-between ${
+                    className={`group relative rounded-2xl p-5 transition cursor-pointer flex flex-col justify-between space-y-4 shadow-xs border ${
                       isSelected
-                        ? "border-blue-500/80 bg-blue-500/10 dark:bg-blue-950/30 ring-2 ring-blue-500/30 shadow-sm"
+                        ? "border-blue-500 bg-blue-50/80 dark:bg-blue-950/30 ring-2 ring-blue-500/30"
                         : isDeskReject
-                        ? "border-rose-500/30 bg-rose-500/5 dark:bg-rose-950/20"
-                        : ""
+                        ? "border-rose-200/70 dark:border-rose-900/50 bg-rose-50/60 dark:bg-rose-950/20 hover:border-rose-300"
+                        : "border-amber-200/60 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20 hover:border-amber-300 dark:hover:border-amber-800"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3 min-w-0">
-                        {/* Hover-to-reveal checkbox on file icon */}
+                      <div className="flex items-center gap-2 min-w-0">
+                        {/* Checkbox */}
                         <div
-                          onClick={(e) => toggleSelectPaper(paper.id, e)}
-                          className="relative w-9 h-9 rounded-xl flex items-center justify-center shrink-0 cursor-pointer transition"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleSelectPaper(paper.id, e);
+                          }}
+                          className="w-4 h-4 shrink-0 flex items-center justify-center cursor-pointer"
                           title={isSelected ? "Deselect manuscript" : "Select manuscript"}
                         >
-                          {/* Checkbox: visible when selected OR on card hover */}
                           <div
-                            className={`absolute inset-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
+                            className={`w-4 h-4 rounded flex items-center justify-center transition-all ${
                               isSelected
-                                ? "bg-blue-600 text-white opacity-100 scale-100 shadow-xs"
-                                : "border border-neutral-300 dark:border-neutral-600 bg-white/90 dark:bg-[#1e293b]/90 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/40 opacity-0 group-hover:opacity-100 scale-95 hover:scale-100 shadow-xs"
+                                ? "bg-blue-600 text-white shadow-xs"
+                                : "border border-neutral-400 dark:border-neutral-500 bg-white dark:bg-[#1e293b]"
                             }`}
                           >
                             {isSelected ? (
-                              <Check className="w-4 h-4 stroke-[3]" />
+                              <Check className="w-3 h-3 stroke-[3]" />
                             ) : (
-                              <Square className="w-3.5 h-3.5 opacity-40 text-neutral-400 hover:text-blue-600" />
+                              <Square className="w-2.5 h-2.5 opacity-30 text-neutral-400" />
                             )}
                           </div>
-
-                          {/* File icon: visible when NOT selected and NOT hovered */}
-                          {!isSelected && (
-                            <div
-                              className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-opacity group-hover:opacity-0 ${
-                                isDeskReject
-                                  ? "bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400"
-                                  : "bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400"
-                              }`}
-                            >
-                              {isDeskReject ? (
-                                <ShieldAlert className="w-4 h-4" />
-                              ) : (
-                                <FileText className="w-4 h-4" />
-                              )}
-                            </div>
-                          )}
                         </div>
 
-                        <div className="min-w-0">
-                          <h3
-                            className={`font-bold text-xs truncate transition ${
-                              isSelected
-                                ? "text-blue-700 dark:text-blue-300"
-                                : isDeskReject
-                                ? "text-rose-950 dark:text-rose-200 group-hover:text-rose-600 dark:group-hover:text-rose-400"
-                                : "text-[#111827] dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400"
-                            }`}
-                          >
-                            {paper.title || paper.shortName}
-                          </h3>
-                          <p className="text-[11px] text-neutral-400 dark:text-neutral-500 truncate mt-0.5">
-                            {paper.journal}
-                          </p>
-                        </div>
+                        <span className="text-xs font-bold text-[#0F172A] dark:text-white truncate">
+                          {paper.shortName || paper.title}
+                        </span>
                       </div>
-                      {/* Note: Delete icon at the end of the article after the pill is intentionally omitted per requirements */}
+
+                      {/* Top Right Squircle Icon Badge */}
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-xs shrink-0 ${
+                          isDeskReject
+                            ? "bg-rose-500 text-white"
+                            : paper.isEligibleForReview === false
+                            ? "bg-amber-500 text-white"
+                            : "bg-amber-500 text-white"
+                        }`}
+                      >
+                        {isDeskReject ? (
+                          <ShieldAlert className="w-4 h-4" />
+                        ) : paper.isEligibleForReview === false ? (
+                          <AlertTriangle className="w-4 h-4" />
+                        ) : (
+                          <FileText className="w-4 h-4" />
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between pt-3 mt-3 border-t border-black/[0.04] dark:border-white/[0.06] text-[11px]">
-                      <span
-                        className={`font-semibold ${
-                          isSelected
-                            ? "text-blue-600 dark:text-blue-400"
-                            : isDeskReject
-                            ? "text-rose-700 dark:text-rose-400"
-                            : "text-neutral-600 dark:text-neutral-400"
+
+                    {/* Big Metric Display */}
+                    <div className="space-y-0.5">
+                      <div
+                        className={`text-2xl font-black tracking-tight ${
+                          isDeskReject
+                            ? "text-rose-600 dark:text-rose-400"
+                            : "text-[#0F172A] dark:text-white"
                         }`}
                       >
                         {isDeskReject
-                          ? "Status: Editorial Desk Reject"
+                          ? "Desk Reject"
                           : paper.isEligibleForReview === false
-                          ? paper.ineligibilityReason === "already_published"
-                            ? "Status: Already Published"
-                            : "Status: Review Ineligible"
-                          : `Triage Readiness: ${paper.score ?? 0}%`}
-                      </span>
+                          ? "Ineligible"
+                          : `${paper.score ?? 0}%`}
+                      </div>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">
+                        Target: {paper.journal}
+                      </p>
+                    </div>
+
+                    {/* Bottom Row: Status text + Review Pill Button */}
+                    <div className="flex items-center justify-between pt-2 border-t border-black/[0.04] dark:border-white/[0.06]">
                       <span
-                        className={`inline-flex items-center gap-1 font-semibold ${
-                          isSelected
-                            ? "text-blue-600 dark:text-blue-400"
-                            : isDeskReject
-                            ? "text-rose-600 dark:text-rose-400"
-                            : "text-blue-600 dark:text-blue-400"
-                        } group-hover:translate-x-0.5 transition-transform`}
+                        className={`text-[11px] font-semibold truncate ${
+                          isDeskReject
+                            ? "text-rose-700 dark:text-rose-400"
+                            : "text-amber-700 dark:text-amber-400"
+                        }`}
                       >
-                        <span>{isSelected ? "Selected" : "Open Workspace"}</span>
-                        <ArrowRight className="w-3 h-3" />
+                        {isDeskReject ? "Scope mismatch" : "Diagnostic ready"}
                       </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenArticle(paper.id);
+                        }}
+                        className="px-3 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 border border-black/10 dark:border-white/10 shadow-2xs transition cursor-pointer shrink-0"
+                      >
+                        Review
+                      </button>
                     </div>
                   </div>
                 );

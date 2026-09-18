@@ -40,7 +40,7 @@ export function SidebarServicesList({
       </div>
 
       {servicesExpanded && (
-        <div className="space-y-0.5 max-h-52 overflow-y-auto [scrollbar-width:thin]">
+        <div className="space-y-1 max-h-56 overflow-y-auto [scrollbar-width:thin] pt-1">
           {services.map((service) => {
             const Icon = service.icon;
             const isItemActive = isServiceActive(service.id);
@@ -51,18 +51,18 @@ export function SidebarServicesList({
                 onClick={service.action}
                 className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer text-left ${
                   isItemActive
-                    ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
-                    : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white border border-transparent"
+                    ? "bg-white dark:bg-white/10 shadow-xs border border-black/[0.06] dark:border-white/[0.08] font-bold text-[#0F172A] dark:text-white"
+                    : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#0F172A] dark:hover:text-white border border-transparent"
                 }`}
               >
-                <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
-                  <Icon
-                    className={`w-4 h-4 shrink-0 ${
-                      isItemActive
-                        ? "text-blue-600 dark:text-blue-400"
-                        : "text-neutral-500 dark:text-neutral-400"
+                <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-1">
+                  <div
+                    className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 shadow-2xs ${
+                      service.squircleBg || "bg-blue-500 text-white"
                     }`}
-                  />
+                  >
+                    <Icon className="w-3.5 h-3.5 text-white" />
+                  </div>
                   <span className="truncate font-medium">
                     {service.name}
                   </span>

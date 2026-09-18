@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { Settings, PanelLeft } from "lucide-react";
+import { Settings, PanelLeft, Sun, Moon, ChevronDown, Sparkles } from "lucide-react";
 import { isDesktopApp } from "@/lib/desktop";
+import { useTheme } from "@/context/ThemeContext";
 import { EditorialTriageOutcome } from "@/lib/types";
 import {
   type TimeCategory,
@@ -92,6 +93,7 @@ export function DesktopSidebar({
   onToggleSelectPaper,
   onClearSelectedPapers,
 }: DesktopSidebarProps) {
+  const { theme, toggleTheme } = useTheme();
   const [localSelectedPaperIds, setLocalSelectedPaperIds] = useState<Set<string>>(new Set());
   const selectedPaperIds = controlledSelectedPaperIds ?? localSelectedPaperIds;
 
@@ -249,6 +251,34 @@ export function DesktopSidebar({
           </div>
         )}
 
+        {/* TOP SECTION: OVERVIEW (Matching PureMac Smart Care overview item) */}
+        <div className="px-3 pt-3 pb-1 space-y-1 shrink-0">
+          <div className="text-[10px] font-bold text-[#94A3B8] dark:text-neutral-500 uppercase tracking-wider px-2">
+            OVERVIEW
+          </div>
+          <button
+            type="button"
+            onClick={onNewReview}
+            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition cursor-pointer text-left ${
+              !activePaperId
+                ? "bg-white dark:bg-white/10 shadow-xs border border-black/[0.06] dark:border-white/[0.08] font-bold text-[#0F172A] dark:text-white"
+                : "text-neutral-700 dark:text-neutral-300 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] border border-transparent font-medium"
+            }`}
+          >
+            <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-1">
+              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Sparkles className="w-3.5 h-3.5 text-white" />
+              </div>
+              <span className="truncate font-semibold">
+                Pre-Submission Scan
+              </span>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60">
+              New
+            </span>
+          </button>
+        </div>
+
         {/* SCROLLABLE MAIN CONTENT: ARTICLES LIST */}
         <div className="flex-1 overflow-y-auto px-3 py-2 space-y-4 [scrollbar-width:thin]">
           <SidebarPaperList
@@ -266,8 +296,8 @@ export function DesktopSidebar({
           />
         </div>
 
-        {/* 2. DOCKED BOTTOM SECTION: SERVICES & DISCLAIMER */}
-        <div className="px-3 pt-2 pb-1 border-t border-black/[0.06] dark:border-white/[0.08] space-y-2 shrink-0">
+        {/* 2. DOCKED BOTTOM SECTION: SERVICES, STATUS CARD, & APPEARANCE */}
+        <div className="px-3 pt-2 pb-2 border-t border-black/[0.06] dark:border-white/[0.08] space-y-2 shrink-0">
           <SidebarServicesList
             services={services}
             servicesExpanded={servicesExpanded}
@@ -275,52 +305,61 @@ export function DesktopSidebar({
             activePaperId={activePaperId}
           />
           <SidebarDisclaimerPopover />
-        </div>
 
-        {/* FOOTER: App Version (left) + Model Pill & Settings (right) */}
-        <div className="p-3 border-t border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between">
-          <span className="font-semibold text-neutral-400 dark:text-neutral-500 text-[11px] pl-1 select-none">
-            v0.3.97
-          </span>
+          {/* STATUS CARD (Matching PureMac "Ready to clean - Full Disk Access granted") */}
+          <div
+            onClick={onOpenSettings}
+            className="p-2.5 rounded-xl bg-white/80 dark:bg-white/[0.05] border border-black/[0.06] dark:border-white/[0.08] shadow-2xs flex items-center gap-2.5 cursor-pointer hover:bg-white dark:hover:bg-white/[0.08] transition"
+            title="AI Engine Status - Click to configure"
+          >
+            <div className="relative flex items-center justify-center">
+              <span
+                className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                  connectionStatus === "connected"
+                    ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.7)]"
+                    : connectionStatus === "connecting"
+                    ? "bg-amber-500 animate-pulse"
+                    : "bg-rose-500"
+                }`}
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-bold text-[#0F172A] dark:text-white truncate">
+                {connectionStatus === "connected"
+                  ? "Ready to review"
+                  : connectionStatus === "connecting"
+                  ? "Connecting..."
+                  : "Engine Disconnected"}
+              </div>
+              <div className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate font-medium">
+                {connectionStatus === "connected"
+                  ? `${activeModelName || "Local AI"} • 100% Private`
+                  : "Click to configure provider"}
+              </div>
+            </div>
+          </div>
+
+          {/* APPEARANCE SELECTOR (Matching PureMac "Appearance v") */}
           <button
             type="button"
-            onClick={onOpenSettings}
-            title={
-              connectionStatus === "connected"
-                ? "AI Connected - Provider Settings"
-                : connectionStatus === "connecting"
-                ? "Connecting to AI..."
-                : "Connect AI - Provider Settings"
-            }
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition shadow-2xs cursor-pointer text-xs font-medium ${
-              connectionStatus === "connected"
-                ? "border-[#86efac] dark:border-[#065f46] bg-[#f0fdf4] dark:bg-[#064e3b]/30 text-[#065f46] dark:text-[#34d399] hover:bg-[#dcfce7] dark:hover:bg-[#064e3b]/50 hover:border-[#4ade80]"
-                : connectionStatus === "connecting"
-                ? "border-[#fde68a] dark:border-[#78350f] bg-[#fffbeb] dark:bg-[#78350f]/30 text-[#92400e] dark:text-[#fbbf24] hover:bg-[#fef3c7] hover:border-[#fcd34d]"
-                : "border-[#fecaca] dark:border-[#7f1d1d] bg-[#fef2f2] dark:bg-[#7f1d1d]/30 text-[#991b1b] dark:text-[#f87171] hover:bg-[#fee2e2] hover:border-[#fca5a5]"
-            }`}
+            onClick={toggleTheme}
+            className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-[#0F172A] dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition cursor-pointer"
+            title={`Current: ${theme === "dark" ? "Dark" : "Light"} mode. Click to toggle.`}
           >
-            <span
-              className={`w-2 h-2 rounded-full shrink-0 ${
-                connectionStatus === "connected"
-                  ? "bg-[#10b981]"
-                  : connectionStatus === "connecting"
-                  ? "bg-[#f59e0b] animate-pulse"
-                  : "bg-[#ef4444]"
-              }`}
-            />
-            <span className="truncate max-w-[110px]">
-              {connectionLabel}
-            </span>
-            <Settings
-              className={`w-3.5 h-3.5 shrink-0 ${
-                connectionStatus === "connected"
-                  ? "text-[#047857] dark:text-[#34d399]"
-                  : connectionStatus === "connecting"
-                  ? "text-[#b45309] dark:text-[#fbbf24]"
-                  : "text-[#dc2626] dark:text-[#f87171]"
-              }`}
-            />
+            <div className="flex items-center gap-2 min-w-0">
+              {theme === "dark" ? (
+                <Moon className="w-4 h-4 text-purple-400 shrink-0" />
+              ) : (
+                <Sun className="w-4 h-4 text-amber-500 shrink-0" />
+              )}
+              <span className="font-semibold text-xs">Appearance</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] capitalize text-neutral-400 dark:text-neutral-500 font-semibold px-2 py-0.5 rounded-md bg-black/[0.04] dark:bg-white/[0.08]">
+                {theme}
+              </span>
+              <ChevronDown className="w-3.5 h-3.5 text-neutral-400" />
+            </div>
           </button>
         </div>
       </div>

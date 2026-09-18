@@ -27,6 +27,7 @@ export interface SidebarServiceItem {
   description: string;
   icon: LucideIcon;
   color: string;
+  squircleBg?: string;
   action: () => void;
 }
 
@@ -137,6 +138,7 @@ export function buildSidebarServices(params: {
       description: "1,300+ catalog matcher",
       icon: Compass,
       color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 dark:text-emerald-400",
+      squircleBg: "bg-emerald-500 text-white shadow-xs",
       action: () => {
         if (onSelectService) onSelectService("journal-fit");
         else onNewReview();
@@ -148,6 +150,7 @@ export function buildSidebarServices(params: {
       description: "Crossref & Retraction Watch",
       icon: CheckCircle2,
       color: "text-teal-600 bg-teal-50 dark:bg-teal-950/50 dark:text-teal-400",
+      squircleBg: "bg-teal-500 text-white shadow-xs",
       action: () => {
         if (onSelectService) onSelectService("reference-checker");
         else onSelectView("citations");
@@ -159,6 +162,7 @@ export function buildSidebarServices(params: {
       description: "Evidence claim alignment",
       icon: ShieldCheck,
       color: "text-amber-600 bg-amber-50 dark:bg-amber-950/50 dark:text-amber-400",
+      squircleBg: "bg-amber-500 text-white shadow-xs",
       action: () => {
         if (onSelectService) onSelectService("citation-claim");
         else onNewReview();
@@ -170,6 +174,7 @@ export function buildSidebarServices(params: {
       description: "Systematic review generator",
       icon: Layers,
       color: "text-purple-600 bg-purple-50 dark:bg-purple-950/50 dark:text-purple-400",
+      squircleBg: "bg-purple-500 text-white shadow-xs",
       action: () => {
         if (onSelectService) onSelectService("prisma");
         else onNewReview();
@@ -181,6 +186,7 @@ export function buildSidebarServices(params: {
       description: "Formal editor submission letter",
       icon: FileText,
       color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/50 dark:text-indigo-400",
+      squircleBg: "bg-sky-500 text-white shadow-xs",
       action: () => {
         if (onSelectService) onSelectService("cover-letter");
         else onNewReview();
@@ -192,6 +198,7 @@ export function buildSidebarServices(params: {
       description: "Point-by-point rebuttal matrix",
       icon: MessageSquare,
       color: "text-rose-600 bg-rose-50 dark:bg-rose-950/50 dark:text-rose-400",
+      squircleBg: "bg-rose-500 text-white shadow-xs",
       action: () => {
         if (onSelectService) onSelectService("response-builder");
         else onSelectView("personas");

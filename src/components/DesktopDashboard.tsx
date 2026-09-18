@@ -859,14 +859,41 @@ export function DesktopDashboard({
                 </div>
               </div>
 
-              {/* Manuscript Title */}
-              <div>
-                <h1 className="text-xl sm:text-2xl font-serif font-bold text-[#0F172A] dark:text-white leading-snug">
-                  {title}
-                </h1>
-                <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-2 font-medium">
-                  Generated on September 10, 2026 • Peer-Review Calibrated Pre-Submission Diagnostic
-                </p>
+              {/* Manuscript Title & Status Header (PureMac style) */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                <div className="space-y-1 max-w-2xl">
+                  <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A] dark:text-white tracking-tight leading-snug">
+                    {title}
+                  </h1>
+                  <p className="text-xs text-[#64748B] dark:text-neutral-400 font-medium">
+                    Target: <strong className="text-neutral-800 dark:text-neutral-200">{targetJournal}</strong> &bull; Peer-Review Calibrated Pre-Submission Diagnostic
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 shrink-0">
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold shadow-2xs ${
+                      isDeskReject
+                        ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300/60 dark:border-rose-800/60"
+                        : "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800/60"
+                    }`}
+                  >
+                    {isDeskReject ? (
+                      <>
+                        <ShieldAlert className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                        <span>Desk Reject Hazard</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                        <span>Review ready</span>
+                      </>
+                    )}
+                  </span>
+                  <span className="text-xs text-neutral-400 dark:text-neutral-500 font-medium hidden md:inline">
+                    Local scan complete
+                  </span>
+                </div>
               </div>
 
               {/* Acceptance Potential Banner OR Ineligibility / Desk Reject Banner */}
