@@ -300,7 +300,7 @@ export function DesktopHeader({
     <header
       data-tauri-drag-region
       onMouseDown={handleHeaderMouseDown}
-      className="h-[52px] liquid-glass-header flex items-center select-none shrink-0 z-20 cursor-default relative transition-colors duration-150 border-b border-black/[0.06] dark:border-white/[0.08]"
+      className="h-[52px] liquid-glass-header flex items-center select-none shrink-0 z-50 cursor-default relative transition-colors duration-150 border-b border-black/[0.06] dark:border-white/[0.08]"
     >
       {/* Top Left: In Web mode, render Company Brand + Sidebar Toggle (Exact match with screenshot) */}
       {!isDesktopApp() ? (
@@ -453,7 +453,7 @@ export function DesktopHeader({
       </div>
 
       {/* Top Right: Services Icon Dropdown Button + OS Download Button */}
-      <div className="flex items-center gap-2 h-full pl-2 pr-3 shrink-0 z-10">
+      <div className="flex items-center gap-2 h-full pl-2 pr-3 shrink-0 relative z-50">
         {/* Services Dropdown Button (Replacing theme toggle & local AI button) */}
         <div className="relative inline-flex items-center" ref={servicesDropdownRef}>
           <button
@@ -472,7 +472,7 @@ export function DesktopHeader({
           </button>
 
           {servicesDropdownOpen && (
-            <div className="absolute right-0 top-full mt-2 w-72 rounded-2xl liquid-glass-modal bg-white/95 dark:bg-[#0f172a]/95 p-2 shadow-2xl border border-black/10 dark:border-white/10 z-50 animate-fade-in backdrop-blur-2xl">
+            <div className="absolute right-0 top-full mt-2 w-72 rounded-2xl liquid-glass-modal bg-white/95 dark:bg-[#0f172a]/95 p-2 shadow-2xl border border-black/10 dark:border-white/10 z-[100] animate-fade-in backdrop-blur-2xl">
               <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400 border-b border-black/5 dark:border-white/10 flex items-center justify-between">
                 <span>Manuscript Services</span>
                 <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold">
@@ -525,7 +525,7 @@ export function DesktopHeader({
           </button>
 
           {disclaimerDropdownOpen && (
-            <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl liquid-glass-modal bg-white/95 dark:bg-[#0f172a]/95 p-3.5 shadow-2xl border border-black/10 dark:border-white/10 z-50 animate-fade-in backdrop-blur-2xl text-left space-y-2.5">
+            <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl liquid-glass-modal bg-white/95 dark:bg-[#0f172a]/95 p-3.5 shadow-2xl border border-black/10 dark:border-white/10 z-[100] animate-fade-in backdrop-blur-2xl text-left space-y-2.5">
               {/* Header */}
               <div className="flex items-center gap-2 pb-2 border-b border-black/[0.06] dark:border-white/[0.08]">
                 <div className="w-6 h-6 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20">

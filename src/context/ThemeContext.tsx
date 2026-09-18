@@ -20,7 +20,7 @@ interface ThemeContextValue {
 const THEME_STORAGE_KEY = "manuview_theme_mode";
 
 const ThemeContext = createContext<ThemeContextValue>({
-  theme: "light",
+  theme: "system",
   resolvedTheme: "light",
   toggleTheme: () => {},
   setTheme: () => {},
@@ -28,30 +28,83 @@ const ThemeContext = createContext<ThemeContextValue>({
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<ThemeMode>(() => {
-    if (typeof window === "undefined") return "light";
+    if (typeof window === "undefined") return "system";
     try {
-      localStorage.removeItem(THEME_STORAGE_KEY);
-      const sessionSaved = sessionStorage.getItem(THEME_STORAGE_KEY);
-      if (sessionSaved === "light" || sessionSaved === "dark" || sessionSaved === "system") {
-        return sessionSaved as ThemeMode;
+      const saved = localStorage.getItem(THEME_STORAGE_KEY) || sessionStorage.getItem(THEME_STORAGE_KEY);
+      if (saved === "light" || saved === "dark" || saved === "system") {
+        return saved as ThemeMode;
       }
     } catch {}
-    return "light";
+    return "system";
   });
 
   const [systemIsDark, setSystemIsDark] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    try {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    } catch {
+      return false;
+    }
   });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = (e: MediaQueryListEvent) => {
+
+    let mediaQuery: MediaQueryList | null = null;
+    const handler = (e: MediaQueryListEvent | MediaQueryList) => {
       setSystemIsDark(e.matches);
     };
-    mediaQuery.addEventListener("change", handler);
-    return () => mediaQuery.removeEventListener("change", handler);
+
+    try {
+      mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      setSystemIsDark(mediaQuery.matches);
+      if (mediaQuery.addEventListener) {
+        mediaQuery.addEventListener("change", handler);
+      } else if ((mediaQuery as any).addListener) {
+        (mediaQuery as any).addListener(handler);
+      }
+    } catch {}
+
+    // Support Tauri native window theme listener if available in desktop app
+    let unlistenTauri: (() => void) | undefined;
+    import("@tauri-apps/api/window")
+      .then(({ getCurrentWindow }) => {
+        const appWindow = getCurrentWindow();
+        if (appWindow && typeof appWindow.theme === "function") {
+          appWindow
+            .theme()
+            .then((currTheme) => {
+              if (currTheme) {
+                setSystemIsDark(currTheme === "dark");
+              }
+            })
+            .catch(() => {});
+        }
+        if (appWindow && typeof appWindow.onThemeChanged === "function") {
+          appWindow
+            .onThemeChanged(({ payload: newTheme }) => {
+              setSystemIsDark(newTheme === "dark");
+            })
+            .then((unlisten) => {
+              unlistenTauri = unlisten;
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      if (mediaQuery) {
+        if (mediaQuery.removeEventListener) {
+          mediaQuery.removeEventListener("change", handler);
+        } else if ((mediaQuery as any).removeListener) {
+          (mediaQuery as any).removeListener(handler);
+        }
+      }
+      if (unlistenTauri) {
+        unlistenTauri();
+      }
+    };
   }, []);
 
   const resolvedTheme: "light" | "dark" =
@@ -69,6 +122,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       root.style.colorScheme = "light";
     }
     try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
       sessionStorage.setItem(THEME_STORAGE_KEY, theme);
     } catch {}
   }, [theme, resolvedTheme]);

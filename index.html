@@ -10,10 +10,16 @@
     <title>ManuView - AI Pre-Submission Peer Review & Research Suite</title>
     <style>
       html, body {
-        background-color: #FFFFFF !important;
-        background: #FFFFFF !important;
         margin: 0;
         padding: 0;
+      }
+      html.dark, html.dark body {
+        background-color: #080B11 !important;
+        background: #080B11 !important;
+      }
+      html:not(.dark), html:not(.dark) body {
+        background-color: #FFFFFF !important;
+        background: #FFFFFF !important;
       }
       #app-splash {
         position: fixed;
@@ -21,23 +27,43 @@
         z-index: 99999;
         width: 100vw;
         height: 100vh;
-        background-color: #FFFFFF !important;
-        background: #FFFFFF !important;
         overflow: hidden;
         display: none;
         align-items: center;
         justify-content: center;
         transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);
       }
+      html.dark #app-splash {
+        background-color: #080B11 !important;
+        background: #080B11 !important;
+      }
+      html:not(.dark) #app-splash {
+        background-color: #FFFFFF !important;
+        background: #FFFFFF !important;
+      }
       #intro-video {
         width: 100vw;
         height: 100vh;
         object-fit: cover;
         display: block;
-        background-color: #FFFFFF !important;
-        background: #FFFFFF !important;
       }
     </style>
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem("manuview_theme_mode") || sessionStorage.getItem("manuview_theme_mode");
+          var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var isDark = saved === "dark" || ((!saved || saved === "system") && prefersDark);
+          if (isDark) {
+            document.documentElement.classList.add("dark");
+            document.documentElement.style.colorScheme = "dark";
+          } else {
+            document.documentElement.classList.remove("dark");
+            document.documentElement.style.colorScheme = "light";
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body class="bg-[#FFFFFF] text-[#111827] dark:bg-[#080B11] dark:text-[#F8FAFC] antialiased">
     <!-- App Startup Video Intro Screen: Mounted strictly in native desktop Tauri app -->
