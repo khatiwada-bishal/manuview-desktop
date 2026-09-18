@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { CheckCircle2, AlertCircle, FolderOpen, X, FileText } from "lucide-react";
+import { CheckCircle2, AlertCircle, FolderOpen, X } from "lucide-react";
 import { openFolder, isMacOS, isDesktopApp } from "@/lib/desktop";
 
 export interface ExportToastData {
@@ -19,7 +19,7 @@ interface ExportCompletedToastProps {
 export function ExportCompletedToast({
   toast,
   onClose,
-  autoCloseMs = 8000,
+  autoCloseMs = 7000,
 }: ExportCompletedToastProps) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -54,7 +54,7 @@ export function ExportCompletedToast({
     if (!timerRef.current) {
       timerRef.current = setTimeout(() => {
         onClose();
-      }, 4000);
+      }, 3500);
     }
   };
 
@@ -67,7 +67,6 @@ export function ExportCompletedToast({
   };
 
   const isSuccess = toast.status === "success";
-  const displayFileName = toast.fileName || (toast.filePath ? toast.filePath.split(/[\\/]/).pop() : undefined);
   const showFolderLink = isSuccess && Boolean(toast.filePath && isDesktopApp());
 
   return (
@@ -76,60 +75,39 @@ export function ExportCompletedToast({
       aria-live="polite"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="fixed bottom-5 right-5 z-50 w-[380px] max-w-[calc(100vw-32px)] bg-white dark:bg-[#161F30] border border-neutral-200/90 dark:border-[#334155] rounded-2xl shadow-2xl p-4 transition-all duration-200 animate-in fade-in slide-in-from-bottom-5"
+      className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-xs font-medium shadow-2xl border border-neutral-700 dark:border-neutral-200 animate-fade-in select-none"
     >
-      <div className="flex items-start gap-3">
-        <div className="p-1 rounded-full shrink-0 mt-0.5">
-          {isSuccess ? (
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-          ) : (
-            <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
-          )}
-        </div>
+      {isSuccess ? (
+        <CheckCircle2 className="w-4 h-4 text-emerald-400 dark:text-emerald-600 shrink-0" />
+      ) : (
+        <AlertCircle className="w-4 h-4 text-rose-400 dark:text-rose-600 shrink-0" />
+      )}
 
-        <div className="flex-1 min-w-0 space-y-1.5">
-          <div className="flex items-center justify-between gap-2">
-            <h4 className="text-sm font-bold text-neutral-900 dark:text-white tracking-tight">
-              {isSuccess ? "Report Exported" : "Export Failed"}
-            </h4>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1 -mr-1 -mt-1 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition cursor-pointer"
-              title="Close notification"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+      <span className="truncate max-w-[320px]">{toast.message}</span>
 
-          <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed">
-            {toast.message}
-          </p>
+      {showFolderLink && (
+        <>
+          <span className="text-neutral-600 dark:text-neutral-300">|</span>
+          <button
+            type="button"
+            onClick={handleOpenFolder}
+            className="inline-flex items-center gap-1 font-semibold text-blue-400 dark:text-blue-600 hover:underline cursor-pointer shrink-0 underline-offset-2"
+            title={isMacOS() ? "Reveal exported file in Finder" : "Open containing folder"}
+          >
+            <FolderOpen className="w-3.5 h-3.5 shrink-0" />
+            <span>{isMacOS() ? "Show in Finder" : "Show in Folder"}</span>
+          </button>
+        </>
+      )}
 
-          {displayFileName && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-neutral-100/80 dark:bg-[#1E293B]/80 text-[11px] text-neutral-700 dark:text-neutral-300 font-mono truncate border border-neutral-200/60 dark:border-[#334155]/60">
-              <FileText className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-              <span className="truncate">{displayFileName}</span>
-            </div>
-          )}
-
-          {showFolderLink && (
-            <div className="pt-1 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleOpenFolder}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#0F172A] hover:bg-[#1E293B] text-white dark:bg-white dark:hover:bg-neutral-100 dark:text-[#0F172A] transition shadow-xs cursor-pointer group"
-              >
-                <FolderOpen className="w-3.5 h-3.5 text-amber-400 dark:text-amber-600 group-hover:scale-110 transition-transform" />
-                <span>{isMacOS() ? "Reveal in Finder" : "Open Folder"}</span>
-              </button>
-              <span className="text-[11px] text-neutral-400 dark:text-neutral-500">
-                View saved file
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
+      <button
+        type="button"
+        onClick={onClose}
+        className="p-0.5 ml-1 -mr-1.5 rounded text-neutral-400 hover:text-white dark:text-neutral-500 dark:hover:text-black hover:bg-neutral-800 dark:hover:bg-neutral-100 transition cursor-pointer shrink-0"
+        title="Dismiss notification"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
     </div>
   );
 }

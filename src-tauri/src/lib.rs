@@ -133,6 +133,82 @@ async fn call_llm_native(
     })
 }
 
+#[tauri::command]
+fn show_in_folder(path: String) -> Result<(), String> {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return Err("Path cannot be empty".into());
+    }
+
+    let p = std::path::Path::new(trimmed);
+
+    #[cfg(target_os = "macos")]
+    {
+        // On macOS: 'open -R <file>' reveals and selects the file in Finder.
+        // If directory or file doesn't exist, open directory.
+        if p.exists() && !p.is_dir() {
+            std::process::Command::new("open")
+                .arg("-R")
+                .arg(trimmed)
+                .spawn()
+                .map_err(|e| format!("Failed to reveal in Finder: {}", e))?;
+        } else if p.is_dir() {
+            std::process::Command::new("open")
+                .arg(trimmed)
+                .spawn()
+                .map_err(|e| format!("Failed to open directory: {}", e))?;
+        } else if let Some(parent) = p.parent() {
+            std::process::Command::new("open")
+                .arg(parent)
+                .spawn()
+                .map_err(|e| format!("Failed to open parent directory: {}", e))?;
+        } else {
+            std::process::Command::new("open")
+                .arg(trimmed)
+                .spawn()
+                .map_err(|e| format!("Failed to open path: {}", e))?;
+        }
+        Ok(())
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        if p.exists() && !p.is_dir() {
+            std::process::Command::new("explorer")
+                .arg(format!("/select,{}", trimmed))
+                .spawn()
+                .map_err(|e| format!("Failed to reveal in Explorer: {}", e))?;
+        } else {
+            let target = if p.is_dir() {
+                trimmed
+            } else if let Some(parent) = p.parent().and_then(|p| p.to_str()) {
+                parent
+            } else {
+                trimmed
+            };
+            std::process::Command::new("explorer")
+                .arg(target)
+                .spawn()
+                .map_err(|e| format!("Failed to open folder: {}", e))?;
+        }
+        Ok(())
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let target = if p.is_dir() {
+            p
+        } else {
+            p.parent().unwrap_or(p)
+        };
+        std::process::Command::new("xdg-open")
+            .arg(target)
+            .spawn()
+            .map_err(|e| format!("Failed to open folder: {}", e))?;
+        Ok(())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -144,7 +220,8 @@ pub fn run() {
             get_api_credential,
             delete_api_credential,
             has_api_credential,
-            call_llm_native
+            call_llm_native,
+            show_in_folder
         ])
         .setup(|app| {
             if cfg!(debug_assertions) {

@@ -178,31 +178,38 @@ export async function saveFileDesktop(
 }
 
 /**
- * Opens a local folder in the system file manager (Finder on macOS, Explorer on Windows).
- * If a file path is provided, the enclosing directory is extracted and opened.
+ * Opens a local folder or reveals a file in the system file manager (Finder on macOS, Explorer on Windows).
  */
 export async function openFolder(folderOrFilePath?: string | null): Promise<boolean> {
   if (!folderOrFilePath || typeof folderOrFilePath !== "string") return false;
   const trimmed = folderOrFilePath.trim();
   if (!trimmed) return false;
 
-  // Extract parent directory if it points to a file with an extension
-  let targetDir = trimmed;
-  const lastSlash = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
-  if (lastSlash >= 0) {
-    const filenamePart = trimmed.substring(lastSlash + 1);
-    if (filenamePart.includes(".")) {
-      targetDir = trimmed.substring(0, lastSlash) || (trimmed.startsWith("/") ? "/" : targetDir);
-    }
-  }
-
   if (isDesktopApp()) {
+    // 1. First attempt native Rust command (reveals file highlighted in Finder)
     try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("show_in_folder", { path: trimmed });
+      return true;
+    } catch (invokeErr) {
+      console.warn("show_in_folder invoke failed, attempting shell fallback:", invokeErr);
+    }
+
+    // 2. Fallback to @tauri-apps/plugin-shell
+    try {
+      let targetDir = trimmed;
+      const lastSlash = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
+      if (lastSlash >= 0) {
+        const filenamePart = trimmed.substring(lastSlash + 1);
+        if (filenamePart.includes(".")) {
+          targetDir = trimmed.substring(0, lastSlash) || (trimmed.startsWith("/") ? "/" : targetDir);
+        }
+      }
       const { open } = await import("@tauri-apps/plugin-shell");
       await open(targetDir);
       return true;
-    } catch (err) {
-      console.warn("Tauri shell open folder failed:", err);
+    } catch (shellErr) {
+      console.warn("Tauri shell open folder failed:", shellErr);
       return false;
     }
   }
