@@ -1,7 +1,17 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { Settings, PanelLeft, Sun, Moon, ChevronDown, Sparkles } from "lucide-react";
+import {
+  Settings,
+  PanelLeft,
+  Sun,
+  Moon,
+  Monitor,
+  ChevronDown,
+  Sparkles,
+  Cpu,
+  Check,
+} from "lucide-react";
 import { isDesktopApp } from "@/lib/desktop";
 import { useTheme } from "@/context/ThemeContext";
 import { EditorialTriageOutcome } from "@/lib/types";
@@ -61,6 +71,7 @@ interface DesktopSidebarProps {
   onOpenSearch: () => void;
   onNewReview: () => void;
   onOpenSettings: () => void;
+  onOpenLocalModel?: () => void;
   onSelectService?: (serviceId: string) => void;
   onDeletePaper?: (paper: PaperItem, e: React.MouseEvent) => void;
   onDeleteMultiplePapers?: (papers: PaperItem[]) => void;
@@ -85,6 +96,7 @@ export function DesktopSidebar({
   onOpenSearch,
   onNewReview,
   onOpenSettings,
+  onOpenLocalModel,
   onSelectService,
   onDeletePaper,
   onDeleteMultiplePapers,
@@ -93,7 +105,20 @@ export function DesktopSidebar({
   onToggleSelectPaper,
   onClearSelectedPapers,
 }: DesktopSidebarProps) {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const appearanceRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (appearanceRef.current && !appearanceRef.current.contains(e.target as Node)) {
+        setAppearanceOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const [localSelectedPaperIds, setLocalSelectedPaperIds] = useState<Set<string>>(new Set());
   const selectedPaperIds = controlledSelectedPaperIds ?? localSelectedPaperIds;
 
@@ -206,6 +231,7 @@ export function DesktopSidebar({
         onSelectView={onSelectView}
         onNewReview={onNewReview}
         onOpenSettings={onOpenSettings}
+        onOpenLocalModel={onOpenLocalModel}
         onDeletePaper={onDeletePaper}
       />
 
@@ -306,61 +332,131 @@ export function DesktopSidebar({
           />
           <SidebarDisclaimerPopover />
 
-          {/* STATUS CARD (Matching PureMac "Ready to clean - Full Disk Access granted") */}
-          <div
-            onClick={onOpenSettings}
-            className="p-2.5 rounded-xl bg-white/80 dark:bg-white/[0.05] border border-black/[0.06] dark:border-white/[0.08] shadow-2xs flex items-center gap-2.5 cursor-pointer hover:bg-white dark:hover:bg-white/[0.08] transition"
-            title="AI Engine Status - Click to configure"
-          >
-            <div className="relative flex items-center justify-center">
-              <span
-                className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                  connectionStatus === "connected"
-                    ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.7)]"
+          {/* AI ENGINE & LOCAL AI CONTROLS */}
+          <div className="flex items-center gap-2">
+            <div
+              onClick={onOpenSettings}
+              className="flex-1 p-2.5 rounded-xl bg-white/80 dark:bg-white/[0.05] border border-black/[0.06] dark:border-white/[0.08] shadow-2xs flex items-center gap-2.5 cursor-pointer hover:bg-white dark:hover:bg-white/[0.08] transition min-w-0"
+              title="AI Engine Status - Click to configure"
+            >
+              <div className="relative flex items-center justify-center shrink-0">
+                <span
+                  className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                    connectionStatus === "connected"
+                      ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.7)]"
+                      : connectionStatus === "connecting"
+                      ? "bg-amber-500 animate-pulse"
+                      : "bg-rose-500"
+                  }`}
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-bold text-[#0F172A] dark:text-white truncate">
+                  {connectionStatus === "connected"
+                    ? "Ready to review"
                     : connectionStatus === "connecting"
-                    ? "bg-amber-500 animate-pulse"
-                    : "bg-rose-500"
-                }`}
-              />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-xs font-bold text-[#0F172A] dark:text-white truncate">
-                {connectionStatus === "connected"
-                  ? "Ready to review"
-                  : connectionStatus === "connecting"
-                  ? "Connecting..."
-                  : "Engine Disconnected"}
-              </div>
-              <div className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate font-medium">
-                {connectionStatus === "connected"
-                  ? `${activeModelName || "Local AI"} • 100% Private`
-                  : "Click to configure provider"}
+                    ? "Connecting..."
+                    : "Engine Disconnected"}
+                </div>
+                <div className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate font-medium">
+                  {connectionStatus === "connected"
+                    ? `${activeModelName || "Local AI"} • 100% Private`
+                    : "Configure provider"}
+                </div>
               </div>
             </div>
+
+            {onOpenLocalModel && (
+              <button
+                type="button"
+                onClick={onOpenLocalModel}
+                title="Local On-Device AI (WebGPU SLM)"
+                className="h-[46px] px-2.5 rounded-xl border border-purple-500/20 bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 transition cursor-pointer flex flex-col items-center justify-center gap-0.5 shrink-0 active:scale-95 shadow-2xs"
+              >
+                <Cpu className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                <span className="text-[9px] font-bold tracking-tight">Local AI</span>
+              </button>
+            )}
           </div>
 
-          {/* APPEARANCE SELECTOR (Matching PureMac "Appearance v") */}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-[#0F172A] dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition cursor-pointer"
-            title={`Current: ${theme === "dark" ? "Dark" : "Light"} mode. Click to toggle.`}
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              {theme === "dark" ? (
-                <Moon className="w-4 h-4 text-purple-400 shrink-0" />
-              ) : (
-                <Sun className="w-4 h-4 text-amber-500 shrink-0" />
-              )}
-              <span className="font-semibold text-xs">Appearance</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="text-[10px] capitalize text-neutral-400 dark:text-neutral-500 font-semibold px-2 py-0.5 rounded-md bg-black/[0.04] dark:bg-white/[0.08]">
-                {theme}
-              </span>
-              <ChevronDown className="w-3.5 h-3.5 text-neutral-400" />
-            </div>
-          </button>
+          {/* APPEARANCE SELECTOR (3-Way: Light, Dark, System) */}
+          <div className="relative" ref={appearanceRef}>
+            <button
+              type="button"
+              onClick={() => setAppearanceOpen((prev) => !prev)}
+              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-[#0F172A] dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition cursor-pointer"
+              title={`Appearance: ${theme} (Active: ${resolvedTheme}). Click to change.`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                {theme === "system" ? (
+                  <Monitor className="w-4 h-4 text-blue-500 shrink-0" />
+                ) : theme === "dark" ? (
+                  <Moon className="w-4 h-4 text-purple-400 shrink-0" />
+                ) : (
+                  <Sun className="w-4 h-4 text-amber-500 shrink-0" />
+                )}
+                <span className="font-semibold text-xs">Appearance</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] capitalize text-neutral-400 dark:text-neutral-500 font-semibold px-2 py-0.5 rounded-md bg-black/[0.04] dark:bg-white/[0.08]">
+                  {theme}
+                </span>
+                <ChevronDown
+                  className={`w-3.5 h-3.5 text-neutral-400 transition-transform duration-150 ${
+                    appearanceOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </div>
+            </button>
+
+            {appearanceOpen && (
+              <div className="absolute bottom-full mb-1.5 left-0 right-0 p-1.5 rounded-xl bg-white dark:bg-[#111827] border border-black/10 dark:border-white/10 shadow-xl z-50 animate-fade-in backdrop-blur-xl space-y-0.5">
+                {[
+                  {
+                    id: "light",
+                    label: "Light",
+                    icon: Sun,
+                    iconColor: "text-amber-500",
+                  },
+                  {
+                    id: "dark",
+                    label: "Dark",
+                    icon: Moon,
+                    iconColor: "text-purple-400",
+                  },
+                  {
+                    id: "system",
+                    label: "System",
+                    icon: Monitor,
+                    iconColor: "text-blue-500",
+                  },
+                ].map((opt) => {
+                  const isSelected = theme === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={(e) => {
+                        setTheme(opt.id as any, e);
+                        setAppearanceOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer ${
+                        isSelected
+                          ? "bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-semibold"
+                          : "text-neutral-700 dark:text-neutral-300 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <opt.icon className={`w-3.5 h-3.5 ${opt.iconColor}`} />
+                        <span>{opt.label}</span>
+                      </div>
+                      {isSelected && <Check className="w-3.5 h-3.5" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </aside>

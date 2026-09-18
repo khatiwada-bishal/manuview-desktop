@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
-export type ThemeMode = "light" | "dark";
+export type ThemeMode = "light" | "dark" | "system";
 
 export type ThemeClickEvent =
   | React.MouseEvent<HTMLElement>
@@ -12,6 +12,7 @@ export type ThemeClickEvent =
 
 interface ThemeContextValue {
   theme: ThemeMode;
+  resolvedTheme: "light" | "dark";
   toggleTheme: (event?: ThemeClickEvent) => void;
   setTheme: (mode: ThemeMode, event?: ThemeClickEvent) => void;
 }
@@ -20,6 +21,7 @@ const THEME_STORAGE_KEY = "manuview_theme_mode";
 
 const ThemeContext = createContext<ThemeContextValue>({
   theme: "light",
+  resolvedTheme: "light",
   toggleTheme: () => {},
   setTheme: () => {},
 });
@@ -28,24 +30,38 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<ThemeMode>(() => {
     if (typeof window === "undefined") return "light";
     try {
-      // Clear legacy localStorage so fresh launches always default to light mode
       localStorage.removeItem(THEME_STORAGE_KEY);
-
-      // Check current session storage if user toggled during this run
       const sessionSaved = sessionStorage.getItem(THEME_STORAGE_KEY);
-      if (sessionSaved === "light" || sessionSaved === "dark") {
-        return sessionSaved;
+      if (sessionSaved === "light" || sessionSaved === "dark" || sessionSaved === "system") {
+        return sessionSaved as ThemeMode;
       }
     } catch {}
-    // Default loading is ALWAYS light mode every time the application opens
     return "light";
   });
+
+  const [systemIsDark, setSystemIsDark] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = (e: MediaQueryListEvent) => {
+      setSystemIsDark(e.matches);
+    };
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
+  }, []);
+
+  const resolvedTheme: "light" | "dark" =
+    theme === "system" ? (systemIsDark ? "dark" : "light") : theme;
 
   const isTransitioningRef = useRef(false);
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "dark") {
+    if (resolvedTheme === "dark") {
       root.classList.add("dark");
       root.style.colorScheme = "dark";
     } else {
@@ -55,9 +71,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     try {
       sessionStorage.setItem(THEME_STORAGE_KEY, theme);
     } catch {}
-  }, [theme]);
+  }, [theme, resolvedTheme]);
 
-  const runWaveTransition = (nextTheme: ThemeMode, event?: ThemeClickEvent) => {
+  const runWaveTransition = (nextTheme: ThemeMode, nextResolvedTheme: "light" | "dark", event?: ThemeClickEvent) => {
     if (typeof document === "undefined") return;
 
     if (isTransitioningRef.current) return;
@@ -67,25 +83,24 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    if (prefersReducedMotion) {
+    if (prefersReducedMotion || resolvedTheme === nextResolvedTheme) {
       setThemeState(nextTheme);
       return;
     }
 
-    // Determine the wave's origin point (defaulting to the top-right button coordinates)
+    // Determine the wave's origin point (defaulting to bottom-left sidebar area if clicked there)
     const windowWidth = typeof window !== "undefined" ? window.innerWidth : 1200;
     const windowHeight = typeof window !== "undefined" ? window.innerHeight : 800;
 
     const x =
       event && typeof event.clientX === "number" && event.clientX > 0
         ? event.clientX
-        : windowWidth - 32;
+        : 32;
     const y =
       event && typeof event.clientY === "number" && event.clientY > 0
         ? event.clientY
-        : 20;
+        : windowHeight - 32;
 
-    // Radius to reach the furthest corner (which from top-right is the bottom-left corner at (0, windowHeight))
     const endRadius = Math.hypot(
       Math.max(x, windowWidth - x),
       Math.max(y, windowHeight - y)
@@ -98,15 +113,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       };
     };
 
-    // 1. Native View Transitions API (Supported on modern Safari / WebKit & Chromium)
+    // 1. Native View Transitions API
     if (typeof doc.startViewTransition === "function") {
       isTransitioningRef.current = true;
 
       const transition = doc.startViewTransition(() => {
         flushSync(() => {
-          // Immediately apply next theme class to root and commit state
           const root = document.documentElement;
-          if (nextTheme === "dark") {
+          if (nextResolvedTheme === "dark") {
             root.classList.add("dark");
             root.style.colorScheme = "dark";
           } else {
@@ -129,7 +143,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
               clipPath: clipPath,
             },
             {
-              duration: 1200,
+              duration: 1000,
               easing: "cubic-bezier(0.4, 0, 0.15, 1)",
               pseudoElement: "::view-transition-new(root)",
             }
@@ -144,7 +158,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // 2. High-Fidelity Wave Overlay Fallback (spreading steadily like bushfire)
+    // 2. High-Fidelity Wave Overlay Fallback
     isTransitioningRef.current = true;
     const overlay = document.createElement("div");
     overlay.className = "theme-water-wave-fallback";
@@ -155,14 +169,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     overlay.style.height = "100vh";
     overlay.style.zIndex = "999999";
     overlay.style.pointerEvents = "none";
-    overlay.style.backgroundColor = nextTheme === "dark" ? "#080B11" : "#FFFFFF";
+    overlay.style.backgroundColor = nextResolvedTheme === "dark" ? "#080B11" : "#FFFFFF";
     overlay.style.clipPath = `circle(0px at ${x}px ${y}px)`;
-    overlay.style.transition = "clip-path 1200ms cubic-bezier(0.4, 0, 0.15, 1)";
+    overlay.style.transition = "clip-path 1000ms cubic-bezier(0.4, 0, 0.15, 1)";
     document.body.appendChild(overlay);
 
-    // Force layout reflow
     void overlay.offsetHeight;
-
     overlay.style.clipPath = `circle(${endRadius}px at ${x}px ${y}px)`;
 
     setTimeout(() => {
@@ -171,22 +183,24 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         overlay.remove();
         isTransitioningRef.current = false;
       }, 50);
-    }, 1180);
+    }, 980);
   };
 
   const toggleTheme = (event?: ThemeClickEvent) => {
-    const nextTheme: ThemeMode = theme === "dark" ? "light" : "dark";
-    runWaveTransition(nextTheme, event);
+    const modes: ThemeMode[] = ["light", "dark", "system"];
+    const nextIndex = (modes.indexOf(theme) + 1) % modes.length;
+    const nextMode = modes[nextIndex];
+    setTheme(nextMode, event);
   };
 
   const setTheme = (mode: ThemeMode, event?: ThemeClickEvent) => {
-    if (mode !== theme) {
-      runWaveTransition(mode, event);
-    }
+    if (mode === theme) return;
+    const nextResolved = mode === "system" ? (systemIsDark ? "dark" : "light") : mode;
+    runWaveTransition(mode, nextResolved, event);
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, resolvedTheme, toggleTheme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );

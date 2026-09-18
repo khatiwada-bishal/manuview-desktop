@@ -18,6 +18,7 @@ import {
   ChevronDown,
   Download,
   Cpu,
+  LayoutGrid,
 } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTheme } from "@/context/ThemeContext";
@@ -50,6 +51,7 @@ interface DesktopHeaderProps {
   latencyMs?: number | null;
   onOpenSettings?: () => void;
   onOpenLocalModel?: () => void;
+  onSelectService?: (serviceId: string) => void;
   onToggleSidebar?: () => void;
   sidebarOpen?: boolean;
   onGoHome?: () => void;
@@ -73,23 +75,78 @@ const LinuxIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const HEADER_SERVICES = [
+  {
+    id: "ai-review",
+    name: "Pre-Submission AI Scan",
+    description: "5-persona AI review & diagnostic rubric",
+    icon: Sparkles,
+    squircleBg: "bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-xs",
+  },
+  {
+    id: "journal-fit",
+    name: "Target Journal Fit",
+    description: "48,000+ scholarly venues scope analysis",
+    icon: Compass,
+    squircleBg: "bg-emerald-500 text-white shadow-xs",
+  },
+  {
+    id: "reference-checker",
+    name: "Reference Integrity Audit",
+    description: "Crossref & Retraction Watch checks",
+    icon: CheckCircle2,
+    squircleBg: "bg-teal-500 text-white shadow-xs",
+  },
+  {
+    id: "citation-claim",
+    name: "Citation Claim Validator",
+    description: "Evidence claim alignment & causal rigor",
+    icon: ShieldCheck,
+    squircleBg: "bg-amber-500 text-white shadow-xs",
+  },
+  {
+    id: "prisma",
+    name: "PRISMA Flow Diagram",
+    description: "Systematic review flowchart generator",
+    icon: Layers,
+    squircleBg: "bg-purple-500 text-white shadow-xs",
+  },
+  {
+    id: "cover-letter",
+    name: "Journal Cover Letter",
+    description: "Formal editor submission letter",
+    icon: FileText,
+    squircleBg: "bg-sky-500 text-white shadow-xs",
+  },
+  {
+    id: "response-builder",
+    name: "Review Response Builder",
+    description: "Point-by-point rebuttal matrix",
+    icon: MessageSquare,
+    squircleBg: "bg-rose-500 text-white shadow-xs",
+  },
+];
+
 export function DesktopHeader({
   openTabs,
   activeTabId,
   onSelectTab,
   onCloseTab,
-  onOpenLocalModel,
+  onSelectService,
   onToggleSidebar,
   sidebarOpen = true,
   onGoHome,
 }: DesktopHeaderProps) {
-  const { theme, toggleTheme } = useTheme();
   const containerRef = React.useRef<HTMLDivElement>(null);
   const tabsScrollRef = React.useRef<HTMLDivElement>(null);
   const activeTabRef = React.useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = React.useState(false);
   const [canScrollRight, setCanScrollRight] = React.useState(false);
   const [hasOverflow, setHasOverflow] = React.useState(false);
+
+  // Services dropdown state
+  const [servicesDropdownOpen, setServicesDropdownOpen] = React.useState(false);
+  const servicesDropdownRef = React.useRef<HTMLDivElement>(null);
 
   // OS Platform download state (for Web mode top bar)
   const [detectedPlatformId, setDetectedPlatformId] = React.useState<PlatformId>("mac-silicon");
@@ -111,6 +168,12 @@ export function DesktopHeader({
         !downloadDropdownRef.current.contains(e.target as Node)
       ) {
         setDownloadDropdownOpen(false);
+      }
+      if (
+        servicesDropdownRef.current &&
+        !servicesDropdownRef.current.contains(e.target as Node)
+      ) {
+        setServicesDropdownOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -378,46 +441,64 @@ export function DesktopHeader({
         )}
       </div>
 
-      {/* Top Right: Dark / Light Mode Toggle Button + OS Download Button (Exact match with screenshot) */}
+      {/* Top Right: Services Icon Dropdown Button + OS Download Button */}
       <div className="flex items-center gap-2 h-full pl-2 pr-3 shrink-0 z-10">
-        {onOpenLocalModel && (
+        {/* Services Dropdown Button (Replacing theme toggle & local AI button) */}
+        <div className="relative inline-flex items-center" ref={servicesDropdownRef}>
           <button
             type="button"
             data-no-drag
-            onClick={onOpenLocalModel}
-            title="Local On-Device AI (WebGPU SLM)"
-            className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-purple-500/30 bg-purple-500/10 text-purple-700 dark:text-purple-300 hover:bg-purple-500/20 transition cursor-pointer text-xs font-semibold"
+            onClick={() => setServicesDropdownOpen((prev) => !prev)}
+            title="Manuscript Intelligence Services"
+            aria-label="Manuscript Intelligence Services"
+            className={`w-8 h-8 flex items-center justify-center rounded-lg border border-black/10 dark:border-white/15 transition cursor-pointer active:scale-95 ${
+              servicesDropdownOpen
+                ? "bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border-blue-400/40"
+                : "text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
+            }`}
           >
-            <Cpu className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-            <span className="hidden sm:inline">Local AI</span>
+            <LayoutGrid className="w-4 h-4" />
           </button>
-        )}
 
-        <button
-          type="button"
-          data-no-drag
-          onClick={toggleTheme}
-          title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
-          aria-label="Toggle theme mode"
-          className="w-8 h-8 flex items-center justify-center rounded-lg border border-black/10 dark:border-white/15 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors duration-300 cursor-pointer active:scale-95 group relative overflow-hidden"
-        >
-          <div className="relative w-4 h-4 flex items-center justify-center pointer-events-none">
-            <Sun
-              className={`w-3.5 h-3.5 text-amber-400 absolute transition-all duration-700 ease-[cubic-bezier(0.4,0,0.15,1)] transform ${
-                theme === "dark"
-                  ? "rotate-0 scale-100 opacity-100"
-                  : "rotate-90 scale-0 opacity-0"
-              } group-hover:rotate-45`}
-            />
-            <Moon
-              className={`w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400 absolute transition-all duration-700 ease-[cubic-bezier(0.4,0,0.15,1)] transform ${
-                theme === "dark"
-                  ? "-rotate-90 scale-0 opacity-0"
-                  : "rotate-0 scale-100 opacity-100"
-              } group-hover:-rotate-12`}
-            />
-          </div>
-        </button>
+          {servicesDropdownOpen && (
+            <div className="absolute right-0 top-full mt-2 w-72 rounded-2xl liquid-glass-modal bg-white/95 dark:bg-[#0f172a]/95 p-2 shadow-2xl border border-black/10 dark:border-white/10 z-50 animate-fade-in backdrop-blur-2xl">
+              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400 border-b border-black/5 dark:border-white/10 flex items-center justify-between">
+                <span>Manuscript Services</span>
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold">
+                  7 Tools
+                </span>
+              </div>
+              <div className="space-y-1 mt-1.5">
+                {HEADER_SERVICES.map((srv) => (
+                  <button
+                    key={srv.id}
+                    type="button"
+                    data-no-drag
+                    onClick={() => {
+                      setServicesDropdownOpen(false);
+                      onSelectService?.(srv.id);
+                    }}
+                    className="w-full text-left p-2 rounded-xl transition flex items-center gap-2.5 hover:bg-black/5 dark:hover:bg-white/10 text-neutral-800 dark:text-neutral-200 group cursor-pointer"
+                  >
+                    <div
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${srv.squircleBg}`}
+                    >
+                      <srv.icon className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-semibold truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
+                        {srv.name}
+                      </div>
+                      <div className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">
+                        {srv.description}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Download for OS Split Button (Web Mode Only - exact match with screenshot) */}
         {!isDesktopApp() && (

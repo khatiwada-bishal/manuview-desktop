@@ -586,12 +586,12 @@ export default function App() {
           onSelectTab={(id) => setActiveTabId(id)}
           onCloseTab={handleCloseTab}
           onNewTab={() => handleOpenService("ai-review")}
+          onSelectService={handleOpenService}
           isConnected={isConnected}
           isLoading={isApiLoading}
           activeModelName={modelName}
           latencyMs={latencyMs}
           onOpenSettings={() => setIsSettingsOpen(true)}
-          onOpenLocalModel={() => setIsLocalModelOpen(true)}
           onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
           sidebarOpen={sidebarOpen}
           onGoHome={!isDesktopApp() ? () => setViewMode("landing") : undefined}
@@ -614,6 +614,7 @@ export default function App() {
             onOpenSearch={() => setIsSearchOpen(true)}
             onNewReview={() => handleOpenService("ai-review")}
             onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenLocalModel={() => setIsLocalModelOpen(true)}
             onSelectService={handleOpenService}
             onDeletePaper={(paper) => setPapersToDelete([paper])}
             onDeleteMultiplePapers={(targets) => setPapersToDelete(targets)}

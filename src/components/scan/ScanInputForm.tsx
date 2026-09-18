@@ -7,6 +7,10 @@ import {
   CheckCircle2,
   ShieldCheck,
   ArrowRight,
+  FileUp,
+  Tag,
+  Layers,
+  X,
 } from "lucide-react";
 import { isDesktopApp } from "@/lib/desktop";
 import { ScanPipelineStepper } from "@/components/charts/ScanPipelineStepper";
@@ -72,35 +76,41 @@ export function ScanInputForm({
   onOpenSettings,
 }: ScanInputFormProps) {
   return (
-    <form onSubmit={handleRunReview} className="rounded-3xl liquid-glass-card p-6 space-y-6 relative z-10">
+    <form onSubmit={handleRunReview} className="rounded-3xl liquid-glass-card p-6 sm:p-7 space-y-6 relative z-10 border border-black/[0.06] dark:border-white/[0.08] shadow-sm">
       {/* Header with Load Sample Preprint */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[#E5E7EB] dark:border-[#1F2937]">
-        <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 block">
-            Manuscript Draft Submission
-          </span>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-            Upload your full paper for deep referee analysis, or provide title and abstract for quick fit check.
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-black/[0.06] dark:border-white/[0.08]">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-xs">
+            <FileUp className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-800 dark:text-neutral-200">
+              Manuscript Draft Studio
+            </h3>
+            <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+              Upload full draft document for 6-dimension referee critique, or provide text for quick fit validation
+            </p>
+          </div>
         </div>
+
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
           <button
             type="button"
             onClick={handleLoadSampleQuick}
-            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 transition cursor-pointer"
+            className="text-xs font-semibold text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/80 transition cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/50 shadow-2xs"
             title="Loads Title, Abstract & Keywords for fast journal fit validation"
           >
             <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-            <span>Load Sample (Quick Fit)</span>
+            <span>Load Quick Fit Sample</span>
           </button>
           <button
             type="button"
             onClick={handleLoadSampleFull}
-            className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:underline flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 transition cursor-pointer"
+            className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:text-emerald-800 dark:hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/80 transition cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-900/50 shadow-2xs"
             title="Loads complete manuscript document with Methods, Results & References for full 6-dimension peer review"
           >
             <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>Load Sample (Full Document)</span>
+            <span>Load Full Manuscript Sample</span>
           </button>
         </div>
       </div>
@@ -109,45 +119,113 @@ export function ScanInputForm({
         {/* Left Column: File Upload */}
         <div className="flex flex-col">
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
-              Upload Full Manuscript (.pdf, .docx, .txt)
+            <label className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-1.5">
+              <span>Full Manuscript Document</span>
             </label>
-            <span className="text-[10px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded font-medium border border-emerald-200 dark:border-emerald-800">
-              Full 6-Dim Audit
+            <span className="text-[10px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md font-semibold border border-emerald-200 dark:border-emerald-800">
+              Deep 6-Dim Audit
             </span>
           </div>
 
-          {isDesktopApp() ? (
+          {file ? (
+            /* Selected File State: Elevated Manuscript Preview Card */
+            <div className="flex-1 flex flex-col items-center justify-center border border-blue-500/30 bg-blue-50/40 dark:bg-blue-950/30 rounded-2xl p-6 text-center min-h-[260px] relative overflow-hidden group">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/25 mb-3 group-hover:scale-105 transition">
+                <FileText className="w-7 h-7" />
+              </div>
+              <span className="text-sm text-[#0F172A] dark:text-white font-bold truncate max-w-full px-3">
+                {file.name || fileName}
+              </span>
+              <span className="text-xs text-blue-700 dark:text-blue-300 font-medium mt-1">
+                {(file.size / 1024).toFixed(1)} KB • Document Ready
+              </span>
+              <div className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Full Rubric &amp; Crossref Audit Active</span>
+              </div>
+
+              <div className="flex items-center gap-2 mt-4">
+                {isDesktopApp() ? (
+                  <button
+                    type="button"
+                    onClick={handleNativePick}
+                    className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#1E293B] border border-black/10 dark:border-white/10 text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer shadow-2xs"
+                  >
+                    Change File
+                  </button>
+                ) : (
+                  <label className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#1E293B] border border-black/10 dark:border-white/10 text-xs font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer shadow-2xs">
+                    <span>Change File</span>
+                    <input
+                      type="file"
+                      accept=".pdf,.docx,.txt,application/pdf"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFile(null);
+                    setFileName(null);
+                    setCompatibilityMatch(null);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition cursor-pointer shadow-2xs"
+                >
+                  Remove File
+                </button>
+              </div>
+            </div>
+          ) : isDesktopApp() ? (
             <button
               type="button"
               onClick={handleNativePick}
-              className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-[#D1D5DB] dark:border-[#334155] hover:border-blue-500 dark:hover:border-blue-400 rounded-xl p-6 bg-white dark:bg-[#161F30] hover:bg-blue-50/20 dark:hover:bg-blue-950/20 cursor-pointer transition group min-h-[240px]"
+              className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-blue-500/30 hover:border-blue-500 rounded-2xl p-6 bg-gradient-to-b from-blue-500/[0.04] via-purple-500/[0.02] to-transparent hover:bg-blue-50/30 dark:hover:bg-blue-950/30 cursor-pointer transition group min-h-[260px]"
             >
-              <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3 group-hover:scale-105 transition">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md flex items-center justify-center mb-3 group-hover:scale-105 group-hover:shadow-blue-500/25 transition">
                 <Upload className="w-6 h-6" />
               </div>
-              <span className="text-xs text-[#111827] dark:text-white font-semibold text-center truncate max-w-full px-2">
-                {fileName || "Click to choose manuscript file"}
+              <span className="text-sm text-[#0F172A] dark:text-white font-bold text-center truncate max-w-full px-2">
+                Click to Choose Manuscript File
               </span>
-              <span className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1 text-center max-w-xs px-2 leading-relaxed">
-                {file
-                  ? `${(file.size / 1024).toFixed(1)} KB • Click to change file`
-                  : "Audits causal overclaims, missing controls, 5-persona referee reviews & Crossref DOIs"}
+              <span className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 text-center max-w-xs px-2 leading-relaxed">
+                Audits causal claims, missing controls, 5 referee personas &amp; Crossref DOIs
               </span>
+              <div className="flex items-center gap-1.5 mt-3">
+                <span className="px-2 py-0.5 rounded-md bg-black/[0.04] dark:bg-white/[0.08] text-[10px] font-mono font-semibold text-neutral-600 dark:text-neutral-400 border border-black/[0.04] dark:border-white/[0.08]">
+                  .PDF
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-black/[0.04] dark:bg-white/[0.08] text-[10px] font-mono font-semibold text-neutral-600 dark:text-neutral-400 border border-black/[0.04] dark:border-white/[0.08]">
+                  .DOCX
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-black/[0.04] dark:bg-white/[0.08] text-[10px] font-mono font-semibold text-neutral-600 dark:text-neutral-400 border border-black/[0.04] dark:border-white/[0.08]">
+                  .TXT
+                </span>
+              </div>
             </button>
           ) : (
-            <label className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-[#D1D5DB] dark:border-[#334155] hover:border-blue-500 dark:hover:border-blue-400 rounded-xl p-6 bg-white dark:bg-[#161F30] hover:bg-blue-50/20 dark:hover:bg-blue-950/20 cursor-pointer transition group min-h-[240px]">
-              <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3 group-hover:scale-105 transition">
+            <label className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-blue-500/30 hover:border-blue-500 rounded-2xl p-6 bg-gradient-to-b from-blue-500/[0.04] via-purple-500/[0.02] to-transparent hover:bg-blue-50/30 dark:hover:bg-blue-950/30 cursor-pointer transition group min-h-[260px]">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md flex items-center justify-center mb-3 group-hover:scale-105 group-hover:shadow-blue-500/25 transition">
                 <Upload className="w-6 h-6" />
               </div>
-              <span className="text-xs text-[#111827] dark:text-white font-semibold text-center truncate max-w-full px-2">
-                {file ? file.name : "Click to choose manuscript file"}
+              <span className="text-sm text-[#0F172A] dark:text-white font-bold text-center truncate max-w-full px-2">
+                Click to Choose Manuscript File
               </span>
-              <span className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1 text-center max-w-xs px-2 leading-relaxed">
-                {file
-                  ? `${(file.size / 1024).toFixed(1)} KB • Click to change file`
-                  : "Audits causal overclaims, missing controls, 5-persona referee reviews & Crossref DOIs"}
+              <span className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 text-center max-w-xs px-2 leading-relaxed">
+                Audits causal claims, missing controls, 5 referee personas &amp; Crossref DOIs
               </span>
+              <div className="flex items-center gap-1.5 mt-3">
+                <span className="px-2 py-0.5 rounded-md bg-black/[0.04] dark:bg-white/[0.08] text-[10px] font-mono font-semibold text-neutral-600 dark:text-neutral-400 border border-black/[0.04] dark:border-white/[0.08]">
+                  .PDF
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-black/[0.04] dark:bg-white/[0.08] text-[10px] font-mono font-semibold text-neutral-600 dark:text-neutral-400 border border-black/[0.04] dark:border-white/[0.08]">
+                  .DOCX
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-black/[0.04] dark:bg-white/[0.08] text-[10px] font-mono font-semibold text-neutral-600 dark:text-neutral-400 border border-black/[0.04] dark:border-white/[0.08]">
+                  .TXT
+                </span>
+              </div>
               <input
                 type="file"
                 accept=".pdf,.docx,.txt,application/pdf"
@@ -156,29 +234,16 @@ export function ScanInputForm({
               />
             </label>
           )}
-
-          {file && (
-            <button
-              type="button"
-              onClick={() => {
-                setFile(null);
-                setFileName(null);
-                setCompatibilityMatch(null);
-              }}
-              className="text-[11px] text-red-600 dark:text-red-400 hover:underline self-end mt-1.5 cursor-pointer font-medium"
-            >
-              Remove file &amp; use Title / Abstract
-            </button>
-          )}
         </div>
 
         {/* Right Column: Title / Abstract / Keywords */}
-        <div className="space-y-3.5 bg-white dark:bg-[#161F30] p-5 rounded-xl border border-[#E5E7EB] dark:border-[#334155] shadow-2xs">
+        <div className="space-y-3.5 bg-white/70 dark:bg-[#161F30]/70 p-5 rounded-2xl border border-black/[0.06] dark:border-white/[0.08] shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-[#111827] dark:text-white">
-              Or Provide Title &amp; Abstract
+            <span className="text-xs font-bold text-[#0F172A] dark:text-white flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-blue-500" />
+              <span>Or Provide Title &amp; Abstract Directly</span>
             </span>
-            <span className="text-[10px] font-medium bg-neutral-100 dark:bg-[#1E293B] text-neutral-600 dark:text-neutral-300 px-2 py-0.5 rounded border border-neutral-200 dark:border-[#334155]">
+            <span className="text-[10px] font-semibold bg-neutral-100 dark:bg-[#1E293B] text-neutral-600 dark:text-neutral-300 px-2 py-0.5 rounded-md border border-neutral-200 dark:border-[#334155]">
               Quick Review
             </span>
           </div>
@@ -196,7 +261,7 @@ export function ScanInputForm({
                 if (error) setError(null);
               }}
               placeholder="e.g. Single-cell transcriptional profiling of DLL3..."
-              className="w-full px-3.5 py-2 rounded-xl border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#1E293B] text-xs sm:text-sm text-[#111827] dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              className="w-full px-3.5 py-2 rounded-xl border border-black/10 dark:border-white/15 bg-white dark:bg-[#1E293B] text-xs sm:text-sm text-[#111827] dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
             />
           </div>
 
@@ -213,7 +278,7 @@ export function ScanInputForm({
                 if (error) setError(null);
               }}
               placeholder="Paste background, methodology, key findings, and conclusions..."
-              className="w-full px-3.5 py-2 rounded-xl border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#1E293B] text-xs sm:text-sm text-[#111827] dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 leading-relaxed resize-none"
+              className="w-full px-3.5 py-2 rounded-xl border border-black/10 dark:border-white/15 bg-white dark:bg-[#1E293B] text-xs sm:text-sm text-[#111827] dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 leading-relaxed resize-none transition"
             />
           </div>
 
@@ -229,16 +294,16 @@ export function ScanInputForm({
                 setCompatibilityMatch(null);
               }}
               placeholder="e.g. small cell lung cancer, DLL3, CRISPR screen, organoids"
-              className="w-full px-3.5 py-2 rounded-xl border border-[#E5E7EB] dark:border-[#334155] bg-white dark:bg-[#1E293B] text-xs sm:text-sm text-[#111827] dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              className="w-full px-3.5 py-2 rounded-xl border border-black/10 dark:border-white/15 bg-white dark:bg-[#1E293B] text-xs sm:text-sm text-[#111827] dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
             />
           </div>
         </div>
       </div>
 
       {error && (
-        <div className="p-3.5 rounded-xl bg-[#FEF2F2] dark:bg-rose-950/40 border border-[#FECACA] dark:border-rose-800 text-[#991B1B] dark:text-rose-300 text-xs flex items-center justify-between gap-3">
+        <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
             <span className="break-words">{error}</span>
           </div>
           {onOpenSettings && (error.toLowerCase().includes("provider") || error.toLowerCase().includes("settings") || error.toLowerCase().includes("key")) && (
@@ -255,7 +320,7 @@ export function ScanInputForm({
 
       {/* Scope Match Verified Card (When Passed) */}
       {compatibilityMatch && (
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 dark:bg-emerald-950/40 dark:border-emerald-800 space-y-2 animate-in fade-in duration-200">
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 dark:bg-emerald-950/40 dark:border-emerald-800 space-y-2 animate-fade-in">
           <div className="flex items-center justify-between">
             <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -272,13 +337,15 @@ export function ScanInputForm({
       )}
 
       {/* Academic Privacy & Confidentiality Guarantee */}
-      <div className="p-3.5 rounded-xl bg-neutral-50 dark:bg-[#161F30] border border-neutral-200/80 dark:border-[#334155] flex items-start gap-2.5 text-neutral-600 dark:text-neutral-400 text-xs leading-relaxed">
-        <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+      <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.08] flex items-start gap-3 text-neutral-600 dark:text-neutral-400 text-xs leading-relaxed shadow-2xs">
+        <div className="w-7 h-7 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+          <ShieldCheck className="w-4 h-4" />
+        </div>
         <div>
-          <span className="font-bold text-neutral-800 dark:text-neutral-200 block">
+          <span className="font-bold text-[#0F172A] dark:text-white block">
             Manuscript Confidentiality &amp; Zero-Retention Guarantee
           </span>
-          <span>
+          <span className="text-neutral-500 dark:text-neutral-400 text-[11px] leading-relaxed">
             Direct Encrypted BYOK Connection: Official API calls with zero-retention flags. ManuView does not log, store, or relay your unpublished work through third-party intermediary servers.
           </span>
         </div>
@@ -296,10 +363,10 @@ export function ScanInputForm({
         ) : (
           <button
             type="submit"
-            className="w-full py-4 px-6 rounded-2xl font-semibold text-xs sm:text-sm bg-[#0F172A] dark:bg-blue-600 hover:bg-[#1E293B] dark:hover:bg-blue-500 text-white transition-all duration-300 flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg cursor-pointer isolate relative overflow-hidden select-none group hover:scale-[1.005] active:scale-[0.995]"
+            className="w-full py-4 px-6 rounded-2xl font-bold text-xs sm:text-sm bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transition-all duration-300 flex items-center justify-center gap-2.5 cursor-pointer isolate relative overflow-hidden select-none group hover:scale-[1.003] active:scale-[0.995]"
           >
             <Sparkles className="w-4 h-4 text-amber-300 shrink-0 group-hover:rotate-12 transition-transform duration-300" />
-            <span className="truncate font-bold">Run Pre-Submission AI Review &amp; 5-Persona Simulation</span>
+            <span className="truncate">Run Pre-Submission AI Review &amp; 5-Persona Simulation</span>
             <ArrowRight className="w-4 h-4 shrink-0 group-hover:translate-x-0.5 transition-transform duration-300" />
           </button>
         )}

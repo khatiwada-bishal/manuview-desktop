@@ -11,6 +11,7 @@ import {
   AlertCircle,
   Users,
   BarChart3,
+  Cpu,
 } from "lucide-react";
 import { isDesktopApp } from "@/lib/desktop";
 import type { PaperItem, DesktopActiveView } from "@/components/DesktopSidebar";
@@ -31,6 +32,7 @@ interface SidebarCollapsedViewProps {
   onSelectView: (view: DesktopActiveView) => void;
   onNewReview: () => void;
   onOpenSettings: () => void;
+  onOpenLocalModel?: () => void;
   onDeletePaper?: (paper: PaperItem, e: React.MouseEvent) => void;
 }
 
@@ -49,6 +51,7 @@ export function SidebarCollapsedView({
   onSelectView,
   onNewReview,
   onOpenSettings,
+  onOpenLocalModel,
   onDeletePaper,
 }: SidebarCollapsedViewProps) {
   const isServiceActive = (serviceId: string) => {
@@ -343,8 +346,25 @@ export function SidebarCollapsedView({
         </div>
       </div>
 
-      {/* FOOTER: Compact Settings Pill */}
-      <div className="p-3 border-t border-black/[0.06] dark:border-white/[0.08] flex justify-center">
+      {/* FOOTER: Compact Settings & Local AI Pills */}
+      <div className="p-3 border-t border-black/[0.06] dark:border-white/[0.08] flex flex-col items-center gap-2">
+        {onOpenLocalModel && (
+          <div className="relative group">
+            <button
+              type="button"
+              onClick={onOpenLocalModel}
+              title="Local On-Device AI (WebGPU SLM)"
+              className="w-10 h-10 rounded-full border border-purple-500/20 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 transition shadow-2xs flex items-center justify-center cursor-pointer active:scale-95"
+            >
+              <Cpu className="w-4 h-4" />
+            </button>
+            <div className="absolute left-full bottom-1 ml-3 px-2.5 py-1 bg-[#111827] text-white text-xs font-medium rounded-md shadow-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 flex items-center gap-1.5">
+              <span>Local On-Device AI</span>
+              <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#111827]" />
+            </div>
+          </div>
+        )}
+
         <div className="relative group">
           <button
             type="button"

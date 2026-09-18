@@ -5,6 +5,8 @@ import {
   Sparkles,
   Tag,
   AlertCircle,
+  Compass,
+  Cpu,
 } from "lucide-react";
 import {
   FullReviewReport,
@@ -34,6 +36,7 @@ import { findMatchingJournals } from "@/lib/journals";
 import { ScanModelPickerBar } from "@/components/scan/ScanModelPickerBar";
 import { ScanInputForm } from "@/components/scan/ScanInputForm";
 import { ScanFullResultsView } from "@/components/scan/ScanFullResultsView";
+import { DashboardGlassIllustration } from "@/components/dashboard/DashboardGlassIllustration";
 
 const SAMPLE_PREPRINT_TITLE = "Single-cell transcriptional profiling of DLL3 activation in neuroendocrine lung carcinoma";
 const SAMPLE_PREPRINT_JOURNAL = "Nature Communications";
@@ -416,26 +419,88 @@ export function DesktopPreSubmissionScanView({
   return (
     <div className="flex-1 overflow-y-auto p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC] relative">
       <div className="max-w-5xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-              <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              <span>5-Persona AI Review &amp; Diagnostic Pipeline</span>
+        {/* Creative Showcase Hero Card (PureMac / Dark Aesthetic) */}
+        <div className="rounded-3xl bg-[#0B0F17] text-white shadow-2xl p-6 sm:p-8 overflow-hidden relative border border-white/[0.08]">
+          {/* Ambient atmosphere glows */}
+          <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 right-0 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -top-12 -left-12 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-6">
+            <div className="space-y-4 max-w-2xl">
+              {/* Glowing Badge */}
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-white border border-white/15 backdrop-blur-md shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                <span className="font-mono text-[11px] tracking-wide text-blue-300">
+                  AI PRE-SUBMISSION DIAGNOSTIC
+                </span>
+                <span className="text-white/40">•</span>
+                <span className="text-white/70 text-[11px]">CALIBRATED v0.3.97</span>
+              </div>
+
+              {/* Title & Description */}
+              <div className="space-y-2">
+                <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white leading-tight">
+                  Manuscript Review Studio
+                </h1>
+                <p className="text-xs sm:text-sm text-neutral-300 font-normal leading-relaxed">
+                  Calibrated 5-persona peer-review simulation uncovering desk-rejection hazards, causal overclaims, missing experimental controls, and citation integrity bugs prior to journal submission.
+                </p>
+              </div>
+
+              {/* Feature Highlights Pills */}
+              <div className="flex items-center gap-2 flex-wrap pt-1">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.06] border border-white/10 text-[11px] font-medium text-neutral-300">
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                  5 Referee Personas
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.06] border border-white/10 text-[11px] font-medium text-neutral-300">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  48,000+ Journal Scopes
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.06] border border-white/10 text-[11px] font-medium text-neutral-300">
+                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+                  Crossref &amp; Retractions
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.06] border border-white/10 text-[11px] font-medium text-neutral-300">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                  Zero Retention
+                </span>
+              </div>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0F172A] dark:text-white">
-              Pre-Submission AI Review &amp; Diagnostic
-            </h1>
-            <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 max-w-2xl">
-              Calibrated peer-review rubric to surface desk-rejection hazards, causal overclaims, missing controls, and citation integrity bugs before submission.
-            </p>
+
+            {/* Right side 3D Glass Stack Illustration */}
+            <div className="shrink-0 hidden sm:flex items-center justify-center lg:pr-4">
+              <DashboardGlassIllustration className="w-56 h-44 lg:w-64 lg:h-48" />
+            </div>
           </div>
         </div>
 
         {/* Configuration & Calibration Card */}
-        <div className="rounded-3xl liquid-glass-card p-5 sm:p-6 space-y-4 relative z-30">
+        <div className="rounded-3xl liquid-glass-card p-5 sm:p-6 space-y-4 relative z-30 border border-black/[0.06] dark:border-white/[0.08] shadow-sm">
+          <div className="flex items-center justify-between pb-3 border-b border-black/[0.06] dark:border-white/[0.08]">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-xs">
+                <Compass className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+                  Target Venue &amp; Model Calibration
+                </h3>
+                <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+                  Calibrate acceptance rubric and referee strictness to your chosen journal
+                </p>
+              </div>
+            </div>
+            {targetJournal && (
+              <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                Rubric Calibrated
+              </span>
+            )}
+          </div>
+
           {/* Target Journal */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs sm:text-sm relative z-30">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs sm:text-sm relative z-30 pt-1">
             <span className="w-48 sm:w-52 shrink-0 flex items-center gap-1.5 font-semibold text-[#6B7280] dark:text-neutral-400 whitespace-nowrap">
               <Tag className="w-4 h-4 text-[#9CA3AF] dark:text-neutral-500" />
               <span>Target Journal <span className="text-red-500">*</span></span>

@@ -93,15 +93,6 @@ export function SidebarPaperList({
               <X className="w-3.5 h-3.5" />
             </button>
           )}
-          <button
-            type="button"
-            onClick={onNewReview}
-            title="Add new manuscript review"
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition cursor-pointer"
-          >
-            <Plus className="w-3 h-3" />
-            <span>New</span>
-          </button>
         </div>
       </div>
 
