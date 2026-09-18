@@ -192,14 +192,23 @@ export function SidebarCollapsedView({
                                   {paper.shortName}
                                 </div>
                                 <div className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate">
-                                  {isReviewing ? (paper.scanStep || "Reviewing...") : paper.journal}
+                                  {isReviewing ? (
+                                    <span className="text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1">
+                                      <span className="font-mono font-bold">{paper.scanPercent ?? 0}%</span>
+                                      <span>•</span>
+                                      <span className="truncate">{paper.scanStep || "Reviewing..."}</span>
+                                    </span>
+                                  ) : (
+                                    paper.journal
+                                  )}
                                 </div>
                               </div>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
                               {isReviewing ? (
-                                <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 animate-pulse">
-                                  {paper.scanPercent ? `${paper.scanPercent}%` : "Scan"}
+                                <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                  <Loader2 className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400 animate-spin shrink-0" />
+                                  <span>Reviewing</span>
                                 </span>
                               ) : isFailed ? (
                                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20">
@@ -220,8 +229,12 @@ export function SidebarCollapsedView({
                                   </span>
                                 )
                               ) : (
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-[#1E293B] text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-[#334155]">
-                                  {paper.score ?? 0}%
+                                <span
+                                  title={`Manuscript Score: ${paper.score ?? 0}%`}
+                                  className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-[#1E293B] text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-[#334155] flex items-center gap-0.5"
+                                >
+                                  <span className="text-[8px] font-normal opacity-70">Score</span>
+                                  <span>{paper.score ?? 0}%</span>
                                 </span>
                               )}
                               {onDeletePaper && (

@@ -66,6 +66,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const resolvedTheme: "light" | "dark" =
     theme === "system" ? (systemIsDark ? "dark" : "light") : theme;
 
+  const isTransitioningRef = useRef(false);
+
   // Immediate DOM synchronization whenever resolved theme or theme mode changes
   useEffect(() => {
     applyThemeToDom(resolvedTheme);
@@ -151,6 +153,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   ) => {
     if (typeof document === "undefined") return;
 
+    if (isTransitioningRef.current) return;
+
     // Check accessibility preference for reduced motion
     const prefersReducedMotion =
       typeof window !== "undefined" &&
@@ -162,6 +166,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    const windowWidth = typeof window !== "undefined" ? window.innerWidth : 1200;
+    const windowHeight = typeof window !== "undefined" ? window.innerHeight : 800;
+    const x = event && typeof event.clientX === "number" && event.clientX > 0 ? event.clientX : 32;
+    const y = event && typeof event.clientY === "number" && event.clientY > 0 ? event.clientY : windowHeight - 32;
+    const endRadius = Math.hypot(Math.max(x, windowWidth - x), Math.max(y, windowHeight - y));
+
     const doc = document as Document & {
       startViewTransition?: (callback: () => void) => {
         ready: Promise<void>;
@@ -169,8 +179,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       };
     };
 
-    // Native View Transitions API
+    // 1. Native View Transitions API
     if (typeof doc.startViewTransition === "function") {
+      isTransitioningRef.current = true;
       try {
         const transition = doc.startViewTransition(() => {
           flushSync(() => {
@@ -178,12 +189,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             setThemeState(nextTheme);
           });
         });
-
-        const windowWidth = typeof window !== "undefined" ? window.innerWidth : 1200;
-        const windowHeight = typeof window !== "undefined" ? window.innerHeight : 800;
-        const x = event && typeof event.clientX === "number" && event.clientX > 0 ? event.clientX : 32;
-        const y = event && typeof event.clientY === "number" && event.clientY > 0 ? event.clientY : windowHeight - 32;
-        const endRadius = Math.hypot(Math.max(x, windowWidth - x), Math.max(y, windowHeight - y));
 
         transition.ready
           .then(() => {
@@ -195,24 +200,51 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                 ],
               },
               {
-                duration: 500,
+                duration: 1000,
                 easing: "cubic-bezier(0.4, 0, 0.15, 1)",
                 pseudoElement: "::view-transition-new(root)",
               }
             );
           })
-          .catch(() => {});
+          .catch(() => {})
+          .finally(() => {
+            transition.finished.finally(() => {
+              isTransitioningRef.current = false;
+            });
+          });
         return;
       } catch {
-        applyThemeToDom(nextResolvedTheme);
-        setThemeState(nextTheme);
-        return;
+        // Fall back to DOM overlay if startViewTransition throws
       }
     }
 
-    // Direct synchronous application
-    applyThemeToDom(nextResolvedTheme);
-    setThemeState(nextTheme);
+    // 2. High-Fidelity Wave Overlay Fallback (spreading steadily like bushfire)
+    isTransitioningRef.current = true;
+    const overlay = document.createElement("div");
+    overlay.className = "theme-water-wave-fallback";
+    overlay.style.position = "fixed";
+    overlay.style.top = "0";
+    overlay.style.left = "0";
+    overlay.style.width = "100vw";
+    overlay.style.height = "100vh";
+    overlay.style.zIndex = "999999";
+    overlay.style.pointerEvents = "none";
+    overlay.style.backgroundColor = nextResolvedTheme === "dark" ? "#080B11" : "#FFFFFF";
+    overlay.style.clipPath = `circle(0px at ${x}px ${y}px)`;
+    overlay.style.transition = "clip-path 1000ms cubic-bezier(0.4, 0, 0.15, 1)";
+    document.body.appendChild(overlay);
+
+    void overlay.offsetHeight;
+    overlay.style.clipPath = `circle(${endRadius}px at ${x}px ${y}px)`;
+
+    setTimeout(() => {
+      applyThemeToDom(nextResolvedTheme);
+      setThemeState(nextTheme);
+      setTimeout(() => {
+        overlay.remove();
+        isTransitioningRef.current = false;
+      }, 50);
+    }, 980);
   };
 
   const toggleTheme = (event?: ThemeClickEvent) => {
@@ -223,6 +255,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   };
 
   const setTheme = (mode: ThemeMode, event?: ThemeClickEvent) => {
+    if (mode === theme) return;
+
     // 1. Fresh read of current system appearance
     const currentSysDark = getSystemPreference();
     setSystemIsDark(currentSysDark);
@@ -242,14 +276,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       })
       .catch(() => {});
 
-    // 3. Immediately apply to DOM and state
-    applyThemeToDom(nextResolved);
-    setThemeState(mode);
-
-    // 4. Run transition effect if switching between opposite visual states
-    if (resolvedTheme !== nextResolved) {
-      runWaveTransition(mode, nextResolved, event);
+    // 3. If visual appearance does not change, update state directly without running wave
+    if (nextResolved === resolvedTheme) {
+      setThemeState(mode);
+      try {
+        localStorage.setItem(THEME_STORAGE_KEY, mode);
+        sessionStorage.setItem(THEME_STORAGE_KEY, mode);
+      } catch {}
+      return;
     }
+
+    // 4. Visual appearance changed: run smooth wave transition
+    runWaveTransition(mode, nextResolved, event);
   };
 
   return (

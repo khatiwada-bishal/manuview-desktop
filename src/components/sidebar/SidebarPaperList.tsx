@@ -230,9 +230,12 @@ export function SidebarPaperList({
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {isReviewing ? (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60 animate-pulse flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400 animate-ping" />
-                            <span>{paper.scanPercent ? `${paper.scanPercent}%` : "Reviewing"}</span>
+                          <span
+                            title="Background review in progress"
+                            className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60 flex items-center gap-1.5 shrink-0 shadow-2xs"
+                          >
+                            <Loader2 className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400 animate-spin shrink-0" />
+                            <span>Reviewing</span>
                           </span>
                         ) : isFailed ? (
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/60">
@@ -253,19 +256,34 @@ export function SidebarPaperList({
                             </span>
                           )
                         ) : (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60">
-                            {paper.score ?? 0}%
+                          <span
+                            title={`Manuscript Readiness Score: ${paper.score ?? 0}%`}
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60 flex items-center gap-1 shrink-0"
+                          >
+                            <span className="text-[9px] font-normal text-purple-600/75 dark:text-purple-300/75 tracking-tight">Score</span>
+                            <span>{paper.score ?? 0}%</span>
                           </span>
                         )}
                       </div>
                     </div>
 
-                    {/* Status notification when selected for reviewing or failed papers */}
-                    {selectedPaperIds.size === 0 && isSelected && isReviewing && (
-                      <div className="pl-4 pr-2 py-1 space-y-0.5">
-                        <div className="flex items-center gap-1.5 text-[11px] text-blue-700 dark:text-blue-400 font-medium bg-blue-500/10 px-2 py-1.5 rounded-lg border border-blue-500/20">
-                          <Loader2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0 animate-spin" />
-                          <span className="truncate">{paper.scanStep || "Reviewing in background..."}</span>
+                    {/* Live scanning progress bar & step indicator for reviewing papers */}
+                    {selectedPaperIds.size === 0 && isReviewing && (
+                      <div className="px-2.5 py-1.5 space-y-1.5 bg-blue-50/70 dark:bg-blue-950/30 rounded-lg border border-blue-200/50 dark:border-blue-800/40 my-1">
+                        <div className="flex items-center justify-between text-[10px] leading-tight">
+                          <div className="flex items-center gap-1.5 min-w-0 text-blue-700 dark:text-blue-300 font-medium">
+                            <Loader2 className="w-3 h-3 text-blue-600 dark:text-blue-400 shrink-0 animate-spin" />
+                            <span className="truncate">{paper.scanStep || "Reviewing in background..."}</span>
+                          </div>
+                          <span className="text-[10px] font-mono font-bold text-blue-700 dark:text-blue-300 shrink-0 ml-1.5">
+                            {paper.scanPercent ?? 0}%
+                          </span>
+                        </div>
+                        <div className="w-full h-1.5 bg-blue-100 dark:bg-blue-900/40 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 rounded-full transition-all duration-300 ease-out"
+                            style={{ width: `${Math.max(4, paper.scanPercent ?? 4)}%` }}
+                          />
                         </div>
                       </div>
                     )}
