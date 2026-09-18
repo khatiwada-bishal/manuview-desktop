@@ -224,9 +224,16 @@ export function SidebarPaperList({
                           )}
                         </div>
 
-                        <span className="truncate font-medium">
-                          {paper.shortName}
-                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-medium">
+                            {paper.shortName}
+                          </div>
+                          {isReviewing && (
+                            <div className="text-[10px] text-blue-600 dark:text-blue-400 font-normal truncate mt-0.5">
+                              {paper.scanStep || "Reviewing manuscript..."}
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {isReviewing ? (
@@ -266,27 +273,6 @@ export function SidebarPaperList({
                         )}
                       </div>
                     </div>
-
-                    {/* Live scanning progress bar & step indicator for reviewing papers */}
-                    {selectedPaperIds.size === 0 && isReviewing && (
-                      <div className="px-2.5 py-1.5 space-y-1.5 bg-blue-50/70 dark:bg-blue-950/30 rounded-lg border border-blue-200/50 dark:border-blue-800/40 my-1">
-                        <div className="flex items-center justify-between text-[10px] leading-tight">
-                          <div className="flex items-center gap-1.5 min-w-0 text-blue-700 dark:text-blue-300 font-medium">
-                            <Loader2 className="w-3 h-3 text-blue-600 dark:text-blue-400 shrink-0 animate-spin" />
-                            <span className="truncate">{paper.scanStep || "Reviewing in background..."}</span>
-                          </div>
-                          <span className="text-[10px] font-mono font-bold text-blue-700 dark:text-blue-300 shrink-0 ml-1.5">
-                            {paper.scanPercent ?? 0}%
-                          </span>
-                        </div>
-                        <div className="w-full h-1.5 bg-blue-100 dark:bg-blue-900/40 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 rounded-full transition-all duration-300 ease-out"
-                            style={{ width: `${Math.max(4, paper.scanPercent ?? 4)}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
 
                     {selectedPaperIds.size === 0 && isSelected && isFailed && (
                       <div className="pl-4 pr-2 py-1 space-y-0.5">

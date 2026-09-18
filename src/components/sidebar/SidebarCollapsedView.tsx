@@ -193,10 +193,8 @@ export function SidebarCollapsedView({
                                 </div>
                                 <div className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate">
                                   {isReviewing ? (
-                                    <span className="text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1">
-                                      <span className="font-mono font-bold">{paper.scanPercent ?? 0}%</span>
-                                      <span>•</span>
-                                      <span className="truncate">{paper.scanStep || "Reviewing..."}</span>
+                                    <span className="text-blue-600 dark:text-blue-400 font-medium truncate">
+                                      {paper.scanStep || "Reviewing..."}
                                     </span>
                                   ) : (
                                     paper.journal
@@ -252,16 +250,6 @@ export function SidebarCollapsedView({
                               )}
                             </div>
                           </div>
-
-                          {/* Status notification when selected for reviewing/failed papers */}
-                          {isSelected && isReviewing && (
-                            <div className="pl-3 pr-1 py-1 space-y-0.5">
-                              <div className="flex items-center gap-1.5 text-[10px] text-blue-700 dark:text-blue-400 font-medium bg-blue-50/70 dark:bg-blue-950/40 px-2 py-1 rounded border border-blue-200/50 dark:border-blue-800/50">
-                                <Loader2 className="w-3 h-3 text-blue-600 dark:text-blue-400 animate-spin shrink-0" />
-                                <span className="truncate">{paper.scanStep || "Analyzing manuscript..."}</span>
-                              </div>
-                            </div>
-                          )}
 
                           {isSelected && isFailed && (
                             <div className="pl-3 pr-1 py-1 space-y-0.5">
