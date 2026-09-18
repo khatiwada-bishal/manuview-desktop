@@ -20,12 +20,9 @@ import {
   type GroupedPapers,
   getTimeCategory,
   groupPapersByTime,
-  buildSidebarServices,
 } from "./sidebar/sidebarUtils";
 import { SidebarCollapsedView } from "./sidebar/SidebarCollapsedView";
 import { SidebarPaperList } from "./sidebar/SidebarPaperList";
-import { SidebarServicesList } from "./sidebar/SidebarServicesList";
-import { SidebarDisclaimerPopover } from "./sidebar/SidebarDisclaimerPopover";
 
 export type DesktopActiveView =
   | "overview"
@@ -157,7 +154,6 @@ export function DesktopSidebar({
     });
   }, [papers]);
 
-  const [servicesExpanded, setServicesExpanded] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const isFirstRender = useRef(true);
   const prevCollapsedRef = useRef(isCollapsed);
@@ -195,14 +191,6 @@ export function DesktopSidebar({
     return groupPapersByTime(papers);
   }, [papers]);
 
-  const services = useMemo(() => {
-    return buildSidebarServices({
-      onSelectService,
-      onSelectView,
-      onNewReview,
-    });
-  }, [onSelectService, onSelectView, onNewReview]);
-
   return (
     <aside
       className={`h-full select-none shrink-0 flex flex-col relative liquid-glass-sidebar text-[#1F2937] dark:text-[#E2E8F0] sidebar-elastic-spring ${
@@ -224,7 +212,6 @@ export function DesktopSidebar({
         activeView={activeView}
         papers={papers}
         groupedPapers={groupedPapers}
-        services={services}
         connectionStatus={connectionStatus}
         connectionLabel={connectionLabel}
         onSelectPaper={onSelectPaper}
@@ -322,16 +309,8 @@ export function DesktopSidebar({
           />
         </div>
 
-        {/* 2. DOCKED BOTTOM SECTION: SERVICES, STATUS CARD, & APPEARANCE */}
+        {/* 2. DOCKED BOTTOM SECTION: STATUS CARD & APPEARANCE */}
         <div className="px-3 pt-2 pb-2 border-t border-black/[0.06] dark:border-white/[0.08] space-y-2 shrink-0">
-          <SidebarServicesList
-            services={services}
-            servicesExpanded={servicesExpanded}
-            onToggleServicesExpanded={() => setServicesExpanded((prev) => !prev)}
-            activePaperId={activePaperId}
-          />
-          <SidebarDisclaimerPopover />
-
           {/* AI ENGINE & LOCAL AI CONTROLS */}
           <div className="flex items-center gap-2">
             <div

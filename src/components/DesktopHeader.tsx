@@ -19,6 +19,7 @@ import {
   Download,
   Cpu,
   LayoutGrid,
+  AlertTriangle,
 } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTheme } from "@/context/ThemeContext";
@@ -148,6 +149,10 @@ export function DesktopHeader({
   const [servicesDropdownOpen, setServicesDropdownOpen] = React.useState(false);
   const servicesDropdownRef = React.useRef<HTMLDivElement>(null);
 
+  // Disclaimer & Usage dropdown state
+  const [disclaimerDropdownOpen, setDisclaimerDropdownOpen] = React.useState(false);
+  const disclaimerDropdownRef = React.useRef<HTMLDivElement>(null);
+
   // OS Platform download state (for Web mode top bar)
   const [detectedPlatformId, setDetectedPlatformId] = React.useState<PlatformId>("mac-silicon");
   const [selectedPlatform, setSelectedPlatform] = React.useState<PlatformOption>(PLATFORMS[0]);
@@ -174,6 +179,12 @@ export function DesktopHeader({
         !servicesDropdownRef.current.contains(e.target as Node)
       ) {
         setServicesDropdownOpen(false);
+      }
+      if (
+        disclaimerDropdownRef.current &&
+        !disclaimerDropdownRef.current.contains(e.target as Node)
+      ) {
+        setDisclaimerDropdownOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -495,6 +506,67 @@ export function DesktopHeader({
                     </div>
                   </button>
                 ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Disclaimer and Usage Icon Button (next to services icon) */}
+        <div className="relative inline-flex items-center" ref={disclaimerDropdownRef}>
+          <button
+            type="button"
+            data-no-drag
+            onClick={() => setDisclaimerDropdownOpen((prev) => !prev)}
+            title="Disclaimer & Usage Advisory"
+            aria-label="Disclaimer & Usage Advisory"
+            className="w-8 h-8 flex items-center justify-center rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 transition cursor-pointer active:scale-95 shadow-2xs"
+          >
+            <AlertTriangle className="w-4 h-4" />
+          </button>
+
+          {disclaimerDropdownOpen && (
+            <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl liquid-glass-modal bg-white/95 dark:bg-[#0f172a]/95 p-3.5 shadow-2xl border border-black/10 dark:border-white/10 z-50 animate-fade-in backdrop-blur-2xl text-left space-y-2.5">
+              {/* Header */}
+              <div className="flex items-center gap-2 pb-2 border-b border-black/[0.06] dark:border-white/[0.08]">
+                <div className="w-6 h-6 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-xs font-bold text-[#0F172A] dark:text-white truncate">
+                    AI Advisory &amp; Disclaimer
+                  </h4>
+                  <span className="text-[9px] text-neutral-400 dark:text-neutral-500 font-medium block truncate">
+                    Scholarly Decision Support
+                  </span>
+                </div>
+              </div>
+
+              {/* Body Content */}
+              <div className="space-y-2 text-[10.5px] leading-relaxed text-neutral-600 dark:text-neutral-300">
+                <div className="flex items-start gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-1" />
+                  <p>
+                    <strong className="text-[#0F172A] dark:text-white font-semibold">Caution:</strong> Generative AI can make errors or hallucinate. Independently verify all citations, methodological critiques, and findings.
+                  </p>
+                </div>
+                <div className="flex items-start gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0 mt-1" />
+                  <p>
+                    <strong className="text-[#0F172A] dark:text-white font-semibold">Supporting Only:</strong> Assistive pre-submission diagnostic simulation; does not replace domain expertise or ethical review.
+                  </p>
+                </div>
+                <div className="flex items-start gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0 mt-1" />
+                  <p>
+                    <strong className="text-[#0F172A] dark:text-white font-semibold">No Guarantee:</strong> No automated system guarantees manuscript acceptance; editorial decisions rest solely with journal editors and reviewers.
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer badge */}
+              <div className="pt-2 border-t border-black/[0.05] dark:border-white/[0.06] flex items-center justify-between text-[9.5px] text-neutral-400 dark:text-neutral-500">
+                <span>COPE &amp; ICMJE Guidelines</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">100% Local BYOK</span>
               </div>
             </div>
           )}

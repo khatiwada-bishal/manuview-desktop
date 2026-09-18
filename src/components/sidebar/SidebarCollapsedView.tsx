@@ -25,7 +25,7 @@ interface SidebarCollapsedViewProps {
   activeView: DesktopActiveView;
   papers: PaperItem[];
   groupedPapers: GroupedPapers[];
-  services: SidebarServiceItem[];
+  services?: SidebarServiceItem[];
   connectionStatus: "connected" | "connecting" | "disconnected";
   connectionLabel: string;
   onSelectPaper: (id: string) => void;
@@ -312,37 +312,6 @@ export function SidebarCollapsedView({
               )}
             </div>
           </div>
-        </div>
-
-        {/* Divider */}
-        <div className="w-8 h-px bg-[#E5E7EB] dark:bg-[#1E293B] mx-auto" />
-
-        {/* Services Icons (Below Articles) */}
-        <div className="space-y-1.5 flex flex-col items-center">
-          {services.map((service) => {
-            const Icon = service.icon;
-            const isItemActive = isServiceActive(service.id);
-            return (
-              <div key={service.id} className="relative group flex justify-center">
-                <button
-                  type="button"
-                  onClick={service.action}
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition cursor-pointer hover:scale-105 shadow-2xs ${
-                    isItemActive
-                      ? "bg-blue-600 text-white shadow-md ring-2 ring-blue-500/40"
-                      : service.color
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                </button>
-                {/* Tooltip on right */}
-                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1 bg-[#111827] text-white text-xs font-medium rounded-md shadow-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
-                  {service.name}
-                  <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#111827]" />
-                </div>
-              </div>
-            );
-          })}
         </div>
       </div>
 
