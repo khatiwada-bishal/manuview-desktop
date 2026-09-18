@@ -153,3 +153,106 @@ test("Target Journal Scope Mismatch triggers immediate desk reject triage and su
   assert.equal(calib.decisionDistribution.p_desk_reject, 85, "Desk reject probability must be 85%");
   assert.equal(calib.decisionDistribution.p_accept, 0, "Acceptance probability must be 0%");
 });
+
+test("Authoritative scan with sent_for_review outcome preserves score and prevents false desk rejection across navigation", () => {
+  const title = "Robust Deep Learning Architectures for Computer Vision in Recycling";
+  const targetJournal = "IEEE Transactions on Pattern Analysis and Machine Intelligence";
+
+  const scannedProject = {
+    paper: {
+      id: "paper-456",
+      title,
+      shortName: "Robust Deep Learning",
+      journal: targetJournal,
+      score: 82,
+      isDeskReject: false,
+      isEligibleForReview: true,
+      editorialTriage: {
+        outcome: "sent_for_review" as const,
+        sentToPeerReview: true,
+        summary: `Cleared editorial triage (aims & scope aligned with ${targetJournal}) and advanced to the peer-review panel for full evaluation.`,
+      },
+    },
+    dashboardData: {
+      paperTitle: title,
+      targetJournal,
+      score: 82,
+      isDeskReject: false,
+      editorialTriage: {
+        outcome: "sent_for_review" as const,
+        sentToPeerReview: true,
+      },
+    },
+    fullReport: {
+      id: "rev_123",
+      title,
+      targetJournal,
+      overallScore: 82,
+      isEligibleForReview: true,
+      editorialTriage: {
+        outcome: "sent_for_review" as const,
+        sentToPeerReview: true,
+        summary: `Cleared editorial triage (aims & scope aligned with ${targetJournal}) and advanced to the peer-review panel for full evaluation.`,
+      },
+    } as any,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  // Run sanitizeSavedProject (which runs on sidebar navigation / project loading)
+  const sanitized = sanitizeSavedProject(scannedProject);
+
+  assert.equal(sanitized.paper.isDeskReject, false, "Paper must not be flipped to desk reject");
+  assert.equal(sanitized.paper.score, 82, "Paper numerical score must remain 82");
+  assert.equal(sanitized.paper.isEligibleForReview, true, "Paper must remain eligible for review");
+  assert.equal(sanitized.dashboardData.isDeskReject, false, "DashboardData must not be desk reject");
+  assert.equal(sanitized.dashboardData.score, 82, "DashboardData score must remain 82");
+  assert.equal(sanitized.fullReport?.isEligibleForReview, true, "FullReport must remain eligible for review");
+  assert.equal(sanitized.fullReport?.overallScore, 82, "FullReport overallScore must remain 82");
+  assert.equal(sanitized.fullReport?.editorialTriage?.outcome, "sent_for_review", "Outcome must stay sent_for_review");
+});
+
+test("Sanitizer heals corrupted review project if editorial triage cleared it", () => {
+  const corruptedProject = {
+    paper: {
+      id: "paper-789",
+      title: "Novel Transformers in Image Processing",
+      shortName: "Novel Transformers",
+      journal: "IEEE Transactions on Pattern Analysis and Machine Intelligence",
+      score: undefined,
+      isDeskReject: true, // corrupted by previous bug
+      isEligibleForReview: false,
+    },
+    dashboardData: {
+      paperTitle: "Novel Transformers in Image Processing",
+      targetJournal: "IEEE Transactions on Pattern Analysis and Machine Intelligence",
+      score: undefined,
+      isDeskReject: true,
+      statusText: "Editorial Desk Reject (Scope Mismatch)",
+    },
+    fullReport: {
+      id: "rev_789",
+      title: "Novel Transformers in Image Processing",
+      targetJournal: "IEEE Transactions on Pattern Analysis and Machine Intelligence",
+      overallScore: 80,
+      isEligibleForReview: false, // corrupted
+      editorialTriage: {
+        outcome: "desk_reject" as const, // corrupted
+        sentToPeerReview: false,
+        summary: "Cleared editorial triage (aims & scope aligned with IEEE Transactions on Pattern Analysis and Machine Intelligence) and advanced to the peer-review panel for full evaluation.",
+      },
+    } as any,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  const healed = sanitizeSavedProject(corruptedProject);
+
+  assert.equal(healed.paper.isDeskReject, false, "Healed paper must have isDeskReject: false");
+  assert.equal(healed.paper.score, 80, "Healed paper must restore score: 80");
+  assert.equal(healed.paper.isEligibleForReview, true, "Healed paper must have isEligibleForReview: true");
+  assert.equal(healed.dashboardData.isDeskReject, false, "Healed dashboardData must have isDeskReject: false");
+  assert.equal(healed.dashboardData.score, 80, "Healed dashboardData must restore score: 80");
+  assert.equal(healed.fullReport?.editorialTriage?.outcome, "sent_for_review", "Outcome must be healed to sent_for_review");
+  assert.equal(healed.fullReport?.overallScore, 80, "FullReport score must be 80");
+});

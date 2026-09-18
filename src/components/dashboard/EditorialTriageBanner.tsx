@@ -42,7 +42,13 @@ export const EditorialTriageBanner: React.FC<EditorialTriageBannerProps> = ({
   onNewScan,
   handlePrint,
 }) => {
-  const isEffectiveDeskReject = isDeskReject || Boolean(targetJournalEvaluation?.isDisciplinaryMismatch);
+  const isExplicitlySentForReview =
+    editorialTriage?.outcome === "sent_for_review" ||
+    Boolean(editorialTriage?.summary?.includes("Cleared editorial triage"));
+
+  const isEffectiveDeskReject =
+    !isExplicitlySentForReview &&
+    (isDeskReject || Boolean(targetJournalEvaluation?.isDisciplinaryMismatch));
 
   if (isEffectiveDeskReject) {
     return (

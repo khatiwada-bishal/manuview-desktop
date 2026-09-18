@@ -5,6 +5,7 @@ import type { JournalRecommendation } from "@/lib/types";
 import type { MatchedJournalItem } from "@/lib/journals";
 
 interface DashboardJournalsSectionProps {
+  isDeskReject?: boolean;
   matchingJournalsData: any;
   targetJournal: string;
   displayJournals: JournalRecommendation[];
@@ -13,6 +14,7 @@ interface DashboardJournalsSectionProps {
 }
 
 export const DashboardJournalsSection: React.FC<DashboardJournalsSectionProps> = ({
+  isDeskReject,
   matchingJournalsData,
   targetJournal,
   displayJournals,
@@ -37,7 +39,7 @@ export const DashboardJournalsSection: React.FC<DashboardJournalsSectionProps> =
       </div>
 
       {/* Scope Mismatch Warning Banner */}
-      {matchingJournalsData?.targetJournalEvaluation?.isDisciplinaryMismatch && (
+      {isDeskReject && matchingJournalsData?.targetJournalEvaluation?.isDisciplinaryMismatch && (
         <div className="p-4 sm:p-5 rounded-3xl bg-rose-500/10 border border-rose-500/30 text-rose-950 dark:text-rose-200 flex items-start gap-3.5">
           <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
           <div className="space-y-1 text-xs">

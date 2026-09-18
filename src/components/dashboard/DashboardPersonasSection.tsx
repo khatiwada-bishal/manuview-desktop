@@ -55,11 +55,15 @@ export const DashboardPersonasSection: React.FC<DashboardPersonasSectionProps> =
   journalsCount,
 }) => {
   const triage = fullReport?.editorialTriage || currentReport?.editorialTriage || editorialTriage;
+  const isExplicitlySentForReview =
+    triage?.outcome === "sent_for_review" ||
+    Boolean(triage?.summary?.includes("Cleared editorial triage"));
   const isDeskReject =
-    triage?.outcome === "desk_reject" ||
-    currentReport?.ineligibilityReason === "scope_mismatch" ||
-    fullReport?.ineligibilityReason === "scope_mismatch" ||
-    matchingJournalsData?.targetJournalEvaluation?.isDisciplinaryMismatch === true;
+    !isExplicitlySentForReview &&
+    (triage?.outcome === "desk_reject" ||
+      currentReport?.ineligibilityReason === "scope_mismatch" ||
+      fullReport?.ineligibilityReason === "scope_mismatch" ||
+      matchingJournalsData?.targetJournalEvaluation?.isDisciplinaryMismatch === true);
 
   if (isDeskReject) {
     const mismatch = matchingJournalsData?.targetJournalEvaluation;

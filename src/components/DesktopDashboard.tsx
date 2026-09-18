@@ -327,25 +327,33 @@ export function DesktopDashboard({
     return findMatchingJournals(title, typeof summary === "string" ? summary : "", targetJournal, citedJournals);
   }, [title, summary, targetJournal, citedJournals]);
 
+  const isExplicitlySentForReview =
+    currentReport?.editorialTriage?.outcome === "sent_for_review" ||
+    fullReport?.editorialTriage?.outcome === "sent_for_review" ||
+    Boolean(currentReport?.editorialTriage?.summary?.includes("Cleared editorial triage")) ||
+    Boolean(fullReport?.editorialTriage?.summary?.includes("Cleared editorial triage"));
+
   const targetJournalEval =
     currentReport?.targetJournalEvaluation ||
     fullReport?.targetJournalEvaluation ||
-    matchingJournalsData?.targetJournalEvaluation;
+    (isExplicitlySentForReview ? undefined : matchingJournalsData?.targetJournalEvaluation);
 
   const isScopeMismatch =
-    Boolean(targetJournalEval?.isDisciplinaryMismatch) ||
-    currentReport?.ineligibilityReason === "scope_mismatch" ||
-    fullReport?.ineligibilityReason === "scope_mismatch";
+    !isExplicitlySentForReview &&
+    (Boolean(targetJournalEval?.isDisciplinaryMismatch) ||
+      currentReport?.ineligibilityReason === "scope_mismatch" ||
+      fullReport?.ineligibilityReason === "scope_mismatch");
 
   const isDeskReject =
-    isScopeMismatch ||
-    currentReport?.editorialTriage?.outcome === "desk_reject" ||
-    fullReport?.editorialTriage?.outcome === "desk_reject" ||
-    data?.editorialTriage?.outcome === "desk_reject" ||
-    data?.statusText?.includes("Desk Reject") ||
-    data?.isDeskReject === true;
+    !isExplicitlySentForReview &&
+    (isScopeMismatch ||
+      currentReport?.editorialTriage?.outcome === "desk_reject" ||
+      fullReport?.editorialTriage?.outcome === "desk_reject" ||
+      data?.editorialTriage?.outcome === "desk_reject" ||
+      data?.statusText?.includes("Desk Reject") ||
+      data?.isDeskReject === true);
 
-  const isReviewEligible = !isDeskReject && currentReport?.isEligibleForReview !== false;
+  const isReviewEligible = !isDeskReject && (isExplicitlySentForReview || currentReport?.isEligibleForReview !== false);
   const ineligibilityReason = isDeskReject ? "scope_mismatch" : currentReport?.ineligibilityReason;
   const isAlreadyPublished =
     !isDeskReject &&
@@ -357,7 +365,7 @@ export function DesktopDashboard({
     (currentReport?.classification && !currentReport.classification.isAcademicManuscript));
   const overallScore = isDeskReject
     ? undefined
-    : (currentReport ? currentReport.overallScore : (isReviewEligible ? data.score : undefined));
+    : (currentReport?.overallScore ?? (isReviewEligible ? data.score : undefined));
 
   const rawCalibratedAcceptance: CalibratedAcceptanceRating | undefined =
     currentReport?.calibratedAcceptance ||
@@ -394,7 +402,7 @@ export function DesktopDashboard({
 
   // Synchronize desk reject state back to persistent storage if dynamically discovered via scope evaluation
   useEffect(() => {
-    if (isDeskReject && onUpdateFullReport && currentReport) {
+    if (isDeskReject && !isExplicitlySentForReview && onUpdateFullReport && currentReport) {
       const needsReportUpdate =
         currentReport.isEligibleForReview !== false ||
         currentReport.overallScore !== undefined ||
@@ -441,7 +449,7 @@ export function DesktopDashboard({
         onUpdateFullReport(updatedReport, updatedData);
       }
     }
-  }, [isDeskReject, onUpdateFullReport, currentReport, data, targetJournalEval, targetJournal, matchingJournalsData]);
+  }, [isDeskReject, isExplicitlySentForReview, onUpdateFullReport, currentReport, data, targetJournalEval, targetJournal, matchingJournalsData]);
 
   const personas: ReviewerPersonaFeedback[] = useMemo(() => {
     if (isDeskReject) {
@@ -871,7 +879,7 @@ export function DesktopDashboard({
                 classification={classification}
                 targetJournal={targetJournal}
                 detectedDiscipline={matchingJournalsData.detectedDiscipline}
-                targetJournalEvaluation={matchingJournalsData.targetJournalEvaluation}
+                targetJournalEvaluation={targetJournalEval}
                 overallScore={overallScore}
                 onSelectView={onSelectView}
                 onNewScan={onNewScan}
@@ -1573,6 +1581,7 @@ export function DesktopDashboard({
         {/* ========================================================= */}
         {activeView === "journals" && (isReviewEligible || isDeskReject) && (
           <DashboardJournalsSection
+            isDeskReject={isDeskReject}
             matchingJournalsData={matchingJournalsData}
             targetJournal={targetJournal}
             displayJournals={displayJournals}

@@ -72,51 +72,94 @@ export function purgeLegacyDummyData(): void {
  * Sanitize project state to ensure scope mismatches are strictly classified as desk rejects
  */
 export function sanitizeSavedProject(p: SavedProject): SavedProject {
-  let isMismatch =
-    p.fullReport?.targetJournalEvaluation?.isDisciplinaryMismatch === true ||
-    p.paper?.targetJournalEvaluation?.isDisciplinaryMismatch === true ||
-    p.paper?.ineligibilityReason === "scope_mismatch" ||
-    p.paper?.editorialTriage?.outcome === "desk_reject" ||
-    p.fullReport?.editorialTriage?.outcome === "desk_reject" ||
-    p.fullReport?.ineligibilityReason === "scope_mismatch" ||
-    p.dashboardData?.editorialTriage?.outcome === "desk_reject" ||
-    p.dashboardData?.statusText?.includes("Desk Reject") ||
-    p.paper?.isDeskReject === true ||
-    p.dashboardData?.isDeskReject === true;
+  const isExplicitlySentForReview =
+    p.fullReport?.editorialTriage?.outcome === "sent_for_review" ||
+    p.paper?.editorialTriage?.outcome === "sent_for_review" ||
+    Boolean(p.fullReport?.editorialTriage?.summary?.includes("Cleared editorial triage")) ||
+    Boolean(p.paper?.editorialTriage?.summary?.includes("Cleared editorial triage"));
 
-  if (!isMismatch && p.paper?.journal && p.paper?.title) {
-    try {
-      const match = findMatchingJournals(p.paper.title, p.fullReport?.summary || "", p.paper.journal, []);
-      if (match?.targetJournalEvaluation?.isDisciplinaryMismatch) {
-        isMismatch = true;
+  let isMismatch = false;
+
+  if (isExplicitlySentForReview) {
+    isMismatch = false;
+  } else {
+    isMismatch =
+      p.fullReport?.targetJournalEvaluation?.isDisciplinaryMismatch === true ||
+      p.paper?.targetJournalEvaluation?.isDisciplinaryMismatch === true ||
+      p.paper?.ineligibilityReason === "scope_mismatch" ||
+      p.paper?.editorialTriage?.outcome === "desk_reject" ||
+      p.fullReport?.editorialTriage?.outcome === "desk_reject" ||
+      p.fullReport?.ineligibilityReason === "scope_mismatch" ||
+      p.dashboardData?.editorialTriage?.outcome === "desk_reject" ||
+      p.dashboardData?.statusText?.includes("Desk Reject") ||
+      p.paper?.isDeskReject === true ||
+      p.dashboardData?.isDeskReject === true;
+
+    if (!isMismatch && p.paper?.journal && p.paper?.title) {
+      try {
+        const match = findMatchingJournals(p.paper.title, p.fullReport?.summary || "", p.paper.journal, []);
+        if (match?.targetJournalEvaluation?.isDisciplinaryMismatch) {
+          isMismatch = true;
+        }
+      } catch {
+        // Graceful fallback
       }
-    } catch {
-      // Graceful fallback
     }
   }
 
+  const restoredScore = isMismatch
+    ? undefined
+    : (p.paper?.score ?? p.fullReport?.overallScore ?? p.dashboardData?.score);
+
   const paper: PaperItem = {
     ...p.paper,
-    score: isMismatch ? undefined : p.paper.score,
-    isDeskReject: isMismatch || p.paper.isDeskReject,
-    isEligibleForReview: isMismatch ? false : p.paper.isEligibleForReview,
-    ineligibilityReason: isMismatch ? "scope_mismatch" : p.paper.ineligibilityReason,
-    targetJournalEvaluation: p.paper.targetJournalEvaluation || p.fullReport?.targetJournalEvaluation,
-    createdAt: p.paper.createdAt || p.createdAt,
-    updatedAt: p.paper.updatedAt || p.updatedAt,
+    score: restoredScore,
+    isDeskReject: isMismatch,
+    isEligibleForReview: !isMismatch,
+    ineligibilityReason: isMismatch ? "scope_mismatch" : undefined,
+    targetJournalEvaluation: isMismatch
+      ? (p.paper?.targetJournalEvaluation || p.fullReport?.targetJournalEvaluation)
+      : (p.paper?.targetJournalEvaluation?.isDisciplinaryMismatch ? undefined : p.paper?.targetJournalEvaluation) ||
+        (p.fullReport?.targetJournalEvaluation?.isDisciplinaryMismatch ? undefined : p.fullReport?.targetJournalEvaluation),
+    createdAt: p.paper?.createdAt || p.createdAt,
+    updatedAt: p.paper?.updatedAt || p.updatedAt,
   };
 
   const dashboardData: DesktopDashboardData = {
     ...p.dashboardData,
-    score: isMismatch ? undefined : p.dashboardData?.score,
-    isDeskReject: isMismatch || p.dashboardData?.isDeskReject,
-    statusText: isMismatch ? "Editorial Desk Reject (Scope Mismatch)" : p.dashboardData?.statusText,
+    score: restoredScore,
+    isDeskReject: isMismatch,
+    statusText: isMismatch
+      ? "Editorial Desk Reject (Scope Mismatch)"
+      : (p.dashboardData?.statusText?.includes("Desk Reject") ? "Review Complete" : p.dashboardData?.statusText),
   };
+
+  const fullReport: FullReviewReport | undefined = p.fullReport
+    ? {
+        ...p.fullReport,
+        isEligibleForReview: !isMismatch,
+        ineligibilityReason: isMismatch ? "scope_mismatch" : undefined,
+        overallScore: isMismatch ? undefined : (p.fullReport.overallScore ?? restoredScore),
+        targetJournalEvaluation: isMismatch
+          ? p.fullReport.targetJournalEvaluation
+          : (p.fullReport.targetJournalEvaluation?.isDisciplinaryMismatch ? undefined : p.fullReport.targetJournalEvaluation),
+        editorialTriage: isExplicitlySentForReview && p.fullReport.editorialTriage?.outcome !== "sent_for_review"
+          ? {
+              ...p.fullReport.editorialTriage,
+              outcome: "sent_for_review",
+              sentToPeerReview: true,
+              deskRejectReason: undefined,
+              handlingEditorDecision: undefined,
+            }
+          : p.fullReport.editorialTriage,
+      }
+    : undefined;
 
   return {
     ...p,
     paper,
     dashboardData,
+    fullReport,
   };
 }
 

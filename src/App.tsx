@@ -500,17 +500,22 @@ export default function App() {
                 }
                 const paper = papers.find((p) => p.id === activeTabId);
                 if (paper) {
+                  const isExplicitlySent =
+                    (updatedReport.editorialTriage?.outcome === "sent_for_review" ||
+                      Boolean(updatedReport.editorialTriage?.summary?.includes("Cleared editorial triage"))) &&
+                    updatedReport.isEligibleForReview !== false;
                   const isReportDeskReject =
-                    updatedReport.editorialTriage?.outcome === "desk_reject" ||
-                    updatedReport.ineligibilityReason === "scope_mismatch" ||
-                    updatedReport.targetJournalEvaluation?.isDisciplinaryMismatch === true ||
-                    updatedData?.isDeskReject === true;
+                    !isExplicitlySent &&
+                    (updatedReport.editorialTriage?.outcome === "desk_reject" ||
+                      updatedReport.ineligibilityReason === "scope_mismatch" ||
+                      updatedReport.targetJournalEvaluation?.isDisciplinaryMismatch === true ||
+                      updatedData?.isDeskReject === true);
                   const updatedPaper: PaperItem = {
                     ...paper,
-                    isDeskReject: isReportDeskReject || paper.isDeskReject,
+                    isDeskReject: isReportDeskReject,
                     score: isReportDeskReject ? undefined : (updatedReport.overallScore ?? paper.score),
-                    isEligibleForReview: isReportDeskReject ? false : paper.isEligibleForReview,
-                    ineligibilityReason: isReportDeskReject ? "scope_mismatch" : paper.ineligibilityReason,
+                    isEligibleForReview: !isReportDeskReject,
+                    ineligibilityReason: isReportDeskReject ? "scope_mismatch" : undefined,
                     targetJournalEvaluation: updatedReport.targetJournalEvaluation || paper.targetJournalEvaluation,
                   };
                   setPapers((prev) => prev.map((p) => (p.id === activeTabId ? updatedPaper : p)));
