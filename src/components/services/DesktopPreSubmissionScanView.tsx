@@ -21,9 +21,8 @@ import {
   exportInteractiveHtmlReport,
   exportWordDocReport,
   exportPdfReport,
-  exportLatexRebuttalTable,
-  exportBibTeX,
 } from "@/lib/export-generator";
+import { ExportCompletedToast, type ExportToastData } from "@/components/ExportCompletedToast";
 import { pickManuscriptFileDesktop, isDesktopApp } from "@/lib/desktop";
 import { extractTextFromFile, parseManuscriptText } from "@/lib/parser";
 import { runManuscriptDiagnostic } from "@/lib/diagnostic-engine";
@@ -92,7 +91,7 @@ export function DesktopPreSubmissionScanView({
   const [modelSearchQuery, setModelSearchQuery] = useState("");
   const [showAllScanRefs, setShowAllScanRefs] = useState(false);
   const [activeExportFormat, setActiveExportFormat] = useState<string | null>(null);
-  const [exportToast, setExportToast] = useState<string | null>(null);
+  const [exportToast, setExportToast] = useState<ExportToastData | null>(null);
   const [compatibilityMatch, setCompatibilityMatch] = useState<{
     journalName: string;
     journalDiscipline: string;
@@ -196,7 +195,7 @@ export function DesktopPreSubmissionScanView({
     }
   };
 
-  const handleExport = async (format: "pdf" | "html" | "word" | "latex" | "bibtex") => {
+  const handleExport = async (format: "pdf" | "html" | "word") => {
     if (!report || activeExportFormat) return;
     setActiveExportFormat(format);
 
@@ -213,25 +212,30 @@ export function DesktopPreSubmissionScanView({
       } else if (format === "word") {
         label = "Word Document (.doc)";
         res = await exportWordDocReport(report);
-      } else if (format === "latex") {
-        label = "LaTeX Rebuttal (.tex)";
-        res = await exportLatexRebuttalTable(report);
-      } else if (format === "bibtex") {
-        label = "BibTeX Citations (.bib)";
-        res = await exportBibTeX(report);
       }
 
       if (res?.success) {
-        setExportToast(`Report exported successfully as ${label}`);
-        setTimeout(() => setExportToast(null), 3500);
+        setExportToast({
+          id: Date.now(),
+          status: "success",
+          message: `Report exported successfully as ${label}`,
+          fileName: res.filePath ? res.filePath.split(/[\\/]/).pop() : undefined,
+          filePath: res.filePath,
+        });
       } else if (res?.error) {
-        setExportToast(`Export failed: ${res.error}`);
-        setTimeout(() => setExportToast(null), 4500);
+        setExportToast({
+          id: Date.now(),
+          status: "error",
+          message: `Export failed: ${res.error}`,
+        });
       }
     } catch (err) {
       console.error(`Export ${format} error:`, err);
-      setExportToast(`Failed to export ${format}: ${String(err)}`);
-      setTimeout(() => setExportToast(null), 4500);
+      setExportToast({
+        id: Date.now(),
+        status: "error",
+        message: `Failed to export ${format}: ${String(err)}`,
+      });
     } finally {
       setActiveExportFormat(null);
     }
@@ -549,9 +553,15 @@ export function DesktopPreSubmissionScanView({
               setShowAllScanRefs={setShowAllScanRefs}
               otherScanJournals={otherScanJournals}
               scanMatchingData={scanMatchingData}
-              exportToast={exportToast}
+              exportToast={null}
             />
           ))}
+
+        {/* Bottom-right toast notification with folder navigation link */}
+        <ExportCompletedToast
+          toast={exportToast}
+          onClose={() => setExportToast(null)}
+        />
       </div>
     </div>
   );

@@ -86,7 +86,7 @@ export async function openExternalLink(url: string): Promise<void> {
 let isSavingDesktop = false;
 
 function downloadBlobWeb(
-  content: string,
+  content: string | Uint8Array,
   filename: string,
   mimeType: string
 ): { success: boolean; filePath?: string; error?: string } {
@@ -94,7 +94,7 @@ function downloadBlobWeb(
     return { success: false, error: "No window context" };
   }
   try {
-    const blob = new Blob([content], { type: mimeType });
+    const blob = new Blob([content as any], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -113,9 +113,10 @@ function downloadBlobWeb(
 /**
  * Saves a file using the native desktop file save dialog if in Tauri,
  * or standard browser anchor download if in web preview.
+ * Supports both string text and binary Uint8Array data (e.g. PDF).
  */
 export async function saveFileDesktop(
-  content: string,
+  content: string | Uint8Array,
   defaultFilename: string,
   filters?: { name: string; extensions: string[] }[],
   mimeType: string = "text/plain;charset=utf-8"
@@ -143,11 +144,16 @@ export async function saveFileDesktop(
 
       // Write strictly via scoped official Tauri fs plugin (Audit Finding #2)
       try {
-        const { writeTextFile } = await import("@tauri-apps/plugin-fs");
-        await writeTextFile(filePath, content);
+        if (typeof content === "string") {
+          const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+          await writeTextFile(filePath, content);
+        } else {
+          const { writeFile } = await import("@tauri-apps/plugin-fs");
+          await writeFile(filePath, content);
+        }
         return { success: true, filePath };
       } catch (fsErr) {
-        console.error("plugin-fs writeTextFile failed, attempting browser download fallback:", fsErr);
+        console.error("plugin-fs write failed, attempting browser download fallback:", fsErr);
         // Fallback to browser blob download if fs throws an unexpected permission or OS error
         const fallbackRes = downloadBlobWeb(content, defaultFilename, mimeType);
         if (fallbackRes.success) {
@@ -169,4 +175,37 @@ export async function saveFileDesktop(
 
   // Web preview mode (executed in standard browser or dev webview)
   return downloadBlobWeb(content, defaultFilename, mimeType);
+}
+
+/**
+ * Opens a local folder in the system file manager (Finder on macOS, Explorer on Windows).
+ * If a file path is provided, the enclosing directory is extracted and opened.
+ */
+export async function openFolder(folderOrFilePath?: string | null): Promise<boolean> {
+  if (!folderOrFilePath || typeof folderOrFilePath !== "string") return false;
+  const trimmed = folderOrFilePath.trim();
+  if (!trimmed) return false;
+
+  // Extract parent directory if it points to a file with an extension
+  let targetDir = trimmed;
+  const lastSlash = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
+  if (lastSlash >= 0) {
+    const filenamePart = trimmed.substring(lastSlash + 1);
+    if (filenamePart.includes(".")) {
+      targetDir = trimmed.substring(0, lastSlash) || (trimmed.startsWith("/") ? "/" : targetDir);
+    }
+  }
+
+  if (isDesktopApp()) {
+    try {
+      const { open } = await import("@tauri-apps/plugin-shell");
+      await open(targetDir);
+      return true;
+    } catch (err) {
+      console.warn("Tauri shell open folder failed:", err);
+      return false;
+    }
+  }
+
+  return false;
 }

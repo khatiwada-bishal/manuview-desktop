@@ -1,6 +1,7 @@
 import type { FullReviewReport, BriefJournalFitReport, ReviewReport } from "./types";
 import { saveFileDesktop } from "./desktop";
 import { renderStaticRadarSvg } from "./charts/theme";
+import { jsPDF } from "jspdf";
 
 function escapeHtml(str: string | number | undefined | null): string {
   if (str === undefined || str === null) return "";
@@ -33,7 +34,7 @@ function sanitizeFilename(title: string): string {
 }
 
 async function triggerDownload(
-  content: string,
+  content: string | Uint8Array,
   filename: string,
   mimeType: string,
   filters?: { name: string; extensions: string[] }[]
@@ -76,71 +77,656 @@ export async function exportWordDocReport(report: ReviewReport): Promise<{ succe
 }
 
 /**
- * Triggers a high-fidelity print / PDF export of the diagnostic report.
- * Uses an isolated print-rendering frame containing the complete standalone report
- * matching the interactive HTML design, ensuring desktop app UI controls and shell are never printed.
+ * Generates a clean, multi-page vector PDF for a full diagnostic review.
  */
-export async function exportPdfReport(report: ReviewReport): Promise<{ success: boolean; cancelled?: boolean; error?: string }> {
-  if (typeof window === "undefined") {
-    return { success: false, error: "Window context not available for PDF export" };
+export function generateFullReportPdf(r: FullReviewReport): Uint8Array {
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 40;
+  const contentWidth = pageWidth - margin * 2;
+  let y = margin;
+
+  const ensureSpace = (needed: number) => {
+    if (y + needed > pageHeight - margin - 25) {
+      doc.addPage();
+      y = margin;
+      return true;
+    }
+    return false;
+  };
+
+  const title = r.title || "Untitled Manuscript";
+  const targetJournal = r.targetJournal || "General Academic Journal";
+  const isScopeMismatch = Boolean(
+    r.targetJournalEvaluation?.isDisciplinaryMismatch ||
+    r.priorityIssues?.some((i) => i.priority === "A" && (i.category === "Scope/Fit" || /scope|out-of-scope|desk reject/i.test(`${i.title} ${i.description}`)))
+  );
+  const isDeskReject = Boolean(
+    r.editorialTriage?.outcome === "desk_reject" ||
+    r.ineligibilityReason === "scope_mismatch" ||
+    isScopeMismatch
+  );
+  const hasNumericScore = !isDeskReject && typeof r.overallScore === "number";
+  const scoreLabel = isDeskReject
+    ? "DESK REJECT"
+    : r.isEligibleForReview === false
+    ? r.ineligibilityReason === "already_published"
+      ? "PUB"
+      : "N/A"
+    : hasNumericScore
+    ? `${r.overallScore}`
+    : "Not Assessed";
+
+  const dateStr = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+
+  // 1. Header Banner
+  doc.setFillColor(15, 23, 42); // #0F172A
+  doc.roundedRect(margin, y, contentWidth, 36, 6, 6, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text("MANUVIEW DIAGNOSTIC SUITE", margin + 14, y + 23);
+
+  // Journal pill on right
+  const targetText = `Target: ${targetJournal.length > 28 ? targetJournal.slice(0, 26) + "..." : targetJournal}`;
+  doc.setFontSize(8.5);
+  doc.setFont("helvetica", "bold");
+  const targetW = doc.getTextWidth(targetText);
+  if (isScopeMismatch) {
+    doc.setFillColor(220, 38, 38);
+  } else {
+    doc.setFillColor(37, 99, 235);
+  }
+  doc.roundedRect(pageWidth - margin - targetW - 20, y + 7, targetW + 14, 22, 4, 4, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.text(targetText, pageWidth - margin - targetW - 13, y + 21);
+
+  y += 52;
+
+  // Title
+  doc.setTextColor(15, 23, 42);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(15);
+  const titleLines = doc.splitTextToSize(title, contentWidth);
+  doc.text(titleLines, margin, y);
+  y += titleLines.length * 19 + 4;
+
+  // Date and subtitle
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`Generated on ${dateStr} • Peer-Review Calibrated Pre-Submission Evaluation`, margin, y);
+  y += 18;
+
+  // Scope mismatch alert box if applicable
+  if (isScopeMismatch) {
+    ensureSpace(58);
+    doc.setFillColor(254, 242, 242);
+    doc.setDrawColor(248, 113, 113);
+    doc.roundedRect(margin, y, contentWidth, 50, 6, 6, "FD");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(185, 28, 28);
+    doc.text("CRITICAL SCOPE MISMATCH WARNING (HIGH DESK-REJECT HAZARD)", margin + 12, y + 16);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(153, 27, 27);
+    const warnLines = doc.splitTextToSize(
+      r.targetJournalEvaluation?.mismatchWarning ||
+      `Manuscript research domain falls outside published aims and scope of ${targetJournal}. Immediate editorial desk rejection without external review is predicted.`,
+      contentWidth - 24
+    );
+    doc.text(warnLines.slice(0, 2), margin + 12, y + 30);
+    y += 58;
   }
 
-  const isFullReport = report.mode === "full" || !("fitScore" in report);
-  const title = report.title || "Manuscript";
-  const filename = `ManuView_Diagnostic_Report_${sanitizeFilename(title)}`;
-  const htmlContent = isFullReport
-    ? generateFullReportHtml(report as FullReviewReport)
-    : generateBriefReportHtml(report as BriefJournalFitReport);
+  // Score Banner
+  ensureSpace(48);
+  if (isDeskReject) {
+    doc.setFillColor(254, 242, 242);
+    doc.setDrawColor(254, 202, 202);
+  } else {
+    doc.setFillColor(241, 245, 249);
+    doc.setDrawColor(226, 232, 240);
+  }
+  doc.roundedRect(margin, y, contentWidth, 44, 8, 8, "FD");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  if (isDeskReject) {
+    doc.setTextColor(220, 38, 38);
+    doc.text(scoreLabel, margin + 16, y + 29);
+    doc.setFontSize(9);
+    doc.setTextColor(153, 27, 27);
+    doc.text("EDITORIAL SCOPE SCREENING (EXTERNAL REVIEW BYPASSED)", margin + 165, y + 27);
+  } else {
+    doc.setTextColor(37, 99, 235);
+    doc.text(`${scoreLabel}${hasNumericScore ? " / 100" : ""}`, margin + 16, y + 29);
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text("OVERALL ACCEPTANCE POTENTIAL SCORE", margin + 130, y + 27);
+  }
+  y += 56;
 
-  try {
-    const existing = document.getElementById("manuview-print-frame");
-    if (existing && existing.parentNode) {
-      existing.parentNode.removeChild(existing);
+  // Section 1: Executive Overview & Triage
+  ensureSpace(70);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text("1. Editorial Synthesis & Triage Assessment", margin, y);
+  y += 5;
+  doc.setDrawColor(203, 213, 225);
+  doc.line(margin, y, margin + contentWidth, y);
+  y += 14;
+
+  if (r.summary) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(51, 65, 85);
+    const summaryLines = doc.splitTextToSize(r.summary, contentWidth);
+    for (const line of summaryLines) {
+      ensureSpace(14);
+      doc.text(line, margin, y);
+      y += 13;
     }
+    y += 10;
+  }
 
-    const iframe = document.createElement("iframe");
-    iframe.id = "manuview-print-frame";
-    iframe.style.position = "fixed";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
-    iframe.style.width = "0";
-    iframe.style.height = "0";
-    iframe.style.border = "0";
-    iframe.style.opacity = "0";
-    iframe.style.pointerEvents = "none";
-    iframe.setAttribute("aria-hidden", "true");
-    document.body.appendChild(iframe);
+  // Reporting Guideline Compliance
+  if (r.reportingGuideline) {
+    ensureSpace(45);
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(margin, y, contentWidth, 38, 6, 6, "FD");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`Reporting Guideline Audit: ${r.reportingGuideline.guidelineName}`, margin + 12, y + 16);
+    
+    doc.setFontSize(8.5);
+    doc.setTextColor(22, 163, 74);
+    doc.text(`${r.reportingGuideline.scorePercent}% Compliant (${r.reportingGuideline.standardType})`, margin + 12, y + 29);
+    y += 48;
+  }
 
-    const doc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (!doc) {
-      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-      return { success: false, error: "Unable to create print document frame" };
-    }
+  // Section 2: Simulated Reviewer Personas
+  if (r.reviewerPersonas && r.reviewerPersonas.length > 0) {
+    ensureSpace(50);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`2. Simulated Peer-Review Panel (${r.reviewerPersonas.length} Expert Referees)`, margin, y);
+    y += 5;
+    doc.setDrawColor(203, 213, 225);
+    doc.line(margin, y, margin + contentWidth, y);
+    y += 15;
 
-    doc.open();
-    doc.write(htmlContent);
-    doc.close();
-    doc.title = filename;
+    for (const p of r.reviewerPersonas) {
+      ensureSpace(100);
+      const isAdversarial = p.persona === "devils_advocate";
 
-    // Allow iframe styles, embedded SVGs, and fonts to render
-    await new Promise((resolve) => setTimeout(resolve, 350));
+      // Reviewer Name & Recommendation badge
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(15, 23, 42);
+      doc.text(p.name, margin + 4, y + 12);
 
-    const win = iframe.contentWindow;
-    if (win) {
-      win.focus();
-      win.print();
-    }
+      const recText = p.decisionRecommendation || "Review Complete";
+      doc.setFontSize(8);
+      const recW = doc.getTextWidth(recText);
+      doc.setFillColor(isAdversarial ? 225 : 241, isAdversarial ? 29 : 245, isAdversarial ? 72 : 249);
+      doc.roundedRect(pageWidth - margin - recW - 16, y + 1, recW + 10, 16, 3, 3, "F");
+      doc.setTextColor(isAdversarial ? 255 : 30, isAdversarial ? 255 : 41, isAdversarial ? 255 : 59);
+      doc.text(recText, pageWidth - margin - recW - 11, y + 12);
 
-    setTimeout(() => {
-      const el = document.getElementById("manuview-print-frame");
-      if (el && el.parentNode) {
-        el.parentNode.removeChild(el);
+      y += 22;
+
+      // Affiliation & Role
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`${p.title || ""} • ${p.affiliation || ""}`, margin + 4, y);
+      y += 12;
+
+      if (p.expertise) {
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(8);
+        doc.setTextColor(71, 85, 105);
+        doc.text(`Expertise Focus: ${p.expertise}`, margin + 4, y);
+        y += 12;
       }
-    }, 4000);
 
-    return { success: true };
+      // Key Challenge
+      if (p.keyChallenge) {
+        ensureSpace(28);
+        doc.setFillColor(254, 242, 242);
+        doc.setDrawColor(254, 202, 202);
+        doc.roundedRect(margin + 4, y, contentWidth - 8, 22, 4, 4, "FD");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(185, 28, 28);
+        const chalLines = doc.splitTextToSize(`Key Challenge: ${p.keyChallenge}`, contentWidth - 24);
+        doc.text(chalLines[0] || "", margin + 10, y + 14);
+        y += 28;
+      }
+
+      // Assessment text
+      if (p.assessment) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(51, 65, 85);
+        const assessLines = doc.splitTextToSize(p.assessment, contentWidth - 8);
+        for (const line of assessLines) {
+          ensureSpace(13);
+          doc.text(line, margin + 4, y);
+          y += 12;
+        }
+        y += 4;
+      }
+
+      // Critiques
+      if (p.majorCritiques && p.majorCritiques.length > 0) {
+        ensureSpace(16);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text("Major Critiques:", margin + 4, y);
+        y += 10;
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(71, 85, 105);
+        for (const c of p.majorCritiques) {
+          const cLines = doc.splitTextToSize(`• ${c}`, contentWidth - 18);
+          for (const cl of cLines) {
+            ensureSpace(12);
+            doc.text(cl, margin + 12, y);
+            y += 11;
+          }
+        }
+        y += 4;
+      }
+
+      // Must Address Items
+      if (p.mustAddressItems && p.mustAddressItems.length > 0) {
+        ensureSpace(16);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8.5);
+        doc.setTextColor(22, 101, 52);
+        doc.text("Must Address Prior to Submission:", margin + 4, y);
+        y += 10;
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(22, 101, 52);
+        for (const m of p.mustAddressItems) {
+          const mLines = doc.splitTextToSize(`• ${m}`, contentWidth - 18);
+          for (const ml of mLines) {
+            ensureSpace(12);
+            doc.text(ml, margin + 12, y);
+            y += 11;
+          }
+        }
+        y += 6;
+      }
+
+      y += 8;
+    }
+  }
+
+  // Section 3: Evaluation Dimensions
+  if (r.dimensions && Object.keys(r.dimensions).length > 0) {
+    ensureSpace(50);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text("3. Diagnostic Scoring Dimensions", margin, y);
+    y += 5;
+    doc.setDrawColor(203, 213, 225);
+    doc.line(margin, y, margin + contentWidth, y);
+    y += 15;
+
+    for (const [_, dim] of Object.entries(r.dimensions)) {
+      ensureSpace(45);
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(margin, y, contentWidth, 20, 3, 3, "FD");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(dim.label, margin + 6, y + 13);
+
+      doc.setTextColor(37, 99, 235);
+      doc.text(`${dim.score} / 5   (${dim.verdict})`, pageWidth - margin - 140, y + 13);
+
+      y += 26;
+
+      if (dim.strengths && dim.strengths.length > 0) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.5);
+        doc.setTextColor(22, 101, 52);
+        doc.text("Strengths:", margin + 6, y);
+        y += 9;
+        doc.setFont("helvetica", "normal");
+        for (const s of dim.strengths) {
+          const sLines = doc.splitTextToSize(`+ ${s}`, contentWidth - 20);
+          for (const sl of sLines) {
+            ensureSpace(11);
+            doc.text(sl, margin + 14, y);
+            y += 10;
+          }
+        }
+      }
+
+      if (dim.vulnerabilities && dim.vulnerabilities.length > 0) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.5);
+        doc.setTextColor(185, 28, 28);
+        doc.text("Vulnerabilities:", margin + 6, y);
+        y += 9;
+        doc.setFont("helvetica", "normal");
+        for (const v of dim.vulnerabilities) {
+          const vLines = doc.splitTextToSize(`- ${v}`, contentWidth - 20);
+          for (const vl of vLines) {
+            ensureSpace(11);
+            doc.text(vl, margin + 14, y);
+            y += 10;
+          }
+        }
+      }
+      y += 6;
+    }
+  }
+
+  // Section 4: Priority Issues
+  if (r.priorityIssues && r.priorityIssues.length > 0) {
+    ensureSpace(50);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`4. Priority Action Items (${r.priorityIssues.length} Items)`, margin, y);
+    y += 5;
+    doc.setDrawColor(203, 213, 225);
+    doc.line(margin, y, margin + contentWidth, y);
+    y += 15;
+
+    for (const iss of r.priorityIssues) {
+      ensureSpace(65);
+      const isPrioA = iss.priority === "A";
+      const isPrioB = iss.priority === "B";
+
+      doc.setFillColor(isPrioA ? 254 : isPrioB ? 254 : 240, isPrioA ? 242 : isPrioB ? 249 : 253, isPrioA ? 242 : isPrioB ? 195 : 244);
+      doc.setDrawColor(isPrioA ? 254 : isPrioB ? 253 : 187, isPrioA ? 202 : isPrioB ? 230 : 247, isPrioA ? 202 : isPrioB ? 138 : 208);
+      doc.roundedRect(margin, y, contentWidth, 20, 3, 3, "FD");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(isPrioA ? 185 : isPrioB ? 180 : 22, isPrioA ? 28 : isPrioB ? 83 : 101, isPrioA ? 28 : isPrioB ? 9 : 52);
+      doc.text(`Priority ${iss.priority} [${iss.category || "General"}]`, margin + 6, y + 13);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(iss.title, margin + 115, y + 13);
+
+      y += 26;
+
+      if (iss.description) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(51, 65, 85);
+        const descLines = doc.splitTextToSize(iss.description, contentWidth - 12);
+        for (const dl of descLines) {
+          ensureSpace(12);
+          doc.text(dl, margin + 6, y);
+          y += 11;
+        }
+      }
+
+      if (iss.actionableFix) {
+        ensureSpace(20);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.5);
+        doc.setTextColor(22, 101, 52);
+        doc.text("Required Fix:", margin + 6, y);
+        y += 8;
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(22, 101, 52);
+        const fixLines = doc.splitTextToSize(iss.actionableFix, contentWidth - 16);
+        for (const fl of fixLines) {
+          ensureSpace(11);
+          doc.text(fl, margin + 6, y);
+          y += 10;
+        }
+      }
+      y += 6;
+    }
+  }
+
+  // Footer on all pages
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(148, 163, 184);
+    doc.setDrawColor(226, 232, 240);
+    doc.line(margin, pageHeight - margin, pageWidth - margin, pageHeight - margin);
+    doc.text("ManuView Academic Diagnostic Report • Confidential", margin, pageHeight - margin + 13);
+    doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin - 45, pageHeight - margin + 13);
+  }
+
+  return new Uint8Array(doc.output("arraybuffer"));
+}
+
+/**
+ * Generates a clean vector PDF for a brief journal fit check report.
+ */
+export function generateBriefReportPdf(r: BriefJournalFitReport): Uint8Array {
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 40;
+  const contentWidth = pageWidth - margin * 2;
+  let y = margin;
+
+  const ensureSpace = (needed: number) => {
+    if (y + needed > pageHeight - margin - 25) {
+      doc.addPage();
+      y = margin;
+      return true;
+    }
+    return false;
+  };
+
+  const title = r.title || "Untitled Manuscript";
+  const targetJournal = r.targetJournal || "Target Journal";
+  const fitScore = r.fitScore ?? 0;
+  const isGoodFit = fitScore >= 70;
+
+  // Header Banner
+  doc.setFillColor(15, 23, 42);
+  doc.roundedRect(margin, y, contentWidth, 36, 6, 6, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text("MANUVIEW JOURNAL FIT CHECK", margin + 14, y + 23);
+
+  y += 52;
+
+  // Title
+  doc.setTextColor(15, 23, 42);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(15);
+  const titleLines = doc.splitTextToSize(title, contentWidth);
+  doc.text(titleLines, margin, y);
+  y += titleLines.length * 19 + 4;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`Target Journal: ${targetJournal} • Generated: ${new Date().toLocaleDateString()}`, margin, y);
+  y += 22;
+
+  // Score Box
+  doc.setFillColor(isGoodFit ? 240 : 254, isGoodFit ? 253 : 242, isGoodFit ? 244 : 242);
+  doc.setDrawColor(isGoodFit ? 187 : 254, isGoodFit ? 247 : 202, isGoodFit ? 208 : 202);
+  doc.roundedRect(margin, y, contentWidth, 44, 8, 8, "FD");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.setTextColor(isGoodFit ? 22 : 185, isGoodFit ? 163 : 28, isGoodFit ? 74 : 28);
+  doc.text(`${fitScore}% Match`, margin + 16, y + 30);
+
+  doc.setFontSize(9.5);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Verdict: ${r.verdict || (isGoodFit ? "Disciplinary Alignment" : "Scope Risk")}`, margin + 140, y + 28);
+  y += 58;
+
+  // Summary
+  if (r.summary) {
+    ensureSpace(45);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text("Scope Alignment Rationale", margin, y);
+    y += 13;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(51, 65, 85);
+    const sumLines = doc.splitTextToSize(r.summary, contentWidth);
+    for (const sl of sumLines) {
+      ensureSpace(13);
+      doc.text(sl, margin, y);
+      y += 12;
+    }
+    y += 10;
+  }
+
+  // Key Highlights
+  if (r.keyHighlights && r.keyHighlights.length > 0) {
+    ensureSpace(35);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(22, 101, 52);
+    doc.text("Key Strengths & Alignment Points:", margin, y);
+    y += 11;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(22, 101, 52);
+    for (const h of r.keyHighlights) {
+      const hLines = doc.splitTextToSize(`• ${h}`, contentWidth - 16);
+      for (const hl of hLines) {
+        ensureSpace(12);
+        doc.text(hl, margin + 8, y);
+        y += 11;
+      }
+    }
+    y += 8;
+  }
+
+  // Desk Reject Hazards
+  if (r.deskRejectHazards && r.deskRejectHazards.length > 0) {
+    ensureSpace(35);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(185, 28, 28);
+    doc.text("Desk-Reject Hazards & Potential Roadblocks:", margin, y);
+    y += 11;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(153, 27, 27);
+    for (const dz of r.deskRejectHazards) {
+      const dzLines = doc.splitTextToSize(`• ${dz}`, contentWidth - 16);
+      for (const dzl of dzLines) {
+        ensureSpace(12);
+        doc.text(dzl, margin + 8, y);
+        y += 11;
+      }
+    }
+    y += 8;
+  }
+
+  // Alternative Journals
+  if (r.alternativeJournals && r.alternativeJournals.length > 0) {
+    ensureSpace(45);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text("Suggested Alternative Journals", margin, y);
+    y += 13;
+
+    for (const alt of r.alternativeJournals) {
+      ensureSpace(28);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`${alt.name} (${alt.tier || "Alternative"})`, margin + 6, y);
+      if (alt.impactFactor) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`IF: ${alt.impactFactor}`, pageWidth - margin - 70, y);
+      }
+      y += 11;
+      if (alt.matchReason) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(71, 85, 105);
+        const mLines = doc.splitTextToSize(alt.matchReason, contentWidth - 14);
+        for (const ml of mLines) {
+          ensureSpace(11);
+          doc.text(ml, margin + 6, y);
+          y += 10;
+        }
+      }
+      y += 5;
+    }
+  }
+
+  // Footer
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(148, 163, 184);
+    doc.setDrawColor(226, 232, 240);
+    doc.line(margin, pageHeight - margin, pageWidth - margin, pageHeight - margin);
+    doc.text("ManuView Target Journal Fit Report • Confidential", margin, pageHeight - margin + 13);
+    doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin - 45, pageHeight - margin + 13);
+  }
+
+  return new Uint8Array(doc.output("arraybuffer"));
+}
+
+/**
+ * Triggers a high-fidelity PDF export of the diagnostic report.
+ * Uses jsPDF to generate an authentic standalone PDF binary document
+ * and saves it via the native desktop dialog or browser download.
+ */
+export async function exportPdfReport(report: ReviewReport): Promise<{ success: boolean; filePath?: string; cancelled?: boolean; error?: string }> {
+  try {
+    const isFullReport = report.mode === "full" || !("fitScore" in report);
+    const title = report.title || "Manuscript";
+    const filename = `ManuView_Diagnostic_Report_${sanitizeFilename(title)}.pdf`;
+
+    const pdfBytes = isFullReport
+      ? generateFullReportPdf(report as FullReviewReport)
+      : generateBriefReportPdf(report as BriefJournalFitReport);
+
+    return await triggerDownload(pdfBytes, filename, "application/pdf", [
+      { name: "PDF Document", extensions: ["pdf"] },
+      { name: "All Files", extensions: ["*"] },
+    ]);
   } catch (err) {
-    console.error("PDF print export failed:", err);
+    console.error("PDF export failed:", err);
     return { success: false, error: String(err) };
   }
 }

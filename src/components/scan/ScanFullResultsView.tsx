@@ -36,7 +36,7 @@ interface ScanFullResultsViewProps {
   report: FullReviewReport;
   onBack: () => void;
   activeExportFormat: string | null;
-  handleExport: (format: "pdf" | "html" | "word" | "latex" | "bibtex") => void;
+  handleExport: (format: "pdf" | "html" | "word") => void;
   selectedPersona: number;
   setSelectedPersona: (idx: number) => void;
   selectedRadarDim: ScoreDimension | null;
@@ -45,7 +45,7 @@ interface ScanFullResultsViewProps {
   setShowAllScanRefs: (show: boolean) => void;
   otherScanJournals: any[];
   scanMatchingData: any;
-  exportToast: string | null;
+  exportToast?: string | null;
 }
 
 export function ScanFullResultsView({
@@ -1144,13 +1144,6 @@ export function ScanFullResultsView({
               detectedDiscipline={scanMatchingData?.detectedDiscipline}
             />
           </div>
-        </div>
-      )}
-
-      {exportToast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-xs font-medium shadow-xl border border-neutral-700 dark:border-neutral-200 animate-fade-in">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 dark:text-emerald-600 shrink-0" />
-          <span>{exportToast}</span>
         </div>
       )}
     </div>

@@ -3,8 +3,10 @@ import assert from "node:assert/strict";
 import {
   generateFullReportHtml,
   generateFullReportWord,
+  generateFullReportPdf,
   generateBriefReportHtml,
   generateBriefReportWord,
+  generateBriefReportPdf,
   generateLatexRebuttal,
   generateBibTeX,
   exportInteractiveHtmlReport,
@@ -201,4 +203,23 @@ test("Export: functions are defined and exported correctly", () => {
   assert.equal(typeof exportPdfReport, "function");
   assert.equal(typeof exportLatexRebuttalTable, "function");
   assert.equal(typeof exportBibTeX, "function");
+  assert.equal(typeof generateFullReportPdf, "function");
+  assert.equal(typeof generateBriefReportPdf, "function");
+});
+
+test("Export: generateFullReportPdf produces valid PDF binary buffer", () => {
+  const bytes = generateFullReportPdf(mockFullReport);
+  assert.ok(bytes instanceof Uint8Array, "Must return Uint8Array binary buffer");
+  assert.ok(bytes.byteLength > 1000, "PDF must contain substantive byte data");
+  // Check PDF signature: %PDF- (0x25 0x50 0x44 0x46 0x2D)
+  const header = String.fromCharCode(...bytes.slice(0, 5));
+  assert.equal(header, "%PDF-", "Binary buffer must begin with valid PDF signature");
+});
+
+test("Export: generateBriefReportPdf produces valid PDF binary buffer", () => {
+  const bytes = generateBriefReportPdf(mockBriefReport);
+  assert.ok(bytes instanceof Uint8Array, "Must return Uint8Array binary buffer");
+  assert.ok(bytes.byteLength > 1000, "PDF must contain substantive byte data");
+  const header = String.fromCharCode(...bytes.slice(0, 5));
+  assert.equal(header, "%PDF-", "Binary buffer must begin with valid PDF signature");
 });

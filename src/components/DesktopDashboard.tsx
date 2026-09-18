@@ -66,10 +66,10 @@ import { computeCitationIntegrity } from "@/lib/engine/citation-audit";
 import {
   exportInteractiveHtmlReport,
   exportWordDocReport,
-  exportLatexRebuttalTable,
   exportBibTeX,
   exportPdfReport,
 } from "@/lib/export-generator";
+import { ExportCompletedToast, type ExportToastData } from "./ExportCompletedToast";
 import { DimensionRadarChart } from "@/components/charts/DimensionRadarChart";
 import { SegmentedReadinessGauge } from "@/components/charts/SegmentedReadinessGauge";
 import { DecisionDistributionBar } from "@/components/charts/DecisionDistributionBar";
@@ -252,7 +252,7 @@ export function DesktopDashboard({
   const [issueFilter, setIssueFilter] = useState<"all" | "A" | "B" | "C">("all");
   const [selectedRadarDimension, setSelectedRadarDimension] = useState<ScoreDimension | null>(null);
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
-  const [exportToast, setExportToast] = useState<string | null>(null);
+  const [exportToast, setExportToast] = useState<ExportToastData | null>(null);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
 
   // Overview Tab Accordion State (Top card always open; 2nd card onwards collapsible)
@@ -652,7 +652,7 @@ export function DesktopDashboard({
   const [activeExportFormat, setActiveExportFormat] = useState<string | null>(null);
 
   const handleExportFormat = async (
-    format: "word" | "html" | "latex" | "bibtex" | "pdf",
+    format: "word" | "html" | "pdf",
     e?: React.MouseEvent
   ) => {
     if (e) {
@@ -678,25 +678,30 @@ export function DesktopDashboard({
       } else if (format === "pdf") {
         label = "PDF Document (.pdf)";
         res = await exportPdfReport(effectiveReport);
-      } else if (format === "latex") {
-        label = "LaTeX Rebuttal Table (.tex)";
-        res = await exportLatexRebuttalTable(effectiveReport);
-      } else if (format === "bibtex") {
-        label = "BibTeX Citations (.bib)";
-        res = await exportBibTeX(effectiveReport);
       }
 
       if (res?.success) {
-        setExportToast(`Report exported successfully as ${label}`);
-        setTimeout(() => setExportToast(null), 3500);
+        setExportToast({
+          id: Date.now(),
+          status: "success",
+          message: `Report exported successfully as ${label}`,
+          fileName: res.filePath ? res.filePath.split(/[\\/]/).pop() : undefined,
+          filePath: res.filePath,
+        });
       } else if (res?.error) {
-        setExportToast(`Export failed: ${res.error}`);
-        setTimeout(() => setExportToast(null), 4500);
+        setExportToast({
+          id: Date.now(),
+          status: "error",
+          message: `Export failed: ${res.error}`,
+        });
       }
     } catch (err) {
       console.error(`Failed to export ${format}:`, err);
-      setExportToast(`Failed to export ${format}: ${String(err)}`);
-      setTimeout(() => setExportToast(null), 4500);
+      setExportToast({
+        id: Date.now(),
+        status: "error",
+        message: `Failed to export ${format}: ${String(err)}`,
+      });
     } finally {
       setActiveExportFormat(null);
       setTimeout(() => {
@@ -814,24 +819,6 @@ export function DesktopDashboard({
                           <Globe className="w-3.5 h-3.5 text-emerald-500" />
                           <span>{activeExportFormat === "html" ? "Exporting HTML..." : "Interactive HTML (.html)"}</span>
                         </button>
-                        <button
-                          type="button"
-                          disabled={activeExportFormat !== null}
-                          onClick={(e) => handleExportFormat("latex", e)}
-                          className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2.5 cursor-pointer disabled:opacity-50"
-                        >
-                          <FileCode className="w-3.5 h-3.5 text-purple-500" />
-                          <span>{activeExportFormat === "latex" ? "Exporting LaTeX..." : "LaTeX Rebuttal (.tex)"}</span>
-                        </button>
-                        <button
-                          type="button"
-                          disabled={activeExportFormat !== null}
-                          onClick={(e) => handleExportFormat("bibtex", e)}
-                          className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2.5 cursor-pointer disabled:opacity-50"
-                        >
-                          <Bookmark className="w-3.5 h-3.5 text-amber-500" />
-                          <span>{activeExportFormat === "bibtex" ? "Exporting BibTeX..." : "BibTeX Citations (.bib)"}</span>
-                        </button>
                         <div className="my-1 border-t border-neutral-100 dark:border-neutral-800" />
                         <button
                           type="button"
@@ -840,7 +827,7 @@ export function DesktopDashboard({
                           className="w-full text-left px-3 py-2 text-xs text-neutral-700 dark:text-neutral-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-2.5 cursor-pointer disabled:opacity-50"
                         >
                           <Printer className="w-3.5 h-3.5 text-rose-500" />
-                          <span>{activeExportFormat === "pdf" ? "Preparing PDF..." : "Print / PDF Report (.pdf)"}</span>
+                          <span>{activeExportFormat === "pdf" ? "Exporting PDF..." : "PDF Document (.pdf)"}</span>
                         </button>
                       </div>
                     )}
@@ -1637,12 +1624,10 @@ export function DesktopDashboard({
       </div>
 
       {/* Export Toast Notification */}
-      {exportToast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 bg-[#0F172A] dark:bg-neutral-800 text-white text-xs font-medium rounded-xl shadow-2xl border border-neutral-700/80 animate-fade-in pointer-events-none">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{exportToast}</span>
-        </div>
-      )}
+      <ExportCompletedToast
+        toast={exportToast}
+        onClose={() => setExportToast(null)}
+      />
     </div>
   );
 }
