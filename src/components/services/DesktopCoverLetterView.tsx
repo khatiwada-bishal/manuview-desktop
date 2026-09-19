@@ -11,6 +11,10 @@ import {
   AlertCircle,
   BookOpen,
   Loader2,
+  ShieldCheck,
+  GitBranch,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import JournalCombobox from "@/components/JournalCombobox";
 import { callLLM, sanitizeAuthorText, sanitizeErrorMessage, getSavedClientConfig, resolveActiveConfig } from "@/lib/llm";
@@ -87,6 +91,10 @@ export function DesktopCoverLetterView({ onOpenSettings }: DesktopCoverLetterVie
   const [mainFindings, setMainFindings] = useState("");
   const [broadSignificance, setBroadSignificance] = useState("");
   const [format, setFormat] = useState<CoverLetterFormat>("standard");
+  const [guidelineStandard, setGuidelineStandard] = useState("");
+  const [dataRepoUrl, setDataRepoUrl] = useState("");
+  const [includeFigureCompliance, setIncludeFigureCompliance] = useState(true);
+  const [showIntegritySection, setShowIntegritySection] = useState(false);
   const [loading, setLoading] = useState(false);
   const [letter, setLetter] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -96,6 +104,10 @@ export function DesktopCoverLetterView({ onOpenSettings }: DesktopCoverLetterVie
     setTitle("Single-cell transcriptional profiling of DLL3 activation in neuroendocrine lung carcinoma");
     setTargetJournal("Nature Communications");
     setFormat("nature");
+    setGuidelineStandard("consort");
+    setDataRepoUrl("https://github.com/oncology-lab/sclc-dll3-scrna");
+    setIncludeFigureCompliance(true);
+    setShowIntegritySection(true);
     setAbstract(
       "Small cell lung cancer (SCLC) exhibits rapid recurrence and therapy resistance. Delta-like ligand 3 (DLL3) is an established cell-surface target for antibody-drug conjugates. Here we perform marker-based CRISPR-Cas9 screens and identify transcription factor POU2F1 as a primary driver of DLL3 expression. We demonstrate that POU2F1 directly binds the DLL3 distal enhancer element to drive chemoresistance across 8 patient-derived organoid lines."
     );
@@ -121,6 +133,28 @@ export function DesktopCoverLetterView({ onOpenSettings }: DesktopCoverLetterVie
     const safeKeywords = sanitizeAuthorText(keywords);
     const safeFindings = sanitizeAuthorText(mainFindings);
     const safeSignificance = sanitizeAuthorText(broadSignificance);
+
+    const guidelineMap: Record<string, string> = {
+      consort: "CONSORT 2010 (Randomized Controlled Trials)",
+      prisma: "PRISMA 2020 (Systematic Reviews & Meta-Analyses)",
+      arrive: "ARRIVE 2.0 (Preclinical Animal Research)",
+      ml_reproducibility: "ML Reproducibility Checklist (Pineau et al.)",
+      strobe: "STROBE (Observational Cohort Studies)",
+      survey_empirical: "Quantitative Survey & Empirical Reporting Guidelines",
+    };
+
+    const selectedGuidelineLabel = guidelineStandard ? guidelineMap[guidelineStandard] || guidelineStandard : null;
+
+    let complianceRequirements = "";
+    if (selectedGuidelineLabel) {
+      complianceRequirements += `\n- Reporting Guidelines Compliance: Explicitly affirm that the manuscript was designed and reported in accordance with the "${selectedGuidelineLabel}" checklist, and state that the completed checklist is submitted alongside the manuscript.`;
+    }
+    if (dataRepoUrl.trim()) {
+      complianceRequirements += `\n- Open Data & Code Availability: Include an explicit formal declaration confirming that raw data, reproducible analysis scripts, and computational artifacts are publicly deposited and accessible at "${dataRepoUrl.trim()}".`;
+    }
+    if (includeFigureCompliance) {
+      complianceRequirements += `\n- Display Items & Figures Compliance: Explicitly affirm that all display items comply with visual pre-flight criteria (defined error bars with explicit statistical definitions, clear sample sizes n, and complete narrative references).`;
+    }
 
     try {
       const providerConfig = await resolveActiveConfig();
@@ -161,8 +195,9 @@ LETTER COMPOSITION REQUIREMENTS:
 3. Highlight the core methodological advance and empirical findings with precise terminology drawn from the abstract.
 4. Detail exactly why the paper is of direct relevance and broad interest to "${safeTargetJournal}"'s readership.
 5. Standard mandatory editorial confirmations: confirming originality, that the work has not been published or simultaneously submitted elsewhere, adherence to ethical guidelines/approvals, and that all co-authors have approved the submission.
-6. Clear sign-off with placeholders: [Corresponding Author Name, Ph.D.], [Academic Title & Department], [Affiliated University / Research Institution], [Official Institutional Email], [ORCID ID].
-7. Tone: Rigorous, articulate, respectful, and free of superficial marketing superlatives.
+6. Open Science & Reproducibility Declarations:${complianceRequirements || "\n- Standard open data and code availability statement as applicable."}
+7. Clear sign-off with placeholders: [Corresponding Author Name, Ph.D.], [Academic Title & Department], [Affiliated University / Research Institution], [Official Institutional Email], [ORCID ID].
+8. Tone: Rigorous, articulate, respectful, and free of superficial marketing superlatives.
 
 IMPORTANT OUTPUT INSTRUCTIONS:
 - Return ONLY the clean, final, submission-ready formal cover letter as plain text.
@@ -299,6 +334,85 @@ IMPORTANT OUTPUT INSTRUCTIONS:
                 className="h-[42px] w-full px-3.5 py-2.5 rounded-xl liquid-glass-input text-xs sm:text-sm focus:outline-none"
               />
             </div>
+          </div>
+
+          {/* Open Science, Reporting Guidelines & Visual Pre-Flight Accordion */}
+          <div className="rounded-2xl border border-black/[0.08] dark:border-white/[0.08] bg-black/[0.02] dark:bg-white/[0.02] overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowIntegritySection(!showIntegritySection)}
+              className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
+                  Open Science, Reporting Guidelines &amp; Visual Compliance
+                </span>
+                {(guidelineStandard || dataRepoUrl || includeFigureCompliance) && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    Declarations Active
+                  </span>
+                )}
+              </div>
+              {showIntegritySection ? (
+                <ChevronUp className="w-4 h-4 text-neutral-500" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-neutral-500" />
+              )}
+            </button>
+
+            {showIntegritySection && (
+              <div className="p-4 pt-1 space-y-3.5 border-t border-black/[0.05] dark:border-white/[0.05]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-neutral-700 dark:text-neutral-300">
+                      Reporting Guidelines Standard
+                    </label>
+                    <select
+                      value={guidelineStandard}
+                      onChange={(e) => setGuidelineStandard(e.target.value)}
+                      className="h-[38px] w-full px-3 py-1.5 rounded-xl liquid-glass-input text-xs focus:outline-none bg-white dark:bg-[#13192B]"
+                    >
+                      <option value="">None / Discipline Default</option>
+                      <option value="consort">CONSORT 2010 (Randomized Trials)</option>
+                      <option value="prisma">PRISMA 2020 (Systematic Reviews &amp; Meta-Analyses)</option>
+                      <option value="arrive">ARRIVE 2.0 (Preclinical Animal Research)</option>
+                      <option value="ml_reproducibility">ML Reproducibility Checklist (Pineau et al.)</option>
+                      <option value="strobe">STROBE (Observational Cohort Studies)</option>
+                      <option value="survey_empirical">Quantitative Survey &amp; Empirical Standard</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-1">
+                      <GitBranch className="w-3 h-3 text-neutral-400" />
+                      <span>Data &amp; Code Repository (GitHub / Zenodo / OSF)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={dataRepoUrl}
+                      onChange={(e) => setDataRepoUrl(e.target.value)}
+                      placeholder="e.g. https://github.com/lab/repo or 10.5281/zenodo..."
+                      className="h-[38px] w-full px-3 py-1.5 rounded-xl liquid-glass-input text-xs focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={includeFigureCompliance}
+                      onChange={(e) => setIncludeFigureCompliance(e.target.checked)}
+                      className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                    />
+                    <span className="text-xs text-neutral-700 dark:text-neutral-300">
+                      Affirm Display Items &amp; Visual Integrity (explicit error bar definitions, defined sample sizes <span className="italic font-serif">n</span>, colorblind-safe palettes)
+                    </span>
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
 
           {error && (
