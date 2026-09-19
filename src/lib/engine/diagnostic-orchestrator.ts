@@ -137,6 +137,7 @@ export function synthesizeGroundedAcademicReview(
   statcheck: StatcheckReport;
   hedgingAudit: HedgingAuditReport;
   citationHealth: CitationHealthReport;
+  counterEvidenceRadar?: import("../types").CounterEvidenceProfile[];
 } {
   const isAcademic = classification?.isAcademicManuscript ?? true;
   if (!isAcademic) {
@@ -379,6 +380,7 @@ export function synthesizeGroundedAcademicReview(
     statcheck,
     hedgingAudit,
     citationHealth,
+    counterEvidenceRadar: personas.find((p) => p.persona === "domain_expert")?.counterEvidenceProfiles,
   };
 }
 
@@ -1383,6 +1385,7 @@ export async function runManuscriptDiagnostic(
     citationIntegrity,
     citationBlindspots: await blindspotsPromise,
     artifactAudit: await artifactAuditPromise,
+    counterEvidenceRadar: domainSynthesis.counterEvidenceRadar,
     reportingGuideline: domainSynthesis.reportingGuideline
       ? {
           ...domainSynthesis.reportingGuideline,

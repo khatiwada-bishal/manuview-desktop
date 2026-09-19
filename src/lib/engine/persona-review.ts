@@ -19,6 +19,7 @@ import {
   ScoringDimension,
   SectionSelector,
 } from "./types";
+import { generateCounterEvidenceProfiles } from "./prompts/controversy-radar";
 
 export { validateReviewerPersonas };
 
@@ -503,6 +504,8 @@ export function calculateDeterministicPersonas(
   const sampleCount = sampleSizes.length;
   const statCount = statMetrics.length;
 
+  const counterEvidenceProfiles = generateCounterEvidenceProfiles(manuscript, discipline);
+
   const sections = manuscript.sections || {};
   const isMethodsMissing =
     Boolean(manuscript.sectionProvenance?.methodsMissing) ||
@@ -663,8 +666,21 @@ export function calculateDeterministicPersonas(
     counterArguments: [
       "Clarify whether observed effects are structural or driven by sampling composition.",
     ],
+    counterEvidenceProfiles,
     source: "heuristic",
   };
+
+  if (counterEvidenceProfiles.length > 0) {
+    const topDispute = counterEvidenceProfiles[0];
+    domainPersona.majorCritiques.push(
+      `Scholarly Controversy / Counter-Evidence Alert: ${topDispute.reviewer2Objection}`
+    );
+    domainPersona.concreteSolutions?.push({
+      issue: `Anticipated Referee Objection on Core Claim: "${topDispute.claim.slice(0, 65)}..."`,
+      proposedFix: `Preemptively integrate alternative perspectives from ${topDispute.opposingSchoolOfThought}.`,
+      exampleRewrite: topDispute.preemptiveRebuttalSnippet,
+    });
+  }
 
   const methodsPersona: ReviewerPersonaFeedback = {
     persona: "methods_reviewer",
@@ -849,8 +865,17 @@ export function calculateDeterministicPersonas(
     counterArguments: [
       "Could reverse causality or omitted macroeconomic variables explain the observed outcome?",
     ],
+    counterEvidenceProfiles,
     source: "heuristic",
   };
+
+  if (counterEvidenceProfiles.length > 0) {
+    for (const dispute of counterEvidenceProfiles) {
+      if (!devilsAdvocatePersona.counterArguments?.includes(dispute.reviewer2Objection)) {
+        devilsAdvocatePersona.counterArguments?.push(dispute.reviewer2Objection);
+      }
+    }
+  }
 
   if (hedgingReport && hedgingReport.totalOverclaimsFound > 0) {
     if (hedgingReport.criticalCount > 0) {

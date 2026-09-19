@@ -55,6 +55,14 @@ export interface ReviewerConcreteSolution {
   exampleRewrite?: string;
 }
 
+export interface CounterEvidenceProfile {
+  claim: string;
+  disputedStatus: 'consensus' | 'emerging_debate' | 'heavily_disputed';
+  opposingSchoolOfThought?: string;
+  reviewer2Objection: string;
+  preemptiveRebuttalSnippet: string;
+}
+
 export interface ReviewerPersonaFeedback {
   persona: 'methods_reviewer' | 'domain_expert' | 'journal_editor' | 'statistician' | 'devils_advocate';
   name: string;
@@ -73,6 +81,7 @@ export interface ReviewerPersonaFeedback {
   minorComments?: string[];
   evidenceAnchors?: string[];
   counterArguments?: string[];
+  counterEvidenceProfiles?: CounterEvidenceProfile[];
   confidence?: 'high' | 'medium' | 'low';
   isAbstained?: boolean;
   abstentionReason?: string;
@@ -498,6 +507,7 @@ export interface FullReviewReport {
   citationIntegrity: CitationIntegritySummary;
   citationBlindspots?: CitationBlindspotsReport;
   artifactAudit?: ArtifactAuditReport;
+  counterEvidenceRadar?: CounterEvidenceProfile[];
   reportingGuideline?: ReportingGuidelineCheck;
   statcheck?: import('./statcheck').StatcheckReport;
   hedgingAudit?: import('./hedging-overclaims').HedgingAuditReport;

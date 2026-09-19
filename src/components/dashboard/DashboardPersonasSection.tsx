@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   ShieldAlert,
   AlertTriangle,
@@ -16,6 +16,8 @@ import {
   FlaskConical,
   CheckSquare,
   FileText,
+  ChevronDown,
+  Zap,
 } from "lucide-react";
 import type { ReviewerPersonaFeedback, FullReviewReport, EditorialTriageOutcome } from "@/lib/types";
 
@@ -54,6 +56,15 @@ export const DashboardPersonasSection: React.FC<DashboardPersonasSectionProps> =
   onSelectView,
   journalsCount,
 }) => {
+  const [expandedRebuttalIdx, setExpandedRebuttalIdx] = useState<number | null>(0);
+  const [copiedRebuttalIdx, setCopiedRebuttalIdx] = useState<number | null>(null);
+
+  const handleCopyRebuttal = (text: string, idx: number) => {
+    navigator.clipboard.writeText(text);
+    setCopiedRebuttalIdx(idx);
+    setTimeout(() => setCopiedRebuttalIdx(null), 2000);
+  };
+
   const triage = fullReport?.editorialTriage || currentReport?.editorialTriage || editorialTriage;
   const isExplicitlySentForReview =
     triage?.outcome === "sent_for_review" ||
@@ -544,6 +555,14 @@ export const DashboardPersonasSection: React.FC<DashboardPersonasSectionProps> =
                     </>
                   )}
                 </div>
+                {active.counterEvidenceProfiles && active.counterEvidenceProfiles.length > 0 && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-800 flex items-center gap-1">
+                      <Zap className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                      Counter-Evidence Radar: {active.counterEvidenceProfiles.length} Anticipated Objections
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -682,6 +701,102 @@ export const DashboardPersonasSection: React.FC<DashboardPersonasSectionProps> =
                       )}
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Anticipated Controversies & Preemptive Rebuttals (Counter-Evidence Radar) */}
+            {active.counterEvidenceProfiles && active.counterEvidenceProfiles.length > 0 && (
+              <div className="space-y-3">
+                <div className="text-xs font-bold text-[#0F172A] dark:text-white uppercase tracking-wider flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <ShieldAlert className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                    <span>Anticipated Controversies &amp; Preemptive Rebuttals:</span>
+                  </div>
+                  <span className="text-[10px] font-normal text-neutral-500 lowercase">
+                    click objection to view discussion rebuttal
+                  </span>
+                </div>
+
+                <div className="space-y-2.5">
+                  {active.counterEvidenceProfiles.map((dispute, dIdx) => {
+                    const isExpanded = expandedRebuttalIdx === dIdx;
+                    return (
+                      <div
+                        key={dIdx}
+                        className="rounded-2xl bg-white dark:bg-[#161F30] border border-[#E2E8F0] dark:border-[#334155] overflow-hidden text-xs shadow-2xs transition"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setExpandedRebuttalIdx(isExpanded ? null : dIdx)}
+                          className="w-full text-left p-4 flex items-start justify-between gap-3 hover:bg-neutral-50/60 dark:hover:bg-neutral-800/30 transition cursor-pointer"
+                        >
+                          <div className="space-y-1.5 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span
+                                className={`text-[9px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${
+                                  dispute.disputedStatus === "heavily_disputed"
+                                    ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800"
+                                    : dispute.disputedStatus === "emerging_debate"
+                                    ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
+                                    : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800"
+                                }`}
+                              >
+                                {dispute.disputedStatus.replace(/_/g, " ")}
+                              </span>
+                              <span className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400">
+                                Rival School: {dispute.opposingSchoolOfThought}
+                              </span>
+                            </div>
+                            <p className="font-bold text-[#0F172A] dark:text-white leading-relaxed">
+                              &ldquo;{dispute.reviewer2Objection}&rdquo;
+                            </p>
+                            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 italic">
+                              Challenged thesis: &ldquo;{dispute.claim}&rdquo;
+                            </p>
+                          </div>
+
+                          <div className="w-6 h-6 rounded-full bg-neutral-100 dark:bg-[#1E293B] flex items-center justify-center text-neutral-500 shrink-0 mt-1">
+                            <ChevronDown
+                              className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                                isExpanded ? "rotate-180" : ""
+                              }`}
+                            />
+                          </div>
+                        </button>
+
+                        {isExpanded && (
+                          <div className="px-4 pb-4 pt-2 border-t border-neutral-100 dark:border-neutral-800/80 bg-purple-50/30 dark:bg-purple-950/10 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">
+                                Preemptive Discussion Rebuttal (Paste into §Discussion):
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyRebuttal(dispute.preemptiveRebuttalSnippet, dIdx)}
+                                className="inline-flex items-center gap-1 text-[11px] text-purple-700 dark:text-purple-300 hover:text-purple-900 font-medium cursor-pointer transition"
+                              >
+                                {copiedRebuttalIdx === dIdx ? (
+                                  <>
+                                    <Check className="w-3 h-3 text-emerald-500" />
+                                    <span className="text-emerald-600 dark:text-emerald-400">Copied</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3 h-3" />
+                                    <span>Copy Rebuttal</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                            <p className="text-xs text-neutral-800 dark:text-neutral-200 leading-relaxed font-light italic bg-white dark:bg-[#111827] p-3.5 rounded-xl border border-purple-200/60 dark:border-purple-800/40">
+                              &ldquo;{dispute.preemptiveRebuttalSnippet}&rdquo;
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
