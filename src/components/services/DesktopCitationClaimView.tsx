@@ -12,11 +12,16 @@ import {
   BookOpen,
   ArrowRight,
   Loader2,
+  Swords,
+  Copy,
+  Check,
+  Zap,
 } from "lucide-react";
 import { fetchWorkByDOI } from "@/lib/openalex";
 import { callLLM, sanitizeAuthorText, sanitizeErrorMessage, getSavedClientConfig, resolveActiveConfig } from "@/lib/llm";
 import { cleanAndRepairJson } from "@/lib/json-repair";
-import { ProviderConfig } from "@/lib/types";
+import { ProviderConfig, CounterEvidenceProfile } from "@/lib/types";
+import { generateCounterEvidenceProfiles } from "@/lib/engine/prompts/controversy-radar";
 
 export interface DesktopCitationClaimViewProps {
   onOpenSettings?: () => void;
@@ -32,8 +37,13 @@ export function DesktopCitationClaimView({ onOpenSettings }: DesktopCitationClai
     explanation: string;
     suggestedRewrite?: string;
     details?: string;
+    isCausalAssertion?: boolean;
+    causalVerbsFound?: string[];
+    counterEvidenceProfile?: CounterEvidenceProfile;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [copiedRewrite, setCopiedRewrite] = useState(false);
+  const [copiedRebuttal, setCopiedRebuttal] = useState(false);
 
   const handleSample = () => {
     setSentence(
@@ -121,11 +131,30 @@ Return a JSON object with:
         parsed = cleanAndRepairJson(raw, parsed);
       } catch {}
 
+      // Phase 3 & Causal Overclaim Analysis
+      const CAUSAL_REGEX = /\b(causes?|causing|proves?|proving|definitively|determines?|drives?|eliminates?|guarantees?|directly leads to)\b/gi;
+      const causalMatches = Array.from(new Set((sentence.match(CAUSAL_REGEX) || []).map((w) => w.toLowerCase())));
+      const isCausalAssertion = causalMatches.length > 0;
+
+      const profiles = generateCounterEvidenceProfiles({
+        title: work.title || "Cited Source Publication",
+        abstract: `${sentence}\n\n${work.abstract || ""}`,
+        rawText: `${sentence}\n\n${work.abstract || ""}`,
+        empiricalCues: {
+          causalAssertions: isCausalAssertion ? [sentence] : [],
+          sampleSizes: [],
+          hasRandomization: /\b(randomized|rct|double-blind)\b/i.test(sentence + " " + (work.abstract || "")),
+        },
+      } as any);
+
       setResult({
         verdict: parsed.verdict || "supported",
         paperTitle: work.title,
         explanation: parsed.explanation,
         suggestedRewrite: parsed.suggestedRewrite,
+        isCausalAssertion,
+        causalVerbsFound: causalMatches,
+        counterEvidenceProfile: profiles[0],
       });
     } catch (err: any) {
       setError(sanitizeErrorMessage(err.message || "Failed to validate citation claim."));
@@ -257,6 +286,20 @@ Return a JSON object with:
               )}
             </div>
 
+            {result.isCausalAssertion && (
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <div className="font-semibold text-amber-800 dark:text-amber-300">
+                    Causal Overclaim Hazard Detected:
+                  </div>
+                  <p className="text-neutral-700 dark:text-neutral-300">
+                    Sentence contains strong causal terminology ({result.causalVerbsFound?.map((v) => `"${v}"`).join(", ")}). Peer reviewers routinely challenge unrandomized causal assertions unless backed by counterfactual controls or explicit boundary limitations.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div>
               <div className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">Cited Target Publication:</div>
               <div className="text-sm font-bold text-neutral-900 dark:text-white mt-0.5">{result.paperTitle}</div>
@@ -269,13 +312,109 @@ Return a JSON object with:
 
             {result.suggestedRewrite && (
               <div className="p-4 rounded-2xl liquid-glass-card border border-emerald-500/25 bg-emerald-500/5 space-y-2">
-                <div className="flex items-center gap-1 text-xs font-bold text-emerald-900 dark:text-emerald-300">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Calibrated Academic Rephrasing:</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1 text-xs font-bold text-emerald-900 dark:text-emerald-300">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Calibrated Academic Rephrasing:</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (result.suggestedRewrite) {
+                        navigator.clipboard.writeText(result.suggestedRewrite);
+                        setCopiedRewrite(true);
+                        setTimeout(() => setCopiedRewrite(false), 2000);
+                      }
+                    }}
+                    className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    {copiedRewrite ? (
+                      <>
+                        <Check className="w-3 h-3 text-emerald-600" />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3" />
+                        <span>Copy Rephrasing</span>
+                      </>
+                    )}
+                  </button>
                 </div>
                 <p className="text-xs text-emerald-950 dark:text-emerald-200 font-medium leading-relaxed italic">
                   &ldquo;{result.suggestedRewrite}&rdquo;
                 </p>
+              </div>
+            )}
+
+            {result.counterEvidenceProfile && (
+              <div className="p-5 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/10 dark:border-white/10 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Swords className="w-4 h-4 text-rose-500" />
+                    <span className="text-xs font-bold text-neutral-900 dark:text-white">
+                      Scholarly Dispute &amp; Reviewer 2 Objection Radar
+                    </span>
+                  </div>
+                  <span
+                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                      result.counterEvidenceProfile.disputedStatus === "heavily_disputed"
+                        ? "bg-red-500/10 text-red-700 dark:text-rose-400 border-red-500/20"
+                        : result.counterEvidenceProfile.disputedStatus === "emerging_debate"
+                        ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
+                        : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
+                    }`}
+                  >
+                    {result.counterEvidenceProfile.disputedStatus === "heavily_disputed"
+                      ? "Heavily Disputed Assertion"
+                      : result.counterEvidenceProfile.disputedStatus === "emerging_debate"
+                      ? "Emerging Scholarly Debate"
+                      : "Consensus Baseline"}
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-xl bg-rose-500/5 dark:bg-rose-950/20 border border-rose-500/15 text-xs space-y-1">
+                  <div className="font-semibold text-rose-700 dark:text-rose-400">
+                    Anticipated Adversarial Objection:
+                  </div>
+                  <p className="text-neutral-800 dark:text-rose-200 leading-relaxed font-sans">
+                    {result.counterEvidenceProfile.reviewer2Objection}
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-xl bg-blue-500/5 dark:bg-blue-950/20 border border-blue-500/15 text-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-blue-700 dark:text-blue-400">
+                      Preemptive Discussion Rebuttal (Defensive Citation Nuance):
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (result.counterEvidenceProfile?.preemptiveRebuttalSnippet) {
+                          navigator.clipboard.writeText(result.counterEvidenceProfile.preemptiveRebuttalSnippet);
+                          setCopiedRebuttal(true);
+                          setTimeout(() => setCopiedRebuttal(false), 2000);
+                        }
+                      }}
+                      className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      {copiedRebuttal ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-600" />
+                          <span>Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>Copy Snippet</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-neutral-800 dark:text-neutral-300 leading-relaxed font-sans">
+                    {result.counterEvidenceProfile.preemptiveRebuttalSnippet}
+                  </p>
+                </div>
               </div>
             )}
           </div>
