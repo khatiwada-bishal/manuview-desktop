@@ -2,6 +2,7 @@ import JSZip from "jszip";
 import * as mammoth from "mammoth";
 import { ParsedManuscript, DocumentClassification, DocumentCategory, SectionProvenance } from "./types";
 import { extractReferencesFromText } from "./utils";
+import { extractRepositoryLinks } from "./artifact-auditor";
 
 /**
  * Robust DOCX text extraction: uses mammoth first, then JSZip DOMParser / XML fallback.
@@ -903,6 +904,9 @@ export function parseManuscriptText(inputRawText: string, filename?: string): Pa
   // 9. Mandatory Declarations (Ethics, Data, COI, Author Contributions)
   const mandatoryDeclarations = extractMandatoryDeclarations(rawText);
 
+  // 10. Extracted Artifact Links (GitHub, Zenodo, OSF, Figshare, HuggingFace)
+  const extractedArtifactLinks = extractRepositoryLinks(rawText);
+
   return {
     title,
     abstract,
@@ -913,6 +917,7 @@ export function parseManuscriptText(inputRawText: string, filename?: string): Pa
     rawText,
     references,
     classification,
+    extractedArtifactLinks,
     empiricalCues,
     injectionSuspicionFlags,
     mandatoryDeclarations,

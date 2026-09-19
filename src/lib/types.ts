@@ -140,6 +140,37 @@ export interface CitationBlindspotsReport {
   detectedGapsCount: number;
 }
 
+export interface ExtractedArtifactLink {
+  url: string;
+  platform: 'github' | 'zenodo' | 'osf' | 'figshare' | 'huggingface' | 'unknown';
+  ownerOrId?: string;
+  repo?: string;
+  contextSnippet?: string;
+}
+
+export interface RepositoryAuditResult {
+  url: string;
+  platform: 'github' | 'zenodo' | 'osf' | 'figshare' | 'huggingface' | 'unknown';
+  isAccessible: boolean;
+  hasLicense: boolean;
+  licenseType?: string;
+  hasEnvironmentSpecs: boolean;
+  detectedSpecs: string[];
+  hasReadme: boolean;
+  hasDeterministicSeeds?: boolean;
+  deskRejectionRisk: 'none' | 'low' | 'high';
+  riskReasons: string[];
+  suggestedFixes: string[];
+}
+
+export interface ArtifactAuditReport {
+  detectedLinks: ExtractedArtifactLink[];
+  repoAudits: RepositoryAuditResult[];
+  hasReasonableRequestWarning?: boolean;
+  overallReproducibilityRisk: 'none' | 'low' | 'high';
+  summary: string;
+}
+
 export interface JournalRecommendation {
   tier: 'Reach' | 'Realistic' | 'Fallback';
   journalName: string;
@@ -220,6 +251,7 @@ export interface ParsedManuscript {
   rawText: string;
   references: string[];
   classification?: DocumentClassification;
+  extractedArtifactLinks?: ExtractedArtifactLink[];
   empiricalCues?: {
     sampleSizes?: string[];
     statisticalMetrics?: string[];
@@ -465,6 +497,7 @@ export interface FullReviewReport {
   journalRecommendations: JournalRecommendation[];
   citationIntegrity: CitationIntegritySummary;
   citationBlindspots?: CitationBlindspotsReport;
+  artifactAudit?: ArtifactAuditReport;
   reportingGuideline?: ReportingGuidelineCheck;
   statcheck?: import('./statcheck').StatcheckReport;
   hedgingAudit?: import('./hedging-overclaims').HedgingAuditReport;

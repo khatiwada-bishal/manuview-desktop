@@ -43,6 +43,7 @@ import {
 } from "../types";
 import { isSubstantiveReviewerObservation, deduplicateReferences } from "../utils";
 import { generateCitationBlindspotsReport } from "../citation-blindspots";
+import { auditManuscriptArtifacts } from "../artifact-auditor";
 import {
   batchVerifyReferences,
   computeCitationIntegrity,
@@ -493,6 +494,12 @@ export async function runManuscriptDiagnostic(
   // Background citation blindspot discovery via OpenAlex co-citation network
   const blindspotsPromise = generateCitationBlindspotsReport(verifiedRefs).catch((err) => {
     console.warn("Citation blindspots discovery paused or unavailable:", err);
+    return undefined;
+  });
+
+  // Background code and data artifact reproducibility audit
+  const artifactAuditPromise = auditManuscriptArtifacts(manuscript.rawText).catch((err) => {
+    console.warn("Artifact reproducibility audit paused or unavailable:", err);
     return undefined;
   });
 
@@ -1375,6 +1382,7 @@ export async function runManuscriptDiagnostic(
     journalRecommendations: finalRecommendations,
     citationIntegrity,
     citationBlindspots: await blindspotsPromise,
+    artifactAudit: await artifactAuditPromise,
     reportingGuideline: domainSynthesis.reportingGuideline
       ? {
           ...domainSynthesis.reportingGuideline,

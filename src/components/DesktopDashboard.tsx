@@ -52,6 +52,7 @@ import { DashboardIssuesSection } from "./dashboard/DashboardIssuesSection";
 import { DashboardPersonasSection } from "./dashboard/DashboardPersonasSection";
 import { DashboardJournalsSection } from "./dashboard/DashboardJournalsSection";
 import { DashboardCitationsSection } from "./dashboard/DashboardCitationsSection";
+import { ArtifactAuditCard } from "./dashboard/ArtifactAuditCard";
 import {
   FullReviewReport,
   ReviewerPersonaFeedback,
@@ -267,6 +268,7 @@ export function DesktopDashboard({
     statcheck: false,
     hedgingAudit: false,
     citationHealth: false,
+    artifactAudit: false,
   });
 
   const toggleOverviewCard = (cardKey: string) => {
@@ -950,6 +952,7 @@ export function DesktopDashboard({
                       statcheck: !anyOpen,
                       hedgingAudit: !anyOpen,
                       citationHealth: !anyOpen,
+                      artifactAudit: !anyOpen,
                     });
                   }}
                   className="text-xs font-semibold text-[#2563EB] dark:text-blue-400 hover:underline cursor-pointer"
@@ -1547,6 +1550,15 @@ export function DesktopDashboard({
                   </div>
                 )}
               </div>
+            )}
+
+            {/* CARD 10: Code, Data & Artifact Reproducibility Auditor */}
+            {!isNonAcademic && fullReport?.artifactAudit && (
+              <ArtifactAuditCard
+                artifactAudit={fullReport.artifactAudit}
+                isExpanded={expandedOverviewCards.artifactAudit}
+                onToggle={() => toggleOverviewCard("artifactAudit")}
+              />
             )}
           </div>
         )}

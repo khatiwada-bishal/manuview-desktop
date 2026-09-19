@@ -6,6 +6,7 @@ import type {
   ReportingGuidelineCheck,
   TargetJournalEvaluation,
 } from "../types";
+import { detectReasonableRequestFormulation } from "../artifact-auditor";
 
 export function buildDeterministicComplianceAudit(
   manuscript: ParsedManuscript,
@@ -79,6 +80,25 @@ export function buildDeterministicComplianceAudit(
       ? `Quantitative model metrics detected (${statMetrics.slice(0, 3).join(", ")}).`
       : "No standard statistical indicators (e.g. p-values, CI, R², AUC, F-statistic) detected in results text.",
     actionableRecommendation: hasStats ? undefined : "Report effect sizes, exact p-values, and confidence intervals rather than relying solely on descriptive claims.",
+  });
+
+  const artifactLinks = manuscript.extractedArtifactLinks || [];
+  const hasArtifactLinks = artifactLinks.length > 0;
+  const hasReasonableRequest = detectReasonableRequestFormulation(manuscript.rawText);
+
+  items.push({
+    id: "audit-data-code-availability",
+    category: "Methodology",
+    name: "Open Data, Code & Artifact Availability",
+    status: hasArtifactLinks ? "pass" : hasReasonableRequest ? "warn" : "warn",
+    detail: hasArtifactLinks
+      ? `${artifactLinks.length} public artifact repository link(s) detected (${artifactLinks.map((l) => l.platform).join(", ")}).`
+      : hasReasonableRequest
+      ? "Manuscript relies on 'data/code available upon request'. High-impact journals (Nature, PLOS, IEEE) actively disfavor or reject this formulation."
+      : "No public code or data repository links (GitHub, Zenodo, OSF, Figshare) identified in manuscript text.",
+    actionableRecommendation: hasArtifactLinks
+      ? undefined
+      : "Deposit primary data, analysis scripts, or model weights in an open repository (Zenodo, OSF, or GitHub) with a persistent identifier.",
   });
 
   if (reportingGuideline) {
