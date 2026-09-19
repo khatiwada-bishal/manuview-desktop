@@ -50,6 +50,7 @@ export function DesktopSearchModal({
     { id: "tool-reference-checker", title: "Reference Integrity Audit (CrossRef & Retractions)", cat: "Service" },
     { id: "tool-citation-claim", title: "Citation Claim Validator", cat: "Service" },
     { id: "tool-prisma", title: "PRISMA 2020 Flow Diagram Generator", cat: "Service" },
+    { id: "tool-reporting-checklist", title: "Modular Domain Reporting Guidelines Auditor (CONSORT, PRISMA, ARRIVE, STROBE, ML)", cat: "Service" },
     { id: "tool-cover-letter", title: "Journal Cover Letter Generator", cat: "Service" },
     { id: "tool-response-builder", title: "Review Response Rebuttal Matrix", cat: "Service" },
   ];

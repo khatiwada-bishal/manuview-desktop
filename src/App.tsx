@@ -16,6 +16,7 @@ import { DesktopJournalFitView } from "@/components/services/DesktopJournalFitVi
 import { DesktopReferenceView } from "@/components/services/DesktopReferenceView";
 import { DesktopCitationClaimView } from "@/components/services/DesktopCitationClaimView";
 import { DesktopPrismaView } from "@/components/services/DesktopPrismaView";
+import { DesktopReportingChecklistView } from "@/components/services/DesktopReportingChecklistView";
 import { DesktopCoverLetterView } from "@/components/services/DesktopCoverLetterView";
 import { DesktopResponseBuilderView } from "@/components/services/DesktopResponseBuilderView";
 import { DesktopEmptyDashboard } from "@/components/DesktopEmptyDashboard";
@@ -684,6 +685,9 @@ function AppWorkspace({
     }
     if (activeTabId === "tool-prisma") {
       return <DesktopPrismaView />;
+    }
+    if (activeTabId === "tool-reporting-checklist") {
+      return <DesktopReportingChecklistView />;
     }
     if (activeTabId === "tool-cover-letter") {
       return <DesktopCoverLetterView onOpenSettings={() => setIsSettingsOpen(true)} />;

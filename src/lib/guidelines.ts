@@ -896,3 +896,11 @@ export function auditReportingGuidelines(
     missingOrPartialItems,
   };
 }
+
+export {
+  executeModularGuidelineAudit,
+  getAllGuidelines,
+  getGuidelineById,
+  GUIDELINE_REGISTRY,
+} from "./guidelines/index";
+
