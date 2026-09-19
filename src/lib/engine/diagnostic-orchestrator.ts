@@ -44,6 +44,7 @@ import {
 import { isSubstantiveReviewerObservation, deduplicateReferences } from "../utils";
 import { generateCitationBlindspotsReport } from "../citation-blindspots";
 import { auditManuscriptArtifacts } from "../artifact-auditor";
+import { auditManuscriptDisplayItems } from "../figure-auditor";
 import {
   batchVerifyReferences,
   computeCitationIntegrity,
@@ -138,6 +139,7 @@ export function synthesizeGroundedAcademicReview(
   hedgingAudit: HedgingAuditReport;
   citationHealth: CitationHealthReport;
   counterEvidenceRadar?: import("../types").CounterEvidenceProfile[];
+  displayItemAudit?: import("../types").DisplayItemAuditReport;
 } {
   const isAcademic = classification?.isAcademicManuscript ?? true;
   if (!isAcademic) {
@@ -368,6 +370,8 @@ export function synthesizeGroundedAcademicReview(
 
   const summary = `This manuscript presents a structured scholarly investigation within ${discipline}, comprising approximately ${(manuscript.wordCount || 3000).toLocaleString()} words and ${citationClause}.${thesisClause} ${empiricalClause} ${targetClause} Editorial priorities require moderating observational assertions into disciplined inferential bounds, validating finite-sample statistical power, and verifying reference integrity prior to formal peer review.`;
 
+  const displayItemAudit = auditManuscriptDisplayItems(manuscript.rawText);
+
   return {
     overallScore,
     summary,
@@ -381,6 +385,7 @@ export function synthesizeGroundedAcademicReview(
     hedgingAudit,
     citationHealth,
     counterEvidenceRadar: personas.find((p) => p.persona === "domain_expert")?.counterEvidenceProfiles,
+    displayItemAudit,
   };
 }
 
@@ -542,6 +547,7 @@ export async function runManuscriptDiagnostic(
       journalRecommendations: [],
       citationIntegrity,
       reportingGuideline: undefined,
+      displayItemAudit: auditManuscriptDisplayItems(manuscript.rawText),
       executionMode: "llm_synthesized",
       reviewStatus: "complete",
     };
@@ -763,6 +769,7 @@ export async function runManuscriptDiagnostic(
       journalRecommendations: domainSynthesis.journalRecommendations,
       citationIntegrity,
       reportingGuideline: domainSynthesis.reportingGuideline,
+      displayItemAudit: domainSynthesis.displayItemAudit,
       statcheck: domainSynthesis.statcheck,
       hedgingAudit: domainSynthesis.hedgingAudit,
       citationHealth: domainSynthesis.citationHealth,
@@ -1386,6 +1393,7 @@ export async function runManuscriptDiagnostic(
     citationBlindspots: await blindspotsPromise,
     artifactAudit: await artifactAuditPromise,
     counterEvidenceRadar: domainSynthesis.counterEvidenceRadar,
+    displayItemAudit: domainSynthesis.displayItemAudit,
     reportingGuideline: domainSynthesis.reportingGuideline
       ? {
           ...domainSynthesis.reportingGuideline,

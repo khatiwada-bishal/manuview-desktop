@@ -180,6 +180,43 @@ export interface ArtifactAuditReport {
   summary: string;
 }
 
+export interface FigureConsistencyIssue {
+  type: 'orphan' | 'phantom' | 'non_sequential';
+  itemType: 'figure' | 'table';
+  number: number;
+  message: string;
+  severity: 'warning' | 'error';
+}
+
+export interface StatisticalLegendCheck {
+  itemType: 'figure' | 'table';
+  number: number;
+  captionSnippet: string;
+  hasErrorBarsMentioned: boolean;
+  hasErrorBarDefinition: boolean;
+  hasSampleSizeMentioned: boolean;
+  hasPValueThresholds: boolean;
+  issues: string[];
+}
+
+export interface DisplayItemAuditReport {
+  figuresInText: number[];
+  tablesInText: number[];
+  figureCaptions: number[];
+  tableCaptions: number[];
+  consistencyIssues: FigureConsistencyIssue[];
+  statisticalLegendChecks: StatisticalLegendCheck[];
+  summary: {
+    totalFigures: number;
+    totalTables: number;
+    isSequential: boolean;
+    orphanCount: number;
+    phantomCount: number;
+    legendDeficiencyCount: number;
+  };
+  complianceStatus: 'pass' | 'warning' | 'needs_attention';
+}
+
 export interface JournalRecommendation {
   tier: 'Reach' | 'Realistic' | 'Fallback';
   journalName: string;
@@ -508,6 +545,7 @@ export interface FullReviewReport {
   citationBlindspots?: CitationBlindspotsReport;
   artifactAudit?: ArtifactAuditReport;
   counterEvidenceRadar?: CounterEvidenceProfile[];
+  displayItemAudit?: DisplayItemAuditReport;
   reportingGuideline?: ReportingGuidelineCheck;
   statcheck?: import('./statcheck').StatcheckReport;
   hedgingAudit?: import('./hedging-overclaims').HedgingAuditReport;

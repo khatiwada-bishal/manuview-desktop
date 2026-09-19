@@ -53,6 +53,7 @@ import { DashboardPersonasSection } from "./dashboard/DashboardPersonasSection";
 import { DashboardJournalsSection } from "./dashboard/DashboardJournalsSection";
 import { DashboardCitationsSection } from "./dashboard/DashboardCitationsSection";
 import { ArtifactAuditCard } from "./dashboard/ArtifactAuditCard";
+import { FigureAuditCard } from "./dashboard/FigureAuditCard";
 import {
   FullReviewReport,
   ReviewerPersonaFeedback,
@@ -269,6 +270,7 @@ export function DesktopDashboard({
     hedgingAudit: false,
     citationHealth: false,
     artifactAudit: false,
+    figureAudit: false,
   });
 
   const toggleOverviewCard = (cardKey: string) => {
@@ -1558,6 +1560,15 @@ export function DesktopDashboard({
                 artifactAudit={fullReport.artifactAudit}
                 isExpanded={expandedOverviewCards.artifactAudit}
                 onToggle={() => toggleOverviewCard("artifactAudit")}
+              />
+            )}
+
+            {/* CARD 11: Display Items, Figures & Visual Pre-Flight Auditor */}
+            {!isNonAcademic && fullReport?.displayItemAudit && (
+              <FigureAuditCard
+                displayItemAudit={fullReport.displayItemAudit}
+                isExpanded={expandedOverviewCards.figureAudit}
+                onToggle={() => toggleOverviewCard("figureAudit")}
               />
             )}
           </div>
