@@ -16,10 +16,12 @@ import {
   Search,
   Loader2,
 } from "lucide-react";
-import { ReferenceVerification, FullReviewReport, CitationIntegritySummary } from "@/lib/types";
+import { ReferenceVerification, FullReviewReport, CitationIntegritySummary, CitationBlindspotsReport } from "@/lib/types";
 import { batchVerifyReferences } from "@/lib/crossref";
 import { extractReferencesFromText, deduplicateReferences, detectReferenceExtractionQuality } from "@/lib/utils";
 import { computeCitationIntegrity } from "@/lib/engine/citation-audit";
+import { generateCitationBlindspotsReport } from "@/lib/citation-blindspots";
+import { CitationBlindspotsSection } from "@/components/dashboard/CitationBlindspotsSection";
 import { exportBibTeX } from "@/lib/export-generator";
 import { ReferenceStatusDonut } from "@/components/charts/ReferenceStatusDonut";
 import { useCountUp } from "@/lib/motion";
@@ -45,6 +47,7 @@ export function DesktopReferenceView() {
     duplicateCount: number;
     rawCount: number;
     extractionWarnings: string[];
+    blindspots?: CitationBlindspotsReport;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -92,12 +95,19 @@ export function DesktopReferenceView() {
       // C1: Compute identical unified citation integrity summary
       const summary = computeCitationIntegrity(verified, uniqueRefs.length);
 
+      // Phase 1 Co-citation blindspots discovery
+      const blindspots = await generateCitationBlindspotsReport(verified).catch((err) => {
+        console.warn("Citation blindspots discovery paused or unavailable:", err);
+        return undefined;
+      });
+
       setResults({
         summary,
         verified,
         duplicateCount: dedupeResult.duplicateCount,
         rawCount: refList.length,
         extractionWarnings: extractionQuality.warnings,
+        blindspots,
       });
     } catch (err: any) {
       setError(err.message || "Failed to audit references.");
@@ -517,6 +527,13 @@ export function DesktopReferenceView() {
                 </table>
               </div>
             </div>
+
+            {/* Citation Blindspots & Missing Seminal Literature */}
+            {results.blindspots && (
+              <div className="pt-2">
+                <CitationBlindspotsSection blindspots={results.blindspots} />
+              </div>
+            )}
           </div>
         )}
       </div>
