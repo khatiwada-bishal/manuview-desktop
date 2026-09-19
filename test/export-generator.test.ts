@@ -223,3 +223,76 @@ test("Export: generateBriefReportPdf produces valid PDF binary buffer", () => {
   const header = String.fromCharCode(...bytes.slice(0, 5));
   assert.equal(header, "%PDF-", "Binary buffer must begin with valid PDF signature");
 });
+
+test("Export: Cleared manuscript with priority A scope notes exports score and does NOT show desk reject", () => {
+  const clearedReport: FullReviewReport = {
+    ...mockFullReport,
+    id: "cleared-ewaste-1",
+    overallScore: 64,
+    isEligibleForReview: true,
+    isDeskReject: false,
+    editorialTriage: {
+      outcome: "sent_for_review",
+      sentToPeerReview: true,
+      summary: "Cleared editorial triage and sent for full external peer review.",
+    },
+    priorityIssues: [
+      {
+        id: "prio-scope-1",
+        priority: "A",
+        category: "Scope/Fit",
+        title: "Target Scope Framing Hazard",
+        description: "Strengthen scope framing to minimize desk reject hazards at submission.",
+        location: "Introduction",
+        actionableFix: "Align contributions with journal scope narrative.",
+      },
+    ],
+  };
+
+  const html = generateFullReportHtml(clearedReport);
+  assert.ok(html.includes("64"), "HTML must display acceptance score 64");
+  assert.ok(!html.includes("DESK REJECT EDITORIAL SCOPE SCREENING"), "HTML must NOT display desk reject banner");
+  assert.ok(!html.includes("CRITICAL SCOPE MISMATCH WARNING"), "HTML must NOT display critical scope mismatch warning");
+
+  const word = generateFullReportWord(clearedReport);
+  assert.ok(word.includes("Overall Potential Score: 64 / 100"), "Word must display 64 / 100 score banner");
+  assert.ok(!word.includes("Status: Editorial Desk Reject"), "Word must NOT display editorial desk reject status");
+
+  const pdfBytes = generateFullReportPdf(clearedReport);
+  assert.ok(pdfBytes instanceof Uint8Array);
+  assert.ok(pdfBytes.byteLength > 1000);
+});
+
+test("Export: Genuine desk reject manuscript accurately exports desk reject banners", () => {
+  const rejectedReport: FullReviewReport = {
+    ...mockFullReport,
+    id: "rejected-paper-1",
+    overallScore: undefined,
+    isEligibleForReview: false,
+    isDeskReject: true,
+    ineligibilityReason: "scope_mismatch",
+    editorialTriage: {
+      outcome: "desk_reject",
+      sentToPeerReview: false,
+      summary: "Immediate desk reject due to disciplinary misalignment.",
+    },
+    targetJournalEvaluation: {
+      name: "Nature Methods",
+      isDisciplinaryMismatch: true,
+      fitScore: 18,
+      mismatchWarning: "Research domain is completely out of scope.",
+    },
+  };
+
+  const html = generateFullReportHtml(rejectedReport);
+  assert.ok(html.includes("DESK REJECT"), "HTML must display DESK REJECT");
+  assert.ok(html.includes("CRITICAL SCOPE MISMATCH WARNING"), "HTML must display scope mismatch warning");
+
+  const word = generateFullReportWord(rejectedReport);
+  assert.ok(word.includes("Status: Editorial Desk Reject"), "Word must display Editorial Desk Reject status");
+
+  const pdfBytes = generateFullReportPdf(rejectedReport);
+  assert.ok(pdfBytes instanceof Uint8Array);
+  assert.ok(pdfBytes.byteLength > 1000);
+});
+

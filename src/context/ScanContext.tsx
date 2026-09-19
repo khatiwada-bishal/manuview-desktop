@@ -137,10 +137,16 @@ export function ScanProvider({
         );
 
         // 4. Calculate final flags
+        const isExplicitlySent =
+          fullReport.editorialTriage?.outcome === "sent_for_review" ||
+          fullReport.editorialTriage?.sentToPeerReview === true ||
+          Boolean(fullReport.editorialTriage?.summary?.includes("Cleared editorial triage"));
         const isDeskReject =
-          fullReport.editorialTriage?.outcome === "desk_reject" ||
+          !isExplicitlySent &&
+          (fullReport.editorialTriage?.outcome === "desk_reject" ||
           fullReport.ineligibilityReason === "scope_mismatch" ||
-          fullReport.targetJournalEvaluation?.isDisciplinaryMismatch === true;
+          fullReport.targetJournalEvaluation?.isDisciplinaryMismatch === true);
+        fullReport.isDeskReject = isDeskReject;
         const isEligible = !isDeskReject && fullReport.isEligibleForReview !== false;
         const isPublished =
           !isDeskReject &&

@@ -98,14 +98,26 @@ export function generateFullReportPdf(r: FullReviewReport): Uint8Array {
 
   const title = r.title || "Untitled Manuscript";
   const targetJournal = r.targetJournal || "General Academic Journal";
-  const isScopeMismatch = Boolean(
-    r.targetJournalEvaluation?.isDisciplinaryMismatch ||
-    r.priorityIssues?.some((i) => i.priority === "A" && (i.category === "Scope/Fit" || /scope|out-of-scope|desk reject/i.test(`${i.title} ${i.description}`)))
+  const isExplicitlySentForReview = Boolean(
+    r.isDeskReject === false ||
+    r.editorialTriage?.outcome === "sent_for_review" ||
+    r.editorialTriage?.sentToPeerReview === true ||
+    (r.isEligibleForReview === true && typeof r.overallScore === "number" && r.overallScore > 0) ||
+    r.editorialTriage?.summary?.includes("Cleared editorial triage")
   );
   const isDeskReject = Boolean(
-    r.editorialTriage?.outcome === "desk_reject" ||
-    r.ineligibilityReason === "scope_mismatch" ||
-    isScopeMismatch
+    !isExplicitlySentForReview && (
+      r.isDeskReject === true ||
+      r.editorialTriage?.outcome === "desk_reject" ||
+      r.ineligibilityReason === "scope_mismatch" ||
+      r.targetJournalEvaluation?.isDisciplinaryMismatch === true
+    )
+  );
+  const isScopeMismatch = Boolean(
+    !isExplicitlySentForReview && (
+      isDeskReject ||
+      r.targetJournalEvaluation?.isDisciplinaryMismatch === true
+    )
   );
   const hasNumericScore = !isDeskReject && typeof r.overallScore === "number";
   const scoreLabel = isDeskReject
@@ -886,19 +898,31 @@ export async function exportBibTeX(report: ReviewReport): Promise<{ success: boo
 export function generateFullReportHtml(r: FullReviewReport): string {
   const title = escapeHtml(r.title);
   const targetJournal = escapeHtml(r.targetJournal || "General High Impact Journal");
-  const isScopeMismatch = Boolean(
-    r.targetJournalEvaluation?.isDisciplinaryMismatch ||
-    r.priorityIssues?.some((i) => i.priority === "A" && (i.category === "Scope/Fit" || /scope|out-of-scope|desk reject/i.test(`${i.title} ${i.description}`)))
+  const isExplicitlySentForReview = Boolean(
+    r.isDeskReject === false ||
+    r.editorialTriage?.outcome === "sent_for_review" ||
+    r.editorialTriage?.sentToPeerReview === true ||
+    (r.isEligibleForReview === true && typeof r.overallScore === "number" && r.overallScore > 0) ||
+    r.editorialTriage?.summary?.includes("Cleared editorial triage")
   );
-  const mismatchWarning = r.targetJournalEvaluation?.mismatchWarning ||
+  const isDeskReject = Boolean(
+    !isExplicitlySentForReview && (
+      r.isDeskReject === true ||
+      r.editorialTriage?.outcome === "desk_reject" ||
+      r.ineligibilityReason === "scope_mismatch" ||
+      r.targetJournalEvaluation?.isDisciplinaryMismatch === true
+    )
+  );
+  const isScopeMismatch = Boolean(
+    !isExplicitlySentForReview && (
+      isDeskReject ||
+      r.targetJournalEvaluation?.isDisciplinaryMismatch === true
+    )
+  );
+  const mismatchWarning = (isScopeMismatch && r.targetJournalEvaluation?.mismatchWarning) ||
     (isScopeMismatch
       ? `Manuscript research domain falls outside the published aims and scope of ${targetJournal}. Submitting out-of-scope manuscripts is the primary cause of immediate editorial desk rejection without external peer review.`
       : "");
-  const isDeskReject = Boolean(
-    r.editorialTriage?.outcome === "desk_reject" ||
-    r.ineligibilityReason === "scope_mismatch" ||
-    isScopeMismatch
-  );
   const hasNumericScore = !isDeskReject && typeof r.overallScore === "number";
   const scoreLabel = isDeskReject
     ? "DESK REJECT"
@@ -1428,17 +1452,17 @@ export function generateFullReportHtml(r: FullReviewReport): string {
     <!-- Section 5: Journals -->
     <div id="tab-journals" class="tab-content">
       ${r.targetJournalEvaluation ? `
-      <div class="card" style="border-left: 5px solid ${r.targetJournalEvaluation.isDisciplinaryMismatch ? "#DC2626" : "#2563EB"}; margin-bottom: 20px;">
+      <div class="card" style="border-left: 5px solid ${isScopeMismatch ? "#DC2626" : "#2563EB"}; margin-bottom: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
           <strong style="font-size: 16px;">Target Submission Venue: ${escapeHtml(r.targetJournalEvaluation.name)}</strong>
-          <span style="font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 9999px; ${r.targetJournalEvaluation.isDisciplinaryMismatch ? "background: #FEE2E2; color: #991B1B;" : "background: #DCFCE7; color: #166534;"}">
-            ${r.targetJournalEvaluation.isDisciplinaryMismatch ? "Critical Scope Mismatch" : "In-Scope Target"} (Fit: ${r.targetJournalEvaluation.fitScore}%)
+          <span style="font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 9999px; ${isScopeMismatch ? "background: #FEE2E2; color: #991B1B;" : "background: #DCFCE7; color: #166534;"}">
+            ${isScopeMismatch ? "Critical Scope Mismatch" : "In-Scope Target"} (Fit: ${r.targetJournalEvaluation.fitScore}%)
           </span>
         </div>
         <div style="font-size: 13px; color: #64748B; margin-bottom: 8px;">
           Target Venue Field: <strong>${escapeHtml(r.targetJournalEvaluation.journalDiscipline || "Unknown")}</strong> • Manuscript Field: <strong>${escapeHtml(r.targetJournalEvaluation.manuscriptDiscipline || "Unknown")}</strong> • Impact Factor: <strong>${r.targetJournalEvaluation.impactFactor || "N/A"}</strong>
         </div>
-        ${r.targetJournalEvaluation.mismatchWarning ? `
+        ${(isScopeMismatch && r.targetJournalEvaluation.mismatchWarning) ? `
         <div style="background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 6px; padding: 10px 14px; font-size: 13px; color: #991B1B;">
           <strong>⚠️ Mismatch Advisory:</strong> ${escapeHtml(r.targetJournalEvaluation.mismatchWarning)}
         </div>
@@ -1575,19 +1599,31 @@ export function generateBriefReportHtml(r: BriefJournalFitReport): string {
 export function generateFullReportWord(r: FullReviewReport): string {
   const title = escapeHtml(r.title);
   const targetJournal = escapeHtml(r.targetJournal || "General High Impact Journal");
-  const isScopeMismatch = Boolean(
-    r.targetJournalEvaluation?.isDisciplinaryMismatch ||
-    r.priorityIssues?.some((i) => i.priority === "A" && (i.category === "Scope/Fit" || /scope|out-of-scope|desk reject/i.test(`${i.title} ${i.description}`)))
+  const isExplicitlySentForReview = Boolean(
+    r.isDeskReject === false ||
+    r.editorialTriage?.outcome === "sent_for_review" ||
+    r.editorialTriage?.sentToPeerReview === true ||
+    (r.isEligibleForReview === true && typeof r.overallScore === "number" && r.overallScore > 0) ||
+    r.editorialTriage?.summary?.includes("Cleared editorial triage")
   );
-  const mismatchWarning = r.targetJournalEvaluation?.mismatchWarning ||
+  const isDeskReject = Boolean(
+    !isExplicitlySentForReview && (
+      r.isDeskReject === true ||
+      r.editorialTriage?.outcome === "desk_reject" ||
+      r.ineligibilityReason === "scope_mismatch" ||
+      r.targetJournalEvaluation?.isDisciplinaryMismatch === true
+    )
+  );
+  const isScopeMismatch = Boolean(
+    !isExplicitlySentForReview && (
+      isDeskReject ||
+      r.targetJournalEvaluation?.isDisciplinaryMismatch === true
+    )
+  );
+  const mismatchWarning = (isScopeMismatch && r.targetJournalEvaluation?.mismatchWarning) ||
     (isScopeMismatch
       ? `Manuscript research domain falls outside the published aims and scope of ${targetJournal}. Submitting out-of-scope manuscripts is the primary cause of immediate editorial desk rejection without external peer review.`
       : "");
-  const isDeskReject = Boolean(
-    r.editorialTriage?.outcome === "desk_reject" ||
-    r.ineligibilityReason === "scope_mismatch" ||
-    isScopeMismatch
-  );
   const hasNumericScore = !isDeskReject && typeof r.overallScore === "number";
   const scoreLabel = isDeskReject
     ? "Status: Editorial Desk Reject (Scope Mismatch - Peer Review Bypassed)"
@@ -1907,15 +1943,15 @@ export function generateFullReportWord(r: FullReviewReport): string {
   <!-- Section 5: Target Journal Recommendations -->
   <h2>5. Target Journal Recommendations & Fit Analysis</h2>
   ${r.targetJournalEvaluation ? `
-    <div class="card-box" style="border-left: 4pt solid ${r.targetJournalEvaluation.isDisciplinaryMismatch ? "#DC2626" : "#2563EB"}; margin-bottom: 12pt;">
+    <div class="card-box" style="border-left: 4pt solid ${isScopeMismatch ? "#DC2626" : "#2563EB"}; margin-bottom: 12pt;">
       <strong>Target Submission Venue:</strong> ${escapeHtml(r.targetJournalEvaluation.name)}<br>
-      <span class="badge-pill ${r.targetJournalEvaluation.isDisciplinaryMismatch ? "badge-a" : "badge-c"}">
-        ${r.targetJournalEvaluation.isDisciplinaryMismatch ? "Critical Scope Mismatch" : "In-Scope Target"} (Fit: ${r.targetJournalEvaluation.fitScore}%)
+      <span class="badge-pill ${isScopeMismatch ? "badge-a" : "badge-c"}">
+        ${isScopeMismatch ? "Critical Scope Mismatch" : "In-Scope Target"} (Fit: ${r.targetJournalEvaluation.fitScore}%)
       </span>
       <p style="font-size: 9.5pt; color: #475569; margin: 4pt 0 0 0;">
         Field: ${escapeHtml(r.targetJournalEvaluation.journalDiscipline || "Unknown")} • Impact Factor: ${r.targetJournalEvaluation.impactFactor || "N/A"}
       </p>
-      ${r.targetJournalEvaluation.mismatchWarning ? `
+      ${(isScopeMismatch && r.targetJournalEvaluation.mismatchWarning) ? `
         <div style="color: #991B1B; font-size: 9.5pt; margin-top: 4pt;">
           <strong>Warning:</strong> ${escapeHtml(r.targetJournalEvaluation.mismatchWarning)}
         </div>

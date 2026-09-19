@@ -434,6 +434,7 @@ export interface FullReviewReport {
   panelConsensus?: PanelConsensus;
   complianceAudit?: DeterministicComplianceAudit;
   isEligibleForReview?: boolean; // false if already published OR non-academic manuscript OR scope mismatch desk reject
+  isDeskReject?: boolean;
   ineligibilityReason?: 'already_published' | 'non_academic_document' | 'scope_mismatch';
   publishedDetails?: PublishedArticleDetails;
   summary: string;
