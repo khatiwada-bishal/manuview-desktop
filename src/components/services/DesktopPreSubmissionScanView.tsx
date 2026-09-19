@@ -344,22 +344,44 @@ export function DesktopPreSubmissionScanView({
   };
 
   // Unified 1-click execution: Run Pre-Submission AI Review & 5-Persona Simulation
-  const handleRunReview = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  const handleRunReview = async (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
 
     if (isScanning || isInitiating) return;
 
     if (!targetJournal.trim()) {
       setTargetJournalError(true);
-      setError("Target Journal is required for calibrated rubric evaluation.");
+      setError("Target Journal is required for calibrated rubric evaluation. Please enter or select a target journal above.");
+      const journalInput = document.querySelector('input[placeholder*="journal"]') as HTMLElement;
+      if (journalInput) {
+        journalInput.scrollIntoView({ behavior: "smooth", block: "center" });
+        journalInput.focus();
+      }
       return;
     }
 
-    const isFileScan = !!file;
-    const hasMetadata = !!(manuscriptTitle.trim() && manuscriptAbstract.trim());
+    const isFileScan = Boolean(file);
+    const hasMetadata = Boolean(manuscriptTitle.trim() && manuscriptAbstract.trim());
 
     if (!isFileScan && !hasMetadata) {
-      setError("Please provide either a manuscript document or Title and Abstract.");
+      setError("Please upload a manuscript document (.pdf, .docx, .txt) on the left, or enter Title and Abstract on the right.");
+      const titleInput = document.querySelector('textarea[placeholder*="Single-cell"]') as HTMLElement;
+      if (titleInput) {
+        titleInput.scrollIntoView({ behavior: "smooth", block: "center" });
+        titleInput.focus();
+      }
+      return;
+    }
+
+    if (apiStatus === "error") {
+      setError(
+        apiErrorMessage
+          ? `AI Provider Error: ${apiErrorMessage}. Please check Settings (Cmd+,).`
+          : "AI Provider connection error. Please verify your credentials or local model in Settings."
+      );
       return;
     }
 

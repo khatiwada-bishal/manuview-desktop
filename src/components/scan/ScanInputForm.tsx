@@ -355,7 +355,28 @@ export function ScanInputForm({
       </div>
 
       {/* Morphing Action Slot: Submit Button morphs directly into Pipeline Stepper */}
-      <div className="w-full fluid-morph-container">
+      <div className="w-full fluid-morph-container space-y-3">
+        {error && (
+          <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs flex items-center justify-between gap-3 animate-fade-in shadow-xs">
+            <div className="flex items-center gap-2 min-w-0">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
+              <span className="break-words font-medium">{error}</span>
+            </div>
+            {onOpenSettings &&
+              (error.toLowerCase().includes("provider") ||
+                error.toLowerCase().includes("settings") ||
+                error.toLowerCase().includes("key")) && (
+                <button
+                  type="button"
+                  onClick={onOpenSettings}
+                  className="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-medium text-xs whitespace-nowrap transition cursor-pointer shrink-0 shadow-2xs"
+                >
+                  Configure Provider
+                </button>
+              )}
+          </div>
+        )}
+
         {loading ? (
           <div className="w-full rounded-2xl border border-blue-200/80 dark:border-blue-900/50 bg-white/90 dark:bg-[#161F30]/90 backdrop-blur-md p-5 sm:p-6 shadow-md animate-fluid-in ring-1 ring-blue-500/20">
             <ScanPipelineStepper
@@ -366,6 +387,8 @@ export function ScanInputForm({
         ) : (
           <button
             type="submit"
+            id="run-pre-submission-btn"
+            onClick={(e) => handleRunReview(e)}
             disabled={isScanning}
             title={isScanning ? "A manuscript review is actively running in the background" : undefined}
             className={`w-full py-3.5 px-6 rounded-xl font-semibold text-xs sm:text-sm text-white shadow-xs transition-all duration-200 flex items-center justify-center gap-2.5 select-none ${
