@@ -12,6 +12,10 @@ export interface OpenAlexWork {
   citedByCount?: number;
   abstract?: string;
   isOpenAccess: boolean;
+  authors?: string[];
+  journal?: string;
+  relatedWorks?: string[];
+  referencedWorks?: string[];
 }
 
 export interface OpenAlexSource {
@@ -92,8 +96,35 @@ export function parseOpenAlexSource(hit: any): OpenAlexSource {
   };
 }
 
+export function parseOpenAlexWork(data: any): OpenAlexWork {
+  const authors = Array.isArray(data.authorships)
+    ? data.authorships
+        .map((a: any) => a.author?.display_name || a.raw_author_name)
+        .filter(Boolean)
+    : undefined;
+
+  const journal =
+    data.primary_location?.source?.display_name ||
+    data.host_venue?.display_name ||
+    undefined;
+
+  return {
+    id: data.id,
+    doi: data.doi,
+    title: data.title || "Untitled",
+    publicationYear: data.publication_year,
+    citedByCount: data.cited_by_count ?? 0,
+    abstract: reconstructAbstract(data.abstract_inverted_index),
+    isOpenAccess: Boolean(data.open_access?.is_oa),
+    authors,
+    journal,
+    relatedWorks: Array.isArray(data.related_works) ? data.related_works : [],
+    referencedWorks: Array.isArray(data.referenced_works) ? data.referenced_works : [],
+  };
+}
+
 export async function fetchWorkByDOI(doi: string): Promise<OpenAlexWork | null> {
-  const cleanDoi = encodeURIComponent(doi.trim());
+  const cleanDoi = encodeURIComponent(doi.trim().replace(/^https?:\/\/doi\.org\//i, ""));
   const url = `https://api.openalex.org/works/https://doi.org/${cleanDoi}?mailto=${encodeURIComponent(POLITE_MAILTO)}`;
 
   try {
@@ -112,18 +143,113 @@ export async function fetchWorkByDOI(doi: string): Promise<OpenAlexWork | null> 
     if (!res.ok) return null;
 
     const data = await res.json();
-    return {
-      id: data.id,
-      doi: data.doi,
-      title: data.title,
-      publicationYear: data.publication_year,
-      citedByCount: data.cited_by_count,
-      abstract: reconstructAbstract(data.abstract_inverted_index),
-      isOpenAccess: data.open_access?.is_oa || false,
-    };
+    return parseOpenAlexWork(data);
   } catch {
     return null;
   }
+}
+
+/**
+ * Fetches OpenAlex works in batch for a set of DOIs with chunking (up to 25 per request)
+ * and retrieves their metadata, citation counts, and related works graph connections.
+ */
+export async function fetchRelatedWorksBatch(dois: string[]): Promise<OpenAlexWork[]> {
+  const cleanDois = Array.from(
+    new Set(
+      dois
+        .map((d) => d.trim().replace(/^https?:\/\/doi\.org\//i, "").toLowerCase())
+        .filter((d) => d.length > 5 && d.includes("/"))
+    )
+  );
+
+  if (cleanDois.length === 0) return [];
+
+  const CHUNK_SIZE = 25;
+  const results: OpenAlexWork[] = [];
+
+  for (let i = 0; i < cleanDois.length; i += CHUNK_SIZE) {
+    const chunk = cleanDois.slice(i, i + CHUNK_SIZE);
+    const filterParam = chunk.map((d) => `doi:https://doi.org/${encodeURIComponent(d)}`).join("|");
+    const url = `https://api.openalex.org/works?filter=${filterParam}&per_page=${chunk.length}&mailto=${encodeURIComponent(POLITE_MAILTO)}`;
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent": POLITE_USER_AGENT,
+          "Accept": "application/json",
+        },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      if (Array.isArray(data.results)) {
+        for (const item of data.results) {
+          results.push(parseOpenAlexWork(item));
+        }
+      }
+    } catch {
+      // Gracefully continue to next chunk on network/timeout error
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Fetches OpenAlex works by OpenAlex IDs (e.g. ['https://openalex.org/W12345', 'W67890'])
+ */
+export async function fetchWorksByIdsBatch(ids: string[]): Promise<OpenAlexWork[]> {
+  const cleanIds = Array.from(
+    new Set(
+      ids
+        .map((id) => id.trim().replace(/^https?:\/\/openalex\.org\//i, ""))
+        .filter((id) => id.startsWith("W") && id.length > 3)
+    )
+  );
+
+  if (cleanIds.length === 0) return [];
+
+  const CHUNK_SIZE = 25;
+  const results: OpenAlexWork[] = [];
+
+  for (let i = 0; i < cleanIds.length; i += CHUNK_SIZE) {
+    const chunk = cleanIds.slice(i, i + CHUNK_SIZE);
+    const filterParam = chunk.map((id) => `openalex:${id}`).join("|");
+    const url = `https://api.openalex.org/works?filter=${filterParam}&per_page=${chunk.length}&mailto=${encodeURIComponent(POLITE_MAILTO)}`;
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent": POLITE_USER_AGENT,
+          "Accept": "application/json",
+        },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      if (Array.isArray(data.results)) {
+        for (const item of data.results) {
+          results.push(parseOpenAlexWork(item));
+        }
+      }
+    } catch {
+      // Gracefully continue
+    }
+  }
+
+  return results;
 }
 
 export type OpenAlexLookup =

@@ -121,6 +121,25 @@ export interface CitationIntegritySummary {
   references: ReferenceVerification[];
 }
 
+export interface CandidateBlindspotPaper {
+  doi: string;
+  title: string;
+  authors: string[];
+  year: number;
+  journal: string;
+  citationCount: number;
+  coCitationScore: number;
+  category: 'seminal' | 'recent_landmark' | 'methodological_peer';
+  relevanceReason: string;
+  isAlreadyCited: boolean;
+}
+
+export interface CitationBlindspotsReport {
+  analyzedSeedCount: number;
+  candidatesFound: CandidateBlindspotPaper[];
+  detectedGapsCount: number;
+}
+
 export interface JournalRecommendation {
   tier: 'Reach' | 'Realistic' | 'Fallback';
   journalName: string;
@@ -445,6 +464,7 @@ export interface FullReviewReport {
   missingPersonaRoles?: ReviewerPersonaFeedback['persona'][];
   journalRecommendations: JournalRecommendation[];
   citationIntegrity: CitationIntegritySummary;
+  citationBlindspots?: CitationBlindspotsReport;
   reportingGuideline?: ReportingGuidelineCheck;
   statcheck?: import('./statcheck').StatcheckReport;
   hedgingAudit?: import('./hedging-overclaims').HedgingAuditReport;

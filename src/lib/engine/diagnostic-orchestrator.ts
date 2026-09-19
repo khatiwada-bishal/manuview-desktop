@@ -42,6 +42,7 @@ import {
   TargetJournalEvaluation,
 } from "../types";
 import { isSubstantiveReviewerObservation, deduplicateReferences } from "../utils";
+import { generateCitationBlindspotsReport } from "../citation-blindspots";
 import {
   batchVerifyReferences,
   computeCitationIntegrity,
@@ -488,6 +489,12 @@ export async function runManuscriptDiagnostic(
     uniqueReferences.length,
     manuscript.authors
   );
+
+  // Background citation blindspot discovery via OpenAlex co-citation network
+  const blindspotsPromise = generateCitationBlindspotsReport(verifiedRefs).catch((err) => {
+    console.warn("Citation blindspots discovery paused or unavailable:", err);
+    return undefined;
+  });
 
   const stage0 = runStage0Screening(manuscript, publishedDetails, citationIntegrity);
 
@@ -1367,6 +1374,7 @@ export async function runManuscriptDiagnostic(
     missingPersonaRoles: missingPersonaRoles.length > 0 ? missingPersonaRoles : undefined,
     journalRecommendations: finalRecommendations,
     citationIntegrity,
+    citationBlindspots: await blindspotsPromise,
     reportingGuideline: domainSynthesis.reportingGuideline
       ? {
           ...domainSynthesis.reportingGuideline,

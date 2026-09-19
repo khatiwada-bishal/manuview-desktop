@@ -18,7 +18,9 @@ import {
 import { batchVerifyReferences } from "@/lib/crossref";
 import { computeCitationIntegrity } from "@/lib/engine/citation-audit";
 import { extractReferencesFromText } from "@/lib/utils";
-import type { CitationIntegritySummary, FullReviewReport } from "@/lib/types";
+import { CitationBlindspotsSection } from "./CitationBlindspotsSection";
+import { generateCitationBlindspotsReport } from "@/lib/citation-blindspots";
+import type { CitationIntegritySummary, FullReviewReport, CitationBlindspotsReport } from "@/lib/types";
 
 interface DashboardCitationsSectionProps {
   citationIntegrity?: CitationIntegritySummary;
@@ -56,8 +58,25 @@ export const DashboardCitationsSection: React.FC<DashboardCitationsSectionProps>
   >("all");
   const [refPage, setRefPage] = useState(1);
   const [showAllRefs, setShowAllRefs] = useState(false);
+  const [liveBlindspots, setLiveBlindspots] = useState<CitationBlindspotsReport | undefined>(
+    effectiveReport?.citationBlindspots
+  );
 
   const references = citationIntegrity?.references || [];
+
+  useEffect(() => {
+    if (effectiveReport?.citationBlindspots) {
+      setLiveBlindspots(effectiveReport.citationBlindspots);
+    } else if (references.length > 0 && !liveBlindspots) {
+      generateCitationBlindspotsReport(references)
+        .then((res) => {
+          if (res.candidatesFound.length > 0) {
+            setLiveBlindspots(res);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [effectiveReport?.citationBlindspots, references.length]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -484,6 +503,17 @@ export const DashboardCitationsSection: React.FC<DashboardCitationsSectionProps>
           </div>
         </div>
       )}
+
+      {/* Citation Blindspots & Missing Literature Radar */}
+      <CitationBlindspotsSection
+        blindspots={liveBlindspots || effectiveReport?.citationBlindspots}
+        onAddReference={(paper) => {
+          setPastedRefsText(
+            `${paper.authors.join(", ")} (${paper.year}). ${paper.title}. ${paper.journal}. DOI: ${paper.doi}`
+          );
+          setIsAddRefsOpen(true);
+        }}
+      />
 
       {/* Add / Paste References Modal */}
       {isAddRefsOpen && (
