@@ -72,15 +72,35 @@ export function purgeLegacyDummyData(): void {
  * Sanitize project state to ensure scope mismatches are strictly classified as desk rejects
  */
 export function sanitizeSavedProject(p: SavedProject): SavedProject {
+  const classification =
+    p.paper?.classification ||
+    p.fullReport?.classification ||
+    p.paper?.typesafeResult?.classification;
+
+  const isNonAcademic =
+    p.paper?.ineligibilityReason === "non_academic_document" ||
+    p.fullReport?.ineligibilityReason === "non_academic_document" ||
+    (classification != null &&
+      (!classification.isAcademicManuscript ||
+        classification.category !== "academic_manuscript"));
+
+  const isAlreadyPublished =
+    !isNonAcademic &&
+    (p.paper?.ineligibilityReason === "already_published" ||
+      p.fullReport?.ineligibilityReason === "already_published" ||
+      Boolean(p.paper?.isPublished) ||
+      Boolean(p.fullReport?.publishedDetails?.isPublished));
+
   const isExplicitlySentForReview =
-    p.fullReport?.editorialTriage?.outcome === "sent_for_review" ||
-    p.paper?.editorialTriage?.outcome === "sent_for_review" ||
-    Boolean(p.fullReport?.editorialTriage?.summary?.includes("Cleared editorial triage")) ||
-    Boolean(p.paper?.editorialTriage?.summary?.includes("Cleared editorial triage"));
+    !isNonAcademic &&
+    (p.fullReport?.editorialTriage?.outcome === "sent_for_review" ||
+      p.paper?.editorialTriage?.outcome === "sent_for_review" ||
+      Boolean(p.fullReport?.editorialTriage?.summary?.includes("Cleared editorial triage")) ||
+      Boolean(p.paper?.editorialTriage?.summary?.includes("Cleared editorial triage")));
 
   let isMismatch = false;
 
-  if (isExplicitlySentForReview) {
+  if (isNonAcademic || isAlreadyPublished || isExplicitlySentForReview) {
     isMismatch = false;
   } else {
     isMismatch =
@@ -107,16 +127,23 @@ export function sanitizeSavedProject(p: SavedProject): SavedProject {
     }
   }
 
-  const restoredScore = isMismatch
+  const restoredScore = (isMismatch || isNonAcademic)
     ? undefined
     : (p.paper?.score ?? p.fullReport?.overallScore ?? p.dashboardData?.score);
 
   const paper: PaperItem = {
     ...p.paper,
     score: restoredScore,
-    isDeskReject: isMismatch,
-    isEligibleForReview: !isMismatch,
-    ineligibilityReason: isMismatch ? "scope_mismatch" : undefined,
+    isDeskReject: isMismatch && !isNonAcademic,
+    isEligibleForReview: !isMismatch && !isNonAcademic && !isAlreadyPublished,
+    ineligibilityReason: isNonAcademic
+      ? "non_academic_document"
+      : isAlreadyPublished
+      ? "already_published"
+      : isMismatch
+      ? "scope_mismatch"
+      : undefined,
+    classification,
     targetJournalEvaluation: isMismatch
       ? (p.paper?.targetJournalEvaluation || p.fullReport?.targetJournalEvaluation)
       : (p.paper?.targetJournalEvaluation?.isDisciplinaryMismatch ? undefined : p.paper?.targetJournalEvaluation) ||
@@ -128,8 +155,12 @@ export function sanitizeSavedProject(p: SavedProject): SavedProject {
   const dashboardData: DesktopDashboardData = {
     ...p.dashboardData,
     score: restoredScore,
-    isDeskReject: isMismatch,
-    statusText: isMismatch
+    isDeskReject: isMismatch && !isNonAcademic,
+    statusText: isNonAcademic
+      ? "Review Bypassed (Non-Academic Document)"
+      : isAlreadyPublished
+      ? "Published Article"
+      : isMismatch
       ? "Editorial Desk Reject (Scope Mismatch)"
       : (p.dashboardData?.statusText?.includes("Desk Reject") ? "Review Complete" : p.dashboardData?.statusText),
   };
@@ -137,13 +168,26 @@ export function sanitizeSavedProject(p: SavedProject): SavedProject {
   const fullReport: FullReviewReport | undefined = p.fullReport
     ? {
         ...p.fullReport,
-        isEligibleForReview: !isMismatch,
-        ineligibilityReason: isMismatch ? "scope_mismatch" : undefined,
-        overallScore: isMismatch ? undefined : (p.fullReport.overallScore ?? restoredScore),
+        classification: classification || p.fullReport.classification,
+        isEligibleForReview: !isMismatch && !isNonAcademic && !isAlreadyPublished,
+        ineligibilityReason: isNonAcademic
+          ? "non_academic_document"
+          : isAlreadyPublished
+          ? "already_published"
+          : isMismatch
+          ? "scope_mismatch"
+          : undefined,
+        overallScore: (isMismatch || isNonAcademic) ? undefined : (p.fullReport.overallScore ?? restoredScore),
         targetJournalEvaluation: isMismatch
           ? p.fullReport.targetJournalEvaluation
           : (p.fullReport.targetJournalEvaluation?.isDisciplinaryMismatch ? undefined : p.fullReport.targetJournalEvaluation),
-        editorialTriage: isExplicitlySentForReview && p.fullReport.editorialTriage?.outcome !== "sent_for_review"
+        editorialTriage: isNonAcademic
+          ? {
+              outcome: "sent_for_review",
+              sentToPeerReview: false,
+              summary: "Document ineligible for peer-review evaluation (Non-Academic Document).",
+            }
+          : isExplicitlySentForReview && p.fullReport.editorialTriage?.outcome !== "sent_for_review"
           ? {
               ...p.fullReport.editorialTriage,
               outcome: "sent_for_review",

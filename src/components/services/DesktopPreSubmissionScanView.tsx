@@ -284,6 +284,7 @@ export function DesktopPreSubmissionScanView({
       publishedJournal: fullReport.publishedDetails?.journalName,
       editorialTriage: fullReport.editorialTriage,
       targetJournalEvaluation: fullReport.targetJournalEvaluation,
+      classification: fullReport.classification,
       createdAt: fullReport.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

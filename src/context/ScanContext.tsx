@@ -84,7 +84,7 @@ export function ScanProvider({
           const typeSafeKey = await resolveTypeSafeKey();
           if (!typeSafeKey) {
             throw new Error(
-              "No TypeSafe API key configured. Please add your TypeSafe (Jev) API key in Settings (Cmd+,) to run TypeSafe scans."
+              "No TypeSafe API key configured. Please add your TypeSafe API key in Settings (Cmd+,) to run Free scans."
             );
           }
         } else {
@@ -133,7 +133,7 @@ export function ScanProvider({
 
         // 3. Execution: TypeSafe Objective Audit vs 5-Persona Peer Review
         if (isTypeSafeScan) {
-          onProgressRef.current(paperId, "Running TypeSafe (Jev) objective evaluation battery...", 55);
+          onProgressRef.current(paperId, "Running Free Scan objective evaluation battery...", 55);
           const { runTypeSafeScan } = await import("@/lib/typesafe-scan");
           const { resolveTypeSafeKey, TYPESAFE_DEFAULT_MODEL } = await import("@/lib/typesafe");
           const typeSafeKey = await resolveTypeSafeKey();
@@ -143,8 +143,9 @@ export function ScanProvider({
               : TYPESAFE_DEFAULT_MODEL;
 
           const rawManuscript =
-            parsed.rawText ||
-            (parsed.abstract ? `Title: ${parsed.title}\n\nAbstract:\n${parsed.abstract}` : params.title);
+            params.rawText ||
+            (params.file ? await extractTextFromFile(params.file) : "") ||
+            `${parsed.title}\n\n${parsed.abstract}`;
 
           const scanResult = await runTypeSafeScan(rawManuscript, {
             model: targetModel,
@@ -154,7 +155,7 @@ export function ScanProvider({
             filename: params.file?.name,
           });
 
-          onProgressRef.current(paperId, "Compiling TypeSafe calibrated diagnostics...", 90);
+          onProgressRef.current(paperId, "Compiling Free Scan calibrated diagnostics...", 90);
 
           const classification = scanResult.classification || parsed.classification;
           const isNonAcademic =
@@ -188,7 +189,7 @@ export function ScanProvider({
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             status: "completed",
-            scanStep: "TypeSafe Audit complete",
+            scanStep: "Free Scan complete",
             scanPercent: 100,
             scanParams: params,
           };
@@ -197,9 +198,9 @@ export function ScanProvider({
             paperTitle: completedPaper.title,
             headlineTitle: isNonAcademic
               ? `Document Ineligible for Peer Review (${classification?.categoryLabel || "Non-Academic"})`
-              : `${params.targetJournal} Pre-Submission Audit (TypeSafe Jev)`,
+              : `${params.targetJournal} Pre-Submission Audit (Free Scan)`,
             targetJournal: completedPaper.journal,
-            aiEngine: `TYPESAFE (${scanResult.model})`,
+            aiEngine: "Free Scan (TypeSafe)",
             latencyMs: 140,
             score: isNonAcademic ? undefined : scanResult.readiness,
             isDeskReject,
@@ -282,6 +283,7 @@ export function ScanProvider({
           publishedJournal: fullReport.publishedDetails?.journalName,
           editorialTriage: fullReport.editorialTriage,
           targetJournalEvaluation: fullReport.targetJournalEvaluation,
+          classification: fullReport.classification,
           createdAt: fullReport.createdAt || new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           status: "completed",

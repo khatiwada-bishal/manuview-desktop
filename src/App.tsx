@@ -297,7 +297,7 @@ export default function App() {
       prisma: { title: "PRISMA Flow Diagram", shortName: "PRISMA 2020" },
       "cover-letter": { title: "Journal Cover Letter", shortName: "Cover Letter" },
       "response-builder": { title: "Review Response Builder", shortName: "Response Matrix" },
-      "typesafe-scan": { title: "TypeSafe Structured Scan", shortName: "TypeSafe Scan" },
+      "typesafe-scan": { title: "Free Scan (TypeSafe)", shortName: "Free Scan" },
     };
 
     const toolInfo = toolMap[normalizedServiceId];

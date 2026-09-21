@@ -13,7 +13,6 @@ import {
   BarChart3,
   Cpu,
   Loader2,
-  ShieldCheck,
 } from "lucide-react";
 import { isDesktopApp } from "@/lib/desktop";
 import type { PaperItem, DesktopActiveView } from "@/components/DesktopSidebar";
@@ -158,11 +157,22 @@ export function SidebarCollapsedView({
                       const isSelected = paper.id === activePaperId;
                       const isReviewing = paper.status === "reviewing";
                       const isFailed = paper.status === "failed";
+                      const isNonAcademic =
+                        paper.ineligibilityReason === "non_academic_document" ||
+                        (paper.classification != null &&
+                          (!paper.classification.isAcademicManuscript ||
+                            paper.classification.category !== "academic_manuscript")) ||
+                        (paper.typesafeResult?.classification != null &&
+                          (!paper.typesafeResult.classification.isAcademicManuscript ||
+                            paper.typesafeResult.classification.category !== "academic_manuscript"));
                       const isDeskReject =
-                        paper.editorialTriage?.outcome === "desk_reject" ||
-                        paper.ineligibilityReason === "scope_mismatch" ||
-                        paper.targetJournalEvaluation?.isDisciplinaryMismatch === true ||
-                        paper.isDeskReject === true;
+                        !isReviewing &&
+                        !isFailed &&
+                        !isNonAcademic &&
+                        (paper.editorialTriage?.outcome === "desk_reject" ||
+                          paper.ineligibilityReason === "scope_mismatch" ||
+                          paper.targetJournalEvaluation?.isDisciplinaryMismatch === true ||
+                          paper.isDeskReject === true);
                       return (
                         <div key={paper.id} className="space-y-0.5">
                           <div
@@ -197,6 +207,8 @@ export function SidebarCollapsedView({
                                     <span className="text-blue-600 dark:text-blue-400 font-medium truncate">
                                       {paper.scanStep || "Reviewing..."}
                                     </span>
+                                  ) : paper.scanType === "typesafe" ? (
+                                    <span>Free Scan • {paper.journal}</span>
                                   ) : (
                                     paper.journal
                                   )}
@@ -217,22 +229,25 @@ export function SidebarCollapsedView({
                                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20">
                                   Rejected
                                 </span>
-                              ) : paper.isEligibleForReview === false ? (
+                              ) : paper.isEligibleForReview === false || isNonAcademic ? (
                                 paper.ineligibilityReason === "already_published" ? (
                                   <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                                     PUB
                                   </span>
                                 ) : (
-                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                  <span
+                                    title="Document Ineligible for Peer Review (Not a manuscript or research article)"
+                                    className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border border-orange-200/60 dark:border-orange-800/60"
+                                  >
                                     N/A
                                   </span>
                                 )
                               ) : paper.scanType === "typesafe" ? (
                                 <span
-                                  title={`TypeSafe (Jev) Score: ${paper.score ?? 0}%`}
+                                  title={`Free Scan Score: ${paper.score ?? 0}%`}
                                   className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60 flex items-center gap-0.5"
                                 >
-                                  <ShieldCheck className="w-2 h-2 text-blue-600 dark:text-blue-400" />
+                                  <span className="text-[8px] font-normal opacity-80">Free Scan</span>
                                   <span>{paper.score ?? 0}%</span>
                                 </span>
                               ) : (

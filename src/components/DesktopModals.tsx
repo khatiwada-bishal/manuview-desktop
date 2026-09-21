@@ -46,7 +46,7 @@ export function DesktopSearchModal({
 
   const staticServices = [
     { id: "tool-ai-review", title: "Pre-Submission AI Review (5-Persona Diagnostic)", cat: "Service" },
-    { id: "tool-typesafe-scan", title: "TypeSafe Structured Scan (Jev Typed Diagnostics)", cat: "Service" },
+    { id: "tool-typesafe-scan", title: "Free Scan (TypeSafe Structured Diagnostics)", cat: "Service" },
     { id: "tool-journal-fit", title: "Journal Fit Predictor (48,000+ Catalogs)", cat: "Service" },
     { id: "tool-reference-checker", title: "Reference Integrity Audit (CrossRef & Retractions)", cat: "Service" },
     { id: "tool-citation-claim", title: "Citation Claim Validator", cat: "Service" },

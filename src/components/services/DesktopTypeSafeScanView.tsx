@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ShieldCheck,
   FileUp,
   FileText,
   Loader2,
@@ -100,7 +99,7 @@ export function DesktopTypeSafeScanView({ onOpenSettings }: Props) {
         journalScope = live?.aimsAndScope;
       }
 
-      setLoadingStep("Running TypeSafe (Jev) parallel evaluation battery...");
+      setLoadingStep("Running Free Scan parallel evaluation battery...");
       const scan = await runTypeSafeScan(text, {
         model,
         targetJournal: targetJournal.trim() || undefined,
@@ -179,19 +178,19 @@ export function DesktopTypeSafeScanView({ onOpenSettings }: Props) {
         <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-[#161F30] border border-black/[0.06] dark:border-white/[0.08] shadow-xs space-y-3">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shrink-0">
-              <ShieldCheck className="w-6 h-6" />
+              <Sparkles className="w-6 h-6" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0F172A] dark:text-white">
-                  TypeSafe Structured Scan
+                  Free Scan
                 </h1>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
-                  Jev System One
+                  Powered by TypeSafe
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1 leading-relaxed">
-                Objective, typed document diagnostics powered by TypeSafe&apos;s Jev model. Evaluates 20+ checks in parallel across screening, methodology reproducibility, statistical reporting, and journal scope alignment with calibrated confidence — zero hallucinations.
+                Objective, typed document diagnostics powered by TypeSafe. Evaluates 20+ checks in parallel across screening, methodology reproducibility, statistical reporting, and journal scope alignment with calibrated confidence — zero hallucinations.
               </p>
             </div>
           </div>
@@ -203,7 +202,7 @@ export function DesktopTypeSafeScanView({ onOpenSettings }: Props) {
             <div className="flex items-center gap-2.5 text-amber-800 dark:text-amber-200">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span className="text-xs">
-                No TypeSafe API key found. Add your Jev key in Settings to run structured scans.
+                No TypeSafe API key found. Add your TypeSafe key in Settings to run scans.
               </span>
             </div>
             <button
@@ -317,8 +316,8 @@ export function DesktopTypeSafeScanView({ onOpenSettings }: Props) {
                 </>
               ) : (
                 <>
-                  <ShieldCheck className="w-4 h-4 text-white" />
-                  <span>Run TypeSafe Structured Scan</span>
+                  <Sparkles className="w-4 h-4 text-white" />
+                  <span>Run Free Diagnostic Scan</span>
                   <ArrowRight className="w-4 h-4 text-white/80" />
                 </>
               )}

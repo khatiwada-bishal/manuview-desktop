@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useMemo } from "react";
 import {
-  ShieldCheck,
   AlertTriangle,
   CheckCircle2,
   Cpu,
@@ -21,7 +20,6 @@ import {
   Loader2,
   Check,
   RotateCcw,
-  ShieldAlert,
   Upload,
 } from "lucide-react";
 import type { PaperItem } from "@/components/DesktopSidebar";
@@ -143,8 +141,8 @@ export function DesktopTypeSafeDashboardView({
       );
     }
     return (
-      `TypeSafe (Jev) calibrated objective pre-submission audit. Evaluated against ${paper.journal} editorial criteria with an overall readiness rating of "${result?.readinessLabel || theme.label}" (${score}%).\n\n` +
-      `The manuscript "${paper.title}" demonstrates substantial academic structure. Jev evaluation across atomic criteria confirms baseline empirical reporting. Address the prioritized action items below prior to formal submission.`
+      `Free Scan calibrated objective pre-submission audit. Evaluated against ${paper.journal} editorial criteria with an overall readiness rating of "${result?.readinessLabel || theme.label}" (${score}%).\n\n` +
+      `The manuscript "${paper.title}" demonstrates substantial academic structure. Diagnostic evaluation across atomic criteria confirms baseline empirical reporting. Address the prioritized action items below prior to formal submission.`
     );
   }, [isNonAcademic, classification?.advisoryMessage, classification?.categoryLabel, paper.title, paper.journal, result?.readinessLabel, theme.label, score]);
 
@@ -200,7 +198,7 @@ export function DesktopTypeSafeDashboardView({
         return {
           originality: toDimScore(
             getSignalPercent(signals.find((s) => s.id === "originality")),
-            signals.find((s) => s.id === "originality")?.display || "Novelty and research contribution evaluated by Jev.",
+            signals.find((s) => s.id === "originality")?.display || "Novelty and research contribution evaluated by Free Scan.",
             "Originality"
           ),
           broad_interest: toDimScore(
@@ -210,17 +208,17 @@ export function DesktopTypeSafeDashboardView({
           ),
           claims_vs_evidence: toDimScore(
             getSignalPercent(signals.find((s) => s.id === "statistical_integrity")),
-            signals.find((s) => s.id === "statistical_integrity")?.display || "Statistical consistency and numerical reporting evaluated by Jev.",
+            signals.find((s) => s.id === "statistical_integrity")?.display || "Statistical consistency and numerical reporting evaluated by Free Scan.",
             "Claims vs Evidence"
           ),
           methodology: toDimScore(
             getSignalPercent(signals.find((s) => s.id === "method_rigor")),
-            signals.find((s) => s.id === "method_rigor")?.display || "Experimental design and methodological controls evaluated by Jev.",
+            signals.find((s) => s.id === "method_rigor")?.display || "Experimental design and methodological controls evaluated by Free Scan.",
             "Methodology"
           ),
           clarity: toDimScore(
             getSignalPercent(signals.find((s) => s.id === "structural_integrity")),
-            signals.find((s) => s.id === "structural_integrity")?.display || "IMRaD structure and narrative clarity evaluated by Jev.",
+            signals.find((s) => s.id === "structural_integrity")?.display || "IMRaD structure and narrative clarity evaluated by Free Scan.",
             "Clarity"
           ),
           prior_work: toDimScore(
@@ -243,9 +241,9 @@ export function DesktopTypeSafeDashboardView({
       reviewerPersonas: [
         {
           persona: "methods_reviewer",
-          name: "TypeSafe (Jev) Evaluation Battery",
+          name: "Free Scan Evaluation Battery",
           title: "Calibrated Academic Decision Classifier",
-          affiliation: "TypeSafe AI System One",
+          affiliation: "TypeSafe AI",
           expertise: "Multi-Criteria Academic Manuscript Screening",
           roleDescription: "Evaluates empirical rigor, methodology, and target journal fit with calibrated probabilities",
           decisionRecommendation: isDeskReject ? "Desk Reject" : score >= 80 ? "Minor Revision" : "Major Revision",
@@ -262,7 +260,7 @@ export function DesktopTypeSafeDashboardView({
           journalName: paper.journal,
           publisher: "Target Venue",
           fitScore: getSignalPercent(signals.find((s) => s.id === "journal_scope_fit")),
-          scopeRationale: signals.find((s) => s.id === "journal_scope_fit")?.display || "Target venue scope alignment evaluated by Jev.",
+          scopeRationale: signals.find((s) => s.id === "journal_scope_fit")?.display || "Target venue scope alignment evaluated by Free Scan.",
           rejectionRisks: flags.map((f) => f.label),
           requiredRevisionsForFit: [],
         },
@@ -384,16 +382,12 @@ export function DesktopTypeSafeDashboardView({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-black/[0.06] dark:border-white/[0.08]">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                <span>TypeSafe Pre-Submission Audit</span>
+                <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span>Free Scan • Pre-Submission Audit</span>
               </span>
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-neutral-100 dark:bg-[#1E293B] text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">
                 <Cpu className="w-3.5 h-3.5 text-blue-500" />
                 <span>TypeSafe AI</span>
-              </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-neutral-100 dark:bg-[#1E293B] text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700 font-mono">
-                <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-                <span>{result?.model || "jev-latest"}</span>
               </span>
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-neutral-100 dark:bg-[#1E293B] text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700">
                 <Clock className="w-3 h-3 text-neutral-400" />
@@ -481,7 +475,7 @@ export function DesktopTypeSafeDashboardView({
                 {paper.title}
               </h1>
               <p className="text-xs text-[#64748B] dark:text-neutral-400 font-medium">
-                Target: <strong className="text-neutral-800 dark:text-neutral-200">{paper.journal}</strong> &bull; TypeSafe (Jev) Calibrated Pre-Submission Diagnostic
+                Target: <strong className="text-neutral-800 dark:text-neutral-200">{paper.journal}</strong> &bull; Free Scan Calibrated Pre-Submission Diagnostic
               </p>
             </div>
 
@@ -502,7 +496,7 @@ export function DesktopTypeSafeDashboardView({
                   </>
                 ) : isDeskReject ? (
                   <>
-                    <ShieldAlert className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                    <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
                     <span>Desk Reject Hazard</span>
                   </>
                 ) : (
@@ -513,7 +507,7 @@ export function DesktopTypeSafeDashboardView({
                 )}
               </span>
               <span className="text-xs text-neutral-400 dark:text-neutral-500 font-medium hidden md:inline">
-                TypeSafe scan complete
+                Free Scan complete
               </span>
             </div>
           </div>
@@ -659,13 +653,13 @@ export function DesktopTypeSafeDashboardView({
                     >
                       {isDeskReject ? (
                         <>
-                          <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+                          <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
                           <span>EDITORIAL TRIAGE: DESK REJECT HAZARD</span>
                         </>
                       ) : (
                         <>
-                          <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-                          <span>TYPESAFE CALIBRATED AUDIT COMPLETE</span>
+                          <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                          <span>FREE SCAN CALIBRATED AUDIT COMPLETE</span>
                         </>
                       )}
                     </div>
@@ -689,7 +683,7 @@ export function DesktopTypeSafeDashboardView({
                     <p className="text-xs sm:text-sm text-white/70 leading-relaxed max-w-md">
                       {isDeskReject
                         ? `Potential misalignment with "${paper.journal}" scope or critical criteria detected. Out-of-scope manuscripts face immediate triage decline before peer review.`
-                        : `Evaluated against "${paper.journal}" editorial standards across 10 atomic criteria with TypeSafe (Jev). Empirical design and scope fit verified.`}
+                        : `Evaluated against "${paper.journal}" editorial standards across 10 atomic criteria with Free Scan. Empirical design and scope fit verified.`}
                     </p>
 
                     <div className="flex flex-wrap items-center gap-3 pt-1">
@@ -884,7 +878,7 @@ export function DesktopTypeSafeDashboardView({
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <BarChart3 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
                 <h2 className="text-base font-bold text-[#0F172A] dark:text-white">

@@ -8,13 +8,11 @@ import {
   BarChart3,
   AlertCircle,
   Trash2,
-  ShieldAlert,
   Clock,
   Check,
   X,
   Square,
   Loader2,
-  ShieldCheck,
   AlertTriangle,
 } from "lucide-react";
 import type { PaperItem, DesktopActiveView } from "@/components/DesktopSidebar";
@@ -142,7 +140,12 @@ export function SidebarPaperList({
                 const isFailed = paper.status === "failed";
                 const isNonAcademic =
                   paper.ineligibilityReason === "non_academic_document" ||
-                  (paper.classification && !paper.classification.isAcademicManuscript);
+                  (paper.classification != null &&
+                    (!paper.classification.isAcademicManuscript ||
+                      paper.classification.category !== "academic_manuscript")) ||
+                  (paper.typesafeResult?.classification != null &&
+                    (!paper.typesafeResult.classification.isAcademicManuscript ||
+                      paper.typesafeResult.classification.category !== "academic_manuscript"));
                 const isDeskReject =
                   !isReviewing &&
                   !isFailed &&
@@ -190,7 +193,7 @@ export function SidebarPaperList({
                               : paper.isEligibleForReview === false && paper.ineligibilityReason === "already_published"
                               ? "bg-emerald-500 text-white"
                               : paper.isEligibleForReview === false || isNonAcademic
-                              ? "bg-amber-500 text-white"
+                              ? "bg-orange-500 text-white"
                               : isSelected
                               ? "bg-gradient-to-br from-blue-600 to-indigo-600 text-white"
                               : "bg-blue-500/90 text-white"
@@ -220,7 +223,7 @@ export function SidebarPaperList({
                               ) : isFailed ? (
                                 <AlertCircle className="w-3.5 h-3.5 text-white" />
                               ) : isDeskReject ? (
-                                <ShieldAlert className="w-3.5 h-3.5 text-white" />
+                                <AlertCircle className="w-3.5 h-3.5 text-white" />
                               ) : paper.isEligibleForReview === false && paper.ineligibilityReason === "already_published" ? (
                                 <CheckCircle2 className="w-3.5 h-3.5 text-white" />
                               ) : paper.isEligibleForReview === false || isNonAcademic ? (
@@ -233,8 +236,13 @@ export function SidebarPaperList({
                         </div>
 
                         <div className="min-w-0 flex-1">
-                          <div className="truncate font-medium">
-                            {paper.shortName}
+                          <div className="truncate font-medium flex items-center gap-1.5">
+                            <span className="truncate">{paper.shortName}</span>
+                            {paper.scanType === "typesafe" && (
+                              <span className="text-[8px] font-semibold px-1.5 py-0.2 rounded bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/50 shrink-0">
+                                Free Scan
+                              </span>
+                            )}
                           </div>
                           {isReviewing && (
                             <div className="text-[10px] text-blue-600 dark:text-blue-400 font-normal truncate mt-0.5">
@@ -266,17 +274,19 @@ export function SidebarPaperList({
                               PUB
                             </span>
                           ) : (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60">
+                            <span
+                              title="Document Ineligible for Peer Review (Not a manuscript or research article)"
+                              className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border border-orange-200/60 dark:border-orange-800/60"
+                            >
                               N/A
                             </span>
                           )
                         ) : paper.scanType === "typesafe" ? (
                           <span
-                            title={`TypeSafe (Jev) Calibrated Score: ${paper.score ?? 0}%`}
+                            title={`Free Scan Calibrated Score: ${paper.score ?? 0}%`}
                             className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60 flex items-center gap-1 shrink-0"
                           >
-                            <ShieldCheck className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                            <span className="text-[9px] font-normal text-blue-600/75 dark:text-blue-300/75 tracking-tight">Jev</span>
+                            <span className="text-[9px] font-medium text-blue-600/80 dark:text-blue-300/80 tracking-tight">Free Scan</span>
                             <span>{paper.score ?? 0}%</span>
                           </span>
                         ) : (
@@ -330,7 +340,7 @@ export function SidebarPaperList({
                           }`}
                         >
                           {isDeskReject ? (
-                            <ShieldAlert className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+                            <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
                           ) : (
                             <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
                           )}

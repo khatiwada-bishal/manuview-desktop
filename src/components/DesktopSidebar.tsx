@@ -366,7 +366,7 @@ export function DesktopSidebar({
                 <div className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate font-medium">
                   {connectionStatus === "connected"
                     ? provider === "typesafe"
-                      ? "TypeSafe (Jev) • Free Audit"
+                      ? "Free Scan • TypeSafe API"
                       : `${activeModelName || "Local AI"} • 100% Private`
                     : "Configure provider"}
                 </div>

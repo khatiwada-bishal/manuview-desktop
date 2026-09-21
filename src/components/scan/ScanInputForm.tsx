@@ -5,7 +5,6 @@ import {
   FileText,
   AlertCircle,
   CheckCircle2,
-  ShieldCheck,
   ArrowRight,
   Loader2,
   FileUp,
@@ -344,7 +343,7 @@ export function ScanInputForm({
       {/* Academic Privacy & Confidentiality Guarantee */}
       <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-white/[0.03] border border-black/[0.06] dark:border-white/[0.08] flex items-start gap-3 text-neutral-600 dark:text-neutral-400 text-xs leading-relaxed shadow-2xs">
         <div className="w-7 h-7 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs">
-          <ShieldCheck className="w-4 h-4" />
+          <CheckCircle2 className="w-4 h-4" />
         </div>
         <div>
           <span className="font-bold text-[#0F172A] dark:text-white block">
@@ -408,8 +407,8 @@ export function ScanInputForm({
               </>
             ) : scanEngine === "typesafe" ? (
               <>
-                <ShieldCheck className="w-4 h-4 text-white shrink-0" />
-                <span className="truncate">Run TypeSafe (Jev) Pre-Submission Audit</span>
+                <Sparkles className="w-4 h-4 text-white shrink-0" />
+                <span className="truncate">Run Free Pre-Submission Audit (TypeSafe)</span>
                 <ArrowRight className="w-4 h-4 shrink-0 opacity-80" />
               </>
             ) : (
