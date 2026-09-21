@@ -82,6 +82,7 @@ async fn call_llm_native(
         || host == "api.mistral.ai"
         || host == "openrouter.ai"
         || host == "integrate.api.nvidia.com"
+        || host == "api.typesafe.ai"
         || host == "api.openalex.org"
         || host == "api.crossref.org"
         || host == "huggingface.co"

@@ -603,7 +603,7 @@ export interface BriefJournalFitReport {
 
 export type ReviewReport = FullReviewReport | BriefJournalFitReport;
 
-export type LLMProvider = 'ollama' | 'gemini' | 'groq' | 'openai' | 'anthropic' | 'webllm' | 'mistral';
+export type LLMProvider = 'ollama' | 'gemini' | 'groq' | 'openai' | 'anthropic' | 'webllm' | 'mistral' | 'typesafe';
 
 export interface ProviderConfig {
   provider: LLMProvider;

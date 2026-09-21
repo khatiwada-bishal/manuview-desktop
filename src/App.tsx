@@ -19,6 +19,7 @@ import { DesktopPrismaView } from "@/components/services/DesktopPrismaView";
 import { DesktopReportingChecklistView } from "@/components/services/DesktopReportingChecklistView";
 import { DesktopCoverLetterView } from "@/components/services/DesktopCoverLetterView";
 import { DesktopResponseBuilderView } from "@/components/services/DesktopResponseBuilderView";
+import { DesktopTypeSafeScanView } from "@/components/services/DesktopTypeSafeScanView";
 import { DesktopEmptyDashboard } from "@/components/DesktopEmptyDashboard";
 import { DeleteConfirmationModal } from "@/components/DeleteConfirmationModal";
 import { ProviderSettingsModal } from "@/components/ProviderSettingsModal";
@@ -295,6 +296,7 @@ export default function App() {
       prisma: { title: "PRISMA Flow Diagram", shortName: "PRISMA 2020" },
       "cover-letter": { title: "Journal Cover Letter", shortName: "Cover Letter" },
       "response-builder": { title: "Review Response Builder", shortName: "Response Matrix" },
+      "typesafe-scan": { title: "TypeSafe Structured Scan", shortName: "TypeSafe Scan" },
     };
 
     const toolInfo = toolMap[normalizedServiceId];
@@ -694,6 +696,9 @@ function AppWorkspace({
     }
     if (activeTabId === "tool-response-builder") {
       return <DesktopResponseBuilderView onOpenSettings={() => setIsSettingsOpen(true)} />;
+    }
+    if (activeTabId === "tool-typesafe-scan") {
+      return <DesktopTypeSafeScanView onOpenSettings={() => setIsSettingsOpen(true)} />;
     }
 
     // Article Review Lifecycle: Active in-progress background scan

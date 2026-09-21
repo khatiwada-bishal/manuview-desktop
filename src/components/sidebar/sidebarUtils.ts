@@ -5,6 +5,7 @@ import {
   Layers,
   FileText,
   MessageSquare,
+  Gauge,
   type LucideIcon,
 } from "lucide-react";
 import type { PaperItem, DesktopActiveView } from "@/components/DesktopSidebar";
@@ -132,6 +133,18 @@ export function buildSidebarServices(params: {
   const { onSelectService, onSelectView, onNewReview } = params;
 
   return [
+    {
+      id: "typesafe-scan",
+      name: "TypeSafe Structured Scan",
+      description: "Typed Jev diagnostics",
+      icon: Gauge,
+      color: "text-blue-600 bg-blue-50 dark:bg-blue-950/50 dark:text-blue-400",
+      squircleBg: "bg-blue-600 text-white shadow-xs",
+      action: () => {
+        if (onSelectService) onSelectService("typesafe-scan");
+        else onNewReview();
+      },
+    },
     {
       id: "journal-fit",
       name: "Journal Fit Predictor",

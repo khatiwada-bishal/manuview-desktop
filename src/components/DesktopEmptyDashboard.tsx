@@ -19,6 +19,7 @@ import {
   Check,
   X,
   Loader2,
+  Gauge,
 } from "lucide-react";
 import { PaperItem } from "./DesktopSidebar";
 import { DashboardGlassIllustration } from "./dashboard/DashboardGlassIllustration";
@@ -391,6 +392,29 @@ export function DesktopEmptyDashboard({
             Research &amp; Diagnostic Services
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {/* 0. TypeSafe Structured Scan */}
+            <div
+              onClick={() => onOpenService("typesafe-scan")}
+              className="rounded-2xl liquid-glass-card liquid-glass-card-interactive card-interactive-lift p-5 transition cursor-pointer group space-y-2.5"
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-500/20">
+                  <Gauge className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
+                  TypeSafe · Jev
+                </span>
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-[#111827] dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
+                  TypeSafe Structured Scan
+                </h3>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2">
+                  Fast typed diagnostics — desk-reject risk, methods, claims, and confidence — from TypeSafe&apos;s Jev model in one call.
+                </p>
+              </div>
+            </div>
+
             {/* 1. Journal Fit Predictor */}
             <div
               onClick={() => onOpenService("journal-fit")}

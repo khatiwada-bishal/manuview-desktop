@@ -208,6 +208,8 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
         ? "claude-3-7-sonnet-20250219"
         : newProvider === "groq"
         ? "llama-3.3-70b-versatile"
+        : newProvider === "typesafe"
+        ? "jev-latest"
         : newProvider === "webllm"
         ? "Qwen2.5-0.5B-Instruct-q4f16_1-MLC"
         : "llama3.3";
@@ -508,6 +510,22 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                   <GroqLogo className="w-3.5 h-3.5 flex-shrink-0" />
                   <span>Groq</span>
                 </button>
+
+                {/* TypeSafe (Jev) */}
+                <button
+                  type="button"
+                  onClick={() => handleProviderChange("typesafe")}
+                  className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                    config.provider === "typesafe"
+                      ? "bg-[#F7F7F5] dark:bg-[#1E293B] border-[#2F3437] dark:border-blue-500 ring-1 ring-[#2F3437] dark:ring-blue-500 text-[#2F3437] dark:text-white shadow-2xs"
+                      : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
+                  }`}
+                >
+                  <div className="p-0.5 rounded bg-blue-600 text-white flex items-center justify-center flex-shrink-0">
+                    <ShieldCheck className="w-2.5 h-2.5 text-white" />
+                  </div>
+                  <span>TypeSafe (Jev)</span>
+                </button>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -650,6 +668,16 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                     Get free Groq key &rarr;
                   </a>
                 )}
+                {config.provider === "typesafe" && (
+                  <a
+                    href="https://console.typesafe.ai/keys"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[11px] text-[#0A85EA] dark:text-blue-400 hover:underline font-medium"
+                  >
+                    Get TypeSafe key &rarr;
+                  </a>
+                )}
                 {config.provider === "anthropic" && (
                   <a
                     href="https://console.anthropic.com/"
@@ -710,6 +738,16 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                   )}
                 </button>
               </div>
+
+              {config.provider === "typesafe" && (
+                <div className="mt-2 p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-900 dark:text-blue-200 leading-relaxed">
+                  <span className="font-semibold">Powers the TypeSafe Structured Scan.</span>{" "}
+                  Jev returns typed decisions (Choice / Score / Noul) with calibrated
+                  confidence — not chat text — so use it from the{" "}
+                  <span className="font-semibold">TypeSafe Structured Scan</span> service.
+                  Keep a text model (Gemini, OpenAI, Anthropic…) selected for prose reviews.
+                </div>
+              )}
 
               <div className="flex items-center justify-between mt-1 text-[11px]">
                 <div className="flex items-center gap-2">

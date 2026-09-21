@@ -185,6 +185,7 @@ export async function resolveActiveConfig(config?: ProviderConfig): Promise<Prov
     else if (provider === "groq") apiKey = getEnv('GROQ_API_KEY');
     else if (provider === "openai") apiKey = getEnv('OPENAI_API_KEY');
     else if (provider === "anthropic") apiKey = getEnv('ANTHROPIC_API_KEY');
+    else if (provider === "typesafe") apiKey = getEnv('TYPESAFE_API_KEY');
   }
 
   return {
@@ -196,9 +197,14 @@ export async function resolveActiveConfig(config?: ProviderConfig): Promise<Prov
       provider === "gemini" ? "gemini-2.0-flash" :
       provider === "groq" ? "llama-3.3-70b-versatile" :
       provider === "openai" ? "gpt-4o-mini" :
+      provider === "typesafe" ? "jev-latest" :
       "claude-3-5-sonnet-20241022"
     ),
-    baseUrl: baseUrl || (provider === "openai" ? "https://api.openai.com/v1" : "http://localhost:11434"),
+    baseUrl: baseUrl || (
+      provider === "openai" ? "https://api.openai.com/v1" :
+      provider === "typesafe" ? "https://api.typesafe.ai/v1" :
+      "http://localhost:11434"
+    ),
     hasSecureKey: provider === "webllm" || provider === "ollama" || Boolean(apiKey),
   };
 }
@@ -268,6 +274,10 @@ export function getServerConfigStatus(): {
   if (getEnv('ANTHROPIC_API_KEY')) {
     serverProviders.push('anthropic');
     if (serverActiveProvider === 'none') serverActiveProvider = 'anthropic';
+  }
+  if (getEnv('TYPESAFE_API_KEY')) {
+    serverProviders.push('typesafe');
+    if (serverActiveProvider === 'none') serverActiveProvider = 'typesafe';
   }
 
   const hasServerKey = serverProviders.length > 0;
@@ -437,6 +447,15 @@ export async function callLLM(
   let apiKey: string = resolvedConfig.apiKey || "";
   let model: string = resolvedConfig.model || "";
   let baseUrl: string = resolvedConfig.baseUrl || "http://localhost:11434";
+
+  // TypeSafe (Jev) is a decision model, not a text generator. It cannot produce
+  // the prose / JSON reviews this chat pipeline expects. Route document analysis
+  // through the dedicated TypeSafe Structured Scan instead.
+  if (provider === "typesafe") {
+    throw new Error(
+      "TypeSafe (Jev) returns typed decisions, not generated text, so it can't run this chat-style review. Use the TypeSafe Structured Scan service to review documents with Jev, and pick a text model (e.g. Gemini, OpenAI, Anthropic) for prose reviews."
+    );
+  }
 
   if (!apiKey && provider !== "ollama" && provider !== "webllm") {
     throw new Error(`No API key configured for ${provider.toUpperCase()}. Please configure your API key in AI Settings.`);
@@ -1139,6 +1158,29 @@ export const CURATED_MODELS: Record<LLMProvider, AvailableModel[]> = {
       recommended: false,
     },
   ],
+  typesafe: [
+    {
+      id: "jev-latest",
+      name: "Jev (Latest)",
+      description: "TypeSafe's System One model. Returns typed decisions with calibrated confidence — powers the Structured Scan, not chat reviews.",
+      tag: "✨ Recommended",
+      recommended: true,
+    },
+    {
+      id: "jev-1.13.0",
+      name: "Jev 1.13.0",
+      description: "Pinned version of Jev. Use to lock behavior against a specific release.",
+      tag: "Pinned",
+      recommended: false,
+    },
+    {
+      id: "jev-preview",
+      name: "Jev (Preview)",
+      description: "Most recent Jev build, including previews when available.",
+      tag: "Preview",
+      recommended: false,
+    },
+  ],
 };
 
 export async function fetchAvailableModels(
@@ -1455,6 +1497,32 @@ export async function fetchAvailableModels(
           isLive: true,
         },
       ];
+    } else if (provider === "typesafe") {
+      try {
+        const { listTypeSafeModels } = await import("./typesafe");
+        const live = await listTypeSafeModels(apiKey);
+        if (Array.isArray(live) && live.length > 0) {
+          const mapped: AvailableModel[] = live.map((m) => {
+            const existing = defaultList.find((d) => d.id === m.name);
+            return {
+              id: m.name,
+              name: existing?.name || m.name,
+              description: existing?.description || m.description || "TypeSafe System One model",
+              tag: existing?.tag || (m.name.includes("latest") ? "✨ Recommended" : undefined),
+              recommended: existing?.recommended || m.name === "jev-latest",
+              isLive: true,
+            };
+          });
+          // Keep curated jev entries the API omitted (versioned IDs are still valid).
+          for (const d of defaultList) {
+            if (!mapped.some((x) => x.id === d.id)) mapped.push(d);
+          }
+          return mapped.sort((a, b) => (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0));
+        }
+      } catch (tsErr) {
+        if (options?.throwOnError) throw tsErr;
+      }
+      return defaultList;
     }
   } catch (err: any) {
     if (options?.throwOnError) {
@@ -1566,6 +1634,24 @@ export async function testLLMConnection(
   const availableModels = await fetchAvailableModels({ provider, model, apiKey, baseUrl });
 
   try {
+    // -----------------------------------------------------------
+    // 0. TypeSafe (Jev) System One Probe
+    // -----------------------------------------------------------
+    if (provider === "typesafe") {
+      const tsModel = model || "jev-latest";
+      const { testTypeSafeConnection } = await import("./typesafe");
+      await testTypeSafeConnection(apiKey, tsModel);
+      const latencyMs = Date.now() - startTime;
+      return {
+        success: true,
+        provider: "typesafe",
+        model: tsModel,
+        latencyMs,
+        message: `Connected to TypeSafe (${tsModel}) in ${latencyMs}ms`,
+        availableModels,
+      };
+    }
+
     // -----------------------------------------------------------
     // 1. Google Gemini Ping Probe
     // -----------------------------------------------------------
