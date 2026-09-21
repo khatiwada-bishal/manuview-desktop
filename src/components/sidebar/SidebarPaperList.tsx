@@ -310,8 +310,8 @@ export function SidebarPaperList({
                       </div>
                     )}
 
-                    {/* Sub-views list for currently selected paper (only for completed papers) */}
-                    {isSelected && !isReviewing && !isFailed && (paper.isEligibleForReview !== false || isDeskReject) && (
+                    {/* Sub-views list for currently selected paper (only for persona reviews with multi-perspective sub-views) */}
+                    {isSelected && !isReviewing && !isFailed && paper.scanType !== "typesafe" && (paper.isEligibleForReview !== false || isDeskReject) && (
                       <div className="pl-4 pr-2 py-1 space-y-0.5">
                         <button
                           type="button"

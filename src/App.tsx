@@ -732,6 +732,8 @@ function AppWorkspace({
             paper={currentPaper}
             scanResult={currentPaper.typesafeResult}
             onOpenSettings={() => setIsSettingsOpen(true)}
+            onNewScan={() => !isScanning && handleOpenService("ai-review")}
+            onDeleteArticle={() => setPapersToDelete(currentPaper ? [currentPaper] : null)}
           />
         </DashboardErrorBoundary>
       );
