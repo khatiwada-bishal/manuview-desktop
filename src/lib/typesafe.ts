@@ -196,17 +196,39 @@ export async function hasTypeSafeKeyAvailable(): Promise<boolean> {
 }
 
 function translateStatusError(status: number, rawBody: string): string {
-  let detail = "";
+  let detail: unknown = "";
   try {
     const parsed = JSON.parse(rawBody);
-    detail = parsed?.error?.message || parsed?.message || parsed?.detail || "";
+    if (typeof parsed?.error === "string") {
+      detail = parsed.error;
+    } else if (typeof parsed?.error?.message === "string") {
+      detail = parsed.error.message;
+    } else if (typeof parsed?.message === "string") {
+      detail = parsed.message;
+    } else if (typeof parsed?.detail === "string") {
+      detail = parsed.detail;
+    } else if (Array.isArray(parsed?.detail)) {
+      detail = parsed.detail
+        .map((d: any) => (typeof d === "string" ? d : d?.msg || d?.message || JSON.stringify(d)))
+        .join("; ");
+    } else if (parsed?.detail && typeof parsed.detail === "object") {
+      detail = (parsed.detail as any)?.message || JSON.stringify(parsed.detail);
+    } else if (parsed?.error && typeof parsed.error === "object") {
+      detail = (parsed.error as any)?.message || JSON.stringify(parsed.error);
+    } else {
+      detail = parsed;
+    }
   } catch {
     detail = rawBody ? rawBody.slice(0, 300) : "";
   }
   const safe = sanitizeErrorMessage(detail);
   switch (status) {
     case 401:
-      return "TypeSafe rejected the API key (401). Check your key in AI Settings → TypeSafe.";
+      return `TypeSafe rejected the API key (401). ${safe ? `Detail: ${safe}. ` : ""}Check your key in AI Settings → TypeSafe.`;
+    case 403:
+      return `TypeSafe access forbidden (403). ${safe ? `Detail: ${safe}. ` : ""}Check your account quota or key permissions.`;
+    case 404:
+      return `TypeSafe endpoint or model not found (404). ${safe ? `Detail: ${safe}` : ""}`;
     case 422:
       return `TypeSafe could not process the request (422). ${safe || "A question or the state failed validation."}`;
     case 429:

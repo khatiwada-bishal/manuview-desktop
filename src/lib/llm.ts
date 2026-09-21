@@ -219,9 +219,33 @@ export async function resolveActiveConfig(config?: ProviderConfig): Promise<Prov
 /**
  * Sanitizes sensitive credentials (API keys, authorization tokens) from error strings (REQ-SEC-01)
  */
-export function sanitizeErrorMessage(msg: string): string {
+export function sanitizeErrorMessage(msg: unknown): string {
   if (!msg) return "";
-  return msg
+  let str: string;
+  if (typeof msg === "string") {
+    str = msg;
+  } else if (msg instanceof Error) {
+    str = msg.message;
+  } else if (Array.isArray(msg)) {
+    str = msg
+      .map((item) =>
+        typeof item === "string"
+          ? item
+          : (item as any)?.msg || (item as any)?.message || JSON.stringify(item)
+      )
+      .join("; ");
+  } else if (typeof msg === "object") {
+    const anyMsg = msg as any;
+    str = anyMsg.message || anyMsg.detail || anyMsg.error || JSON.stringify(msg);
+  } else {
+    str = String(msg);
+  }
+
+  if (typeof str !== "string") {
+    str = typeof str === "object" ? JSON.stringify(str) : String(str);
+  }
+
+  return str
     .replace(/([?&](?:key|apiKey|api_key|token|auth)=)[a-zA-Z0-9_\-]+/gi, "$1[REDACTED]")
     .replace(/key=[a-zA-Z0-9_\-]+/gi, "key=[REDACTED]")
     .replace(/Bearer\s+[a-zA-Z0-9_\-\.]+/gi, "Bearer [REDACTED]")
