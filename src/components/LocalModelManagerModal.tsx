@@ -94,6 +94,15 @@ export function LocalModelManagerModal({ isOpen, onClose, isScanning = false }: 
   const isBufferConstrained = Boolean(gpuCapability?.supported && !gpuCapability?.meetsBufferRequirement);
   const isWebGPUAvailable = gpuCapability ? Boolean(gpuCapability.supported && gpuCapability.meetsBufferRequirement) : true;
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const currentModelInfo = SUPPORTED_LOCAL_MODELS.find((m) => m.id === selectedModel) || SUPPORTED_LOCAL_MODELS[0];
@@ -152,14 +161,6 @@ export function LocalModelManagerModal({ isOpen, onClose, isScanning = false }: 
   };
 
   const isDownloading = status.state === "downloading" || status.state === "compiling";
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
 
   return (
     <div
