@@ -49,6 +49,9 @@ export interface PaperItem {
   classification?: DocumentClassification;
   scanType?: "persona" | "typesafe";
   typesafeResult?: any;
+  provider?: string;
+  model?: string;
+  aiEngine?: string;
   createdAt?: string;
   updatedAt?: string;
 

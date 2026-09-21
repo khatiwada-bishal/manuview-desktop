@@ -14,9 +14,16 @@ import {
   Square,
   Loader2,
   AlertTriangle,
+  FileQuestion,
 } from "lucide-react";
 import type { PaperItem, DesktopActiveView } from "@/components/DesktopSidebar";
-import type { GroupedPapers } from "./sidebarUtils";
+import {
+  type GroupedPapers,
+  getPaperApiLabel,
+  getApiBadgeStyle,
+  getSidebarIconBgClass,
+  getSidebarScoreBadgeStyle,
+} from "./sidebarUtils";
 import { classifyDocument } from "@/lib/parser";
 
 interface SidebarPaperListProps {
@@ -160,6 +167,8 @@ export function SidebarPaperList({
                     paper.targetJournalEvaluation?.isDisciplinaryMismatch === true ||
                     paper.isDeskReject === true);
 
+                const apiLabel = getPaperApiLabel(paper);
+
                 return (
                   <div key={paper.id} className="space-y-0.5 group/article">
                     <div
@@ -168,17 +177,16 @@ export function SidebarPaperList({
                           onToggleSelectPaper(paper.id);
                         } else {
                           onSelectPaper(paper.id);
-                          onSelectView("overview");
                         }
                       }}
-                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition cursor-pointer ${
-                        isSelectedInBatch
-                          ? "bg-blue-600/15 dark:bg-blue-500/25 border border-blue-500/40 text-blue-700 dark:text-blue-300 font-semibold"
-                          : isSelected && activeView === "overview"
-                          ? "bg-white dark:bg-white/10 shadow-xs border border-black/[0.06] dark:border-white/[0.08] font-bold text-[#0F172A] dark:text-white"
-                          : isSelected
-                          ? "bg-white/80 dark:bg-white/5 border border-black/[0.05] dark:border-white/[0.07] font-semibold text-[#0F172A] dark:text-white shadow-2xs"
-                          : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#0F172A] dark:hover:text-white border border-transparent"
+                      className={`group/item w-full flex items-center justify-between px-2 py-1.5 rounded-xl text-xs text-left transition cursor-pointer select-none ${
+                        isSelected && activeView === "overview" && selectedPaperIds.size === 0
+                          ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white shadow-2xs"
+                          : isSelected && selectedPaperIds.size === 0
+                          ? "bg-[#F3F4F6] dark:bg-[#161F30] font-medium text-[#111827] dark:text-white"
+                          : isSelectedInBatch
+                          ? "bg-blue-50/80 dark:bg-blue-950/30 font-medium text-blue-900 dark:text-blue-200"
+                          : "hover:bg-black/[0.03] dark:hover:bg-white/[0.04] text-neutral-700 dark:text-neutral-300"
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-1.5">
@@ -188,21 +196,13 @@ export function SidebarPaperList({
                             e.stopPropagation();
                             onToggleSelectPaper(paper.id);
                           }}
-                          className={`relative w-6 h-6 rounded-lg flex items-center justify-center shrink-0 cursor-pointer transition shadow-2xs ${
-                            isReviewing
-                              ? "bg-blue-600 text-white animate-pulse"
-                              : isFailed
-                              ? "bg-rose-500 text-white"
-                              : isDeskReject
-                              ? "bg-rose-500 text-white"
-                              : paper.isEligibleForReview === false && paper.ineligibilityReason === "already_published"
-                              ? "bg-emerald-500 text-white"
-                              : paper.isEligibleForReview === false || isNonAcademic
-                              ? "bg-orange-500 text-white"
-                              : isSelected
-                              ? "bg-gradient-to-br from-blue-600 to-indigo-600 text-white"
-                              : "bg-blue-500/90 text-white"
-                          }`}
+                          className={`relative w-6 h-6 rounded-lg flex items-center justify-center shrink-0 cursor-pointer transition shadow-2xs ${getSidebarIconBgClass(
+                            paper,
+                            isReviewing,
+                            isFailed,
+                            isDeskReject,
+                            isNonAcademic
+                          )} ${isSelected ? "ring-2 ring-blue-500/40" : ""}`}
                           title={isSelectedInBatch ? "Deselect article" : "Select article"}
                         >
                           {/* Checkbox visible when batch selected or hover */}
@@ -225,14 +225,12 @@ export function SidebarPaperList({
                             <div className="absolute inset-0 flex items-center justify-center transition-opacity group-hover/article:opacity-0">
                               {isReviewing ? (
                                 <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
-                              ) : isFailed ? (
-                                <AlertCircle className="w-3.5 h-3.5 text-white" />
-                              ) : isDeskReject ? (
+                              ) : isFailed || isDeskReject ? (
                                 <AlertCircle className="w-3.5 h-3.5 text-white" />
                               ) : paper.isEligibleForReview === false && paper.ineligibilityReason === "already_published" ? (
                                 <CheckCircle2 className="w-3.5 h-3.5 text-white" />
                               ) : paper.isEligibleForReview === false || isNonAcademic ? (
-                                <AlertTriangle className="w-3.5 h-3.5 text-white" />
+                                <FileQuestion className="w-3.5 h-3.5 text-white" />
                               ) : (
                                 <FileText className="w-3.5 h-3.5 text-white" />
                               )}
@@ -243,11 +241,13 @@ export function SidebarPaperList({
                         <div className="min-w-0 flex-1">
                           <div className="truncate font-medium flex items-center gap-1.5">
                             <span className="truncate">{paper.shortName}</span>
-                            {paper.scanType === "typesafe" && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/60 shrink-0 tracking-tight">
-                                Fast
-                              </span>
-                            )}
+                            <span
+                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0 tracking-tight border ${getApiBadgeStyle(
+                                apiLabel
+                              )}`}
+                            >
+                              {apiLabel}
+                            </span>
                           </div>
                           {isReviewing && (
                             <div className="text-[10px] text-blue-600 dark:text-blue-400 font-normal truncate mt-0.5">
@@ -286,19 +286,13 @@ export function SidebarPaperList({
                               N/A
                             </span>
                           )
-                        ) : paper.scanType === "typesafe" ? (
-                          <span
-                            title={`Fast Diagnostic Score: ${paper.score ?? 0}%`}
-                            className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60 flex items-center justify-center shrink-0"
-                          >
-                            <span>{paper.score ?? 0}%</span>
-                          </span>
                         ) : (
                           <span
-                            title={`Manuscript Readiness Score: ${paper.score ?? 0}%`}
-                            className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60 flex items-center gap-1 shrink-0"
+                            title={`${apiLabel} Score: ${paper.score ?? 0}%`}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center justify-center shrink-0 ${getSidebarScoreBadgeStyle(
+                              paper.score
+                            )}`}
                           >
-                            <span className="text-[9px] font-normal text-purple-600/75 dark:text-purple-300/75 tracking-tight">Score</span>
                             <span>{paper.score ?? 0}%</span>
                           </span>
                         )}

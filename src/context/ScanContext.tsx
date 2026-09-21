@@ -178,6 +178,9 @@ export function ScanProvider({
             score: isNonAcademic ? undefined : scanResult.readiness,
             scanType: "typesafe",
             typesafeResult: scanResult,
+            provider: "typesafe",
+            model: targetModel,
+            aiEngine: "TypeSafe",
             isEligibleForReview: !isNonAcademic,
             ineligibilityReason: isNonAcademic
               ? "non_academic_document"
@@ -276,6 +279,10 @@ export function ScanProvider({
             .join(" "),
           journal: fullReport.publishedDetails?.journalName || params.targetJournal,
           score: isDeskReject ? undefined : isEligible ? fullReport.overallScore || 80 : undefined,
+          scanType: "persona",
+          provider: activeConfig.provider || "gemini",
+          model: activeConfig.model,
+          aiEngine: activeConfig.provider?.toUpperCase() || "GEMINI",
           isEligibleForReview: !isDeskReject && isEligible,
           isDeskReject: isDeskReject,
           ineligibilityReason: isDeskReject ? "scope_mismatch" : fullReport.ineligibilityReason,
@@ -375,11 +382,17 @@ export function ScanProvider({
         .slice(0, 3)
         .join(" ");
 
+      const isTypeSafe = params.scanEngine === "typesafe";
+      const activeConfig = isTypeSafe ? null : await resolveActiveConfig().catch(() => null);
       const pendingPaper: PaperItem = {
         id: paperId,
         title: title,
         shortName: shortName,
         journal: params.targetJournal,
+        scanType: isTypeSafe ? "typesafe" : "persona",
+        provider: isTypeSafe ? "typesafe" : (activeConfig?.provider || "gemini"),
+        model: isTypeSafe ? undefined : activeConfig?.model,
+        aiEngine: isTypeSafe ? "TypeSafe" : (activeConfig?.provider || "Gemini"),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         status: "reviewing",

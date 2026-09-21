@@ -219,3 +219,125 @@ export function buildSidebarServices(params: {
     },
   ];
 }
+
+/**
+ * Extract clean, human-friendly API provider name.
+ * e.g., gemini-2.0-flash / gemini-1.5-pro -> "Gemini"
+ * gpt-4o / gpt-4o-mini / o1 / o3 -> "OpenAI"
+ * claude-3-5-sonnet -> "Claude"
+ * typesafe -> "TypeSafe"
+ */
+export function getPaperApiLabel(paper: PaperItem): string {
+  // 1. Explicit TypeSafe scan check
+  if (paper.scanType === "typesafe" || paper.typesafeResult != null || paper.provider === "typesafe") {
+    return "TypeSafe";
+  }
+
+  // 2. Direct provider field
+  const prov = (paper.provider || "").toLowerCase();
+  if (prov === "gemini") return "Gemini";
+  if (prov === "openai") return "OpenAI";
+  if (prov === "anthropic") return "Claude";
+  if (prov === "groq") return "Groq";
+  if (prov === "deepseek") return "DeepSeek";
+  if (prov === "mistral") return "Mistral";
+  if (prov === "ollama") return "Ollama";
+  if (prov === "webllm") return "Local SLM";
+
+  // 3. Inspect aiEngine and model strings
+  const raw = `${paper.model || ""} ${paper.aiEngine || ""}`.toLowerCase();
+  if (raw.includes("typesafe") || raw.includes("fast scan")) return "TypeSafe";
+  if (raw.includes("gemini")) return "Gemini";
+  if (
+    raw.includes("gpt") ||
+    raw.includes("openai") ||
+    raw.includes("o1") ||
+    raw.includes("o3") ||
+    raw.includes("o4")
+  ) {
+    return "OpenAI";
+  }
+  if (raw.includes("claude") || raw.includes("anthropic")) return "Claude";
+  if (raw.includes("deepseek")) return "DeepSeek";
+  if (raw.includes("groq")) return "Groq";
+  if (raw.includes("mistral")) return "Mistral";
+  if (raw.includes("ollama")) return "Ollama";
+  if (raw.includes("webllm") || raw.includes("slm")) return "Local SLM";
+  if (raw.includes("qwen")) return "Qwen";
+  if (raw.includes("llama")) return "Llama";
+
+  // 4. Default for persona reviews in ManuView: Gemini
+  return "Gemini";
+}
+
+/**
+ * Returns tailored badge colors for the API provider pill
+ */
+export function getApiBadgeStyle(apiLabel: string): string {
+  switch (apiLabel) {
+    case "TypeSafe":
+      return "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border-blue-200/60 dark:border-blue-800/60";
+    case "Gemini":
+      return "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-indigo-200/60 dark:border-indigo-800/60";
+    case "OpenAI":
+      return "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-800/60";
+    case "Claude":
+      return "bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border-amber-200/60 dark:border-amber-800/60";
+    case "Ollama":
+    case "Local SLM":
+      return "bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 border-teal-200/60 dark:border-teal-800/60";
+    default:
+      return "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700";
+  }
+}
+
+/**
+ * Computes the squircle icon background in the sidebar:
+ * - Reviewing: Blue animate-pulse
+ * - Desk Reject / Failed: Red
+ * - N/A (non-academic / ineligible): Slate
+ * - Score >= 75%: Green
+ * - Score < 75%: Orange
+ */
+export function getSidebarIconBgClass(
+  paper: PaperItem,
+  isReviewing: boolean,
+  isFailed: boolean,
+  isDeskReject: boolean,
+  isNonAcademic: boolean
+): string {
+  if (isReviewing) {
+    return "bg-blue-600 text-white animate-pulse";
+  }
+  if (isFailed || isDeskReject) {
+    return "bg-rose-500 text-white";
+  }
+  if (paper.isEligibleForReview === false && paper.ineligibilityReason === "already_published") {
+    return "bg-emerald-500 text-white";
+  }
+  if (paper.isEligibleForReview === false || isNonAcademic) {
+    return "bg-slate-500 text-white";
+  }
+  if (paper.score != null) {
+    if (paper.score >= 75) {
+      return "bg-emerald-500 text-white";
+    } else {
+      return "bg-amber-500 text-white";
+    }
+  }
+  return "bg-slate-500 text-white";
+}
+
+/**
+ * Returns matching score badge pill style for sidebar items
+ */
+export function getSidebarScoreBadgeStyle(score?: number): string {
+  if (score != null) {
+    if (score >= 75) {
+      return "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200/60 dark:border-emerald-800/60";
+    }
+    return "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200/60 dark:border-amber-800/60";
+  }
+  return "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200/60 dark:border-blue-800/60";
+}
+

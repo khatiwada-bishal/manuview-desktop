@@ -144,6 +144,9 @@ export function sanitizeSavedProject(p: SavedProject): SavedProject {
       ? "scope_mismatch"
       : undefined,
     classification,
+    provider: p.paper?.provider || (p.paper?.scanType === "typesafe" ? "typesafe" : undefined),
+    model: p.paper?.model,
+    aiEngine: p.paper?.aiEngine || p.dashboardData?.aiEngine,
     targetJournalEvaluation: isMismatch
       ? (p.paper?.targetJournalEvaluation || p.fullReport?.targetJournalEvaluation)
       : (p.paper?.targetJournalEvaluation?.isDisciplinaryMismatch ? undefined : p.paper?.targetJournalEvaluation) ||

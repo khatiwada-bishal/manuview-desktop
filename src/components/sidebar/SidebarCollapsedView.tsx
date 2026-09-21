@@ -13,10 +13,18 @@ import {
   BarChart3,
   Cpu,
   Loader2,
+  FileQuestion,
 } from "lucide-react";
 import { isDesktopApp } from "@/lib/desktop";
 import type { PaperItem, DesktopActiveView } from "@/components/DesktopSidebar";
-import type { GroupedPapers, SidebarServiceItem } from "./sidebarUtils";
+import {
+  type GroupedPapers,
+  type SidebarServiceItem,
+  getPaperApiLabel,
+  getApiBadgeStyle,
+  getSidebarIconBgClass,
+  getSidebarScoreBadgeStyle,
+} from "./sidebarUtils";
 import { classifyDocument } from "@/lib/parser";
 
 interface SidebarCollapsedViewProps {
@@ -178,6 +186,7 @@ export function SidebarCollapsedView({
                           paper.ineligibilityReason === "scope_mismatch" ||
                           paper.targetJournalEvaluation?.isDisciplinaryMismatch === true ||
                           paper.isDeskReject === true);
+                      const apiLabel = getPaperApiLabel(paper);
                       return (
                         <div key={paper.id} className="space-y-0.5">
                           <div
@@ -194,28 +203,45 @@ export function SidebarCollapsedView({
                             }`}
                           >
                             <div className="flex items-center gap-2 min-w-0 pr-2">
-                              {isReviewing ? (
-                                <Loader2 className="w-3.5 h-3.5 shrink-0 text-blue-600 dark:text-blue-400 animate-spin" />
-                              ) : (
-                                <FileText
-                                  className={`w-3.5 h-3.5 shrink-0 ${
-                                    isSelected ? "text-blue-600 dark:text-blue-400" : "text-neutral-400 dark:text-neutral-500"
-                                  }`}
-                                />
-                              )}
+                              <div
+                                className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 shadow-2xs ${getSidebarIconBgClass(
+                                  paper,
+                                  isReviewing,
+                                  isFailed,
+                                  isDeskReject,
+                                  isNonAcademic
+                                )} ${isSelected ? "ring-2 ring-blue-500/40" : ""}`}
+                              >
+                                {isReviewing ? (
+                                  <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+                                ) : isFailed || isDeskReject ? (
+                                  <AlertCircle className="w-3.5 h-3.5 text-white" />
+                                ) : paper.isEligibleForReview === false && paper.ineligibilityReason === "already_published" ? (
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                                ) : paper.isEligibleForReview === false || isNonAcademic ? (
+                                  <FileQuestion className="w-3.5 h-3.5 text-white" />
+                                ) : (
+                                  <FileText className="w-3.5 h-3.5 text-white" />
+                                )}
+                              </div>
                               <div className="truncate">
-                                <div className="truncate font-medium text-xs text-[#111827] dark:text-neutral-100">
-                                  {paper.shortName}
+                                <div className="truncate font-medium text-xs text-[#111827] dark:text-neutral-100 flex items-center gap-1.5">
+                                  <span className="truncate">{paper.shortName}</span>
+                                  <span
+                                    className={`text-[8px] font-bold px-1.5 py-0.2 rounded shrink-0 border ${getApiBadgeStyle(
+                                      apiLabel
+                                    )}`}
+                                  >
+                                    {apiLabel}
+                                  </span>
                                 </div>
                                 <div className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate">
                                   {isReviewing ? (
                                     <span className="text-blue-600 dark:text-blue-400 font-medium truncate">
                                       {paper.scanStep || "Reviewing..."}
                                     </span>
-                                  ) : paper.scanType === "typesafe" ? (
-                                    <span>Fast • {paper.journal}</span>
                                   ) : (
-                                    paper.journal
+                                    <span>{apiLabel} • {paper.journal}</span>
                                   )}
                                 </div>
                               </div>
@@ -247,19 +273,13 @@ export function SidebarCollapsedView({
                                     N/A
                                   </span>
                                 )
-                              ) : paper.scanType === "typesafe" ? (
-                                <span
-                                  title={`Fast Diagnostic Score: ${paper.score ?? 0}%`}
-                                  className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60 flex items-center justify-center"
-                                >
-                                  <span>{paper.score ?? 0}%</span>
-                                </span>
                               ) : (
                                 <span
-                                  title={`Manuscript Score: ${paper.score ?? 0}%`}
-                                  className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-[#1E293B] text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-[#334155] flex items-center gap-0.5"
+                                  title={`${apiLabel} Score: ${paper.score ?? 0}%`}
+                                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex items-center justify-center shrink-0 ${getSidebarScoreBadgeStyle(
+                                    paper.score
+                                  )}`}
                                 >
-                                  <span className="text-[8px] font-normal opacity-70">Score</span>
                                   <span>{paper.score ?? 0}%</span>
                                 </span>
                               )}
