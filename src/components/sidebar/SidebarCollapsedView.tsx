@@ -226,11 +226,8 @@ export function SidebarCollapsedView({
                                 )}
                               </div>
                               <div className="truncate">
-                                <div className="truncate font-medium text-xs text-[#111827] dark:text-neutral-100 flex items-center gap-1.5">
-                                  <span className="truncate">{paper.shortName}</span>
-                                  <span title={`Reviewed with ${apiLabel}`} className="shrink-0 flex items-center justify-center opacity-85">
-                                    <ApiProviderIcon apiLabel={apiLabel} className="w-3 h-3 shrink-0" />
-                                  </span>
+                                <div className="truncate font-medium text-xs text-[#111827] dark:text-neutral-100">
+                                  {paper.shortName}
                                 </div>
                                 <div className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate">
                                   {isReviewing ? (
@@ -253,24 +250,14 @@ export function SidebarCollapsedView({
                                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20">
                                   Failed
                                 </span>
-                              ) : isDeskReject ? (
-                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20">
-                                  Rejected
+                              ) : (
+                                <span
+                                  title={`Reviewed with ${apiLabel}`}
+                                  className="w-4 h-4 rounded flex items-center justify-center shrink-0 opacity-75 group-hover/item:opacity-100 transition"
+                                >
+                                  <ApiProviderIcon apiLabel={apiLabel} className="w-3.5 h-3.5 shrink-0" />
                                 </span>
-                              ) : paper.isEligibleForReview === false || isNonAcademic ? (
-                                paper.ineligibilityReason === "already_published" ? (
-                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                                    PUB
-                                  </span>
-                                ) : (
-                                  <span
-                                    title="Document Ineligible for Peer Review (Not a manuscript or research article)"
-                                    className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border border-orange-200/60 dark:border-orange-800/60"
-                                  >
-                                    N/A
-                                  </span>
-                                )
-                              ) : null}
+                              )}
                               {onDeletePaper && (
                                 <button
                                   type="button"

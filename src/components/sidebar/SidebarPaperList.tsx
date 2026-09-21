@@ -240,14 +240,8 @@ export function SidebarPaperList({
                         </div>
 
                         <div className="min-w-0 flex-1">
-                          <div className="truncate font-medium flex items-center gap-1.5">
+                          <div className="truncate font-medium">
                             <span className="truncate">{paper.shortName}</span>
-                            <span
-                              title={`Reviewed with ${apiLabel}`}
-                              className="shrink-0 flex items-center justify-center opacity-85 group-hover/article:opacity-100 transition"
-                            >
-                              <ApiProviderIcon apiLabel={apiLabel} className="w-3.5 h-3.5 shrink-0" />
-                            </span>
                           </div>
                           {isReviewing && (
                             <div className="text-[10px] text-blue-600 dark:text-blue-400 font-normal truncate mt-0.5">
@@ -269,24 +263,14 @@ export function SidebarPaperList({
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/60">
                             Failed
                           </span>
-                        ) : isDeskReject ? (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/60">
-                            Desk
+                        ) : (
+                          <span
+                            title={`Reviewed with ${apiLabel}`}
+                            className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 opacity-75 group-hover/article:opacity-100 transition"
+                          >
+                            <ApiProviderIcon apiLabel={apiLabel} className="w-3.5 h-3.5 shrink-0" />
                           </span>
-                        ) : paper.isEligibleForReview === false || isNonAcademic ? (
-                          paper.ineligibilityReason === "already_published" ? (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
-                              PUB
-                            </span>
-                          ) : (
-                            <span
-                              title="Document Ineligible for Peer Review (Not a manuscript or research article)"
-                              className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border border-orange-200/60 dark:border-orange-800/60"
-                            >
-                              N/A
-                            </span>
-                          )
-                        ) : null}
+                        )}
                       </div>
                     </div>
 
