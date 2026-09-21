@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   FileText,
   Users,
@@ -15,6 +15,7 @@ import {
   Loader2,
   AlertTriangle,
   FileQuestion,
+  ChevronDown,
 } from "lucide-react";
 import type { PaperItem, DesktopActiveView } from "@/components/DesktopSidebar";
 import {
@@ -56,12 +57,41 @@ export function SidebarPaperList({
   onNewReview,
   onDeleteMultiplePapers,
 }: SidebarPaperListProps) {
+  const [isArticlesExpanded, setIsArticlesExpanded] = useState(true);
+  const [collapsedSubmenus, setCollapsedSubmenus] = useState<Set<string>>(new Set());
+
+  const toggleSubmenu = (paperId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setCollapsedSubmenus((prev) => {
+      const next = new Set(prev);
+      if (next.has(paperId)) {
+        next.delete(paperId);
+      } else {
+        next.add(paperId);
+      }
+      return next;
+    });
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between px-2 mb-1.5">
-        <span className="text-[11px] font-bold text-[#9CA3AF] dark:text-neutral-400 uppercase tracking-wider">
-          ARTICLES
-        </span>
+        <button
+          type="button"
+          onClick={() => setIsArticlesExpanded((prev) => !prev)}
+          className="flex items-center gap-1.5 text-[11px] font-bold text-[#9CA3AF] dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 uppercase tracking-wider transition cursor-pointer select-none group"
+          title={isArticlesExpanded ? "Collapse articles list" : "Expand articles list"}
+        >
+          <ChevronDown
+            className={`w-3.5 h-3.5 transition-transform duration-200 ${
+              isArticlesExpanded ? "" : "-rotate-90"
+            }`}
+          />
+          <span>ARTICLES</span>
+          <span className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 normal-case">
+            ({papers.length})
+          </span>
+        </button>
         <div className="flex items-center gap-1">
           {/* Trash can icon button in place of text "Select" */}
           {papers.length > 0 && (
@@ -108,88 +138,102 @@ export function SidebarPaperList({
         </div>
       </div>
 
-      <div className="space-y-1">
-        {papers.length === 0 ? (
-          <div className="px-3 py-4 text-center rounded-xl bg-white dark:bg-[#111827] border border-dashed border-[#E5E7EB] dark:border-[#1F2937]">
-            <FileText className="w-5 h-5 mx-auto text-neutral-300 dark:text-neutral-600 mb-1.5" />
-            <p className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">No manuscripts yet</p>
-            <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">Run a review to track your paper</p>
-            <button
-              type="button"
-              disabled={isScanning}
-              onClick={onNewReview}
-              title={isScanning ? "A manuscript review is currently running in the background" : "Start Review"}
-              className={`mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold ${
-                isScanning
-                  ? "opacity-50 cursor-not-allowed bg-neutral-200 dark:bg-neutral-800 text-neutral-400"
-                  : "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition cursor-pointer"
-              }`}
-            >
-              <Plus className="w-3 h-3" />
-              <span>{isScanning ? "Reviewing..." : "Start Review"}</span>
-            </button>
-          </div>
-        ) : (
-          groupedPapers.map(({ category, papers: groupPapers }) => (
-            <div key={category} className="space-y-1 mb-3 last:mb-0">
-              <div className="flex items-center justify-between px-2 pt-1.5 pb-0.5 text-[10px] font-semibold text-[#9CA3AF] dark:text-neutral-400 tracking-wider uppercase">
-                <div className="flex items-center gap-1.5">
-                  <Clock className="w-3 h-3 text-neutral-400 dark:text-neutral-500" />
-                  <span>{category}</span>
+      {isArticlesExpanded && (
+        <div className="space-y-1">
+          {papers.length === 0 ? (
+            <div className="px-3 py-4 text-center rounded-xl bg-white dark:bg-[#111827] border border-dashed border-[#E5E7EB] dark:border-[#1F2937]">
+              <FileText className="w-5 h-5 mx-auto text-neutral-300 dark:text-neutral-600 mb-1.5" />
+              <p className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">No manuscripts yet</p>
+              <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">Run a review to track your paper</p>
+              <button
+                type="button"
+                disabled={isScanning}
+                onClick={onNewReview}
+                title={isScanning ? "A manuscript review is currently running in the background" : "Start Review"}
+                className={`mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold ${
+                  isScanning
+                    ? "opacity-50 cursor-not-allowed bg-neutral-200 dark:bg-neutral-800 text-neutral-400"
+                    : "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition cursor-pointer"
+                }`}
+              >
+                <Plus className="w-3 h-3" />
+                <span>{isScanning ? "Reviewing..." : "Start Review"}</span>
+              </button>
+            </div>
+          ) : (
+            groupedPapers.map(({ category, papers: groupPapers }) => (
+              <div key={category} className="space-y-1 mb-3 last:mb-0">
+                <div className="flex items-center justify-between px-2 pt-1.5 pb-0.5 text-[10px] font-semibold text-[#9CA3AF] dark:text-neutral-400 tracking-wider uppercase">
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="w-3 h-3 text-neutral-400 dark:text-neutral-500" />
+                    <span>{category}</span>
+                  </div>
+                  <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-black/[0.04] dark:bg-white/[0.08] text-neutral-500 dark:text-neutral-400">
+                    {groupPapers.length}
+                  </span>
                 </div>
-                <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-black/[0.04] dark:bg-white/[0.08] text-neutral-500 dark:text-neutral-400">
-                  {groupPapers.length}
-                </span>
-              </div>
 
-              {groupPapers.map((paper) => {
-                const isSelected = paper.id === activePaperId;
-                const isSelectedInBatch = selectedPaperIds.has(paper.id);
-                const isReviewing = paper.status === "reviewing";
-                const isFailed = paper.status === "failed";
-                const heuristic = !paper.classification
-                  ? classifyDocument(paper.scanParams?.rawText || "", paper.title)
-                  : paper.classification;
-                const isNonAcademic =
-                  paper.ineligibilityReason === "non_academic_document" ||
-                  (paper.classification != null &&
-                    (!paper.classification.isAcademicManuscript ||
-                      paper.classification.category !== "academic_manuscript")) ||
-                  (paper.typesafeResult?.classification != null &&
-                    (!paper.typesafeResult.classification.isAcademicManuscript ||
-                      paper.typesafeResult.classification.category !== "academic_manuscript")) ||
-                  (!heuristic.isAcademicManuscript || heuristic.category !== "academic_manuscript");
-                const isDeskReject =
-                  !isReviewing &&
-                  !isFailed &&
-                  !isNonAcademic &&
-                  (paper.editorialTriage?.outcome === "desk_reject" ||
-                    paper.ineligibilityReason === "scope_mismatch" ||
-                    paper.targetJournalEvaluation?.isDisciplinaryMismatch === true ||
-                    paper.isDeskReject === true);
+                {groupPapers.map((paper) => {
+                  const isSelected = paper.id === activePaperId;
+                  const isSelectedInBatch = selectedPaperIds.has(paper.id);
+                  const isReviewing = paper.status === "reviewing";
+                  const isFailed = paper.status === "failed";
+                  const heuristic = !paper.classification
+                    ? classifyDocument(paper.scanParams?.rawText || "", paper.title)
+                    : paper.classification;
+                  const isNonAcademic =
+                    paper.ineligibilityReason === "non_academic_document" ||
+                    (paper.classification != null &&
+                      (!paper.classification.isAcademicManuscript ||
+                        paper.classification.category !== "academic_manuscript")) ||
+                    (paper.typesafeResult?.classification != null &&
+                      (!paper.typesafeResult.classification.isAcademicManuscript ||
+                        paper.typesafeResult.classification.category !== "academic_manuscript")) ||
+                    (!heuristic.isAcademicManuscript || heuristic.category !== "academic_manuscript");
+                  const isDeskReject =
+                    !isReviewing &&
+                    !isFailed &&
+                    !isNonAcademic &&
+                    (paper.editorialTriage?.outcome === "desk_reject" ||
+                      paper.ineligibilityReason === "scope_mismatch" ||
+                      paper.targetJournalEvaluation?.isDisciplinaryMismatch === true ||
+                      paper.isDeskReject === true);
 
-                const apiLabel = getPaperApiLabel(paper);
+                  const hasSubviews =
+                    paper.scanType !== "typesafe" &&
+                    (paper.isEligibleForReview !== false || isDeskReject);
 
-                return (
-                  <div key={paper.id} className="space-y-0.5 group/article">
-                    <div
-                      onClick={() => {
-                        if (selectedPaperIds.size > 0) {
-                          onToggleSelectPaper(paper.id);
-                        } else {
-                          onSelectPaper(paper.id);
-                        }
-                      }}
-                      className={`group/item w-full flex items-center justify-between px-2 py-1.5 rounded-xl text-xs text-left transition cursor-pointer select-none ${
-                        isSelected && activeView === "overview" && selectedPaperIds.size === 0
-                          ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white shadow-2xs"
-                          : isSelected && selectedPaperIds.size === 0
-                          ? "bg-[#F3F4F6] dark:bg-[#161F30] font-medium text-[#111827] dark:text-white"
-                          : isSelectedInBatch
-                          ? "bg-blue-50/80 dark:bg-blue-950/30 font-medium text-blue-900 dark:text-blue-200"
-                          : "hover:bg-black/[0.03] dark:hover:bg-white/[0.04] text-neutral-700 dark:text-neutral-300"
-                      }`}
-                    >
+                  const apiLabel = getPaperApiLabel(paper);
+
+                  return (
+                    <div key={paper.id} className="space-y-0.5 group/article">
+                      <div
+                        onClick={() => {
+                          if (selectedPaperIds.size > 0) {
+                            onToggleSelectPaper(paper.id);
+                          } else {
+                            if (isSelected) {
+                              toggleSubmenu(paper.id);
+                            } else {
+                              setCollapsedSubmenus((prev) => {
+                                const next = new Set(prev);
+                                next.delete(paper.id);
+                                return next;
+                              });
+                              onSelectPaper(paper.id);
+                            }
+                          }
+                        }}
+                        className={`group/item w-full flex items-center justify-between px-2 py-1.5 rounded-xl text-xs text-left transition cursor-pointer select-none ${
+                          isSelected && activeView === "overview" && selectedPaperIds.size === 0
+                            ? "bg-[#E5E7EB] dark:bg-[#1E293B] font-semibold text-[#111827] dark:text-white shadow-2xs"
+                            : isSelected && selectedPaperIds.size === 0
+                            ? "bg-[#F3F4F6] dark:bg-[#161F30] font-medium text-[#111827] dark:text-white"
+                            : isSelectedInBatch
+                            ? "bg-blue-50/80 dark:bg-blue-950/30 font-medium text-blue-900 dark:text-blue-200"
+                            : "hover:bg-black/[0.03] dark:hover:bg-white/[0.04] text-neutral-700 dark:text-neutral-300"
+                        }`}
+                      >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-1.5">
                         {/* Squircle container with icon OR hover checkbox */}
                         <div
@@ -271,6 +315,23 @@ export function SidebarPaperList({
                             <ApiProviderIcon apiLabel={apiLabel} className="w-3.5 h-3.5 shrink-0" />
                           </span>
                         )}
+
+                        {isSelected && !isReviewing && !isFailed && hasSubviews && (
+                          <span
+                            title={
+                              collapsedSubmenus.has(paper.id)
+                                ? "Expand review sections"
+                                : "Collapse review sections"
+                            }
+                            className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition p-0.5"
+                          >
+                            <ChevronDown
+                              className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                                collapsedSubmenus.has(paper.id) ? "-rotate-90" : ""
+                              }`}
+                            />
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -301,69 +362,73 @@ export function SidebarPaperList({
                     )}
 
                     {/* Sub-views list for currently selected paper (only for persona reviews with multi-perspective sub-views) */}
-                    {isSelected && !isReviewing && !isFailed && paper.scanType !== "typesafe" && (paper.isEligibleForReview !== false || isDeskReject) && (
-                      <div className="pl-4 pr-2 py-1 space-y-0.5">
-                        <button
-                          type="button"
-                          onClick={() => onSelectView("personas")}
-                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer btn-interactive ${
-                            activeView === "personas"
-                              ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
-                              : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
-                          }`}
-                        >
-                          {isDeskReject ? (
-                            <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
-                          ) : (
-                            <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                          )}
-                          <span className="truncate">
-                            {isDeskReject
-                              ? "Triage & 5-Persona Reviews"
-                              : "5-Persona Reviews"}
-                          </span>
-                        </button>
+                    {isSelected &&
+                      !isReviewing &&
+                      !isFailed &&
+                      hasSubviews &&
+                      !collapsedSubmenus.has(paper.id) && (
+                        <div className="pl-4 pr-2 py-1 space-y-0.5 animate-in fade-in duration-150">
+                          <button
+                            type="button"
+                            onClick={() => onSelectView("personas")}
+                            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer btn-interactive ${
+                              activeView === "personas"
+                                ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
+                                : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
+                            }`}
+                          >
+                            {isDeskReject ? (
+                              <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+                            ) : (
+                              <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                            )}
+                            <span className="truncate">
+                              {isDeskReject
+                                ? "Triage & 5-Persona Reviews"
+                                : "5-Persona Reviews"}
+                            </span>
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={() => onSelectView("dimensions")}
-                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer btn-interactive ${
-                            activeView === "dimensions"
-                              ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
-                              : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
-                          }`}
-                        >
-                          <BarChart3 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                          <span className="truncate">6 Scoring Dimensions</span>
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => onSelectView("dimensions")}
+                            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer btn-interactive ${
+                              activeView === "dimensions"
+                                ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
+                                : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
+                            }`}
+                          >
+                            <BarChart3 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            <span className="truncate">6 Scoring Dimensions</span>
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={() => onSelectView("issues")}
-                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer btn-interactive ${
-                            activeView === "issues"
-                              ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
-                              : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
-                          }`}
-                        >
-                          <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                          <span className="truncate">Priority Action Items</span>
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => onSelectView("issues")}
+                            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer btn-interactive ${
+                              activeView === "issues"
+                                ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
+                                : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
+                            }`}
+                          >
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                            <span className="truncate">Priority Action Items</span>
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={() => onSelectView("journals")}
-                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer btn-interactive ${
-                            activeView === "journals" || activeView === "recommendations"
-                              ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
-                              : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
-                          }`}
-                        >
-                          <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                          <span className="truncate">Target Journals</span>
-                        </button>
-                      </div>
-                    )}
+                          <button
+                            type="button"
+                            onClick={() => onSelectView("journals")}
+                            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition text-left cursor-pointer btn-interactive ${
+                              activeView === "journals" || activeView === "recommendations"
+                                ? "liquid-glass-tab-active font-semibold text-[#111827] dark:text-white"
+                                : "text-neutral-600 dark:text-neutral-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] hover:text-[#111827] dark:hover:text-white"
+                            }`}
+                          >
+                            <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                            <span className="truncate">Target Journals</span>
+                          </button>
+                        </div>
+                      )}
                   </div>
                 );
               })}
@@ -371,6 +436,7 @@ export function SidebarPaperList({
           ))
         )}
       </div>
+      )}
     </div>
   );
 }

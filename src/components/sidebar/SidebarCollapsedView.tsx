@@ -116,6 +116,8 @@ export function SidebarCollapsedView({
         <div className="relative group flex justify-center">
           <button
             type="button"
+            onClick={onToggleCollapse}
+            title="Articles - Click to expand sidebar"
             className={`w-9 h-9 rounded-xl flex items-center justify-center transition cursor-pointer shadow-2xs ${
               activePaperId
                 ? "bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800"
