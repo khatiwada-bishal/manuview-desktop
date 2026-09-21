@@ -14,6 +14,8 @@ import {
   BookOpen,
   ShieldAlert,
   Loader2,
+  ShieldCheck,
+  ArrowRight,
 } from "lucide-react";
 import { PaperItem } from "@/components/DesktopSidebar";
 import { useScanManager } from "@/context/ScanContext";
@@ -22,12 +24,14 @@ interface ScanErrorViewProps {
   paper: PaperItem;
   onOpenSettings?: () => void;
   onDeleteArticle?: () => void;
+  onOpenService?: (serviceId: string) => void;
 }
 
 export function ScanErrorView({
   paper,
   onOpenSettings,
   onDeleteArticle,
+  onOpenService,
 }: ScanErrorViewProps) {
   const { retryScan, isScanning } = useScanManager();
   const [showTechnical, setShowTechnical] = useState(false);
@@ -52,6 +56,8 @@ export function ScanErrorView({
         return <BookOpen className="w-6 h-6 text-purple-500" />;
       case "device_memory":
         return <Cpu className="w-6 h-6 text-indigo-500" />;
+      case "typesafe_decision_model":
+        return <ShieldCheck className="w-6 h-6 text-blue-500" />;
       default:
         return <AlertTriangle className="w-6 h-6 text-rose-500" />;
     }
@@ -104,29 +110,58 @@ export function ScanErrorView({
 
           {/* Primary Action Buttons */}
           <div className="flex flex-wrap items-center gap-3 pt-2">
-            <button
-              type="button"
-              disabled={isScanning}
-              onClick={() => retryScan(paper)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl liquid-glass-btn-primary text-white font-semibold text-xs transition shadow-xs cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isScanning ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 text-white/80" />
-              ) : (
-                <RotateCw className="w-3.5 h-3.5 shrink-0" />
-              )}
-              <span>{isScanning ? "Scan in progress..." : "Retry Review Scan"}</span>
-            </button>
+            {error.category === "typesafe_decision_model" ? (
+              <>
+                {onOpenService && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenService("typesafe-scan")}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition shadow-xs cursor-pointer active:scale-95"
+                  >
+                    <ShieldCheck className="w-4 h-4 shrink-0" />
+                    <span>Run TypeSafe Structured Scan</span>
+                    <ArrowRight className="w-3.5 h-3.5 shrink-0 opacity-80" />
+                  </button>
+                )}
 
-            {onOpenSettings && (
-              <button
-                type="button"
-                onClick={onOpenSettings}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl liquid-glass-btn-secondary text-neutral-800 dark:text-neutral-200 font-semibold text-xs transition cursor-pointer"
-              >
-                <Settings className="w-3.5 h-3.5 shrink-0" />
-                <span>Configure AI Provider (Cmd+,)</span>
-              </button>
+                {onOpenSettings && (
+                  <button
+                    type="button"
+                    onClick={onOpenSettings}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl liquid-glass-btn-secondary text-neutral-800 dark:text-neutral-200 font-semibold text-xs transition cursor-pointer"
+                  >
+                    <Settings className="w-3.5 h-3.5 shrink-0" />
+                    <span>Switch to Text Model (Cmd+,)</span>
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  disabled={isScanning}
+                  onClick={() => retryScan(paper)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl liquid-glass-btn-primary text-white font-semibold text-xs transition shadow-xs cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isScanning ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 text-white/80" />
+                  ) : (
+                    <RotateCw className="w-3.5 h-3.5 shrink-0" />
+                  )}
+                  <span>{isScanning ? "Scan in progress..." : "Retry Review Scan"}</span>
+                </button>
+
+                {onOpenSettings && (
+                  <button
+                    type="button"
+                    onClick={onOpenSettings}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl liquid-glass-btn-secondary text-neutral-800 dark:text-neutral-200 font-semibold text-xs transition cursor-pointer"
+                  >
+                    <Settings className="w-3.5 h-3.5 shrink-0" />
+                    <span>Configure AI Provider (Cmd+,)</span>
+                  </button>
+                )}
+              </>
             )}
 
             {onDeleteArticle && (

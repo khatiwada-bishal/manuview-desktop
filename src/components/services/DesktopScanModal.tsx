@@ -299,6 +299,13 @@ export function DesktopScanModal({
     if (!compatibilityMatch) return;
     if (isScanning) return;
 
+    if (provider === "typesafe") {
+      setError(
+        "TypeSafe (Jev) is an atomic decision engine that powers the TypeSafe Structured Scan service, but cannot generate written text for the 5-Persona Peer Review. Please switch to a text model (Gemini, Groq, OpenAI, Claude, or Ollama) in Settings (Cmd+,) to run this review, or use TypeSafe Structured Scan from the sidebar."
+      );
+      return;
+    }
+
     try {
       await startScan({
         title: compatibilityMatch.parsed.title || title || (selectedFile?.name ? selectedFile.name.replace(/\.[^/.]+$/, "") : "Untitled Manuscript"),

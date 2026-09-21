@@ -740,12 +740,14 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
               </div>
 
               {config.provider === "typesafe" && (
-                <div className="mt-2 p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-900 dark:text-blue-200 leading-relaxed">
-                  <span className="font-semibold">Powers the TypeSafe Structured Scan.</span>{" "}
-                  Jev returns typed decisions (Choice / Score / Noul) with calibrated
-                  confidence — not chat text — so use it from the{" "}
-                  <span className="font-semibold">TypeSafe Structured Scan</span> service.
-                  Keep a text model (Gemini, OpenAI, Anthropic…) selected for prose reviews.
+                <div className="mt-3 p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/25 text-xs text-blue-950 dark:text-blue-200 space-y-1.5">
+                  <div className="flex items-center gap-2 font-bold text-blue-800 dark:text-blue-300">
+                    <ShieldCheck className="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                    <span>TypeSafe (Jev) is a Decision Model</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-blue-900/80 dark:text-blue-200/90">
+                    Jev evaluates structured document criteria (Choice / Score / Noul) with calibrated confidence. It powers the dedicated <strong>TypeSafe Structured Scan</strong> service in the sidebar. For the 5-Persona simulated peer review, keep a text model (e.g. Gemini, Groq, OpenAI, Claude, or Ollama) selected.
+                  </p>
                 </div>
               )}
 

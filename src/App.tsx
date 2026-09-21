@@ -718,6 +718,7 @@ function AppWorkspace({
           paper={currentPaper}
           onOpenSettings={() => setIsSettingsOpen(true)}
           onDeleteArticle={() => setPapersToDelete([currentPaper])}
+          onOpenService={handleOpenService}
         />
       );
     }
