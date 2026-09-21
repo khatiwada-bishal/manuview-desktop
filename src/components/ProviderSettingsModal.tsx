@@ -36,7 +36,7 @@ export const DEFAULT_CONFIG: ProviderConfig = {
 
 export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalModel, isScanning = false }: Props) {
   const [config, setConfig] = useState<ProviderConfig>(DEFAULT_CONFIG);
-  const [providerCategory, setProviderCategory] = useState<"cloud" | "local">("cloud");
+  const [providerCategory, setProviderCategory] = useState<"free" | "cloud" | "local">("free");
   const [cachedModels, setCachedModels] = useState<Record<string, boolean>>({});
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -84,7 +84,13 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
     setApiKeyInput("");
     setIsKeyDirty(false);
     setBaseUrlError(null);
-    setProviderCategory(currentConfig.provider === "webllm" || currentConfig.provider === "ollama" ? "local" : "cloud");
+    setProviderCategory(
+      currentConfig.provider === "typesafe"
+        ? "free"
+        : currentConfig.provider === "webllm" || currentConfig.provider === "ollama"
+        ? "local"
+        : "cloud"
+    );
 
     hasSecureApiKey(currentConfig.provider).then(setHasSecureKey);
 
@@ -407,28 +413,48 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                 1. Select AI Provider
               </label>
               <span className="text-[10px] text-neutral-400 font-medium">
-                {providerCategory === "cloud" ? "Cloud API Execution" : "On-Device / Local Execution"}
+                {providerCategory === "free"
+                  ? "Free Cloud Pre-Submission Audit"
+                  : providerCategory === "cloud"
+                  ? "Bring Your Own Key (BYOK)"
+                  : "On-Device / Local Execution"}
               </span>
             </div>
 
-            {/* Category Tabs: Cloud vs Local / Self-Hosted */}
-            <div className="flex items-center p-1 rounded-2xl bg-black/[0.04] dark:bg-white/[0.05] border border-black/5 dark:border-white/5 mb-3">
+            {/* Category Tabs: Free Service vs Cloud APIs (BYOK) vs Local / Self-Hosted */}
+            <div className="grid grid-cols-3 gap-1.5 p-1 rounded-2xl bg-black/[0.04] dark:bg-white/[0.05] border border-black/5 dark:border-white/5 mb-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setProviderCategory("free");
+                  handleProviderChange("typesafe");
+                }}
+                className={`py-1.5 px-2 rounded-xl text-xs font-semibold transition cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 ${
+                  providerCategory === "free"
+                    ? "bg-white dark:bg-[#1E293B] text-blue-700 dark:text-blue-300 shadow-xs border border-blue-500/20"
+                    : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                <span className="truncate">Free Service</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => {
                   setProviderCategory("cloud");
-                  if (config.provider === "webllm" || config.provider === "ollama") {
+                  if (config.provider === "typesafe" || config.provider === "webllm" || config.provider === "ollama") {
                     handleProviderChange("gemini");
                   }
                 }}
-                className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                className={`py-1.5 px-2 rounded-xl text-xs font-semibold transition cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 ${
                   providerCategory === "cloud"
                     ? "bg-white dark:bg-[#1E293B] text-neutral-900 dark:text-white shadow-xs border border-black/5 dark:border-white/10"
                     : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
                 }`}
               >
-                <Zap className="w-3.5 h-3.5 text-blue-500" />
-                <span>Cloud Providers (API-based)</span>
+                <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span className="truncate">Cloud (BYOK)</span>
               </button>
 
               <button
@@ -439,16 +465,54 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                     handleProviderChange("webllm");
                   }
                 }}
-                className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                className={`py-1.5 px-2 rounded-xl text-xs font-semibold transition cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 ${
                   providerCategory === "local"
                     ? "bg-white dark:bg-[#1E293B] text-neutral-900 dark:text-white shadow-xs border border-black/5 dark:border-white/10"
                     : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
                 }`}
               >
-                <Cpu className="w-3.5 h-3.5 text-purple-500" />
-                <span>Local / Self-Hosted</span>
+                <Cpu className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                <span className="truncate">Local &amp; Offline</span>
               </button>
             </div>
+
+            {/* Provider Content */}
+            {providerCategory === "free" ? (
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-50/90 to-sky-50/50 dark:from-blue-950/30 dark:to-[#161F30] border border-blue-200/80 dark:border-blue-800/60 text-xs text-[#2F3437] dark:text-neutral-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-bold text-sm text-blue-950 dark:text-blue-100">
+                    <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <span>Free Pre-Submission Audit (Powered by TypeSafe)</span>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-600 text-white shadow-2xs">
+                    100% Free Tier
+                  </span>
+                </div>
+
+                <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed">
+                  Manuview provides authors with free pre-submission manuscript diagnostics powered by TypeSafe (Jev). It rigorously evaluates methodology, statistical reporting, limitations, ethics statements, and target journal alignment with calibrated probabilities. Zero API key setup required.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px]">
+                  <div className="flex items-center gap-2 p-2 rounded-xl bg-white/80 dark:bg-[#1E293B]/80 border border-black/5 dark:border-white/5">
+                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>Zero API keys required from authors</span>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 rounded-xl bg-white/80 dark:bg-[#1E293B]/80 border border-black/5 dark:border-white/5">
+                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>Fast ~15s objective diagnostic audit</span>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 rounded-xl bg-white/80 dark:bg-[#1E293B]/80 border border-black/5 dark:border-white/5">
+                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>Target journal scope &amp; desk reject triage</span>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 rounded-xl bg-white/80 dark:bg-[#1E293B]/80 border border-black/5 dark:border-white/5">
+                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>100% confidential zero-retention analysis</span>
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
             {/* Provider Grid */}
             {providerCategory === "cloud" ? (
@@ -589,7 +653,70 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
           </div>
 
           {/* 2. Provider Configuration & Authentication */}
-          {config.provider === "webllm" ? (
+          {providerCategory === "free" ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#787774] dark:text-neutral-400">
+                  2. Free Service Status &amp; Connection
+                </label>
+                <button
+                  type="button"
+                  onClick={handleCheckConnection}
+                  disabled={testing}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer disabled:opacity-50"
+                >
+                  {testing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Activity className="w-3.5 h-3.5" />}
+                  <span>{testing ? "Testing..." : "Test Free Service"}</span>
+                </button>
+              </div>
+
+              <details className="text-xs group border border-neutral-200 dark:border-[#334155] rounded-xl p-3 bg-neutral-50/50 dark:bg-[#161F30]/50">
+                <summary className="font-semibold text-neutral-600 dark:text-neutral-400 cursor-pointer flex items-center justify-between list-none select-none">
+                  <span className="flex items-center gap-1.5">
+                    <KeyRound className="w-3.5 h-3.5 text-neutral-400" />
+                    <span>Host / Dedicated TypeSafe Key (Optional)</span>
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-neutral-400 group-open:rotate-180 transition-transform" />
+                </summary>
+                <div className="pt-3 space-y-2">
+                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                    If you have your own TypeSafe account or are hosting Manuview with your own TypeSafe quota, you can configure your key here or via <code className="font-mono">VITE_TYPESAFE_API_KEY</code>.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="password"
+                      value={apiKeyInput}
+                      onChange={(e) => {
+                        setApiKeyInput(e.target.value);
+                        setIsKeyDirty(true);
+                      }}
+                      placeholder={
+                        hasSecureKey && !isKeyDirty
+                          ? "•••••••• (Stored securely in OS Keychain)"
+                          : "Enter TypeSafe API key..."
+                      }
+                      className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-white dark:bg-[#1E293B] border border-neutral-200 dark:border-[#334155] text-xs font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (apiKeyInput.trim()) {
+                          await saveSecureApiKey("typesafe", apiKeyInput.trim());
+                          setHasSecureKey(true);
+                          setIsKeyDirty(false);
+                          setApiKeyInput("");
+                          handleCheckConnection();
+                        }
+                      }}
+                      className="px-3 py-2 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-semibold cursor-pointer"
+                    >
+                      Save Key
+                    </button>
+                  </div>
+                </div>
+              </details>
+            </div>
+          ) : config.provider === "webllm" ? (
             <div className="space-y-1.5">
               <label className="block text-[11px] font-bold uppercase tracking-wider text-[#787774] dark:text-neutral-400">
                 2. On-Device Execution &amp; Storage

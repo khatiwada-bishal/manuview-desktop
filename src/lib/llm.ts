@@ -185,7 +185,14 @@ export async function resolveActiveConfig(config?: ProviderConfig): Promise<Prov
     else if (provider === "groq") apiKey = getEnv('GROQ_API_KEY');
     else if (provider === "openai") apiKey = getEnv('OPENAI_API_KEY');
     else if (provider === "anthropic") apiKey = getEnv('ANTHROPIC_API_KEY');
-    else if (provider === "typesafe") apiKey = getEnv('TYPESAFE_API_KEY');
+    else if (provider === "typesafe") {
+      apiKey = getEnv('TYPESAFE_API_KEY') || getEnv('VITE_TYPESAFE_API_KEY') || getEnv('TYPESAFE_COMMUNITY_KEY') || getEnv('VITE_TYPESAFE_COMMUNITY_KEY');
+      if (!apiKey && typeof window !== "undefined") {
+        try {
+          apiKey = localStorage.getItem("manuview_typesafe_community_key") || "";
+        } catch {}
+      }
+    }
   }
 
   return {
@@ -1587,6 +1594,10 @@ export async function testLLMConnection(
     } else if (provider === "anthropic") {
       apiKey = getEnv('ANTHROPIC_API_KEY');
       model = model || getEnv('ANTHROPIC_MODEL') || "claude-3-5-sonnet-20241022";
+    } else if (provider === "typesafe") {
+      const { resolveTypeSafeKey } = await import("./typesafe");
+      apiKey = await resolveTypeSafeKey();
+      model = model || "jev-latest";
     }
   }
 

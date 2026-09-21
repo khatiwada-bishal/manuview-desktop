@@ -172,7 +172,27 @@ export async function resolveTypeSafeKey(explicit?: string): Promise<string> {
   } catch (err) {
     console.warn("Failed to read secure TypeSafe key:", err);
   }
-  return (getEnv("TYPESAFE_API_KEY") || "").trim();
+  const envKey = (
+    getEnv("TYPESAFE_API_KEY") ||
+    getEnv("VITE_TYPESAFE_API_KEY") ||
+    getEnv("TYPESAFE_COMMUNITY_KEY") ||
+    getEnv("VITE_TYPESAFE_COMMUNITY_KEY") ||
+    ""
+  ).trim();
+  if (envKey) return envKey;
+
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem("manuview_typesafe_community_key");
+      if (stored && stored.trim()) return stored.trim();
+    } catch {}
+  }
+  return "";
+}
+
+export async function hasTypeSafeKeyAvailable(): Promise<boolean> {
+  const key = await resolveTypeSafeKey();
+  return Boolean(key && key.trim().length > 0);
 }
 
 function translateStatusError(status: number, rawBody: string): string {

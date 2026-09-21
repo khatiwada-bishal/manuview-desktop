@@ -57,6 +57,18 @@ export function ScanModelPickerBar({
     );
   }, [availableModels, modelSearchQuery]);
 
+  const handleSwitchToFreeTier = () => {
+    const freeConfig = {
+      provider: "typesafe",
+      model: "jev-latest",
+      baseUrl: "https://api.typesafe.ai/v1",
+    };
+    localStorage.setItem("manuview_provider_config", JSON.stringify(freeConfig));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("manuview_config_changed"));
+    }
+  };
+
   return (
     <>
       {/* AI Engine */}
@@ -169,13 +181,30 @@ export function ScanModelPickerBar({
                   </div>
 
                   <div className="pt-2 border-t border-[#E5E7EB] dark:border-[#334155] flex items-center justify-between px-1">
+                    {!activeProviderInfo.name?.toLowerCase().includes("typesafe") ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setModelDropdownOpen(false);
+                          handleSwitchToFreeTier();
+                        }}
+                        className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-semibold cursor-pointer inline-flex items-center gap-1"
+                      >
+                        <ShieldCheck className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                        <span>Use Free TypeSafe Service</span>
+                      </button>
+                    ) : (
+                      <span className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold">
+                        Free TypeSafe Tier Active
+                      </span>
+                    )}
                     <button
                       type="button"
                       onClick={() => {
                         setModelDropdownOpen(false);
                         if (onOpenSettings) onOpenSettings();
                       }}
-                      className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-semibold cursor-pointer"
+                      className="text-[11px] text-neutral-500 dark:text-neutral-400 hover:underline font-medium cursor-pointer"
                     >
                       AI Settings &amp; Custom Keys &rarr;
                     </button>
@@ -186,18 +215,26 @@ export function ScanModelPickerBar({
           )}
 
           {apiStatus === "unconfigured" && (
-            <div className="inline-flex items-center gap-2">
+            <div className="inline-flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-[#FEF3C7] dark:bg-amber-950/40 text-[#92400E] dark:text-amber-300 border border-[#FDE68A] dark:border-amber-800">
                 <span className="w-2 h-2 rounded-full bg-[#D97706]" />
-                No API Key (Setup Required)
+                No API Key
               </span>
+              <button
+                type="button"
+                onClick={handleSwitchToFreeTier}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition cursor-pointer"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <span>Use Free TypeSafe Service &rarr;</span>
+              </button>
               {onOpenSettings && (
                 <button
                   type="button"
                   onClick={onOpenSettings}
-                  className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:underline cursor-pointer"
+                  className="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-white font-medium hover:underline cursor-pointer"
                 >
-                  Configure Provider &rarr;
+                  Configure Custom Key
                 </button>
               )}
             </div>

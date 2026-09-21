@@ -97,6 +97,8 @@ export function ApiConnectionProvider({ children }: { children: React.ReactNode 
           ? "Local Ollama"
           : currentProvider === "webllm"
           ? "Local WebLLM (On-Device)"
+          : currentProvider === "typesafe"
+          ? "TypeSafe (Free Service)"
           : currentProvider.toUpperCase();
 
       if (data && data.success) {
