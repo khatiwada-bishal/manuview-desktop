@@ -344,22 +344,6 @@ export function SidebarPaperList({
                       </div>
                     )}
 
-                    {/* Status notification when selected for ineligible papers */}
-                    {selectedPaperIds.size === 0 && isSelected && !isReviewing && !isFailed && paper.isEligibleForReview === false && !isDeskReject && (
-                      <div className="pl-4 pr-2 py-1 space-y-0.5">
-                        {paper.ineligibilityReason === "already_published" ? (
-                          <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400 font-medium bg-emerald-500/10 px-2 py-1.5 rounded-lg border border-emerald-500/20">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                            <span className="truncate">Already Published</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 text-[11px] text-amber-700 dark:text-amber-400 font-medium bg-amber-500/10 px-2 py-1.5 rounded-lg border border-amber-500/20">
-                            <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                            <span className="truncate">Ineligible Review Type</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
 
                     {/* Sub-views list for currently selected paper (only for persona reviews with multi-perspective sub-views) */}
                     {isSelected &&
