@@ -26,6 +26,7 @@ import {
   getSidebarScoreBadgeStyle,
 } from "./sidebarUtils";
 import { classifyDocument } from "@/lib/parser";
+import { ApiProviderIcon } from "@/components/BrandLogos";
 
 interface SidebarCollapsedViewProps {
   isCollapsed: boolean;
@@ -227,12 +228,8 @@ export function SidebarCollapsedView({
                               <div className="truncate">
                                 <div className="truncate font-medium text-xs text-[#111827] dark:text-neutral-100 flex items-center gap-1.5">
                                   <span className="truncate">{paper.shortName}</span>
-                                  <span
-                                    className={`text-[8px] font-bold px-1.5 py-0.2 rounded shrink-0 border ${getApiBadgeStyle(
-                                      apiLabel
-                                    )}`}
-                                  >
-                                    {apiLabel}
+                                  <span title={`Reviewed with ${apiLabel}`} className="shrink-0 flex items-center justify-center opacity-85">
+                                    <ApiProviderIcon apiLabel={apiLabel} className="w-3 h-3 shrink-0" />
                                   </span>
                                 </div>
                                 <div className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate">
@@ -241,7 +238,7 @@ export function SidebarCollapsedView({
                                       {paper.scanStep || "Reviewing..."}
                                     </span>
                                   ) : (
-                                    <span>{apiLabel} • {paper.journal}</span>
+                                    <span>{paper.journal}</span>
                                   )}
                                 </div>
                               </div>
@@ -273,16 +270,7 @@ export function SidebarCollapsedView({
                                     N/A
                                   </span>
                                 )
-                              ) : (
-                                <span
-                                  title={`${apiLabel} Score: ${paper.score ?? 0}%`}
-                                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex items-center justify-center shrink-0 ${getSidebarScoreBadgeStyle(
-                                    paper.score
-                                  )}`}
-                                >
-                                  <span>{paper.score ?? 0}%</span>
-                                </span>
-                              )}
+                              ) : null}
                               {onDeletePaper && (
                                 <button
                                   type="button"

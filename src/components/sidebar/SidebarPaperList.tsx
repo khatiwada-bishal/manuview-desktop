@@ -25,6 +25,7 @@ import {
   getSidebarScoreBadgeStyle,
 } from "./sidebarUtils";
 import { classifyDocument } from "@/lib/parser";
+import { ApiProviderIcon } from "@/components/BrandLogos";
 
 interface SidebarPaperListProps {
   papers: PaperItem[];
@@ -242,11 +243,10 @@ export function SidebarPaperList({
                           <div className="truncate font-medium flex items-center gap-1.5">
                             <span className="truncate">{paper.shortName}</span>
                             <span
-                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0 tracking-tight border ${getApiBadgeStyle(
-                                apiLabel
-                              )}`}
+                              title={`Reviewed with ${apiLabel}`}
+                              className="shrink-0 flex items-center justify-center opacity-85 group-hover/article:opacity-100 transition"
                             >
-                              {apiLabel}
+                              <ApiProviderIcon apiLabel={apiLabel} className="w-3.5 h-3.5 shrink-0" />
                             </span>
                           </div>
                           {isReviewing && (
@@ -286,16 +286,7 @@ export function SidebarPaperList({
                               N/A
                             </span>
                           )
-                        ) : (
-                          <span
-                            title={`${apiLabel} Score: ${paper.score ?? 0}%`}
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center justify-center shrink-0 ${getSidebarScoreBadgeStyle(
-                              paper.score
-                            )}`}
-                          >
-                            <span>{paper.score ?? 0}%</span>
-                          </span>
-                        )}
+                        ) : null}
                       </div>
                     </div>
 
