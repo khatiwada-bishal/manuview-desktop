@@ -13,6 +13,9 @@ import {
   Info,
   Gauge,
   X,
+  Tag,
+  ArrowRight,
+  RotateCw,
 } from "lucide-react";
 import { extractTextFromFile } from "@/lib/parser";
 import { getSavedClientConfig } from "@/lib/llm";
@@ -20,53 +23,31 @@ import { resolveTypeSafeKey, TYPESAFE_DEFAULT_MODEL } from "@/lib/typesafe";
 import {
   runTypeSafeScan,
   type TypeSafeScanResult,
-  type ScanSignal,
-  type SignalTone,
 } from "@/lib/typesafe-scan";
+import JournalCombobox from "@/components/JournalCombobox";
+import { fetchLiveJournalScope } from "@/lib/journal-scope-service";
+import { DesktopTypeSafeDashboardView } from "./DesktopTypeSafeDashboardView";
+import { useScanManager } from "@/context/ScanContext";
+import type { PaperItem } from "@/components/DesktopSidebar";
 
 interface Props {
   onOpenSettings: () => void;
 }
 
-const TONE_STYLES: Record<SignalTone, { dot: string; text: string; Icon: typeof CircleCheck }> = {
-  good: {
-    dot: "bg-emerald-500",
-    text: "text-emerald-700 dark:text-emerald-400",
-    Icon: CircleCheck,
-  },
-  warn: {
-    dot: "bg-amber-500",
-    text: "text-amber-700 dark:text-amber-400",
-    Icon: CircleAlert,
-  },
-  bad: { dot: "bg-rose-500", text: "text-rose-700 dark:text-rose-400", Icon: CircleX },
-  info: { dot: "bg-slate-400", text: "text-slate-600 dark:text-slate-300", Icon: Info },
-};
-
-function readinessColor(pct: number): string {
-  if (pct >= 80) return "text-emerald-600 dark:text-emerald-400";
-  if (pct >= 65) return "text-lime-600 dark:text-lime-400";
-  if (pct >= 45) return "text-amber-600 dark:text-amber-400";
-  return "text-rose-600 dark:text-rose-400";
-}
-
-function estimateCostUsd(inputTokens: number | undefined): string {
-  if (!inputTokens) return "—";
-  // Jev 1.13: $42 per billion input tokens ($0.042 / Mtok). Output tokens are free.
-  const usd = (inputTokens / 1_000_000_000) * 42;
-  if (usd < 0.01) return `$${usd.toFixed(6)}`;
-  return `$${usd.toFixed(4)}`;
-}
-
 export function DesktopTypeSafeScanView({ onOpenSettings }: Props) {
   const [text, setText] = useState("");
+  const [targetJournal, setTargetJournal] = useState("");
+  const [targetJournalError, setTargetJournalError] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<TypeSafeScanResult | null>(null);
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [parsingFile, setParsingFile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { startScan } = useScanManager();
 
   const model = useMemo(() => {
     const saved = getSavedClientConfig();
@@ -110,59 +91,117 @@ export function DesktopTypeSafeScanView({ onOpenSettings }: Props) {
     setLoading(true);
     setError(null);
     setResult(null);
+    setLoadingStep("Fetching target journal aims and scope...");
+
     try {
-      const scan = await runTypeSafeScan(text, { model });
+      let journalScope: string | undefined;
+      if (targetJournal.trim()) {
+        const live = await fetchLiveJournalScope(targetJournal.trim()).catch(() => null);
+        journalScope = live?.aimsAndScope;
+      }
+
+      setLoadingStep("Running TypeSafe (Jev) parallel evaluation battery...");
+      const scan = await runTypeSafeScan(text, {
+        model,
+        targetJournal: targetJournal.trim() || undefined,
+        journalScope,
+      });
       setResult(scan);
     } catch (err) {
       setError(err instanceof Error ? err.message : "The TypeSafe scan failed.");
     } finally {
       setLoading(false);
+      setLoadingStep("");
     }
   };
 
   const clearInput = () => {
     setText("");
     setFileName(null);
+    setTargetJournal("");
     setResult(null);
     setError(null);
   };
 
-  return (
-    <div className="h-full overflow-y-auto">
-      <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
-        {/* Header */}
-        <div className="flex items-start gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-sm shrink-0">
-            <ShieldCheck className="w-5 h-5" />
+  // If result is ready, render the full TypeSafe Dashboard!
+  if (result) {
+    const syntheticPaper: PaperItem = {
+      id: `typesafe-preview-${Date.now()}`,
+      title: fileName ? fileName.replace(/\.[^/.]+$/, "") : "TypeSafe Manuscript Audit",
+      shortName: (fileName || "Manuscript").split(" ").slice(0, 3).join(" "),
+      journal: targetJournal.trim() || "Target Journal",
+      score: result.readiness,
+      scanType: "typesafe",
+      typesafeResult: result,
+      status: "completed",
+    };
+
+    return (
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        {/* Top return bar */}
+        <div className="px-6 py-3 border-b border-black/[0.06] dark:border-white/[0.08] bg-white dark:bg-[#161F30] flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+              TypeSafe Audit Results
+            </span>
           </div>
-          <div className="min-w-0">
-            <h1 className="text-xl font-bold text-neutral-900 dark:text-white">
-              TypeSafe Structured Scan
-            </h1>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
-              Fast, typed document diagnostics powered by TypeSafe&apos;s Jev model. One request
-              runs {" "}
-              <span className="font-medium text-neutral-700 dark:text-neutral-300">
-                every check in parallel
-              </span>{" "}
-              and returns calibrated decisions with confidence — no prose, no hallucinations.
-            </p>
+          <button
+            type="button"
+            onClick={clearInput}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-neutral-100 dark:bg-[#1E293B] text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-[#26344a] transition cursor-pointer"
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+            <span>Audit Another Manuscript</span>
+          </button>
+        </div>
+
+        <DesktopTypeSafeDashboardView
+          paper={syntheticPaper}
+          scanResult={result}
+          onOpenSettings={onOpenSettings}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto p-6 sm:p-10 text-[#111827] dark:text-[#F8FAFC]">
+      <div className="max-w-5xl mx-auto space-y-6 animate-fade-in">
+        {/* Header Hero */}
+        <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-[#161F30] border border-black/[0.06] dark:border-white/[0.08] shadow-xs space-y-3">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shrink-0">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0F172A] dark:text-white">
+                  TypeSafe Structured Scan
+                </h1>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
+                  Jev System One
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1 leading-relaxed">
+                Objective, typed document diagnostics powered by TypeSafe&apos;s Jev model. Evaluates 20+ checks in parallel across screening, methodology reproducibility, statistical reporting, and journal scope alignment with calibrated confidence — zero hallucinations.
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Key notice */}
         {hasKey === false && (
-          <div className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-sm">
+          <div className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-sm">
             <div className="flex items-center gap-2.5 text-amber-800 dark:text-amber-200">
               <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>
-                No TypeSafe API key found. Add your Jev key to run structured scans.
+              <span className="text-xs">
+                No TypeSafe API key found. Add your Jev key in Settings to run structured scans.
               </span>
             </div>
             <button
               type="button"
               onClick={onOpenSettings}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold transition shrink-0 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold transition shrink-0 cursor-pointer shadow-xs"
             >
               <SettingsIcon className="w-3.5 h-3.5" />
               Open AI Settings
@@ -170,12 +209,36 @@ export function DesktopTypeSafeScanView({ onOpenSettings }: Props) {
           </div>
         )}
 
-        {/* Input */}
-        <div className="rounded-2xl border border-neutral-200 dark:border-[#334155] bg-white dark:bg-[#161F30] p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <label className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-              Manuscript
-            </label>
+        {/* Configuration Card: Target Journal */}
+        <div className="rounded-3xl bg-white dark:bg-[#161F30] border border-black/[0.06] dark:border-white/[0.08] p-5 sm:p-6 space-y-4 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs sm:text-sm">
+            <span className="w-44 shrink-0 flex items-center gap-1.5 font-semibold text-neutral-600 dark:text-neutral-400">
+              <Tag className="w-4 h-4 text-purple-500" />
+              <span>Target Venue (Optional)</span>
+            </span>
+            <div className="flex-1 max-w-lg">
+              <JournalCombobox
+                value={targetJournal}
+                onChange={(val) => setTargetJournal(val)}
+                hasError={targetJournalError}
+                placeholder="Search journal for scope and rigor alignment..."
+              />
+              <span className="text-[11px] text-neutral-400 mt-1 block">
+                TypeSafe will audit whether your manuscript topic and methodology fit this journal.
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Manuscript Input Card */}
+        <div className="rounded-3xl bg-white dark:bg-[#161F30] border border-black/[0.06] dark:border-white/[0.08] p-5 sm:p-6 space-y-4 shadow-xs">
+          <div className="flex items-center justify-between pb-3 border-b border-black/[0.06] dark:border-white/[0.08]">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-blue-500" />
+              <label className="text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
+                Manuscript Content
+              </label>
+            </div>
             <div className="flex items-center gap-2">
               <input
                 ref={fileInputRef}
@@ -188,21 +251,20 @@ export function DesktopTypeSafeScanView({ onOpenSettings }: Props) {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={parsingFile || loading}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-neutral-100 dark:bg-[#1E293B] text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-[#26344a] transition cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-neutral-100 dark:bg-[#1E293B] text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-[#26344a] transition cursor-pointer disabled:opacity-50"
               >
                 {parsingFile ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
                   <FileUp className="w-3.5 h-3.5" />
                 )}
-                Upload
+                Upload Document
               </button>
               {(text || fileName) && (
                 <button
                   type="button"
                   onClick={clearInput}
-                  disabled={loading}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200 transition cursor-pointer disabled:opacity-50"
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-[#1E293B] transition cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                   Clear
@@ -212,39 +274,44 @@ export function DesktopTypeSafeScanView({ onOpenSettings }: Props) {
           </div>
 
           {fileName && (
-            <div className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
-              <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              <span className="truncate">{fileName}</span>
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-800 dark:text-blue-200">
+              <FileText className="w-4 h-4 shrink-0 text-blue-600" />
+              <span className="font-semibold truncate">{fileName}</span>
+              <span className="text-[11px] text-blue-600/80 dark:text-blue-300/80 ml-auto shrink-0">
+                Extracted &amp; Ready
+              </span>
             </div>
           )}
 
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Paste your manuscript here, or upload a PDF / DOCX / TXT above…"
-            rows={10}
-            className="w-full resize-y rounded-xl bg-neutral-50 dark:bg-[#0F172A] border border-neutral-200 dark:border-[#334155] focus:border-blue-500 focus:outline-none p-3 text-sm text-neutral-800 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-600 transition"
+            placeholder="Paste your manuscript text here, or upload a .pdf / .docx file above..."
+            rows={12}
+            className="w-full p-4 rounded-2xl border border-neutral-200 dark:border-[#334155] bg-neutral-50/50 dark:bg-[#0F172A]/40 text-xs text-neutral-800 dark:text-neutral-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition resize-y font-sans leading-relaxed"
           />
 
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] text-neutral-400 dark:text-neutral-500">
-              {wordCount.toLocaleString()} words · model {model}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+            <span className="text-xs text-neutral-400">
+              {wordCount.toLocaleString()} words • Model: {model}
             </span>
+
             <button
               type="button"
               onClick={runScan}
-              disabled={loading || parsingFile || !text.trim() || hasKey === false}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white disabled:bg-neutral-200 dark:disabled:bg-[#1E293B] disabled:text-neutral-400 dark:disabled:text-neutral-600 transition shadow-xs cursor-pointer disabled:cursor-not-allowed"
+              disabled={loading || !text.trim() || parsingFile}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-xs text-white bg-blue-600 hover:bg-blue-500 transition shadow-md shadow-blue-500/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Scanning…
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>{loadingStep || "Evaluating..."}</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4" />
-                  Run Structured Scan
+                  <ShieldCheck className="w-4 h-4 text-white" />
+                  <span>Run TypeSafe Structured Scan</span>
+                  <ArrowRight className="w-4 h-4 text-white/80" />
                 </>
               )}
             </button>
@@ -253,132 +320,12 @@ export function DesktopTypeSafeScanView({ onOpenSettings }: Props) {
 
         {/* Error */}
         {error && (
-          <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-sm text-rose-800 dark:text-rose-200">
+          <div className="flex items-start gap-2.5 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-xs text-rose-800 dark:text-rose-200">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
         )}
-
-        {/* Results */}
-        {result && <ScanResults result={result} />}
       </div>
-    </div>
-  );
-}
-
-function ScanResults({ result }: { result: TypeSafeScanResult }) {
-  return (
-    <div className="space-y-5">
-      {/* Summary */}
-      <div className="rounded-2xl border border-neutral-200 dark:border-[#334155] bg-white dark:bg-[#161F30] p-5">
-        <div className="flex flex-wrap items-center gap-6">
-          <div className="flex items-center gap-3">
-            <Gauge className={`w-8 h-8 ${readinessColor(result.readiness)}`} />
-            <div>
-              <div className={`text-3xl font-bold leading-none ${readinessColor(result.readiness)}`}>
-                {result.readiness}
-                <span className="text-base font-semibold text-neutral-400">/100</span>
-              </div>
-              <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mt-1">
-                {result.readinessLabel}
-              </div>
-            </div>
-          </div>
-          <div className="h-10 w-px bg-neutral-200 dark:bg-[#334155] hidden sm:block" />
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-2 text-xs">
-            <Meta label="Document" value={result.documentType} />
-            <Meta label="Model" value={result.model} />
-            <Meta label="Input tokens" value={(result.usage?.input_tokens ?? 0).toLocaleString()} />
-            <Meta label="Est. cost" value={estimateCostUsd(result.usage?.input_tokens)} />
-          </div>
-        </div>
-      </div>
-
-      {/* Attention flags */}
-      {result.flags.length > 0 && (
-        <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-4">
-          <div className="flex items-center gap-2 mb-2.5">
-            <CircleAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-            <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">
-              Needs attention ({result.flags.length})
-            </h3>
-          </div>
-          <ul className="space-y-1.5">
-            {result.flags.map((s) => (
-              <li key={s.id} className="flex items-center justify-between gap-3 text-xs">
-                <span className="text-neutral-700 dark:text-neutral-300">{s.label}</span>
-                <span className="flex items-center gap-2 shrink-0">
-                  <span className={`font-medium ${TONE_STYLES[s.tone].text}`}>{s.display}</span>
-                  {s.needsReview && (
-                    <span className="px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-300 text-[10px] font-semibold">
-                      low confidence
-                    </span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Grouped signals */}
-      {result.groups.map((group) => (
-        <div
-          key={group.name}
-          className="rounded-2xl border border-neutral-200 dark:border-[#334155] bg-white dark:bg-[#161F30] overflow-hidden"
-        >
-          <div className="px-4 py-2.5 border-b border-neutral-100 dark:border-[#26344a] bg-neutral-50/60 dark:bg-[#0F172A]/40">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-              {group.name}
-            </h3>
-          </div>
-          <div className="divide-y divide-neutral-100 dark:divide-[#26344a]">
-            {group.signals.map((s) => (
-              <SignalRow key={s.id} signal={s} />
-            ))}
-          </div>
-        </div>
-      ))}
-
-      <p className="text-[11px] text-neutral-400 dark:text-neutral-500 leading-relaxed">
-        Signals are calibrated probabilities from TypeSafe&apos;s Jev model, composed into an overall
-        score in code. Confidence reflects how peaked the model&apos;s answer is; low-confidence items
-        are flagged for human review. This is decision support, not an editorial verdict.
-      </p>
-    </div>
-  );
-}
-
-function SignalRow({ signal }: { signal: ScanSignal }) {
-  const tone = TONE_STYLES[signal.tone];
-  const ToneIcon = tone.Icon;
-  return (
-    <div className="flex items-center justify-between gap-3 px-4 py-2.5">
-      <div className="flex items-center gap-2.5 min-w-0">
-        <ToneIcon className={`w-4 h-4 shrink-0 ${tone.text}`} />
-        <span className="text-sm text-neutral-700 dark:text-neutral-200 truncate">
-          {signal.label}
-        </span>
-      </div>
-      <div className="flex items-center gap-3 shrink-0">
-        {typeof signal.confidence === "number" && (
-          <span className="text-[11px] text-neutral-400 dark:text-neutral-500 font-mono">
-            conf {signal.confidence.toFixed(2)}
-          </span>
-        )}
-        <span className={`text-sm font-medium ${tone.text}`}>{signal.display}</span>
-      </div>
-    </div>
-  );
-}
-
-function Meta({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0">
-      <div className="text-[10px] uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
-        {label}
-      </div>
-      <div className="text-neutral-800 dark:text-neutral-100 font-medium truncate">{value}</div>
     </div>
   );
 }

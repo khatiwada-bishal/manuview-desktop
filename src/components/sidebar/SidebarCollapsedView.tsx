@@ -13,6 +13,7 @@ import {
   BarChart3,
   Cpu,
   Loader2,
+  ShieldCheck,
 } from "lucide-react";
 import { isDesktopApp } from "@/lib/desktop";
 import type { PaperItem, DesktopActiveView } from "@/components/DesktopSidebar";
@@ -226,6 +227,14 @@ export function SidebarCollapsedView({
                                     N/A
                                   </span>
                                 )
+                              ) : paper.scanType === "typesafe" ? (
+                                <span
+                                  title={`TypeSafe (Jev) Score: ${paper.score ?? 0}%`}
+                                  className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60 flex items-center gap-0.5"
+                                >
+                                  <ShieldCheck className="w-2 h-2 text-blue-600 dark:text-blue-400" />
+                                  <span>{paper.score ?? 0}%</span>
+                                </span>
                               ) : (
                                 <span
                                   title={`Manuscript Score: ${paper.score ?? 0}%`}

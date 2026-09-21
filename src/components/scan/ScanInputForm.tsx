@@ -50,6 +50,7 @@ interface ScanInputFormProps {
   handleRunReview: (e?: React.FormEvent) => void;
   onOpenSettings?: () => void;
   isScanning?: boolean;
+  scanEngine?: "persona" | "typesafe";
 }
 
 export function ScanInputForm({
@@ -77,6 +78,7 @@ export function ScanInputForm({
   handleRunReview,
   onOpenSettings,
   isScanning = false,
+  scanEngine = "persona",
 }: ScanInputFormProps) {
   return (
     <form onSubmit={handleRunReview} className="rounded-3xl liquid-glass-card p-6 sm:p-7 space-y-6 relative z-10 border border-black/[0.06] dark:border-white/[0.08] shadow-sm">
@@ -394,6 +396,8 @@ export function ScanInputForm({
             className={`w-full py-3.5 px-6 rounded-xl font-semibold text-xs sm:text-sm text-white shadow-xs transition-all duration-200 flex items-center justify-center gap-2.5 select-none ${
               isScanning
                 ? "bg-neutral-300 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 cursor-not-allowed opacity-70 pointer-events-none"
+                : scanEngine === "typesafe"
+                ? "bg-blue-600 hover:bg-blue-500 shadow-blue-500/25 cursor-pointer active:scale-[0.99]"
                 : "liquid-glass-btn-primary cursor-pointer active:scale-[0.99]"
             }`}
           >
@@ -401,6 +405,12 @@ export function ScanInputForm({
               <>
                 <Loader2 className="w-4 h-4 animate-spin shrink-0 text-white/80" />
                 <span className="truncate">Review in Progress in Background...</span>
+              </>
+            ) : scanEngine === "typesafe" ? (
+              <>
+                <ShieldCheck className="w-4 h-4 text-white shrink-0" />
+                <span className="truncate">Run TypeSafe (Jev) Pre-Submission Audit</span>
+                <ArrowRight className="w-4 h-4 shrink-0 opacity-80" />
               </>
             ) : (
               <>

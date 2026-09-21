@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Sparkles,
   Tag,
   AlertCircle,
   Compass,
   Cpu,
+  Users,
+  ShieldCheck,
 } from "lucide-react";
 import {
   FullReviewReport,
@@ -117,6 +119,16 @@ export function DesktopPreSubmissionScanView({
     refresh: checkProviderStatus,
     selectModel: handleSelectModel,
   } = useApiConnection();
+
+  const [scanEngine, setScanEngine] = useState<"persona" | "typesafe">(() => {
+    return provider === "typesafe" ? "typesafe" : "persona";
+  });
+
+  useEffect(() => {
+    if (provider === "typesafe") {
+      setScanEngine("typesafe");
+    }
+  }, [provider]);
 
   const activeProviderInfo = useMemo(() => ({
     name: providerName || "AI Engine",
@@ -377,14 +389,14 @@ export function DesktopPreSubmissionScanView({
       return;
     }
 
-    if (provider === "typesafe") {
+    if (scanEngine === "persona" && provider === "typesafe") {
       setError(
-        "TypeSafe (Jev) is an atomic decision engine that powers the TypeSafe Structured Scan service, but cannot generate written text for the 5-Persona Peer Review. Please switch to a text model (Gemini, Groq, OpenAI, Claude, or Ollama) in Settings (Cmd+,) to run this review, or use TypeSafe Structured Scan from the sidebar."
+        "TypeSafe (Jev) is an atomic decision engine that powers the TypeSafe Structured Scan service, but cannot generate written text for the 5-Persona Peer Review. Please switch to a text model (Gemini, Groq, OpenAI, Claude, or Ollama) in Settings (Cmd+,) to run this review, or switch the Review Engine to 'TypeSafe (Jev)' above."
       );
       return;
     }
 
-    if (apiStatus === "error") {
+    if (scanEngine === "persona" && apiStatus === "error") {
       setError(
         apiErrorMessage
           ? `AI Provider Error: ${apiErrorMessage}. Please check Settings (Cmd+,).`
@@ -402,6 +414,7 @@ export function DesktopPreSubmissionScanView({
         keywords: manuscriptKeywords.trim(),
         targetJournal: targetJournal.trim(),
         file: file,
+        scanEngine,
       });
     } catch (err: any) {
       console.error("Diagnostic scan initiation error:", err);
@@ -522,6 +535,50 @@ export function DesktopPreSubmissionScanView({
             </div>
           </div>
 
+          {/* Review Engine Selector */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs sm:text-sm relative z-20 pt-1">
+            <span className="w-48 sm:w-52 shrink-0 flex items-center gap-1.5 font-semibold text-[#6B7280] dark:text-neutral-400 whitespace-nowrap">
+              <ShieldCheck className="w-4 h-4 text-[#9CA3AF] dark:text-neutral-500" />
+              <span>Review Engine</span>
+            </span>
+            <div className="flex-1 max-w-lg grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setScanEngine("persona")}
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                  scanEngine === "persona"
+                    ? "bg-purple-50 dark:bg-purple-950/40 border-purple-500 text-purple-800 dark:text-purple-200 ring-1 ring-purple-500 shadow-2xs"
+                    : "bg-white dark:bg-[#1E293B] border-neutral-200 dark:border-[#334155] text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-[#26344a]"
+                }`}
+              >
+                <Users className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+                <div className="text-left min-w-0">
+                  <div className="truncate">5-Persona Review</div>
+                  <div className="text-[10px] font-normal text-neutral-400 truncate">Simulated peer referees</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setScanEngine("typesafe")}
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                  scanEngine === "typesafe"
+                    ? "bg-blue-50 dark:bg-blue-950/40 border-blue-500 text-blue-800 dark:text-blue-200 ring-1 ring-blue-500 shadow-2xs"
+                    : "bg-white dark:bg-[#1E293B] border-neutral-200 dark:border-[#334155] text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-[#26344a]"
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                <div className="text-left min-w-0">
+                  <div className="truncate flex items-center gap-1.5">
+                    <span>TypeSafe (Jev)</span>
+                    <span className="px-1.5 py-0.2 rounded text-[8px] bg-blue-600 text-white font-bold">Fast</span>
+                  </div>
+                  <div className="text-[10px] font-normal text-neutral-400 truncate">Calibrated objective audit</div>
+                </div>
+              </button>
+            </div>
+          </div>
+
           <ScanModelPickerBar
             apiStatus={apiStatus}
             isApiLoading={isApiLoading}
@@ -567,6 +624,7 @@ export function DesktopPreSubmissionScanView({
             handleRunReview={handleRunReview}
             onOpenSettings={onOpenSettings}
             isScanning={isScanning || isInitiating}
+            scanEngine={scanEngine}
           />
         )}
 

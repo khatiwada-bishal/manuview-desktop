@@ -20,6 +20,7 @@ import { DesktopReportingChecklistView } from "@/components/services/DesktopRepo
 import { DesktopCoverLetterView } from "@/components/services/DesktopCoverLetterView";
 import { DesktopResponseBuilderView } from "@/components/services/DesktopResponseBuilderView";
 import { DesktopTypeSafeScanView } from "@/components/services/DesktopTypeSafeScanView";
+import { DesktopTypeSafeDashboardView } from "@/components/services/DesktopTypeSafeDashboardView";
 import { DesktopEmptyDashboard } from "@/components/DesktopEmptyDashboard";
 import { DeleteConfirmationModal } from "@/components/DeleteConfirmationModal";
 import { ProviderSettingsModal } from "@/components/ProviderSettingsModal";
@@ -724,6 +725,18 @@ function AppWorkspace({
     }
 
     // Default: Completed Article Review Dashboard
+    if (currentPaper && currentPaper.scanType === "typesafe") {
+      return (
+        <DashboardErrorBoundary fallbackTitle="TypeSafe Dashboard Display Error">
+          <DesktopTypeSafeDashboardView
+            paper={currentPaper}
+            scanResult={currentPaper.typesafeResult}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+          />
+        </DashboardErrorBoundary>
+      );
+    }
+
     if (currentPaper && (currentDashboardData || (activeTabId && fullReportsStore[activeTabId]))) {
       return (
         <DashboardErrorBoundary fallbackTitle="Review Dashboard Display Error">

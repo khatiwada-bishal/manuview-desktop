@@ -14,6 +14,7 @@ import {
   X,
   Square,
   Loader2,
+  ShieldCheck,
 } from "lucide-react";
 import type { PaperItem, DesktopActiveView } from "@/components/DesktopSidebar";
 import type { GroupedPapers } from "./sidebarUtils";
@@ -262,6 +263,15 @@ export function SidebarPaperList({
                               N/A
                             </span>
                           )
+                        ) : paper.scanType === "typesafe" ? (
+                          <span
+                            title={`TypeSafe (Jev) Calibrated Score: ${paper.score ?? 0}%`}
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60 flex items-center gap-1 shrink-0"
+                          >
+                            <ShieldCheck className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                            <span className="text-[9px] font-normal text-blue-600/75 dark:text-blue-300/75 tracking-tight">Jev</span>
+                            <span>{paper.score ?? 0}%</span>
+                          </span>
                         ) : (
                           <span
                             title={`Manuscript Readiness Score: ${paper.score ?? 0}%`}

@@ -46,6 +46,8 @@ export interface PaperItem {
   editorialTriage?: EditorialTriageOutcome;
   targetJournalEvaluation?: any;
   isDeskReject?: boolean;
+  scanType?: "persona" | "typesafe";
+  typesafeResult?: any;
   createdAt?: string;
   updatedAt?: string;
 

@@ -59,6 +59,8 @@ export interface ScanGroup {
 
 export interface TypeSafeScanResult {
   model: string;
+  targetJournal?: string;
+  journalScope?: string;
   documentType: string;
   isAcademic: boolean;
   readiness: number; // 0–100 composite computed in code
@@ -502,6 +504,8 @@ function readinessLabel(pct: number): string {
 export interface RunScanOptions {
   model?: string;
   apiKey?: string;
+  targetJournal?: string;
+  journalScope?: string;
   signal?: AbortSignal;
   /** Extra structured context merged into the state (e.g. target journal). */
   context?: TypeSafeEntryObject;
@@ -519,17 +523,78 @@ export async function runTypeSafeScan(
     throw new Error("No manuscript text to scan. Paste or load a document first.");
   }
 
-  const truncated = text.length > MAX_STATE_CHARS ? text.slice(0, MAX_STATE_CHARS) : text;
+  // Preserve both the opening (Abstract, Methods) and the closing (Limitations, Ethics, Data Availability)
+  const HEAD_CHARS = 36_000;
+  const TAIL_CHARS = 12_000;
+  let truncated = text;
+  if (text.length > MAX_STATE_CHARS) {
+    truncated =
+      text.slice(0, HEAD_CHARS) +
+      "\n\n[... intermediate manuscript content omitted for evaluation budget ...]\n\n" +
+      text.slice(-TAIL_CHARS);
+  }
+
   const state: TypeSafeEntryObject = { manuscript: truncated };
   if (text.length > MAX_STATE_CHARS) {
-    state.note = "Manuscript was truncated to fit the evaluation budget; scan reflects the leading portion.";
+    state.note =
+      "Manuscript was windowed to fit single-pass budget. Opening sections (Abstract/Intro/Methods) and closing declarations (Discussion/Limitations/Ethics/Data availability) were fully preserved.";
+  }
+  if (options.targetJournal) {
+    state.target_journal = options.targetJournal;
+  }
+  if (options.journalScope) {
+    state.target_journal_scope = options.journalScope;
   }
   if (options.context && Object.keys(options.context).length > 0) {
     state.context = options.context;
   }
 
+  const activeSpecs: ScanSpec[] = [...SCAN_SPECS];
+  if (options.targetJournal && options.targetJournal.trim()) {
+    activeSpecs.unshift(
+      {
+        id: "journal_scope_fit",
+        group: "Journal Alignment",
+        label: "Aims & Scope Fit",
+        kind: "choice",
+        weight: 3,
+        question: choice(
+          `Does \`manuscript\` fit the topical scope, scientific discipline, and editorial aims of \`${options.targetJournal}\`?`,
+          {
+            strong_core: `Strong core fit for ${options.targetJournal}`,
+            peripheral: `Borderline or multidisciplinary fit for ${options.targetJournal}`,
+            out_of_scope: `Clearly out of scope for ${options.targetJournal}`,
+          }
+        ),
+        toneByOption: {
+          strong_core: "good",
+          peripheral: "warn",
+          out_of_scope: "bad",
+        },
+      },
+      {
+        id: "journal_standards_fit",
+        group: "Journal Alignment",
+        label: "Methodological Rigor for Venue",
+        kind: "score",
+        weight: 2,
+        goodWhenHigh: true,
+        levels: 4,
+        question: score(
+          `Does the methodological and analytical depth in \`manuscript\` meet the publication standards of \`${options.targetJournal}\`?`,
+          [
+            "Below typical journal standards",
+            "Marginal — could face referee skepticism",
+            "Appropriate — matches typical papers in this journal",
+            "High rigor — exceeds typical standards",
+          ]
+        ),
+      }
+    );
+  }
+
   const questions: Record<string, TypeSafeQuestion> = {};
-  for (const spec of SCAN_SPECS) {
+  for (const spec of activeSpecs) {
     questions[spec.id] = spec.question;
   }
 
@@ -545,7 +610,7 @@ export async function runTypeSafeScan(
   let weightedSum = 0;
   let weightTotal = 0;
 
-  for (const spec of SCAN_SPECS) {
+  for (const spec of activeSpecs) {
     const answer = response.answers[spec.id] as TypeSafeAnswer | undefined;
     if (!answer) continue;
     let signal: ScanSignal | null = null;
@@ -576,7 +641,10 @@ export async function runTypeSafeScan(
     }
     groupMap.get(s.group)!.push(s);
   }
-  const groups: ScanGroup[] = groupOrder.map((name) => ({ name, signals: groupMap.get(name)! }));
+  const groups: ScanGroup[] = groupOrder.map((name) => ({
+    name,
+    signals: groupMap.get(name) || [],
+  }));
 
   const flags = signals.filter((s) => s.tone === "bad" || s.needsReview);
 
@@ -585,6 +653,8 @@ export async function runTypeSafeScan(
 
   return {
     model: response.model,
+    targetJournal: options.targetJournal,
+    journalScope: options.journalScope,
     documentType: docTypeSignal?.display ?? "Unknown",
     isAcademic: academicSignal ? academicSignal.value >= 0.5 : true,
     readiness,
