@@ -17,6 +17,7 @@ import {
 import { isDesktopApp } from "@/lib/desktop";
 import type { PaperItem, DesktopActiveView } from "@/components/DesktopSidebar";
 import type { GroupedPapers, SidebarServiceItem } from "./sidebarUtils";
+import { classifyDocument } from "@/lib/parser";
 
 interface SidebarCollapsedViewProps {
   isCollapsed: boolean;
@@ -157,6 +158,9 @@ export function SidebarCollapsedView({
                       const isSelected = paper.id === activePaperId;
                       const isReviewing = paper.status === "reviewing";
                       const isFailed = paper.status === "failed";
+                      const heuristic = !paper.classification
+                        ? classifyDocument(paper.scanParams?.rawText || "", paper.title)
+                        : paper.classification;
                       const isNonAcademic =
                         paper.ineligibilityReason === "non_academic_document" ||
                         (paper.classification != null &&
@@ -164,7 +168,8 @@ export function SidebarCollapsedView({
                             paper.classification.category !== "academic_manuscript")) ||
                         (paper.typesafeResult?.classification != null &&
                           (!paper.typesafeResult.classification.isAcademicManuscript ||
-                            paper.typesafeResult.classification.category !== "academic_manuscript"));
+                            paper.typesafeResult.classification.category !== "academic_manuscript")) ||
+                        (!heuristic.isAcademicManuscript || heuristic.category !== "academic_manuscript");
                       const isDeskReject =
                         !isReviewing &&
                         !isFailed &&
@@ -208,7 +213,7 @@ export function SidebarCollapsedView({
                                       {paper.scanStep || "Reviewing..."}
                                     </span>
                                   ) : paper.scanType === "typesafe" ? (
-                                    <span>Free Scan • {paper.journal}</span>
+                                    <span>Fast • {paper.journal}</span>
                                   ) : (
                                     paper.journal
                                   )}
@@ -244,10 +249,9 @@ export function SidebarCollapsedView({
                                 )
                               ) : paper.scanType === "typesafe" ? (
                                 <span
-                                  title={`Free Scan Score: ${paper.score ?? 0}%`}
-                                  className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60 flex items-center gap-0.5"
+                                  title={`Fast Diagnostic Score: ${paper.score ?? 0}%`}
+                                  className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60 flex items-center justify-center"
                                 >
-                                  <span className="text-[8px] font-normal opacity-80">Free Scan</span>
                                   <span>{paper.score ?? 0}%</span>
                                 </span>
                               ) : (

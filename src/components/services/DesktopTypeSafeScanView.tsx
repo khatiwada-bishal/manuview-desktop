@@ -99,7 +99,7 @@ export function DesktopTypeSafeScanView({ onOpenSettings }: Props) {
         journalScope = live?.aimsAndScope;
       }
 
-      setLoadingStep("Running Free Scan parallel evaluation battery...");
+      setLoadingStep("Running Fast Scan parallel evaluation battery...");
       const scan = await runTypeSafeScan(text, {
         model,
         targetJournal: targetJournal.trim() || undefined,
@@ -183,7 +183,7 @@ export function DesktopTypeSafeScanView({ onOpenSettings }: Props) {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0F172A] dark:text-white">
-                  Free Scan
+                  Fast Scan
                 </h1>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
                   Powered by TypeSafe
@@ -317,7 +317,7 @@ export function DesktopTypeSafeScanView({ onOpenSettings }: Props) {
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 text-white" />
-                  <span>Run Free Diagnostic Scan</span>
+                  <span>Run Fast Diagnostic Scan</span>
                   <ArrowRight className="w-4 h-4 text-white/80" />
                 </>
               )}

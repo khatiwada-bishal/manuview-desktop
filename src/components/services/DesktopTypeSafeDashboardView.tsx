@@ -141,7 +141,7 @@ export function DesktopTypeSafeDashboardView({
       );
     }
     return (
-      `Free Scan calibrated objective pre-submission audit. Evaluated against ${paper.journal} editorial criteria with an overall readiness rating of "${result?.readinessLabel || theme.label}" (${score}%).\n\n` +
+      `Fast calibrated objective pre-submission audit. Evaluated against ${paper.journal} editorial criteria with an overall readiness rating of "${result?.readinessLabel || theme.label}" (${score}%).\n\n` +
       `The manuscript "${paper.title}" demonstrates substantial academic structure. Diagnostic evaluation across atomic criteria confirms baseline empirical reporting. Address the prioritized action items below prior to formal submission.`
     );
   }, [isNonAcademic, classification?.advisoryMessage, classification?.categoryLabel, paper.title, paper.journal, result?.readinessLabel, theme.label, score]);
@@ -198,7 +198,7 @@ export function DesktopTypeSafeDashboardView({
         return {
           originality: toDimScore(
             getSignalPercent(signals.find((s) => s.id === "originality")),
-            signals.find((s) => s.id === "originality")?.display || "Novelty and research contribution evaluated by Free Scan.",
+            signals.find((s) => s.id === "originality")?.display || "Novelty and research contribution evaluated by Fast Diagnostic.",
             "Originality"
           ),
           broad_interest: toDimScore(
@@ -208,17 +208,17 @@ export function DesktopTypeSafeDashboardView({
           ),
           claims_vs_evidence: toDimScore(
             getSignalPercent(signals.find((s) => s.id === "statistical_integrity")),
-            signals.find((s) => s.id === "statistical_integrity")?.display || "Statistical consistency and numerical reporting evaluated by Free Scan.",
+            signals.find((s) => s.id === "statistical_integrity")?.display || "Statistical consistency and numerical reporting evaluated by Fast Diagnostic.",
             "Claims vs Evidence"
           ),
           methodology: toDimScore(
             getSignalPercent(signals.find((s) => s.id === "method_rigor")),
-            signals.find((s) => s.id === "method_rigor")?.display || "Experimental design and methodological controls evaluated by Free Scan.",
+            signals.find((s) => s.id === "method_rigor")?.display || "Experimental design and methodological controls evaluated by Fast Diagnostic.",
             "Methodology"
           ),
           clarity: toDimScore(
             getSignalPercent(signals.find((s) => s.id === "structural_integrity")),
-            signals.find((s) => s.id === "structural_integrity")?.display || "IMRaD structure and narrative clarity evaluated by Free Scan.",
+            signals.find((s) => s.id === "structural_integrity")?.display || "IMRaD structure and narrative clarity evaluated by Fast Diagnostic.",
             "Clarity"
           ),
           prior_work: toDimScore(
@@ -241,7 +241,7 @@ export function DesktopTypeSafeDashboardView({
       reviewerPersonas: [
         {
           persona: "methods_reviewer",
-          name: "Free Scan Evaluation Battery",
+          name: "Fast Evaluation Battery",
           title: "Calibrated Academic Decision Classifier",
           affiliation: "TypeSafe AI",
           expertise: "Multi-Criteria Academic Manuscript Screening",
@@ -260,7 +260,7 @@ export function DesktopTypeSafeDashboardView({
           journalName: paper.journal,
           publisher: "Target Venue",
           fitScore: getSignalPercent(signals.find((s) => s.id === "journal_scope_fit")),
-          scopeRationale: signals.find((s) => s.id === "journal_scope_fit")?.display || "Target venue scope alignment evaluated by Free Scan.",
+          scopeRationale: signals.find((s) => s.id === "journal_scope_fit")?.display || "Target venue scope alignment evaluated by Fast Diagnostic.",
           rejectionRisks: flags.map((f) => f.label),
           requiredRevisionsForFit: [],
         },
@@ -383,7 +383,7 @@ export function DesktopTypeSafeDashboardView({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                 <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                <span>Free Scan • Pre-Submission Audit</span>
+                <span>Fast Diagnostic • Pre-Submission Audit</span>
               </span>
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-neutral-100 dark:bg-[#1E293B] text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">
                 <Cpu className="w-3.5 h-3.5 text-blue-500" />
@@ -475,7 +475,7 @@ export function DesktopTypeSafeDashboardView({
                 {paper.title}
               </h1>
               <p className="text-xs text-[#64748B] dark:text-neutral-400 font-medium">
-                Target: <strong className="text-neutral-800 dark:text-neutral-200">{paper.journal}</strong> &bull; Free Scan Calibrated Pre-Submission Diagnostic
+                Target: <strong className="text-neutral-800 dark:text-neutral-200">{paper.journal}</strong> &bull; Fast Calibrated Pre-Submission Diagnostic
               </p>
             </div>
 
@@ -507,7 +507,7 @@ export function DesktopTypeSafeDashboardView({
                 )}
               </span>
               <span className="text-xs text-neutral-400 dark:text-neutral-500 font-medium hidden md:inline">
-                Free Scan complete
+                Fast scan complete
               </span>
             </div>
           </div>
@@ -659,7 +659,7 @@ export function DesktopTypeSafeDashboardView({
                       ) : (
                         <>
                           <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-                          <span>FREE SCAN CALIBRATED AUDIT COMPLETE</span>
+                          <span>FAST CALIBRATED AUDIT COMPLETE</span>
                         </>
                       )}
                     </div>
@@ -683,7 +683,7 @@ export function DesktopTypeSafeDashboardView({
                     <p className="text-xs sm:text-sm text-white/70 leading-relaxed max-w-md">
                       {isDeskReject
                         ? `Potential misalignment with "${paper.journal}" scope or critical criteria detected. Out-of-scope manuscripts face immediate triage decline before peer review.`
-                        : `Evaluated against "${paper.journal}" editorial standards across 10 atomic criteria with Free Scan. Empirical design and scope fit verified.`}
+                        : `Evaluated against "${paper.journal}" editorial standards across 10 atomic criteria with Fast Diagnostic. Empirical design and scope fit verified.`}
                     </p>
 
                     <div className="flex flex-wrap items-center gap-3 pt-1">

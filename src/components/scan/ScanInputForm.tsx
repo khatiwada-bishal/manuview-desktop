@@ -408,7 +408,7 @@ export function ScanInputForm({
             ) : scanEngine === "typesafe" ? (
               <>
                 <Sparkles className="w-4 h-4 text-white shrink-0" />
-                <span className="truncate">Run Free Pre-Submission Audit (TypeSafe)</span>
+                <span className="truncate">Run Fast Pre-Submission Audit (TypeSafe)</span>
                 <ArrowRight className="w-4 h-4 shrink-0 opacity-80" />
               </>
             ) : (

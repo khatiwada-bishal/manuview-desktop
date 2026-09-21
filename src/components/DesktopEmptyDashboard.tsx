@@ -402,12 +402,12 @@ export function DesktopEmptyDashboard({
                   <Gauge className="w-5 h-5" />
                 </div>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
-                  Free Scan · TypeSafe
+                  Fast Scan · TypeSafe
                 </span>
               </div>
               <div>
                 <h3 className="text-xs font-bold text-[#111827] dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
-                  Free Scan (TypeSafe)
+                  Fast Scan (TypeSafe)
                 </h3>
                 <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2">
                   Fast typed diagnostics — desk-reject risk, methods, claims, and confidence — powered by TypeSafe in one call.

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import type { PaperItem, DesktopActiveView } from "@/components/DesktopSidebar";
 import type { GroupedPapers } from "./sidebarUtils";
+import { classifyDocument } from "@/lib/parser";
 
 interface SidebarPaperListProps {
   papers: PaperItem[];
@@ -138,6 +139,9 @@ export function SidebarPaperList({
                 const isSelectedInBatch = selectedPaperIds.has(paper.id);
                 const isReviewing = paper.status === "reviewing";
                 const isFailed = paper.status === "failed";
+                const heuristic = !paper.classification
+                  ? classifyDocument(paper.scanParams?.rawText || "", paper.title)
+                  : paper.classification;
                 const isNonAcademic =
                   paper.ineligibilityReason === "non_academic_document" ||
                   (paper.classification != null &&
@@ -145,7 +149,8 @@ export function SidebarPaperList({
                       paper.classification.category !== "academic_manuscript")) ||
                   (paper.typesafeResult?.classification != null &&
                     (!paper.typesafeResult.classification.isAcademicManuscript ||
-                      paper.typesafeResult.classification.category !== "academic_manuscript"));
+                      paper.typesafeResult.classification.category !== "academic_manuscript")) ||
+                  (!heuristic.isAcademicManuscript || heuristic.category !== "academic_manuscript");
                 const isDeskReject =
                   !isReviewing &&
                   !isFailed &&
@@ -239,8 +244,8 @@ export function SidebarPaperList({
                           <div className="truncate font-medium flex items-center gap-1.5">
                             <span className="truncate">{paper.shortName}</span>
                             {paper.scanType === "typesafe" && (
-                              <span className="text-[8px] font-semibold px-1.5 py-0.2 rounded bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/50 shrink-0">
-                                Free Scan
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/60 shrink-0 tracking-tight">
+                                Fast
                               </span>
                             )}
                           </div>
@@ -283,10 +288,9 @@ export function SidebarPaperList({
                           )
                         ) : paper.scanType === "typesafe" ? (
                           <span
-                            title={`Free Scan Calibrated Score: ${paper.score ?? 0}%`}
-                            className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60 flex items-center gap-1 shrink-0"
+                            title={`Fast Diagnostic Score: ${paper.score ?? 0}%`}
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60 flex items-center justify-center shrink-0"
                           >
-                            <span className="text-[9px] font-medium text-blue-600/80 dark:text-blue-300/80 tracking-tight">Free Scan</span>
                             <span>{paper.score ?? 0}%</span>
                           </span>
                         ) : (

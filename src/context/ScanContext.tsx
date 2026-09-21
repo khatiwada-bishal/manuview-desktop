@@ -84,7 +84,7 @@ export function ScanProvider({
           const typeSafeKey = await resolveTypeSafeKey();
           if (!typeSafeKey) {
             throw new Error(
-              "No TypeSafe API key configured. Please add your TypeSafe API key in Settings (Cmd+,) to run Free scans."
+              "No TypeSafe API key configured. Please add your TypeSafe API key in Settings (Cmd+,) to run Fast scans."
             );
           }
         } else {
@@ -133,7 +133,7 @@ export function ScanProvider({
 
         // 3. Execution: TypeSafe Objective Audit vs 5-Persona Peer Review
         if (isTypeSafeScan) {
-          onProgressRef.current(paperId, "Running Free Scan objective evaluation battery...", 55);
+          onProgressRef.current(paperId, "Running Fast Scan objective evaluation battery...", 55);
           const { runTypeSafeScan } = await import("@/lib/typesafe-scan");
           const { resolveTypeSafeKey, TYPESAFE_DEFAULT_MODEL } = await import("@/lib/typesafe");
           const typeSafeKey = await resolveTypeSafeKey();
@@ -155,7 +155,7 @@ export function ScanProvider({
             filename: params.file?.name,
           });
 
-          onProgressRef.current(paperId, "Compiling Free Scan calibrated diagnostics...", 90);
+          onProgressRef.current(paperId, "Compiling Fast Scan calibrated diagnostics...", 90);
 
           const classification = scanResult.classification || parsed.classification;
           const isNonAcademic =
@@ -189,7 +189,7 @@ export function ScanProvider({
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             status: "completed",
-            scanStep: "Free Scan complete",
+            scanStep: "Fast Scan complete",
             scanPercent: 100,
             scanParams: params,
           };
@@ -198,9 +198,9 @@ export function ScanProvider({
             paperTitle: completedPaper.title,
             headlineTitle: isNonAcademic
               ? `Document Ineligible for Peer Review (${classification?.categoryLabel || "Non-Academic"})`
-              : `${params.targetJournal} Pre-Submission Audit (Free Scan)`,
+              : `${params.targetJournal} Pre-Submission Audit (Fast Scan)`,
             targetJournal: completedPaper.journal,
-            aiEngine: "Free Scan (TypeSafe)",
+            aiEngine: "Fast Scan (TypeSafe)",
             latencyMs: 140,
             score: isNonAcademic ? undefined : scanResult.readiness,
             isDeskReject,
