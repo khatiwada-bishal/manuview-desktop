@@ -151,13 +151,20 @@ export function ScanProvider({
             targetJournal: params.targetJournal,
             journalScope: liveScope?.aimsAndScope || undefined,
             apiKey: typeSafeKey,
+            filename: params.file?.name,
           });
 
           onProgressRef.current(paperId, "Compiling TypeSafe calibrated diagnostics...", 90);
 
+          const classification = scanResult.classification || parsed.classification;
+          const isNonAcademic =
+            !scanResult.isAcademic ||
+            (classification && !classification.isAcademicManuscript);
+
           const isDeskReject =
-            scanResult.signals.some((s) => s.id === "desk_reject_risk" && s.value >= 2) ||
-            scanResult.signals.some((s) => s.id === "journal_scope_fit" && s.display?.toLowerCase().includes("out of scope"));
+            !isNonAcademic &&
+            (scanResult.signals.some((s) => s.id === "desk_reject_risk" && s.value >= 2) ||
+            scanResult.signals.some((s) => s.id === "journal_scope_fit" && s.display?.toLowerCase().includes("out of scope")));
 
           const completedPaper: PaperItem = {
             id: paperId,
@@ -167,11 +174,17 @@ export function ScanProvider({
               .slice(0, 3)
               .join(" "),
             journal: params.targetJournal,
-            score: scanResult.readiness,
+            score: isNonAcademic ? undefined : scanResult.readiness,
             scanType: "typesafe",
             typesafeResult: scanResult,
-            isEligibleForReview: scanResult.isAcademic,
+            isEligibleForReview: !isNonAcademic,
+            ineligibilityReason: isNonAcademic
+              ? "non_academic_document"
+              : isDeskReject
+              ? "scope_mismatch"
+              : undefined,
             isDeskReject,
+            classification,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             status: "completed",
@@ -182,13 +195,17 @@ export function ScanProvider({
 
           const dashboardData: DesktopDashboardData = {
             paperTitle: completedPaper.title,
-            headlineTitle: `${params.targetJournal} Pre-Submission Audit (TypeSafe Jev)`,
+            headlineTitle: isNonAcademic
+              ? `Document Ineligible for Peer Review (${classification?.categoryLabel || "Non-Academic"})`
+              : `${params.targetJournal} Pre-Submission Audit (TypeSafe Jev)`,
             targetJournal: completedPaper.journal,
             aiEngine: `TYPESAFE (${scanResult.model})`,
             latencyMs: 140,
-            score: scanResult.readiness,
+            score: isNonAcademic ? undefined : scanResult.readiness,
             isDeskReject,
-            statusText: isDeskReject
+            statusText: isNonAcademic
+              ? "Review Bypassed (Non-Academic Document)"
+              : isDeskReject
               ? "Editorial Desk Reject (High Risk)"
               : scanResult.readiness >= 75
               ? "High Acceptance Readiness"

@@ -105,6 +105,7 @@ export function DesktopTypeSafeScanView({ onOpenSettings }: Props) {
         model,
         targetJournal: targetJournal.trim() || undefined,
         journalScope,
+        filename: fileName || undefined,
       });
       setResult(scan);
     } catch (err) {
@@ -125,14 +126,21 @@ export function DesktopTypeSafeScanView({ onOpenSettings }: Props) {
 
   // If result is ready, render the full TypeSafe Dashboard!
   if (result) {
+    const isNonAcademic =
+      !result.isAcademic ||
+      result.classification?.isAcademicManuscript === false;
+
     const syntheticPaper: PaperItem = {
       id: `typesafe-preview-${Date.now()}`,
       title: fileName ? fileName.replace(/\.[^/.]+$/, "") : "TypeSafe Manuscript Audit",
       shortName: (fileName || "Manuscript").split(" ").slice(0, 3).join(" "),
       journal: targetJournal.trim() || "Target Journal",
-      score: result.readiness,
+      score: isNonAcademic ? undefined : result.readiness,
       scanType: "typesafe",
       typesafeResult: result,
+      isEligibleForReview: !isNonAcademic,
+      ineligibilityReason: isNonAcademic ? "non_academic_document" : undefined,
+      classification: result.classification,
       status: "completed",
     };
 

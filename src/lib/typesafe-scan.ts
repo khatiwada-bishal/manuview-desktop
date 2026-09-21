@@ -22,6 +22,8 @@ import {
   type TypeSafeUsage,
   type TypeSafeEntryObject,
 } from "./typesafe";
+import { classifyDocument } from "./parser";
+import type { DocumentClassification } from "./types";
 
 /** Max characters of manuscript text sent as state. Jev's budget is 32k tokens
  * for state + longest question; ~48k chars keeps us comfortably inside it while
@@ -63,6 +65,8 @@ export interface TypeSafeScanResult {
   journalScope?: string;
   documentType: string;
   isAcademic: boolean;
+  classification?: DocumentClassification;
+  ineligibilityReason?: "already_published" | "non_academic_document" | "scope_mismatch";
   readiness: number; // 0–100 composite computed in code
   readinessLabel: string;
   signals: ScanSignal[];
@@ -130,10 +134,24 @@ const SCAN_SPECS: ScanSpec[] = [
         case_report: "A single case or small case series",
         methods: "A methods, protocol, or software/tool paper",
         preprint_other: "Academic writing that does not fit the categories above",
-        non_academic: "Not an academic manuscript (e.g. blog, memo, marketing)",
+        resume_cv: "Curriculum vitae, resume, or career record",
+        grant_proposal: "Grant application, funding proposal, or project narrative",
+        technical_doc: "Technical documentation, user guide, PRD, or software specification",
+        business_admin: "Business, legal, administrative, memo, or commercial document",
+        general_essay: "General essay, opinion piece, blog post, or casual prose",
+        unstructured_notes: "Unstructured notes, lists, or fragmented text",
+        non_academic: "Not an academic manuscript",
       }
     ),
-    toneByOption: { non_academic: "bad" },
+    toneByOption: {
+      resume_cv: "bad",
+      grant_proposal: "warn",
+      technical_doc: "warn",
+      business_admin: "bad",
+      general_essay: "bad",
+      unstructured_notes: "bad",
+      non_academic: "bad",
+    },
   },
   {
     id: "is_academic",
@@ -144,7 +162,7 @@ const SCAN_SPECS: ScanSpec[] = [
     goodWhenYes: true,
     question: noul("Is `manuscript` a scholarly research manuscript intended for journal submission?", {
       true: "Structured academic writing with scholarly intent",
-      false: "Non-academic or non-manuscript content",
+      false: "Non-academic or non-manuscript content (e.g. CV, resume, PRD, memo, manual, casual prose)",
     }),
   },
   {
@@ -507,6 +525,7 @@ export interface RunScanOptions {
   targetJournal?: string;
   journalScope?: string;
   signal?: AbortSignal;
+  filename?: string;
   /** Extra structured context merged into the state (e.g. target journal). */
   context?: TypeSafeEntryObject;
 }
@@ -522,6 +541,8 @@ export async function runTypeSafeScan(
   if (!text) {
     throw new Error("No manuscript text to scan. Paste or load a document first.");
   }
+
+  const heuristicClassification = classifyDocument(text, options.filename);
 
   // Preserve both the opening (Abstract, Methods) and the closing (Limitations, Ethics, Data Availability)
   const HEAD_CHARS = 36_000;
@@ -651,14 +672,108 @@ export async function runTypeSafeScan(
   const docTypeSignal = signals.find((s) => s.id === "document_type");
   const academicSignal = signals.find((s) => s.id === "is_academic");
 
+  const isModelNonAcademic =
+    (academicSignal && academicSignal.value < 0.45) ||
+    Boolean(
+      docTypeSignal?.display &&
+        /(?:resume|curriculum|cv|technical|prd|spec|grant|business|invoice|essay|notes|non_academic)/i.test(
+          docTypeSignal.display
+        )
+    );
+
+  const isAcademic = heuristicClassification.isAcademicManuscript && !isModelNonAcademic;
+
+  let classification: DocumentClassification;
+  if (!isAcademic) {
+    if (!heuristicClassification.isAcademicManuscript) {
+      classification = heuristicClassification;
+    } else {
+      const docTypeLower = (docTypeSignal?.display || "").toLowerCase();
+      if (docTypeLower.includes("resume") || docTypeLower.includes("cv")) {
+        classification = {
+          category: "resume_cv",
+          categoryLabel: "Curriculum Vitae / Resume",
+          isAcademicManuscript: false,
+          confidence: 0.95,
+          detectedFeatures: [
+            "Curriculum Vitae or Resume section structure identified",
+            "Professional experience, education, or skill listings detected",
+          ],
+          salutation: "Hello Candidate / Academic Professional",
+          advisoryMessage:
+            "We detected that this document is a Curriculum Vitae or professional resume. Standard journal peer-review metrics (such as experimental controls, sample size justification, and desk-rejection hazards) do not apply to professional qualification records.",
+          customGuidance:
+            "To evaluate scientific research readiness, please submit an empirical manuscript, preprint draft, or grant research narrative.",
+        };
+      } else if (
+        docTypeLower.includes("technical") ||
+        docTypeLower.includes("prd") ||
+        docTypeLower.includes("spec")
+      ) {
+        classification = {
+          category: "technical_doc",
+          categoryLabel: "Technical Documentation / Whitepaper",
+          isAcademicManuscript: false,
+          confidence: 0.9,
+          detectedFeatures: [
+            "Technical documentation or software specification headings found",
+            "Instructional or specification structure without formal academic literature citations",
+          ],
+          salutation: "Hello Technical Author / Documentation Lead",
+          advisoryMessage:
+            "We detected technical documentation or product specifications. While technically rigorous, documentation differs from peer-reviewed scientific literature where hypotheses, statistical power, and academic literature citations are systematically audited.",
+          customGuidance:
+            "If this technical work introduces a novel algorithm or system architecture for academic submission, structure it with empirical baselines, related work citations, and ablation studies.",
+        };
+      } else if (docTypeLower.includes("grant")) {
+        classification = {
+          category: "grant_proposal",
+          categoryLabel: "Grant / Project Proposal",
+          isAcademicManuscript: false,
+          confidence: 0.9,
+          detectedFeatures: [
+            "Grant funding proposal markers detected",
+            "Investigator role or funding agency terminology present",
+          ],
+          salutation: "Hello Principal Investigator / Project Lead",
+          advisoryMessage:
+            "We detected that this document is structured as a grant funding application or research project proposal rather than a completed journal manuscript. Grant evaluations emphasize project feasibility rather than journal publication scope.",
+          customGuidance:
+            "Focus your review on whether Specific Aims are clearly independent and feasibility is supported by preliminary data.",
+        };
+      } else {
+        classification = {
+          category: "general_or_creative",
+          categoryLabel: "General Essay / Non-Academic Prose",
+          isAcademicManuscript: false,
+          confidence: 0.85,
+          detectedFeatures: [
+            "Prose text in paragraph format",
+            "Absence of formal empirical methods or scientific data tables",
+            "Absence of peer-reviewed references or DOI citations",
+          ],
+          salutation: "Hello Author / Writer",
+          advisoryMessage:
+            "We detected a general essay, opinion piece, or informational text without empirical scientific methodology or peer-reviewed literature citations. ManuView is calibrated for scientific preprints and journal submissions.",
+          customGuidance:
+            "If this is intended as an academic perspective or review article, ensure formal literature citations, scholarly framing, and structured theoretical or empirical analysis are incorporated.",
+        };
+      }
+    }
+  } else {
+    classification = heuristicClassification;
+  }
+
   return {
     model: response.model,
     targetJournal: options.targetJournal,
     journalScope: options.journalScope,
-    documentType: docTypeSignal?.display ?? "Unknown",
-    isAcademic: academicSignal ? academicSignal.value >= 0.5 : true,
-    readiness,
-    readinessLabel: readinessLabel(readiness),
+    documentType: classification.categoryLabel || docTypeSignal?.display || "Unknown",
+    isAcademic,
+    classification,
+    ineligibilityReason: isAcademic ? undefined : "non_academic_document",
+    readiness: isAcademic ? readiness : 0,
+    readinessLabel: isAcademic ? readinessLabel(readiness) : "Review Bypassed",
     signals,
     groups,
     flags,

@@ -15,6 +15,7 @@ import {
   Square,
   Loader2,
   ShieldCheck,
+  AlertTriangle,
 } from "lucide-react";
 import type { PaperItem, DesktopActiveView } from "@/components/DesktopSidebar";
 import type { GroupedPapers } from "./sidebarUtils";
@@ -139,9 +140,13 @@ export function SidebarPaperList({
                 const isSelectedInBatch = selectedPaperIds.has(paper.id);
                 const isReviewing = paper.status === "reviewing";
                 const isFailed = paper.status === "failed";
+                const isNonAcademic =
+                  paper.ineligibilityReason === "non_academic_document" ||
+                  (paper.classification && !paper.classification.isAcademicManuscript);
                 const isDeskReject =
                   !isReviewing &&
                   !isFailed &&
+                  !isNonAcademic &&
                   (paper.editorialTriage?.outcome === "desk_reject" ||
                     paper.ineligibilityReason === "scope_mismatch" ||
                     paper.targetJournalEvaluation?.isDisciplinaryMismatch === true ||
@@ -184,7 +189,7 @@ export function SidebarPaperList({
                               ? "bg-rose-500 text-white"
                               : paper.isEligibleForReview === false && paper.ineligibilityReason === "already_published"
                               ? "bg-emerald-500 text-white"
-                              : paper.isEligibleForReview === false
+                              : paper.isEligibleForReview === false || isNonAcademic
                               ? "bg-amber-500 text-white"
                               : isSelected
                               ? "bg-gradient-to-br from-blue-600 to-indigo-600 text-white"
@@ -218,6 +223,8 @@ export function SidebarPaperList({
                                 <ShieldAlert className="w-3.5 h-3.5 text-white" />
                               ) : paper.isEligibleForReview === false && paper.ineligibilityReason === "already_published" ? (
                                 <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                              ) : paper.isEligibleForReview === false || isNonAcademic ? (
+                                <AlertTriangle className="w-3.5 h-3.5 text-white" />
                               ) : (
                                 <FileText className="w-3.5 h-3.5 text-white" />
                               )}
@@ -253,7 +260,7 @@ export function SidebarPaperList({
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-800/60">
                             Desk
                           </span>
-                        ) : paper.isEligibleForReview === false ? (
+                        ) : paper.isEligibleForReview === false || isNonAcademic ? (
                           paper.ineligibilityReason === "already_published" ? (
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
                               PUB

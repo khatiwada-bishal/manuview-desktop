@@ -22,6 +22,7 @@ import {
   Check,
   RotateCcw,
   ShieldAlert,
+  Upload,
 } from "lucide-react";
 import type { PaperItem } from "@/components/DesktopSidebar";
 import type { TypeSafeScanResult, ScanSignal } from "@/lib/typesafe-scan";
@@ -32,7 +33,7 @@ import {
   exportPdfReport,
 } from "@/lib/export-generator";
 import { ExportCompletedToast, type ExportToastData } from "@/components/ExportCompletedToast";
-import type { FullReviewReport, DimensionScore } from "@/lib/types";
+import type { FullReviewReport, DimensionScore, DocumentClassification } from "@/lib/types";
 
 interface DesktopTypeSafeDashboardViewProps {
   paper: PaperItem;
@@ -99,8 +100,18 @@ export function DesktopTypeSafeDashboardView({
 }: DesktopTypeSafeDashboardViewProps) {
   const result: TypeSafeScanResult | undefined = scanResult || paper.typesafeResult;
 
+  const classification: DocumentClassification | undefined =
+    paper.classification ||
+    result?.classification;
+
+  const isNonAcademic =
+    paper.ineligibilityReason === "non_academic_document" ||
+    result?.isAcademic === false ||
+    Boolean(classification && !classification.isAcademicManuscript);
+
   // Overview Accordions
   const [expandedCards, setExpandedCards] = useState({
+    documentClassification: true,
     fivePillars: true,
     synthesis: true,
     priorityFlags: true,
@@ -113,22 +124,29 @@ export function DesktopTypeSafeDashboardView({
   const exportDropdownRef = useRef<HTMLDivElement>(null);
 
   // Score & Desk reject determination
-  const score = result?.readiness ?? paper.score ?? 70;
+  const score = isNonAcademic ? 0 : (result?.readiness ?? paper.score ?? 70);
   const isDeskReject =
-    paper.isDeskReject ||
-    (result?.signals || []).some((s) => s.id === "desk_reject_risk" && s.value >= 2) ||
-    (result?.signals || []).some((s) => s.id === "journal_scope_fit" && s.display?.toLowerCase().includes("out of scope"));
+    !isNonAcademic &&
+    (Boolean(paper.isDeskReject) ||
+      (result?.signals || []).some((s) => s.id === "desk_reject_risk" && s.value >= 2) ||
+      (result?.signals || []).some((s) => s.id === "journal_scope_fit" && s.display?.toLowerCase().includes("out of scope")));
 
   const theme = getScoreTheme(score);
   const flags = result?.flags || [];
   const signals = result?.signals || [];
 
   const summaryText = useMemo(() => {
+    if (isNonAcademic) {
+      return (
+        classification?.advisoryMessage ||
+        `We detected that "${paper.title}" is structured as ${classification?.categoryLabel || "a non-academic document"} rather than an empirical research manuscript. Standard peer-review simulations and acceptance forecasting are bypassed.`
+      );
+    }
     return (
       `TypeSafe (Jev) calibrated objective pre-submission audit. Evaluated against ${paper.journal} editorial criteria with an overall readiness rating of "${result?.readinessLabel || theme.label}" (${score}%).\n\n` +
       `The manuscript "${paper.title}" demonstrates substantial academic structure. Jev evaluation across atomic criteria confirms baseline empirical reporting. Address the prioritized action items below prior to formal submission.`
     );
-  }, [paper.title, paper.journal, result?.readinessLabel, theme.label, score]);
+  }, [isNonAcademic, classification?.advisoryMessage, classification?.categoryLabel, paper.title, paper.journal, result?.readinessLabel, theme.label, score]);
 
   // Toggle card
   const toggleCard = (key: keyof typeof expandedCards) => {
@@ -143,10 +161,11 @@ export function DesktopTypeSafeDashboardView({
       mode: "full",
       title: paper.title,
       targetJournal: paper.journal,
-      overallScore: score,
-      isEligibleForReview: !isDeskReject,
+      overallScore: isNonAcademic ? 0 : score,
+      isEligibleForReview: !isNonAcademic && !isDeskReject,
+      ineligibilityReason: isNonAcademic ? "non_academic_document" : (isDeskReject ? "scope_mismatch" : undefined),
       summary: summaryText,
-      classification: {
+      classification: classification || {
         category: "academic_manuscript",
         categoryLabel: result?.documentType || "Academic Research Manuscript",
         isAcademicManuscript: result?.isAcademic ?? true,
@@ -157,9 +176,11 @@ export function DesktopTypeSafeDashboardView({
         customGuidance: "Review objective findings and address identified vulnerabilities.",
       },
       editorialTriage: {
-        sentToPeerReview: !isDeskReject,
-        outcome: isDeskReject ? "desk_reject" : "sent_for_review",
-        summary: isDeskReject
+        sentToPeerReview: !isNonAcademic && !isDeskReject,
+        outcome: isNonAcademic ? "sent_for_review" : isDeskReject ? "desk_reject" : "sent_for_review",
+        summary: isNonAcademic
+          ? `Peer-review simulation bypassed: Document classified as ${classification?.categoryLabel || "Non-Academic"}.`
+          : isDeskReject
           ? `High desk-rejection risk detected against ${paper.journal} editorial standards. Scope or methodological criteria require revision.`
           : `Cleared initial editorial screening. The manuscript aligns with ${paper.journal} scope and standards.`,
         confidence: 0.95,
@@ -467,12 +488,19 @@ export function DesktopTypeSafeDashboardView({
             <div className="flex items-center gap-3 shrink-0">
               <span
                 className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold shadow-2xs ${
-                  isDeskReject
+                  isNonAcademic
+                    ? "bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800/60"
+                    : isDeskReject
                     ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300/60 dark:border-rose-800/60"
                     : theme.badgeClass
                 }`}
               >
-                {isDeskReject ? (
+                {isNonAcademic ? (
+                  <>
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    <span>Review Bypassed (N/A)</span>
+                  </>
+                ) : isDeskReject ? (
                   <>
                     <ShieldAlert className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
                     <span>Desk Reject Hazard</span>
@@ -490,174 +518,364 @@ export function DesktopTypeSafeDashboardView({
             </div>
           </div>
 
-          {/* =========================================================================
-              PUREMAC-STYLE DARK HERO CARD
-             ========================================================================= */}
-          <div
-            className={`relative rounded-[28px] text-white shadow-2xl p-6 sm:p-8 overflow-hidden border transition-all mt-4 ${
-              isDeskReject ? "bg-[#0B0F17] border-rose-500/30" : "bg-[#0B0F17] border-white/10"
-            }`}
-          >
-            {/* Ambient atmospheric glows */}
-            <div
-              className={`absolute top-0 right-1/4 w-96 h-96 rounded-full blur-3xl pointer-events-none ${
-                isDeskReject ? "bg-rose-600/15" : "bg-blue-600/15"
-              }`}
-            />
-            <div className="absolute -bottom-10 -left-10 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
-
-            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-              {/* Left Column: Metrics & Actions */}
-              <div className="space-y-4 max-w-xl">
-                <div
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider backdrop-blur-sm ${
-                    isDeskReject
-                      ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
-                      : "bg-blue-500/20 text-blue-300 border border-blue-500/30"
-                  }`}
-                >
-                  {isDeskReject ? (
-                    <>
-                      <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
-                      <span>EDITORIAL TRIAGE: DESK REJECT HAZARD</span>
-                    </>
-                  ) : (
-                    <>
-                      <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-                      <span>TYPESAFE CALIBRATED AUDIT COMPLETE</span>
-                    </>
-                  )}
-                </div>
-
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-white/60">
-                    {isDeskReject ? "Editorial Screening Barrier" : "Calibrated Acceptance Readiness"}
-                  </p>
-                  <div className="flex items-baseline gap-3">
-                    <span className="text-5xl sm:text-6xl font-black tracking-tight text-white">
-                      {isDeskReject ? "Desk Reject" : `${score}%`}
-                    </span>
-                    {!isDeskReject && (
-                      <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-white/10 text-white/90 border border-white/15">
-                        {theme.label}
+          {isNonAcademic ? (
+            <div className="space-y-6 mt-4">
+              {/* Document Ineligible Amber Banner */}
+              <div className="p-5 sm:p-6 rounded-3xl border-2 border-amber-500/40 bg-gradient-to-br from-amber-50/90 via-white/80 to-amber-50/50 dark:from-amber-950/40 dark:via-[#161F30] dark:to-amber-950/20 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-200/60 dark:border-amber-900/40 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-amber-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                      <AlertTriangle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-sm font-bold text-amber-950 dark:text-amber-200 block">
+                        Document Ineligible for Peer-Review Evaluation
                       </span>
+                      <span className="text-[11px] text-amber-800 dark:text-amber-400">
+                        Classified as {classification?.categoryLabel || "Non-Academic Document"} &bull; Pre-Submission Simulation Bypassed
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                      Review Bypassed (N/A)
+                    </span>
+                    {onNewScan && (
+                      <button
+                        type="button"
+                        onClick={onNewScan}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white transition cursor-pointer shadow-2xs"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Upload Manuscript</span>
+                      </button>
                     )}
                   </div>
                 </div>
 
-                <p className="text-xs sm:text-sm text-white/70 leading-relaxed max-w-md">
-                  {isDeskReject
-                    ? `Potential misalignment with "${paper.journal}" scope or critical criteria detected. Out-of-scope manuscripts face immediate triage decline before peer review.`
-                    : `Evaluated against "${paper.journal}" editorial standards across 10 atomic criteria with TypeSafe (Jev). Empirical design and scope fit verified.`}
+                <p className="text-xs text-amber-900/90 dark:text-amber-300/90 leading-relaxed pt-2 border-t border-amber-200/70 dark:border-amber-800/60">
+                  {classification?.advisoryMessage ||
+                    "We detected a general essay, opinion piece, or informational text without empirical scientific methodology or peer-reviewed literature citations. ManuView is calibrated for scientific preprints and journal submissions."}
                 </p>
+              </div>
 
-                <div className="flex flex-wrap items-center gap-3 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => handleExport("pdf")}
-                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition cursor-pointer flex items-center gap-2 shadow-md"
-                  >
-                    <Printer className="w-3.5 h-3.5" />
-                    <span>Export PDF Report</span>
-                  </button>
-                  {onNewScan && (
-                    <button
-                      type="button"
-                      onClick={onNewScan}
-                      className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold border border-white/15 transition cursor-pointer flex items-center gap-2 backdrop-blur-sm"
+              {/* Document Classification Card */}
+              <div className="rounded-3xl liquid-glass-card border border-black/[0.08] dark:border-white/[0.1] border-l-4 border-l-blue-500 overflow-hidden transition-all duration-200">
+                <button
+                  type="button"
+                  onClick={() => toggleCard("documentClassification")}
+                  className="w-full text-left p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition select-none"
+                  aria-expanded={expandedCards.documentClassification}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 flex items-center justify-center shrink-0">
+                      <Tag className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-[#0F172A] dark:text-white">
+                        Document Classification: {classification?.categoryLabel || "Non-Academic Document"}
+                      </h2>
+                      <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
+                        Detected document typology and tailored pre-submission guidance
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
+                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60">
+                      {classification?.categoryLabel || "Non-Academic Document"}
+                    </span>
+                    <div className="w-7 h-7 rounded-full bg-neutral-100 dark:bg-[#1E293B] flex items-center justify-center text-neutral-500 dark:text-neutral-400 ml-1 shrink-0">
+                      <ChevronDown
+                        className={`w-4 h-4 transition-transform duration-200 ${
+                          expandedCards.documentClassification ? "rotate-180" : ""
+                        }`}
+                      />
+                    </div>
+                  </div>
+                </button>
+
+                {expandedCards.documentClassification && (
+                  <div className="px-6 pb-6 sm:px-7 sm:pb-7 pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937] space-y-3 animate-fade-in">
+                    <p className="text-xs sm:text-sm text-[#334155] dark:text-neutral-300 leading-relaxed">
+                      <strong className="font-bold text-[#0F172A] dark:text-white">
+                        {classification?.salutation
+                          ? classification.salutation.endsWith(":")
+                            ? classification.salutation
+                            : `${classification.salutation}:`
+                          : "Hello Author / Writer:"}
+                      </strong>{" "}
+                      {classification?.advisoryMessage ||
+                        "We detected that this document is not structured as an academic research manuscript. Acceptance scoring and persona simulations have been safely skipped."}
+                    </p>
+
+                    {classification?.detectedFeatures && classification.detectedFeatures.length > 0 && (
+                      <div className="pt-1 flex flex-wrap gap-1.5">
+                        {classification.detectedFeatures.map((feat, idx) => (
+                          <span
+                            key={idx}
+                            className="text-[11px] px-2.5 py-0.5 rounded-full font-medium bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60"
+                          >
+                            &bull; {feat}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <p className="text-xs sm:text-sm text-[#64748B] dark:text-neutral-400 leading-relaxed">
+                      {classification?.customGuidance ||
+                        "If this is intended as an academic perspective or review article, ensure formal literature citations, scholarly framing, and structured theoretical or empirical analysis are incorporated."}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* =========================================================================
+                  PUREMAC-STYLE DARK HERO CARD
+                 ========================================================================= */}
+              <div
+                className={`relative rounded-[28px] text-white shadow-2xl p-6 sm:p-8 overflow-hidden border transition-all mt-4 ${
+                  isDeskReject ? "bg-[#0B0F17] border-rose-500/30" : "bg-[#0B0F17] border-white/10"
+                }`}
+              >
+                {/* Ambient atmospheric glows */}
+                <div
+                  className={`absolute top-0 right-1/4 w-96 h-96 rounded-full blur-3xl pointer-events-none ${
+                    isDeskReject ? "bg-rose-600/15" : "bg-blue-600/15"
+                  }`}
+                />
+                <div className="absolute -bottom-10 -left-10 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  {/* Left Column: Metrics & Actions */}
+                  <div className="space-y-4 max-w-xl">
+                    <div
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider backdrop-blur-sm ${
+                        isDeskReject
+                          ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                          : "bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                      }`}
                     >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      <span>Scan Another Paper</span>
-                    </button>
-                  )}
+                      {isDeskReject ? (
+                        <>
+                          <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+                          <span>EDITORIAL TRIAGE: DESK REJECT HAZARD</span>
+                        </>
+                      ) : (
+                        <>
+                          <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+                          <span>TYPESAFE CALIBRATED AUDIT COMPLETE</span>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-white/60">
+                        {isDeskReject ? "Editorial Screening Barrier" : "Calibrated Acceptance Readiness"}
+                      </p>
+                      <div className="flex items-baseline gap-3">
+                        <span className="text-5xl sm:text-6xl font-black tracking-tight text-white">
+                          {isDeskReject ? "Desk Reject" : `${score}%`}
+                        </span>
+                        {!isDeskReject && (
+                          <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-white/10 text-white/90 border border-white/15">
+                            {theme.label}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <p className="text-xs sm:text-sm text-white/70 leading-relaxed max-w-md">
+                      {isDeskReject
+                        ? `Potential misalignment with "${paper.journal}" scope or critical criteria detected. Out-of-scope manuscripts face immediate triage decline before peer review.`
+                        : `Evaluated against "${paper.journal}" editorial standards across 10 atomic criteria with TypeSafe (Jev). Empirical design and scope fit verified.`}
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-3 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleExport("pdf")}
+                        className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition cursor-pointer flex items-center gap-2 shadow-md"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>Export PDF Report</span>
+                      </button>
+                      {onNewScan && (
+                        <button
+                          type="button"
+                          onClick={onNewScan}
+                          className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold border border-white/15 transition cursor-pointer flex items-center gap-2 backdrop-blur-sm"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Scan Another Paper</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Column: 3D Layered Glass Stack Graphic */}
+                  <div className="shrink-0 hidden md:flex items-center justify-center pr-4">
+                    <DashboardGlassIllustration className="w-52 h-40 lg:w-60 lg:h-44" />
+                  </div>
                 </div>
               </div>
 
-              {/* Right Column: 3D Layered Glass Stack Graphic */}
-              <div className="shrink-0 hidden md:flex items-center justify-center pr-4">
-                <DashboardGlassIllustration className="w-52 h-40 lg:w-60 lg:h-44" />
-              </div>
-            </div>
-          </div>
+              {/* Four Quick Stat Summary Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+                <div className="p-4 rounded-2xl liquid-glass-subcard space-y-1 border border-black/[0.06] dark:border-white/[0.08]">
+                  <div className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
+                    Readiness Band
+                  </div>
+                  <div className="text-sm font-bold text-[#0F172A] dark:text-white">
+                    {theme.label}
+                  </div>
+                  <div className="text-[10px] text-neutral-500 dark:text-neutral-400">
+                    Calibrated score: {score}/100
+                  </div>
+                </div>
 
-          {/* Four Quick Stat Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
-            <div className="p-4 rounded-2xl liquid-glass-subcard space-y-1 border border-black/[0.06] dark:border-white/[0.08]">
-              <div className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
-                Readiness Band
-              </div>
-              <div className="text-sm font-bold text-[#0F172A] dark:text-white">
-                {theme.label}
-              </div>
-              <div className="text-[10px] text-neutral-500 dark:text-neutral-400">
-                Calibrated score: {score}/100
-              </div>
-            </div>
+                <div className="p-4 rounded-2xl liquid-glass-subcard space-y-1 border border-black/[0.06] dark:border-white/[0.08]">
+                  <div className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
+                    Target Venue Scope
+                  </div>
+                  <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                    {signals.find((s) => s.id === "journal_scope_fit")?.display || "In-Scope"}
+                  </div>
+                  <div className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">
+                    {paper.journal}
+                  </div>
+                </div>
 
-            <div className="p-4 rounded-2xl liquid-glass-subcard space-y-1 border border-black/[0.06] dark:border-white/[0.08]">
-              <div className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
-                Target Venue Scope
-              </div>
-              <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                {signals.find((s) => s.id === "journal_scope_fit")?.display || "In-Scope"}
-              </div>
-              <div className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">
-                {paper.journal}
-              </div>
-            </div>
+                <div className="p-4 rounded-2xl liquid-glass-subcard space-y-1 border border-black/[0.06] dark:border-white/[0.08]">
+                  <div className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
+                    Methodological Rigor
+                  </div>
+                  <div className="text-sm font-bold text-[#0F172A] dark:text-white">
+                    {signals.find((s) => s.id === "method_rigor")?.display || "Adequate Controls"}
+                  </div>
+                  <div className="text-[10px] text-neutral-500 dark:text-neutral-400">
+                    Level {signals.find((s) => s.id === "method_rigor")?.value ?? 2} of 3
+                  </div>
+                </div>
 
-            <div className="p-4 rounded-2xl liquid-glass-subcard space-y-1 border border-black/[0.06] dark:border-white/[0.08]">
-              <div className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
-                Methodological Rigor
-              </div>
-              <div className="text-sm font-bold text-[#0F172A] dark:text-white">
-                {signals.find((s) => s.id === "method_rigor")?.display || "Adequate Controls"}
-              </div>
-              <div className="text-[10px] text-neutral-500 dark:text-neutral-400">
-                Level {signals.find((s) => s.id === "method_rigor")?.value ?? 2} of 3
-              </div>
-            </div>
-
-            <div className="p-4 rounded-2xl liquid-glass-subcard space-y-1 border border-black/[0.06] dark:border-white/[0.08]">
-              <div className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
-                Ethics &amp; Integrity
-              </div>
-              <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                {signals.find((s) => s.id === "ethics_declared")?.value ? "Disclosed" : "Review Needed"}
-              </div>
-              <div className="text-[10px] text-neutral-500 dark:text-neutral-400">
-                Zero retention verified
+                <div className="p-4 rounded-2xl liquid-glass-subcard space-y-1 border border-black/[0.06] dark:border-white/[0.08]">
+                  <div className="text-[11px] font-medium text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
+                    Ethics &amp; Integrity
+                  </div>
+                  <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                    {signals.find((s) => s.id === "ethics_declared")?.value ? "Disclosed" : "Review Needed"}
+                  </div>
+                  <div className="text-[10px] text-neutral-500 dark:text-neutral-400">
+                    Zero retention verified
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Overview Diagnostics Header with Expand/Collapse All */}
-        <div className="flex items-center justify-between pt-1 px-1">
-          <span className="text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-neutral-400">
-            Detailed Diagnoses &amp; Pre-Submission Audits
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              const anyOpen = Object.values(expandedCards).some(Boolean);
-              setExpandedCards({
-                fivePillars: !anyOpen,
-                synthesis: !anyOpen,
-                priorityFlags: !anyOpen,
-                dimensions: !anyOpen,
-              });
-            }}
-            className="text-xs font-semibold text-[#2563EB] dark:text-blue-400 hover:underline cursor-pointer"
-          >
-            {Object.values(expandedCards).some(Boolean) ? "Collapse all" : "Expand all"}
-          </button>
-        </div>
+        {/* Overview Diagnostics Header with Expand/Collapse All (Omitted for non-academic documents) */}
+        {!isNonAcademic && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between pt-1 px-1">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-neutral-400">
+                Detailed Diagnoses &amp; Pre-Submission Audits
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const anyOpen = Object.values(expandedCards).some(Boolean);
+                  setExpandedCards({
+                    documentClassification: !anyOpen,
+                    fivePillars: !anyOpen,
+                    synthesis: !anyOpen,
+                    priorityFlags: !anyOpen,
+                    dimensions: !anyOpen,
+                  });
+                }}
+                className="text-xs font-semibold text-[#2563EB] dark:text-blue-400 hover:underline cursor-pointer"
+              >
+                {Object.values(expandedCards).some(Boolean) ? "Collapse all" : "Expand all"}
+              </button>
+            </div>
 
-        {/* =========================================================================
-            CARD 1: 5-Pillar Editorial & Desk-Reject Screening Matrix
-           ========================================================================= */}
-        <div className="rounded-3xl liquid-glass-card border border-black/[0.08] dark:border-white/[0.1] overflow-hidden transition-all duration-200">
+            {/* =========================================================================
+                CARD 0: Document Classification Card (Academic Manuscript)
+               ========================================================================= */}
+            <div className="rounded-3xl liquid-glass-card border border-black/[0.08] dark:border-white/[0.1] border-l-4 border-l-blue-500 overflow-hidden transition-all duration-200">
+              <button
+                type="button"
+                onClick={() => toggleCard("documentClassification")}
+                className="w-full text-left p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition select-none"
+                aria-expanded={expandedCards.documentClassification}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 flex items-center justify-center shrink-0">
+                    <Tag className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-[#0F172A] dark:text-white">
+                      Document Classification: {classification?.categoryLabel || "Academic Research Manuscript"}
+                    </h2>
+                    <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
+                      Detected document typology and tailored pre-submission guidance
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60">
+                    {classification?.categoryLabel || "Research Manuscript"}
+                  </span>
+                  <div className="w-7 h-7 rounded-full bg-neutral-100 dark:bg-[#1E293B] flex items-center justify-center text-neutral-500 dark:text-neutral-400 ml-1 shrink-0">
+                    <ChevronDown
+                      className={`w-4 h-4 transition-transform duration-200 ${
+                        expandedCards.documentClassification ? "rotate-180" : ""
+                      }`}
+                    />
+                  </div>
+                </div>
+              </button>
+
+              {expandedCards.documentClassification && (
+                <div className="px-6 pb-6 sm:px-7 sm:pb-7 pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937] space-y-3 animate-fade-in">
+                  <p className="text-xs sm:text-sm text-[#334155] dark:text-neutral-300 leading-relaxed">
+                    <strong className="font-bold text-[#0F172A] dark:text-white">
+                      {classification?.salutation
+                        ? classification.salutation.endsWith(":")
+                          ? classification.salutation
+                          : `${classification.salutation}:`
+                        : "Dear Author / Contributing Researcher:"}
+                    </strong>{" "}
+                    {classification?.advisoryMessage ||
+                      "Your submission has been verified as an authentic academic manuscript and screened across calibrated pre-submission rubrics."}
+                  </p>
+
+                  {classification?.detectedFeatures && classification.detectedFeatures.length > 0 && (
+                    <div className="pt-1 flex flex-wrap gap-1.5">
+                      {classification.detectedFeatures.map((feat, idx) => (
+                        <span
+                          key={idx}
+                          className="text-[11px] px-2.5 py-0.5 rounded-full font-medium bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60"
+                        >
+                          &bull; {feat}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <p className="text-xs sm:text-sm text-[#64748B] dark:text-neutral-400 leading-relaxed">
+                    {classification?.customGuidance ||
+                      "Review the prioritized action items below and ensure empirical evidence aligns with your target journal criteria."}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* =========================================================================
+                CARD 1: 5-Pillar Editorial & Desk-Reject Screening Matrix
+               ========================================================================= */}
+            <div className="rounded-3xl liquid-glass-card border border-black/[0.08] dark:border-white/[0.1] overflow-hidden transition-all duration-200">
           <button
             type="button"
             onClick={() => toggleCard("fivePillars")}
@@ -954,6 +1172,8 @@ export function DesktopTypeSafeDashboardView({
             </div>
           )}
         </div>
+      </div>
+    )}
       </div>
 
       {/* Export Toast */}

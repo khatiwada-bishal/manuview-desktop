@@ -200,7 +200,10 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
 
   const hasAcademicStructure = /(?:abstract|introduction|materials and methods|methodology|results|discussion|conclusion|references\s*:|doi:\s*10\.)/i.test(clean);
 
+  const isResumeByFilename = Boolean(filename && /(?:^|[_\-.])(?:cv|resume|curriculum[_\s\-]*vitae)(?:$|[_\-.])/i.test(filename));
+
   const isResume = 
+    (isResumeByFilename && !hasAcademicStructure) ||
     lower.includes('curriculum vitae') || 
     /^\s*resume\s*$/im.test(clean) ||
     (cvHeadingMatches >= 2 && contactPatternRegex.test(clean)) ||
@@ -246,8 +249,9 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
   // =========================================================================
   // 4. Technical Documentation / Whitepaper
   // =========================================================================
-  const techDocRegex = /(?:api\s+reference|endpoints?\s*:|installation\s+guide|getting\s+started|sdk\s+reference|architecture\s+overview|prerequisites\s*:|quickstart)/i;
-  if (techDocRegex.test(clean) && !hasAcademicStructure) {
+  const techDocRegex = /(?:api\s+reference|endpoints?\s*:|installation\s+guide|getting\s+started|sdk\s+reference|architecture\s+overview|prerequisites\s*:|quickstart|product\s+requirements|\bprd\b|feature\s+spec|system\s+design|acceptance\s+criteria)/i;
+  const isTechDocByFilename = Boolean(filename && /(?:^|[_\-.])(?:prd|spec|specs|requirements|roadmap|architecture)(?:$|[_\-.])/i.test(filename));
+  if ((techDocRegex.test(clean) || isTechDocByFilename) && !hasAcademicStructure) {
     return {
       category: 'technical_doc',
       categoryLabel: 'Technical Documentation / Whitepaper',

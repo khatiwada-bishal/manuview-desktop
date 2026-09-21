@@ -349,7 +349,18 @@ export function DesktopDashboard({
       currentReport?.ineligibilityReason === "scope_mismatch" ||
       fullReport?.ineligibilityReason === "scope_mismatch");
 
+  const rawClassification = currentReport?.classification || fullReport?.classification || classification;
+  const ineligibilityReason =
+    currentReport?.ineligibilityReason ||
+    fullReport?.ineligibilityReason ||
+    (rawClassification && !rawClassification.isAcademicManuscript ? "non_academic_document" : undefined);
+
+  const isNonAcademic =
+    ineligibilityReason === "non_academic_document" ||
+    Boolean(rawClassification && !rawClassification.isAcademicManuscript);
+
   const isDeskReject =
+    !isNonAcademic &&
     !isExplicitlySentForReview &&
     (isScopeMismatch ||
       currentReport?.editorialTriage?.outcome === "desk_reject" ||
@@ -358,17 +369,13 @@ export function DesktopDashboard({
       data?.statusText?.includes("Desk Reject") ||
       data?.isDeskReject === true);
 
-  const isReviewEligible = !isDeskReject && (isExplicitlySentForReview || currentReport?.isEligibleForReview !== false);
-  const ineligibilityReason = isDeskReject ? "scope_mismatch" : currentReport?.ineligibilityReason;
+  const isReviewEligible = !isDeskReject && !isNonAcademic && (isExplicitlySentForReview || currentReport?.isEligibleForReview !== false);
   const isAlreadyPublished =
     !isDeskReject &&
+    !isNonAcademic &&
     (ineligibilityReason === "already_published" ||
     Boolean(currentReport?.publishedDetails?.isPublished));
-  const isNonAcademic =
-    !isDeskReject &&
-    (ineligibilityReason === "non_academic_document" ||
-    (currentReport?.classification && !currentReport.classification.isAcademicManuscript));
-  const overallScore = isDeskReject
+  const overallScore = isDeskReject || isNonAcademic
     ? undefined
     : (currentReport?.overallScore ?? (isReviewEligible ? data.score : undefined));
 
@@ -1027,8 +1034,8 @@ export function DesktopDashboard({
               </div>
             )}
 
-            {/* CARD 3: Document Classification Card (Only for review-eligible manuscripts; omitted for published articles and non-academic documents) */}
-            {isReviewEligible && (
+            {/* CARD 3: Document Classification Card (Rendered for review-eligible manuscripts and non-academic documents) */}
+            {(isReviewEligible || isNonAcademic) && (
               <div className="rounded-3xl liquid-glass-card border border-black/[0.08] dark:border-white/[0.1] border-l-4 border-l-[#2563EB] dark:border-l-blue-500 overflow-hidden transition-all duration-200">
                 <button
                   type="button"

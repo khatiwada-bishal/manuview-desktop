@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { isDesktopApp } from "@/lib/desktop";
 import { useTheme } from "@/context/ThemeContext";
-import { EditorialTriageOutcome } from "@/lib/types";
+import { EditorialTriageOutcome, DocumentClassification } from "@/lib/types";
 import {
   type TimeCategory,
   type GroupedPapers,
@@ -46,6 +46,7 @@ export interface PaperItem {
   editorialTriage?: EditorialTriageOutcome;
   targetJournalEvaluation?: any;
   isDeskReject?: boolean;
+  classification?: DocumentClassification;
   scanType?: "persona" | "typesafe";
   typesafeResult?: any;
   createdAt?: string;
