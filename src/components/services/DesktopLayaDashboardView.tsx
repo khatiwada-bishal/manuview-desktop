@@ -103,10 +103,10 @@ export function DesktopLayaDashboardView({
     paper.classification ||
     result?.classification;
 
-  const isNonAcademic =
-    paper.ineligibilityReason === "non_academic_document" ||
-    result?.isAcademic === false ||
-    Boolean(classification && !classification.isAcademicManuscript);
+  const isNonAcademic = result
+    ? !result.isAcademic
+    : paper.ineligibilityReason === "non_academic_document" ||
+      Boolean(classification && !classification.isAcademicManuscript);
 
   // Overview Accordions
   const [expandedCards, setExpandedCards] = useState({
@@ -198,8 +198,8 @@ export function DesktopLayaDashboardView({
         };
         return {
           originality: toDimScore(
-            getSignalPercent(signals.find((s) => s.id === "originality")),
-            signals.find((s) => s.id === "originality")?.display || "Novelty and research contribution evaluated by Fast Diagnostic.",
+            getSignalPercent(signals.find((s) => s.id === "novelty" || s.id === "originality")),
+            signals.find((s) => s.id === "novelty" || s.id === "originality")?.display || "Novelty and research contribution evaluated by Fast Diagnostic.",
             "Originality"
           ),
           broad_interest: toDimScore(
@@ -208,23 +208,23 @@ export function DesktopLayaDashboardView({
             "Broad Interest"
           ),
           claims_vs_evidence: toDimScore(
-            getSignalPercent(signals.find((s) => s.id === "statistical_integrity")),
-            signals.find((s) => s.id === "statistical_integrity")?.display || "Statistical consistency and numerical reporting evaluated by Fast Diagnostic.",
+            getSignalPercent(signals.find((s) => s.id === "claims_supported" || s.id === "stats_complete" || s.id === "statistical_integrity")),
+            signals.find((s) => s.id === "claims_supported" || s.id === "stats_complete" || s.id === "statistical_integrity")?.display || "Statistical consistency and numerical reporting evaluated by Fast Diagnostic.",
             "Claims vs Evidence"
           ),
           methodology: toDimScore(
-            getSignalPercent(signals.find((s) => s.id === "method_rigor")),
-            signals.find((s) => s.id === "method_rigor")?.display || "Experimental design and methodological controls evaluated by Fast Diagnostic.",
+            getSignalPercent(signals.find((s) => s.id === "methods_reproducible" || s.id === "has_methods" || s.id === "method_rigor")),
+            signals.find((s) => s.id === "methods_reproducible" || s.id === "has_methods" || s.id === "method_rigor")?.display || "Experimental design and methodological controls evaluated by Fast Diagnostic.",
             "Methodology"
           ),
           clarity: toDimScore(
-            getSignalPercent(signals.find((s) => s.id === "structural_integrity")),
-            signals.find((s) => s.id === "structural_integrity")?.display || "IMRaD structure and narrative clarity evaluated by Fast Diagnostic.",
+            getSignalPercent(signals.find((s) => s.id === "structure_coherent" || s.id === "writing_clarity" || s.id === "structural_integrity")),
+            signals.find((s) => s.id === "structure_coherent" || s.id === "writing_clarity" || s.id === "structural_integrity")?.display || "IMRaD structure and narrative clarity evaluated by Fast Diagnostic.",
             "Clarity"
           ),
           prior_work: toDimScore(
-            getSignalPercent(signals.find((s) => s.id === "limitations_declared")),
-            signals.find((s) => s.id === "limitations_declared")?.display || "Discussion of caveats, boundary conditions, and limitations.",
+            getSignalPercent(signals.find((s) => s.id === "citations_present" || s.id === "states_limitations" || s.id === "limitations_declared")),
+            signals.find((s) => s.id === "citations_present" || s.id === "states_limitations" || s.id === "limitations_declared")?.display || "Discussion of prior scholarly literature and limitations.",
             "Prior Work"
           ),
         };
@@ -345,28 +345,28 @@ export function DesktopLayaDashboardView({
     {
       id: "method",
       name: "2. Methodological Soundness",
-      signal: signals.find((s) => s.id === "method_rigor"),
+      signal: signals.find((s) => s.id === "methods_reproducible" || s.id === "has_methods" || s.id === "method_rigor"),
       defaultTitle: "Research Methodology",
       desc: "Controls, baseline rigor, and empirical design",
     },
     {
       id: "limitations",
       name: "3. Limitations & Caveats",
-      signal: signals.find((s) => s.id === "limitations_declared"),
+      signal: signals.find((s) => s.id === "states_limitations" || s.id === "limitations_declared"),
       defaultTitle: "Critical Limitations",
       desc: "Transparent discussion of study boundaries and threats to validity",
     },
     {
       id: "stats",
       name: "4. Statistical Integrity",
-      signal: signals.find((s) => s.id === "statistical_integrity"),
+      signal: signals.find((s) => s.id === "stats_complete" || s.id === "claims_supported" || s.id === "statistical_integrity"),
       defaultTitle: "Numerical Evidence",
       desc: "Consistency of statistical tests, p-values, and effect sizes",
     },
     {
       id: "ethics",
       name: "5. Ethics & Reproducibility",
-      signal: signals.find((s) => s.id === "ethics_declared"),
+      signal: signals.find((s) => s.id === "ethics_statement" || s.id === "data_availability" || s.id === "ethics_declared"),
       defaultTitle: "Ethical Compliance",
       desc: "Institutional review, consent statements, and data accessibility",
     },
@@ -747,10 +747,10 @@ export function DesktopLayaDashboardView({
                     Methodological Rigor
                   </div>
                   <div className="text-sm font-bold text-[#0F172A] dark:text-white">
-                    {signals.find((s) => s.id === "method_rigor")?.display || "Adequate Controls"}
+                    {signals.find((s) => s.id === "methods_reproducible" || s.id === "has_methods" || s.id === "method_rigor")?.display || "Adequate Controls"}
                   </div>
                   <div className="text-[10px] text-neutral-500 dark:text-neutral-400">
-                    Level {signals.find((s) => s.id === "method_rigor")?.value ?? 2} of 3
+                    Level {signals.find((s) => s.id === "methods_reproducible" || s.id === "method_rigor")?.value ?? 2} of 3
                   </div>
                 </div>
 
@@ -759,7 +759,7 @@ export function DesktopLayaDashboardView({
                     Ethics &amp; Integrity
                   </div>
                   <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                    {signals.find((s) => s.id === "ethics_declared")?.value ? "Disclosed" : "Review Needed"}
+                    {(signals.find((s) => s.id === "ethics_statement" || s.id === "ethics_declared")?.value ?? 0.5) >= 0.5 ? "Disclosed" : "Review Needed"}
                   </div>
                   <div className="text-[10px] text-neutral-500 dark:text-neutral-400">
                     Zero retention verified
