@@ -15,6 +15,15 @@ import {
   maskApiKey,
 } from "@/lib/secureStorage";
 import { isModelCached, SUPPORTED_LOCAL_MODELS } from "@/lib/webllm/webllm-service";
+import {
+  LAYA_MODEL,
+  subscribeToLayaStatus,
+  getLayaStatus,
+  isLayaCached,
+  initLayaModel,
+  deleteLayaCache,
+  type LayaProgress,
+} from "@/lib/laya/laya-service";
 import { isDesktopApp, isMacOS } from "@/lib/desktop";
 import { Settings, ShieldCheck, X, CheckCircle2, Activity, RefreshCw, AlertCircle, Zap, Check, ChevronDown, Sparkles, Search, KeyRound, Cpu, Download, Loader2 } from "lucide-react";
 import { GeminiLogo, OpenAILogo, GroqLogo, AnthropicLogo, OllamaLogo } from "./BrandLogos";
@@ -65,6 +74,24 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [isKeyDirty, setIsKeyDirty] = useState(false);
   const [baseUrlError, setBaseUrlError] = useState<string | null>(null);
+
+  const [layaCached, setLayaCached] = useState<boolean>(false);
+  const [layaStatus, setLayaStatus] = useState<LayaProgress>(getLayaStatus());
+
+  useEffect(() => {
+    const unsub = subscribeToLayaStatus((prog) => setLayaStatus(prog));
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    if (isOpen) {
+      isLayaCached().then((c) => active && setLayaCached(c));
+    }
+    return () => {
+      active = false;
+    };
+  }, [isOpen, layaStatus.state]);
 
   useEffect(() => {
     // Check browser local storage
@@ -215,7 +242,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
         : newProvider === "groq"
         ? "llama-3.3-70b-versatile"
         : newProvider === "typesafe"
-        ? "jev-latest"
+        ? "convaiinnovations/laya"
         : newProvider === "webllm"
         ? "Qwen2.5-0.5B-Instruct-q4f16_1-MLC"
         : "llama3.3";
@@ -227,7 +254,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
     };
     delete (updated as any).apiKey;
     setConfig(updated);
-    setProviderCategory(newProvider === "webllm" || newProvider === "ollama" ? "local" : "cloud");
+    setProviderCategory(newProvider === "typesafe" ? "free" : newProvider === "webllm" || newProvider === "ollama" ? "local" : "cloud");
     setTestResult(null);
     setFetchFeedback(null);
     setHasFetchedLive(false);
@@ -482,25 +509,25 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 font-bold text-sm text-blue-950 dark:text-blue-100">
                     <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                    <span>Free Pre-Submission Audit (Powered by TypeSafe)</span>
+                    <span>Free Pre-Submission Audit (Powered by Laya)</span>
                   </div>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-600 text-white shadow-2xs">
-                    100% Free Tier
+                    100% On-Device &bull; Zero API
                   </span>
                 </div>
 
                 <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed">
-                  Manuview provides authors with free pre-submission manuscript diagnostics powered by TypeSafe (Jev). It rigorously evaluates methodology, statistical reporting, limitations, ethics statements, and target journal alignment with calibrated probabilities. Zero API key setup required.
+                  Manuview provides authors with free pre-submission manuscript diagnostics powered by <strong>Laya</strong> (ModernBERT-large, 421M params). Running 100% client-side in-browser via Transformers.js and WebGPU with automatic WASM fallback, evaluating screening, methodology, statistical reporting, limitations, and target journal alignment with calibrated confidence. Zero external calls, zero API keys.
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px]">
                   <div className="flex items-center gap-2 p-2 rounded-xl bg-white/80 dark:bg-[#1E293B]/80 border border-black/5 dark:border-white/5">
                     <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>Zero API keys required from authors</span>
+                    <span>Zero API keys &bull; 100% confidential offline</span>
                   </div>
                   <div className="flex items-center gap-2 p-2 rounded-xl bg-white/80 dark:bg-[#1E293B]/80 border border-black/5 dark:border-white/5">
                     <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>Fast ~15s objective diagnostic audit</span>
+                    <span>Fast neural decision passes (~33ms per forward pass)</span>
                   </div>
                   <div className="flex items-center gap-2 p-2 rounded-xl bg-white/80 dark:bg-[#1E293B]/80 border border-black/5 dark:border-white/5">
                     <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
@@ -508,7 +535,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                   </div>
                   <div className="flex items-center gap-2 p-2 rounded-xl bg-white/80 dark:bg-[#1E293B]/80 border border-black/5 dark:border-white/5">
                     <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>100% confidential zero-retention analysis</span>
+                    <span>ModernBERT-large (421M params, ~450 MB)</span>
                   </div>
                 </div>
               </div>
@@ -573,22 +600,6 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                 >
                   <GroqLogo className="w-3.5 h-3.5 flex-shrink-0" />
                   <span>Groq</span>
-                </button>
-
-                {/* TypeSafe (Jev) */}
-                <button
-                  type="button"
-                  onClick={() => handleProviderChange("typesafe")}
-                  className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
-                    config.provider === "typesafe"
-                      ? "bg-[#F7F7F5] dark:bg-[#1E293B] border-[#2F3437] dark:border-blue-500 ring-1 ring-[#2F3437] dark:ring-blue-500 text-[#2F3437] dark:text-white shadow-2xs"
-                      : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
-                  }`}
-                >
-                  <div className="p-0.5 rounded bg-blue-600 text-white flex items-center justify-center flex-shrink-0">
-                    <ShieldCheck className="w-2.5 h-2.5 text-white" />
-                  </div>
-                  <span>TypeSafe (Jev)</span>
                 </button>
               </div>
             ) : (
@@ -657,64 +668,100 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-[#787774] dark:text-neutral-400">
-                  2. Free Service Status &amp; Connection
+                  2. Laya Decision Model Status &amp; Cache
                 </label>
-                <button
-                  type="button"
-                  onClick={handleCheckConnection}
-                  disabled={testing}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer disabled:opacity-50"
-                >
-                  {testing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Activity className="w-3.5 h-3.5" />}
-                  <span>{testing ? "Testing..." : "Test Free Service"}</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  {layaCached ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Cached &amp; Ready (Offline)
+                    </span>
+                  ) : layaStatus.state === "downloading" ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      Downloading ({Math.round(layaStatus.progress * 100)}%)
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-neutral-400">
+                      Not Stored Locally (~{LAYA_MODEL.sizeMB} MB)
+                    </span>
+                  )}
+                </div>
               </div>
 
-              <details className="text-xs group border border-neutral-200 dark:border-[#334155] rounded-xl p-3 bg-neutral-50/50 dark:bg-[#161F30]/50">
-                <summary className="font-semibold text-neutral-600 dark:text-neutral-400 cursor-pointer flex items-center justify-between list-none select-none">
-                  <span className="flex items-center gap-1.5">
-                    <KeyRound className="w-3.5 h-3.5 text-neutral-400" />
-                    <span>Host / Dedicated TypeSafe Key (Optional)</span>
-                  </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-neutral-400 group-open:rotate-180 transition-transform" />
-                </summary>
-                <div className="pt-3 space-y-2">
-                  <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                    If you have your own TypeSafe account or are hosting Manuview with your own TypeSafe quota, you can configure your key here or via <code className="font-mono">VITE_TYPESAFE_API_KEY</code>.
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="password"
-                      value={apiKeyInput}
-                      onChange={(e) => {
-                        setApiKeyInput(e.target.value);
-                        setIsKeyDirty(true);
-                      }}
-                      placeholder={
-                        hasSecureKey && !isKeyDirty
-                          ? "•••••••• (Stored securely in OS Keychain)"
-                          : "Enter TypeSafe API key..."
-                      }
-                      className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-white dark:bg-[#1E293B] border border-neutral-200 dark:border-[#334155] text-xs font-mono"
-                    />
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (apiKeyInput.trim()) {
-                          await saveSecureApiKey("typesafe", apiKeyInput.trim());
-                          setHasSecureKey(true);
-                          setIsKeyDirty(false);
-                          setApiKeyInput("");
-                          handleCheckConnection();
-                        }
-                      }}
-                      className="px-3 py-2 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-semibold cursor-pointer"
-                    >
-                      Save Key
-                    </button>
+              <div className="p-4 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/10 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs font-semibold text-neutral-900 dark:text-white flex items-center gap-1.5">
+                      <span>{LAYA_MODEL.name}</span>
+                      <span className="text-[10px] font-mono text-neutral-400">({LAYA_MODEL.parameters}, ModernBERT)</span>
+                    </div>
+                    <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-relaxed">
+                      {layaCached
+                        ? "Permanently cached in browser storage. Runs 100% offline via Transformers.js."
+                        : `One-time download of ~${LAYA_MODEL.sizeMB} MB. WebGPU accelerated with automatic WASM fallback.`}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {layaCached ? (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (confirm(`Remove ${LAYA_MODEL.name} weights from local cache?`)) {
+                            await deleteLayaCache();
+                            setLayaCached(false);
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-xl border border-red-500/20 text-red-600 hover:bg-red-500/10 text-xs font-medium cursor-pointer transition"
+                      >
+                        Free Disk Space
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await initLayaModel();
+                            setLayaCached(true);
+                          } catch (e) {
+                            console.error(e);
+                          }
+                        }}
+                        disabled={layaStatus.state === "downloading"}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer disabled:opacity-50"
+                      >
+                        {layaStatus.state === "downloading" ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>Loading Weights...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Download Laya (~{LAYA_MODEL.sizeMB} MB)</span>
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
-              </details>
+
+                {layaStatus.state === "downloading" && (
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex items-center justify-between text-[11px] font-mono text-neutral-500">
+                      <span>{layaStatus.statusText}</span>
+                      <span>{Math.round(layaStatus.progress * 100)}%</span>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full bg-black/5 dark:bg-white/10 overflow-hidden">
+                      <div
+                        className="h-full bg-blue-600 rounded-full transition-all duration-200"
+                        style={{ width: `${Math.round(layaStatus.progress * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           ) : config.provider === "webllm" ? (
             <div className="space-y-1.5">
@@ -795,16 +842,6 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                     Get free Groq key &rarr;
                   </a>
                 )}
-                {config.provider === "typesafe" && (
-                  <a
-                    href="https://console.typesafe.ai/keys"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[11px] text-[#0A85EA] dark:text-blue-400 hover:underline font-medium"
-                  >
-                    Get TypeSafe key &rarr;
-                  </a>
-                )}
                 {config.provider === "anthropic" && (
                   <a
                     href="https://console.anthropic.com/"
@@ -865,18 +902,6 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                   )}
                 </button>
               </div>
-
-              {config.provider === "typesafe" && (
-                <div className="mt-3 p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/25 text-xs text-blue-950 dark:text-blue-200 space-y-1.5">
-                  <div className="flex items-center gap-2 font-bold text-blue-800 dark:text-blue-300">
-                    <ShieldCheck className="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400" />
-                    <span>TypeSafe (Jev) is a Decision Model</span>
-                  </div>
-                  <p className="text-[11px] leading-relaxed text-blue-900/80 dark:text-blue-200/90">
-                    Jev evaluates structured document criteria (Choice / Score / Noul) with calibrated confidence. It powers the dedicated <strong>TypeSafe Structured Scan</strong> service in the sidebar. For the 5-Persona simulated peer review, keep a text model (e.g. Gemini, Groq, OpenAI, Claude, or Ollama) selected.
-                  </p>
-                </div>
-              )}
 
               <div className="flex items-center justify-between mt-1 text-[11px]">
                 <div className="flex items-center gap-2">

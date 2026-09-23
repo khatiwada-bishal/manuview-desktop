@@ -80,13 +80,7 @@ export function ScanProvider({
         const isTypeSafeScan = params.scanEngine === "typesafe";
 
         if (isTypeSafeScan) {
-          const { resolveTypeSafeKey } = await import("@/lib/typesafe");
-          const typeSafeKey = await resolveTypeSafeKey();
-          if (!typeSafeKey) {
-            throw new Error(
-              "No TypeSafe API key configured. Please add your TypeSafe API key in Settings (Cmd+,) to run Fast scans."
-            );
-          }
+          // Laya executes 100% locally on-device via Transformers.js with zero external API key requirement.
         } else {
           const isConfigUsable =
             Boolean(activeConfig.apiKey && activeConfig.apiKey.trim().length > 0) ||

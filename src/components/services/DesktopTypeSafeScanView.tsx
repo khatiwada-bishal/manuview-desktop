@@ -186,35 +186,15 @@ export function DesktopTypeSafeScanView({ onOpenSettings }: Props) {
                   Fast Scan
                 </h1>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
-                  Powered by TypeSafe
+                  Laya Decision Model (On-Device)
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1 leading-relaxed">
-                Objective, typed document diagnostics powered by TypeSafe. Evaluates 20+ checks in parallel across screening, methodology reproducibility, statistical reporting, and journal scope alignment with calibrated confidence — zero hallucinations.
+                Objective, typed document diagnostics powered by Laya (ModernBERT-large, 421M params). Evaluates 27 checks in parallel across screening, methodology reproducibility, statistical reporting, and journal scope alignment with calibrated confidence — 100% on-device with zero external API calls.
               </p>
             </div>
           </div>
         </div>
-
-        {/* Key notice */}
-        {hasKey === false && (
-          <div className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-sm">
-            <div className="flex items-center gap-2.5 text-amber-800 dark:text-amber-200">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span className="text-xs">
-                No TypeSafe API key found. Add your TypeSafe key in Settings to run scans.
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={onOpenSettings}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold transition shrink-0 cursor-pointer shadow-xs"
-            >
-              <SettingsIcon className="w-3.5 h-3.5" />
-              Open AI Settings
-            </button>
-          </div>
-        )}
 
         {/* Configuration Card: Target Journal */}
         <div className="rounded-3xl bg-white dark:bg-[#161F30] border border-black/[0.06] dark:border-white/[0.08] p-5 sm:p-6 space-y-4 shadow-xs">

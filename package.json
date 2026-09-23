@@ -20,6 +20,7 @@
     "audit:npm": "npm audit --audit-level=high"
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.3.0",
     "@mlc-ai/web-llm": "^0.2.85",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-dialog": "^2.7.3",
