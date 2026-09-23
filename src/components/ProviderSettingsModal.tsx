@@ -26,7 +26,7 @@ import {
 } from "@/lib/laya/laya-service";
 import { isDesktopApp, isMacOS } from "@/lib/desktop";
 import { Settings, ShieldCheck, X, CheckCircle2, Activity, RefreshCw, AlertCircle, Zap, Check, ChevronDown, Sparkles, Search, KeyRound, Cpu, Download, Loader2 } from "lucide-react";
-import { GeminiLogo, OpenAILogo, GroqLogo, AnthropicLogo, OllamaLogo } from "./BrandLogos";
+import { GeminiLogo, OpenAILogo, GroqLogo, AnthropicLogo, OllamaLogo, LayaLogo } from "./BrandLogos";
 
 interface Props {
   isOpen: boolean;
@@ -45,7 +45,7 @@ export const DEFAULT_CONFIG: ProviderConfig = {
 
 export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalModel, isScanning = false }: Props) {
   const [config, setConfig] = useState<ProviderConfig>(DEFAULT_CONFIG);
-  const [providerCategory, setProviderCategory] = useState<"free" | "cloud" | "local">("free");
+  const [providerCategory, setProviderCategory] = useState<"local" | "cloud">("local");
   const [cachedModels, setCachedModels] = useState<Record<string, boolean>>({});
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -111,13 +111,12 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
     setApiKeyInput("");
     setIsKeyDirty(false);
     setBaseUrlError(null);
-    setProviderCategory(
-      currentConfig.provider === "laya" || currentConfig.provider === "typesafe"
-        ? "free"
-        : currentConfig.provider === "webllm" || currentConfig.provider === "ollama"
-        ? "local"
-        : "cloud"
-    );
+    const isLocal =
+      currentConfig.provider === "laya" ||
+      currentConfig.provider === "typesafe" ||
+      currentConfig.provider === "webllm" ||
+      currentConfig.provider === "ollama";
+    setProviderCategory(isLocal ? "local" : "cloud");
 
     hasSecureApiKey(currentConfig.provider).then(setHasSecureKey);
 
@@ -253,8 +252,12 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
       model: defaultModel,
     };
     delete (updated as any).apiKey;
-    setConfig(updated);
-    setProviderCategory(newProvider === "laya" || newProvider === "typesafe" ? "free" : newProvider === "webllm" || newProvider === "ollama" ? "local" : "cloud");
+    const isLocal =
+      newProvider === "laya" ||
+      newProvider === "typesafe" ||
+      newProvider === "webllm" ||
+      newProvider === "ollama";
+    setProviderCategory(isLocal ? "local" : "cloud");
     setTestResult(null);
     setFetchFeedback(null);
     setHasFetchedLive(false);
@@ -433,66 +436,35 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
         )}
 
         <div className="space-y-5">
-          {/* 1. Provider Selection Grid with Cloud vs Local Tabs */}
+          {/* 1. Provider Selection Grid with Local & Offline vs Cloud AI (BYOK) Tabs */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-[11px] font-bold uppercase tracking-wider text-[#787774] dark:text-neutral-400">
                 1. Select AI Provider
               </label>
               <span className="text-[10px] text-neutral-400 font-medium">
-                {providerCategory === "free"
-                  ? "Free Cloud Pre-Submission Audit"
-                  : providerCategory === "cloud"
-                  ? "Bring Your Own Key (BYOK)"
-                  : "On-Device / Local Execution"}
+                {providerCategory === "local"
+                  ? "On-Device & Local Execution (Zero API)"
+                  : "Bring Your Own Key (BYOK Cloud)"}
               </span>
             </div>
 
-            {/* Category Tabs: Free Service vs Cloud APIs (BYOK) vs Local / Self-Hosted */}
-            <div className="grid grid-cols-3 gap-1.5 p-1 rounded-2xl bg-black/[0.04] dark:bg-white/[0.05] border border-black/5 dark:border-white/5 mb-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setProviderCategory("free");
-                  handleProviderChange("laya");
-                }}
-                className={`py-1.5 px-2 rounded-xl text-xs font-semibold transition cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 ${
-                  providerCategory === "free"
-                    ? "bg-white dark:bg-[#1E293B] text-blue-700 dark:text-blue-300 shadow-xs border border-blue-500/20"
-                    : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
-                }`}
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                <span className="truncate">Free Service</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setProviderCategory("cloud");
-                  if (config.provider === "laya" || config.provider === "typesafe" || config.provider === "webllm" || config.provider === "ollama") {
-                    handleProviderChange("gemini");
-                  }
-                }}
-                className={`py-1.5 px-2 rounded-xl text-xs font-semibold transition cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 ${
-                  providerCategory === "cloud"
-                    ? "bg-white dark:bg-[#1E293B] text-neutral-900 dark:text-white shadow-xs border border-black/5 dark:border-white/10"
-                    : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
-                }`}
-              >
-                <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                <span className="truncate">Cloud (BYOK)</span>
-              </button>
-
+            {/* Category Tabs: Local & Offline vs Cloud AI (BYOK) */}
+            <div className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-black/[0.04] dark:bg-white/[0.05] border border-black/5 dark:border-white/5 mb-3">
               <button
                 type="button"
                 onClick={() => {
                   setProviderCategory("local");
-                  if (config.provider !== "webllm" && config.provider !== "ollama") {
-                    handleProviderChange("webllm");
+                  if (
+                    config.provider !== "laya" &&
+                    config.provider !== "typesafe" &&
+                    config.provider !== "webllm" &&
+                    config.provider !== "ollama"
+                  ) {
+                    handleProviderChange("laya");
                   }
                 }}
-                className={`py-1.5 px-2 rounded-xl text-xs font-semibold transition cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 ${
+                className={`py-2 px-3 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-2 ${
                   providerCategory === "local"
                     ? "bg-white dark:bg-[#1E293B] text-neutral-900 dark:text-white shadow-xs border border-black/5 dark:border-white/10"
                     : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
@@ -501,50 +473,121 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                 <Cpu className="w-3.5 h-3.5 text-purple-500 shrink-0" />
                 <span className="truncate">Local &amp; Offline</span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setProviderCategory("cloud");
+                  if (
+                    config.provider === "laya" ||
+                    config.provider === "typesafe" ||
+                    config.provider === "webllm" ||
+                    config.provider === "ollama"
+                  ) {
+                    handleProviderChange("gemini");
+                  }
+                }}
+                className={`py-2 px-3 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-2 ${
+                  providerCategory === "cloud"
+                    ? "bg-white dark:bg-[#1E293B] text-neutral-900 dark:text-white shadow-xs border border-black/5 dark:border-white/10"
+                    : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+                }`}
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span className="truncate">Cloud AI (BYOK)</span>
+              </button>
             </div>
 
-            {/* Provider Content */}
-            {providerCategory === "free" ? (
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-50/90 to-sky-50/50 dark:from-blue-950/30 dark:to-[#161F30] border border-blue-200/80 dark:border-blue-800/60 text-xs text-[#2F3437] dark:text-neutral-200 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 font-bold text-sm text-blue-950 dark:text-blue-100">
-                    <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                    <span>Free Pre-Submission Audit (Powered by Laya)</span>
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-600 text-white shadow-2xs">
-                    100% On-Device &bull; Zero API
-                  </span>
-                </div>
-
-                <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed">
-                  Manuview provides authors with free pre-submission manuscript diagnostics powered by <strong>Laya</strong> (ModernBERT-large, 421M params). Running 100% client-side in-browser via Transformers.js and WebGPU with automatic WASM fallback, evaluating screening, methodology, statistical reporting, limitations, and target journal alignment with calibrated confidence. Zero external calls, zero API keys.
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px]">
-                  <div className="flex items-center gap-2 p-2 rounded-xl bg-white/80 dark:bg-[#1E293B]/80 border border-black/5 dark:border-white/5">
-                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>Zero API keys &bull; 100% confidential offline</span>
-                  </div>
-                  <div className="flex items-center gap-2 p-2 rounded-xl bg-white/80 dark:bg-[#1E293B]/80 border border-black/5 dark:border-white/5">
-                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>Fast neural decision passes (~33ms per forward pass)</span>
-                  </div>
-                  <div className="flex items-center gap-2 p-2 rounded-xl bg-white/80 dark:bg-[#1E293B]/80 border border-black/5 dark:border-white/5">
-                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>Target journal scope &amp; desk reject triage</span>
-                  </div>
-                  <div className="flex items-center gap-2 p-2 rounded-xl bg-white/80 dark:bg-[#1E293B]/80 border border-black/5 dark:border-white/5">
-                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>ModernBERT-large (421M params, ~450 MB)</span>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
             {/* Provider Grid */}
-            {providerCategory === "cloud" ? (
+            {providerCategory === "local" ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {/* 1. Laya Decision Model */}
+                <button
+                  type="button"
+                  onClick={() => handleProviderChange("laya")}
+                  className={`flex items-start justify-between p-3 rounded-2xl border text-left transition cursor-pointer ${
+                    config.provider === "laya" || config.provider === "typesafe"
+                      ? "bg-blue-500/10 border-blue-500 ring-1 ring-blue-500/50 text-neutral-900 dark:text-white shadow-xs"
+                      : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <span className="p-2 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 shrink-0">
+                      <LayaLogo className="w-4 h-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs text-neutral-900 dark:text-white truncate">
+                        Laya Decision Model
+                      </div>
+                      <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-tight">
+                        ModernBERT 421M &bull; Fast Diagnostic Scan
+                      </div>
+                    </div>
+                  </div>
+                  {(config.provider === "laya" || config.provider === "typesafe") && (
+                    <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 ml-1.5 mt-0.5" />
+                  )}
+                </button>
+
+                {/* 2. Local SLM (Web GPU) */}
+                <button
+                  type="button"
+                  onClick={() => handleProviderChange("webllm")}
+                  className={`flex items-start justify-between p-3 rounded-2xl border text-left transition cursor-pointer ${
+                    config.provider === "webllm"
+                      ? "bg-purple-500/10 border-purple-500 ring-1 ring-purple-500/50 text-neutral-900 dark:text-white shadow-xs"
+                      : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <span className="p-2 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 shrink-0">
+                      <Cpu className="w-4 h-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs text-neutral-900 dark:text-white truncate">
+                        Local SLM (Web GPU)
+                      </div>
+                      <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-tight">
+                        On-device &bull; Qwen / Llama &bull; WebGPU
+                      </div>
+                    </div>
+                  </div>
+                  {config.provider === "webllm" && (
+                    <CheckCircle2 className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 ml-1.5 mt-0.5" />
+                  )}
+                </button>
+
+                {/* 3. Ollama (Self Hosted) */}
+                <button
+                  type="button"
+                  onClick={() => handleProviderChange("ollama")}
+                  className={`flex items-start justify-between p-3 rounded-2xl border text-left transition cursor-pointer ${
+                    config.provider === "ollama"
+                      ? "bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500/50 text-neutral-900 dark:text-white shadow-xs"
+                      : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <span className="p-2 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0">
+                      <OllamaLogo className="w-4 h-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs text-neutral-900 dark:text-white truncate">
+                        Ollama (Self Hosted)
+                      </div>
+                      <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-tight">
+                        Local server &bull; localhost:11434
+                      </div>
+                    </div>
+                  </div>
+                  {config.provider === "ollama" && (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 ml-1.5 mt-0.5" />
+                  )}
+                </button>
+              </div>
+            ) : (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {/* Google */}
+                {/* Gemini */}
                 <button
                   type="button"
                   onClick={() => handleProviderChange("gemini")}
@@ -555,10 +598,10 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                   }`}
                 >
                   <GeminiLogo className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span>Google (Gemini)</span>
+                  <span>Gemini</span>
                 </button>
 
-                {/* OpenAI */}
+                {/* ChatGPT */}
                 <button
                   type="button"
                   onClick={() => handleProviderChange("openai")}
@@ -571,10 +614,10 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                   <div className="p-0.5 rounded bg-[#000000] text-white flex items-center justify-center flex-shrink-0">
                     <OpenAILogo className="w-2.5 h-2.5 text-white" />
                   </div>
-                  <span>OpenAI</span>
+                  <span>ChatGPT</span>
                 </button>
 
-                {/* Anthropic */}
+                {/* Claude */}
                 <button
                   type="button"
                   onClick={() => handleProviderChange("anthropic")}
@@ -585,7 +628,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                   }`}
                 >
                   <AnthropicLogo className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span>Anthropic</span>
+                  <span>Claude</span>
                 </button>
 
                 {/* Groq */}
@@ -602,69 +645,11 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                   <span>Groq</span>
                 </button>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {/* Local SLM (WebGPU) */}
-                <button
-                  type="button"
-                  onClick={() => handleProviderChange("webllm")}
-                  className={`flex items-center justify-between p-3 rounded-2xl border text-left transition cursor-pointer ${
-                    config.provider === "webllm"
-                      ? "bg-purple-500/10 border-purple-500 ring-1 ring-purple-500/50 text-neutral-900 dark:text-white shadow-xs"
-                      : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="p-2 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400">
-                      <Cpu className="w-4 h-4" />
-                    </span>
-                    <div>
-                      <div className="font-semibold text-xs text-neutral-900 dark:text-white">
-                        Local SLM (WebGPU)
-                      </div>
-                      <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
-                        100% on-device &bull; Zero API &bull; Confidential
-                      </div>
-                    </div>
-                  </div>
-                  {config.provider === "webllm" && (
-                    <CheckCircle2 className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
-                  )}
-                </button>
-
-                {/* Ollama */}
-                <button
-                  type="button"
-                  onClick={() => handleProviderChange("ollama")}
-                  className={`flex items-center justify-between p-3 rounded-2xl border text-left transition cursor-pointer ${
-                    config.provider === "ollama"
-                      ? "bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500/50 text-neutral-900 dark:text-white shadow-xs"
-                      : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="p-2 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                      <OllamaLogo className="w-4 h-4" />
-                    </span>
-                    <div>
-                      <div className="font-semibold text-xs text-neutral-900 dark:text-white">
-                        Ollama (Self-Hosted)
-                      </div>
-                      <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
-                        Local server &bull; http://localhost:11434
-                      </div>
-                    </div>
-                  </div>
-                  {config.provider === "ollama" && (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  )}
-                </button>
-              </div>
             )}
           </div>
 
           {/* 2. Provider Configuration & Authentication */}
-          {providerCategory === "free" ? (
+          {config.provider === "laya" || config.provider === "typesafe" ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-[#787774] dark:text-neutral-400">
