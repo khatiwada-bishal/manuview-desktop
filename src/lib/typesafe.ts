@@ -129,10 +129,11 @@ export async function listTypeSafeModels(_apiKey?: string, _baseUrl?: string): P
 }
 
 /**
- * Connectivity test always passes because Laya runs locally.
+ * Verifies on-device Laya model cache and readiness.
  */
 export async function testTypeSafeConnection(_apiKey?: string, _model?: string): Promise<boolean> {
-  return true;
+  const { isLayaCached } = await import("./laya/laya-service");
+  return await isLayaCached();
 }
 
 export interface SystemOneRequest {

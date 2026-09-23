@@ -91,7 +91,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
     return () => {
       active = false;
     };
-  }, [isOpen, layaStatus.state]);
+  }, [isOpen, layaStatus.state, config.provider]);
 
   useEffect(() => {
     // Check browser local storage
@@ -702,6 +702,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                           if (confirm(`Remove ${LAYA_MODEL.name} weights from local cache?`)) {
                             await deleteLayaCache();
                             setLayaCached(false);
+                            setTestResult(null);
                           }
                         }}
                         className="px-3 py-1.5 rounded-xl border border-red-500/20 text-red-600 hover:bg-red-500/10 text-xs font-medium cursor-pointer transition"
@@ -715,8 +716,9 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                           try {
                             await initLayaModel();
                             setLayaCached(true);
-                          } catch (e) {
-                            console.error(e);
+                            setTestResult(null);
+                          } catch (e: any) {
+                            console.error("Laya initialization error:", e);
                           }
                         }}
                         disabled={layaStatus.state === "downloading"}
@@ -749,6 +751,16 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                         className="h-full bg-blue-600 rounded-full transition-all duration-200"
                         style={{ width: `${Math.round(layaStatus.progress * 100)}%` }}
                       />
+                    </div>
+                  </div>
+                )}
+
+                {layaStatus.state === "error" && (
+                  <div className="flex items-start gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-700 dark:text-rose-300">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-red-600 dark:text-rose-400 mt-0.5" />
+                    <div className="space-y-0.5 min-w-0 flex-1">
+                      <div className="font-semibold">Laya Download Failed</div>
+                      <div className="opacity-90 break-words">{layaStatus.error || layaStatus.statusText}</div>
                     </div>
                   </div>
                 )}
@@ -1298,26 +1310,26 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                   : "bg-[#FDF0EF] dark:bg-rose-950/40 border-[#F7CECC] dark:border-rose-800 text-[#7C2D2B] dark:text-rose-300"
               }`}
             >
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-2.5 min-w-0 flex-1">
                   {testResult.success ? (
-                    <CheckCircle2 className="w-4 h-4 text-[#1E5A2A] dark:text-emerald-400 flex-shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-[#1E5A2A] dark:text-emerald-400 shrink-0 mt-0.5" />
                   ) : (
-                    <AlertCircle className="w-4 h-4 text-[#9B2C2C] dark:text-rose-400 flex-shrink-0" />
+                    <AlertCircle className="w-4 h-4 text-[#9B2C2C] dark:text-rose-400 shrink-0 mt-0.5" />
                   )}
-                  <div className="min-w-0">
-                    <span className="font-bold block sm:inline">
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <div className="font-bold leading-snug">
                       {testResult.success ? "Connection Operational" : "Connection Test Failed"}
-                    </span>
-                    <span className="text-[11px] opacity-90 block sm:inline sm:ml-2 truncate">
+                    </div>
+                    <div className="text-[11px] opacity-90 leading-relaxed break-words">
                       {testResult.message}
-                    </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex-shrink-0">
+                <div className="shrink-0 pt-0.5">
                   <span
-                    className={`font-mono text-[11px] px-2 py-0.5 rounded-md border font-bold flex items-center gap-1 bg-white dark:bg-[#161F30] ${
+                    className={`font-mono text-[11px] px-2 py-0.5 rounded-md border font-bold inline-flex items-center gap-1 bg-white dark:bg-[#161F30] ${
                       testResult.success
                         ? "text-[#1E5A2A] dark:text-emerald-400 border-[#CBE7CE] dark:border-emerald-800"
                         : "text-[#7C2D2B] dark:text-rose-400 border-[#F7CECC] dark:border-rose-800"

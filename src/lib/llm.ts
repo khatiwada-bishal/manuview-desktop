@@ -1663,15 +1663,29 @@ export async function testLLMConnection(
     // -----------------------------------------------------------
     if (provider === "laya" || provider === "typesafe") {
       const tsModel = model || "convaiinnovations/laya";
-      const { testTypeSafeConnection } = await import("./typesafe");
-      await testTypeSafeConnection(apiKey, tsModel);
-      const latencyMs = Date.now() - startTime;
+      const { isLayaCached, checkLayaWebGPUSupport } = await import("./laya/laya-service");
+      const cached = await isLayaCached();
+      const hasGpu = await checkLayaWebGPUSupport();
+      const latencyMs = Math.max(1, Date.now() - startTime);
+
+      if (!cached) {
+        return {
+          success: false,
+          provider: provider,
+          model: tsModel,
+          latencyMs,
+          message: "Laya model weights (~450 MB) are not yet stored locally.",
+          error: "Please click \"Download Laya\" above to download the ModernBERT decision weights into your local browser cache for offline execution.",
+          availableModels,
+        };
+      }
+
       return {
         success: true,
         provider: provider,
         model: tsModel,
         latencyMs,
-        message: `Laya On-Device Decision Model (${tsModel}) is active with zero API dependencies.`,
+        message: `Laya Decision Model is verified & ready for offline execution (${hasGpu ? "WebGPU" : "WASM"}). Zero API dependencies.`,
         availableModels,
       };
     }
