@@ -350,14 +350,31 @@ export function DesktopDashboard({
       fullReport?.ineligibilityReason === "scope_mismatch");
 
   const rawClassification = currentReport?.classification || fullReport?.classification || classification;
-  const ineligibilityReason =
-    currentReport?.ineligibilityReason ||
-    fullReport?.ineligibilityReason ||
-    (rawClassification && !rawClassification.isAcademicManuscript ? "non_academic_document" : undefined);
+
+  // Protect evaluated papers: if reviewer personas, dimensions, or a score exist,
+  // the paper was already substantively reviewed and should never show the ineligibility banner.
+  const hasSubstantiveEvaluation =
+    isExplicitlySentForReview ||
+    (data.score != null && data.score > 0) ||
+    (currentReport?.overallScore != null && currentReport.overallScore > 0) ||
+    (fullReport?.overallScore != null && fullReport.overallScore > 0) ||
+    (currentReport?.reviewerPersonas && currentReport.reviewerPersonas.length > 0) ||
+    (fullReport?.reviewerPersonas && fullReport.reviewerPersonas.length > 0) ||
+    (currentReport?.dimensions != null) ||
+    (fullReport?.dimensions != null);
+
+  const ineligibilityReason = hasSubstantiveEvaluation
+    ? (currentReport?.ineligibilityReason === "non_academic_document" ? undefined : currentReport?.ineligibilityReason) ||
+      (fullReport?.ineligibilityReason === "non_academic_document" ? undefined : fullReport?.ineligibilityReason)
+    : currentReport?.ineligibilityReason ||
+      fullReport?.ineligibilityReason ||
+      (rawClassification && !rawClassification.isAcademicManuscript ? "non_academic_document" : undefined);
 
   const isNonAcademic =
-    ineligibilityReason === "non_academic_document" ||
-    Boolean(rawClassification && !rawClassification.isAcademicManuscript);
+    !hasSubstantiveEvaluation && (
+      ineligibilityReason === "non_academic_document" ||
+      Boolean(rawClassification && !rawClassification.isAcademicManuscript)
+    );
 
   const isDeskReject =
     !isNonAcademic &&

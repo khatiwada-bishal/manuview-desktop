@@ -214,3 +214,103 @@ test("calculateCalibratedAcceptanceProbability: score of 100 is strictly impossi
   );
   assert.equal(result.readinessBand, "Strong Submission Readiness");
 });
+
+// =========================================================================
+// NEW: Document Classification Robustness Tests (False Positive Prevention)
+// =========================================================================
+
+test("classifyDocument: Quick Fit Title + Abstract (no file) is recognized as academic manuscript", () => {
+  const synthetic = `Title: Single-cell transcriptional profiling of DLL3 activation in neuroendocrine lung carcinoma
+
+Abstract:
+Small cell lung cancer (SCLC) exhibits rapid recurrence and therapy resistance. Delta-like ligand 3 (DLL3) is an established cell-surface target for antibody-drug conjugates. Here, we perform marker-based CRISPR-Cas9 screens and identify POU2F1 as a primary driver of DLL3 expression.
+
+Keywords: small cell lung cancer, DLL3, POU2F1, CRISPR screen, organoids`;
+
+  const classification = classifyDocument(synthetic, "manuscript.txt");
+  assert.equal(classification.isAcademicManuscript, true, `Expected academic, got: ${classification.category}`);
+  assert.equal(classification.category, "academic_manuscript");
+});
+
+test("classifyDocument: Markdown-formatted manuscript with ## headings is recognized as academic", () => {
+  const markdownPaper = `# Deep Learning for Protein Structure Prediction
+
+## Abstract
+We present a novel approach to predicting protein tertiary structures using transformer architectures with attention mechanisms.
+
+## 1. Introduction
+Protein folding remains one of the grand challenges in computational biology.
+
+## 2. Proposed Method
+Our architecture employs multi-head self-attention layers with residue-level embeddings derived from evolutionary profiles.
+
+## 3. Experimental Results
+Our model achieves 91.3% GDT-TS on CASP14 targets (p < 0.001), outperforming AlphaFold1 by 4.7%.
+
+## References
+[1] Jumper, J. et al. Highly accurate protein structure prediction with AlphaFold. Nature 2021.`;
+
+  const classification = classifyDocument(markdownPaper, "paper.md");
+  assert.equal(classification.isAcademicManuscript, true, `Expected academic, got: ${classification.category}`);
+  assert.equal(classification.category, "academic_manuscript");
+});
+
+test("classifyDocument: paper with author email and grants section is NOT falsely flagged as resume", () => {
+  const paperWithEmail = `Optimizing Carbon Taxation Under Supply Chain Uncertainty
+John Smith, Alice Brown
+Department of Economics, Harvard University
+Email: jsmith@harvard.edu
+
+Abstract
+This paper analyzes the effect of carbon taxation on supply chains under uncertainty using a stochastic equilibrium model.
+
+1. Introduction
+Carbon pricing is a central policy tool for emission reduction.
+
+2. Model Development
+Consider a supply chain with one manufacturer and one retailer facing demand uncertainty.
+
+3. Numerical Results
+Our simulations show a 15% reduction in carbon emissions under optimal taxation.
+
+4. Conclusion
+We conclude that carbon taxes are effective when calibrated to supply chain structure.
+
+Grants and Funding
+This work was supported by NSF grant 12345.
+
+References
+1. Nordhaus, W. (2018). Climate change economics. American Economic Review.`;
+
+  const classification = classifyDocument(paperWithEmail, "paper.pdf");
+  assert.equal(classification.isAcademicManuscript, true, `Expected academic, got: ${classification.category}`);
+  assert.notEqual(classification.category, "resume_cv", "Paper with author email must NOT be classified as resume");
+});
+
+test("classifyDocument: text using the verb 'resume' is NOT falsely flagged as a CV", () => {
+  const textWithResumeVerb = `Thermal Management in 5G Base Stations
+
+Abstract
+As 5G deployments resume after pandemic-related delays, thermal management becomes critical. We present cooling strategies for mmWave transceivers.
+
+1. Introduction
+Network operators resume infrastructure rollouts with higher power budgets.
+
+2. Methods
+We simulate thermal profiles using COMSOL Multiphysics across 12 transceiver configurations.
+
+3. Results
+Passive cooling achieves 23% lower junction temperatures (p < 0.05).
+
+References
+1. Zhang, Y. (2023). 5G Thermal Design. IEEE Trans. Components.`;
+
+  const classification = classifyDocument(textWithResumeVerb, "thermal_paper.pdf");
+  assert.equal(classification.isAcademicManuscript, true, `Expected academic, got: ${classification.category}`);
+  assert.notEqual(classification.category, "resume_cv", "Verb 'resume' must NOT trigger CV classification");
+});
+
+test("classifyDocument: empty string returns non-academic (not crash)", () => {
+  const classification = classifyDocument("", "untitled.txt");
+  assert.equal(classification.isAcademicManuscript, false);
+});

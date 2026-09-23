@@ -198,34 +198,38 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
   // Evaluated BEFORE academic papers so academic CVs (which list publications and universities)
   // are NEVER misclassified as journal manuscripts, even if they contain references!
   // =========================================================================
-  const hasCvTitle = /(?:^|\n)\s*(?:curriculum\s+vitae|curriculum\s+vitæ|\bresume\b)/i.test(clean);
-  const contactPatternRegex = /(?:email\s*:|phone\s*:|cell\s*:|mobile\s*:|linkedin\.com\/|github\.com\/|\bgpa\s*:\s*\d|\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b)/i;
+  const hasCvTitle = /(?:^|\n)\s*(?:#{1,3}\s*)?(?:curriculum\s+vitae|curriculum\s+vitæ|(?:my\s+)?resume)\s*(?:$|[:\n\r|])/i.test(clean.slice(0, 1000));
+  const hasCvContactBlock = /(?:phone\s*:|\bcell\s*:|\bmobile\s*:|linkedin\.com\/in\/|\bgpa\s*:\s*\d)/i.test(clean.slice(0, 1500));
   
   const cvSectionPatterns = [
-    /(?:^|\n)\s*(?:work\s+experience|professional\s+experience|employment\s+history|career\s+history|experience\s*(?::|\n))\b/i,
-    /(?:^|\n)\s*(?:education|academic\s+background|academic\s+qualifications|degrees?\s+held)\b/i,
-    /(?:^|\n)\s*(?:technical\s+skills|skills\s*&?\s*expertise|core\s+competencies|skills\s+summary|proficiencies)\b/i,
-    /(?:^|\n)\s*(?:teaching\s+experience|courses\s+taught)\b/i,
-    /(?:^|\n)\s*(?:honors\s*(?:&|and)\s*awards|fellowships\s*(?:&|and)\s*grants|scholarships)\b/i,
-    /(?:^|\n)\s*(?:certifications|licenses\s*(?:&|and)\s*certifications)\b/i,
-    /(?:^|\n)\s*(?:references\s+available\s+upon\s+request|references\s*(?::|\n|\r)\s*(?:available|upon|on\s+request))\b/i,
-    /(?:^|\n)\s*(?:selected\s+publications|peer-reviewed\s+publications|conference\s+proceedings)\b/i,
+    /(?:^|\n)\s*(?:#{1,3}\s*)?(?:work\s+experience|professional\s+experience|employment\s+history|career\s+history)\b/i,
+    /(?:^|\n)\s*(?:#{1,3}\s*)?(?:education\s*(?::|\n)|academic\s+background|academic\s+qualifications|degrees?\s+held)\b/i,
+    /(?:^|\n)\s*(?:#{1,3}\s*)?(?:technical\s+skills|skills\s*&?\s*expertise|core\s+competencies|skills\s+summary|proficiencies)\b/i,
+    /(?:^|\n)\s*(?:#{1,3}\s*)?(?:teaching\s+experience|courses\s+taught)\b/i,
+    /(?:^|\n)\s*(?:#{1,3}\s*)?(?:honors\s*(?:&|and)\s*awards|fellowships\s*(?:&|and)\s*grants)\s*[:\n\r]/i,
+    /(?:^|\n)\s*(?:#{1,3}\s*)?(?:certifications|licenses\s*(?:&|and)\s*certifications)\b/i,
+    /(?:^|\n)\s*(?:#{1,3}\s*)?(?:references\s+available\s+upon\s+request|references\s*(?::|\n|\r)\s*(?:available|upon|on\s+request))\b/i,
   ];
   const cvSectionMatches = cvSectionPatterns.filter(p => p.test(clean)).length;
-  const isCvAcronymInFilename = Boolean(filename && /(?:^|[_\-.])cv(?:$|[_\-.])/i.test(filename));
   const isExplicitResumeFilename = Boolean(filename && /(?:^|[_\-.])(?:resume|curriculum[_\s\-]*vitae)(?:$|[_\-.])/i.test(filename));
   // In AI and imaging papers, "CV" in filename frequently denotes Computer Vision (e.g. EWaste_CV_Benchmark)
+  const isCvAcronymInFilename = Boolean(filename && /(?:^|[_\-.])cv(?:$|[_\-.])/i.test(filename));
   const isComputerVisionContext = /computer\s+vision|object\s+detection|benchmark|rt-detr|yolo|faster\s+r-cnn|deep\s+learning/i.test(clean);
-  const isResumeByFilename = 
-    isExplicitResumeFilename || 
-    (isCvAcronymInFilename && !isComputerVisionContext && (cvSectionMatches >= 1 || contactPatternRegex.test(clean)));
 
-  const isResume = 
-    hasCvTitle ||
-    /^\s*resume\b/im.test(clean) ||
-    isResumeByFilename ||
-    (cvSectionMatches >= 2 && contactPatternRegex.test(clean)) ||
-    (cvSectionMatches >= 3);
+  // Preliminary scholarly architecture detection to avoid falsely classifying academic papers as CVs
+  const prelimHasAbstract = /(?:^|\n)\s*(?:#{1,3}\s*)?(?:Abstract|Summary)\s*[:\n\r]/i.test(clean) || /^\s*(?:#{1,3}\s*)?Abstract\b/im.test(clean);
+  const prelimHasMethods = /(?:^|\n)\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Methods|Materials and Methods|Methodology|Proposed (?:Method|Approach|Framework)|Experimental (?:Setup|Design))\b/i.test(clean);
+  const prelimHasResults = /(?:^|\n)\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Results|Findings|Evaluation|Numerical Analysis)\b/i.test(clean);
+  const hasScholarlyIMRaD = (prelimHasAbstract && (prelimHasMethods || prelimHasResults)) || (prelimHasMethods && prelimHasResults);
+
+  const isResume =
+    (hasCvTitle && (cvSectionMatches >= 1 || hasCvContactBlock || isExplicitResumeFilename)) ||
+    (isExplicitResumeFilename && (cvSectionMatches >= 1 || hasCvContactBlock)) ||
+    (!hasScholarlyIMRaD && (
+      (cvSectionMatches >= 3) ||
+      (cvSectionMatches >= 2 && hasCvContactBlock) ||
+      (isCvAcronymInFilename && !isComputerVisionContext && (cvSectionMatches >= 1 || hasCvContactBlock))
+    ));
 
   if (isResume) {
     return {
@@ -360,15 +364,15 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
   // - Systematic Reviews & Meta-Analyses
   // =========================================================================
 
-  const hasAbstract = /(?:^|\n)\s*(?:Abstract|Summary)\s*[:\n\r]/i.test(clean) || /^\s*Abstract\b/im.test(clean);
-  const hasIntro = /(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Introduction|Background|Literature Review)\b/i.test(clean);
-  const hasMethodsOrModel = /(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Methods|Materials and Methods|Methodology|Model Development|Mathematical Formulation|Theoretical Framework|System Model|Problem Formulation|Assumptions|Solution Procedure|Algorithm \d+)\b/i.test(clean);
-  const hasResultsOrNumerical = /(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Results|Findings|Numerical Example|Numerical Analysis|Numerical Results|Simulation Results|Computational Experiments|Sensitivity Analysis|Case Study)\b/i.test(clean);
-  const hasDiscussionOrImplications = /(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Discussion|Practical Implications|Managerial Insights)\b/i.test(clean);
-  const hasConclusion = /(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Conclusion|Conclusions|Concluding Remarks|Summary and Outlook)\b/i.test(clean);
+  const hasAbstract = /(?:^|\n)\s*(?:#{1,3}\s*)?(?:Abstract|Summary)\s*[:\n\r]/i.test(clean) || /^\s*(?:#{1,3}\s*)?Abstract\b/im.test(clean);
+  const hasIntro = /(?:^|\n)\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Introduction|Background|Literature Review)\b/i.test(clean);
+  const hasMethodsOrModel = /(?:^|\n)\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Methods|Materials and Methods|Methodology|Model Development|Mathematical Formulation|Theoretical Framework|System Model|Problem Formulation|Assumptions|Solution Procedure|Algorithm \d+|Proposed (?:Method|Approach|Framework|System|Architecture|Model)|Experimental (?:Setup|Design)|Experiments)\b/i.test(clean);
+  const hasResultsOrNumerical = /(?:^|\n)\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Results|Findings|Numerical Example|Numerical Analysis|Numerical Results|Simulation Results|Computational Experiments|Sensitivity Analysis|Case Study|Evaluation|Performance Evaluation|Experimental Results|Empirical Results)\b/i.test(clean);
+  const hasDiscussionOrImplications = /(?:^|\n)\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Discussion|Practical Implications|Managerial Insights)\b/i.test(clean);
+  const hasConclusion = /(?:^|\n)\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Conclusion|Conclusions|Concluding Remarks|Summary and Outlook)\b/i.test(clean);
   
   const hasRealReferences = 
-    /(?:^|\n)\s*(?:References|Bibliography|Works Cited|Literature Cited)\s*[:\n\r]/i.test(clean) &&
+    /(?:^|\n)\s*(?:#{1,3}\s*)?(?:References|Bibliography|Works Cited|Literature Cited)\s*[:\n\r]/i.test(clean) &&
     (/(?:\[\d+\]|\d+\.\s+[A-Z]|doi:\s*10\.|\b(?:19|20)\d{2}\b)/i.test(clean));
 
   const hasDoiInText = /DOI:\s*10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+/i.test(clean);
@@ -395,11 +399,13 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
   if (hasAcademicTerms) academicScore += 1;
 
   // Real academic paper requires substantive body length and academic structure
-  const hasSubstantiveBody = wordCount >= 80;
+  const hasSubstantiveBody = wordCount >= 25;
   const isAcademic = hasSubstantiveBody && (
-    (academicScore >= 6) || 
-    (hasAbstract && hasCitationStructure && (hasMethodsOrModel || hasResultsOrNumerical || hasIntro)) ||
-    (hasCitationStructure && hasMethodsOrModel && hasResultsOrNumerical)
+    (academicScore >= 3) || 
+    (hasAbstract && (hasIntro || hasMethodsOrModel || hasResultsOrNumerical || hasAcademicTerms || hasScholarlyMeta || hasCitationStructure)) ||
+    (hasMethodsOrModel && hasResultsOrNumerical) ||
+    (hasIntro && (hasMethodsOrModel || hasResultsOrNumerical)) ||
+    (hasCitationStructure && (hasIntro || hasMethodsOrModel || hasResultsOrNumerical))
   );
 
   if (isAcademic) {

@@ -602,8 +602,8 @@ function evaluateSpecDeterministically(
     let p = 0.5;
     if (spec.id === "is_academic") {
       const academicHits = /(?:abstract|introduction|methodology|results|conclusion|references|doi:|\bet\s+al\b)/i.test(text);
-      const nonAcademicHits = /(?:curriculum\s+vitae|resume|work\s+experience|education:\s*|skills:\s*|invoice|memo\b)/i.test(text);
-      p = nonAcademicHits ? 0.05 : academicHits ? 0.92 : 0.4;
+      const nonAcademicHits = /(?:curriculum\s+vitae|(?:^|\n)\s*#{1,3}\s*resume\b|work\s+experience|education:\s*\n|technical\s+skills:\s*\n|invoice\s*#|bill\s+to\s*:)/i.test(text);
+      p = (nonAcademicHits && !academicHits) ? 0.05 : academicHits ? 0.94 : 0.4;
     } else if (spec.id === "has_abstract") {
       p = /(?:abstract|executive\s+summary)[\s\S]{50,1500}/i.test(text) ? 0.95 : 0.15;
     } else if (spec.id === "has_methods") {
@@ -730,13 +730,14 @@ function evaluateSpecDeterministically(
   let conf = 0.85;
 
   if (spec.id === "document_type") {
-    if (/(?:curriculum\s+vitae|\bresume\b|work\s+experience|education:\s*|skills:\s*)/i.test(text)) {
+    const hasAcademicArchitecture = /(?:abstract|materials\s+and\s+methods|methodology|results|numerical\s+results)\b/i.test(text);
+    if (!hasAcademicArchitecture && /(?:curriculum\s+vitae|(?:^|\n)\s*(?:#{1,3}\s*)?resume\b|work\s+experience|education:\s*\n|technical\s+skills:\s*\n)/i.test(text)) {
       chosenKey = "resume_cv";
       conf = 0.95;
-    } else if (/(?:grant\s+proposal|specific\s+aims|project\s+narrative|funding\s+agency)/i.test(text)) {
+    } else if (!hasAcademicArchitecture && /(?:grant\s+proposal|specific\s+aims|project\s+narrative|funding\s+agency)/i.test(text)) {
       chosenKey = "grant_proposal";
       conf = 0.9;
-    } else if (/(?:product\s+requirement|user\s+guide|api\s+documentation|software\s+specification)/i.test(text)) {
+    } else if (!hasAcademicArchitecture && /(?:product\s+requirement|user\s+guide|api\s+documentation|software\s+specification|\bprd\b)/i.test(text)) {
       chosenKey = "technical_doc";
       conf = 0.88;
     } else if (/(?:systematic\s+review|meta-analysis|literature\s+review)/i.test(text)) {
@@ -1045,13 +1046,14 @@ export async function runLayaScan(
   const academicSignal = signals.find((s) => s.id === "is_academic");
 
   const isModelNonAcademic =
-    (academicSignal && academicSignal.value < 0.45) ||
-    Boolean(
-      docTypeSignal?.display &&
-        /(?:resume|curriculum|cv|technical|prd|spec|grant|business|invoice|essay|notes|non_academic)/i.test(
-          docTypeSignal.display
-        )
-    );
+    !heuristicClassification.isAcademicManuscript &&
+    ((academicSignal && academicSignal.value < 0.45) ||
+      Boolean(
+        docTypeSignal?.display &&
+          /(?:curriculum\s+vitae|resume\b|product\s+requirements|\bprd\b|grant\s+proposal|invoice\s*#|unstructured\s+notes)/i.test(
+            docTypeSignal.display
+          )
+      ));
 
   const isAcademic = heuristicClassification.isAcademicManuscript && !isModelNonAcademic;
 

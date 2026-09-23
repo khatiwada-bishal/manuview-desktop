@@ -178,21 +178,33 @@ export function SidebarPaperList({
                   const isSelectedInBatch = selectedPaperIds.has(paper.id);
                   const isReviewing = paper.status === "reviewing";
                   const isFailed = paper.status === "failed";
-                  const heuristic = !paper.classification
-                    ? classifyDocument(paper.scanParams?.rawText || "", paper.title)
-                    : paper.classification;
+                  const hasSubstantiveEvaluation =
+                    (paper.score != null && paper.score > 0) ||
+                    paper.editorialTriage?.outcome === "sent_for_review" ||
+                    paper.editorialTriage?.sentToPeerReview === true ||
+                    Boolean(paper.editorialTriage?.summary?.includes("Cleared editorial triage"));
+
+                  const heuristic = paper.classification || (
+                    Boolean(paper.scanParams?.rawText?.trim())
+                      ? classifyDocument(paper.scanParams!.rawText!, paper.title)
+                      : undefined
+                  );
                   const isNonAcademic =
-                    paper.ineligibilityReason === "non_academic_document" ||
-                    (paper.classification != null &&
-                      (!paper.classification.isAcademicManuscript ||
-                        paper.classification.category !== "academic_manuscript")) ||
-                    (paper.layaResult?.classification != null &&
-                      (!paper.layaResult.classification.isAcademicManuscript ||
-                        paper.layaResult.classification.category !== "academic_manuscript")) ||
-                    (paper.typesafeResult?.classification != null &&
-                      (!paper.typesafeResult.classification.isAcademicManuscript ||
-                        paper.typesafeResult.classification.category !== "academic_manuscript")) ||
-                    (!heuristic.isAcademicManuscript || heuristic.category !== "academic_manuscript");
+                    !hasSubstantiveEvaluation && (
+                      paper.ineligibilityReason === "non_academic_document" ||
+                      (paper.classification != null &&
+                        !paper.classification.isAcademicManuscript &&
+                        paper.classification.category !== "academic_manuscript") ||
+                      (paper.layaResult?.classification != null &&
+                        !paper.layaResult.classification.isAcademicManuscript &&
+                        paper.layaResult.classification.category !== "academic_manuscript") ||
+                      (paper.typesafeResult?.classification != null &&
+                        !paper.typesafeResult.classification.isAcademicManuscript &&
+                        paper.typesafeResult.classification.category !== "academic_manuscript") ||
+                      (heuristic != null &&
+                        !heuristic.isAcademicManuscript &&
+                        heuristic.category !== "academic_manuscript")
+                    );
                   const isDeskReject =
                     !isReviewing &&
                     !isFailed &&

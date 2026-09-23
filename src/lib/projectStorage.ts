@@ -78,12 +78,29 @@ export function sanitizeSavedProject(p: SavedProject): SavedProject {
     p.paper?.layaResult?.classification ||
     p.paper?.typesafeResult?.classification;
 
+  // Auto-heal: if a paper received substantive evaluation (reviewer personas, dimensions,
+  // overall score, or editorial clearance), it is a genuine academic manuscript regardless
+  // of any stale/corrupted classification metadata.
+  const hasSubstantiveEvaluation =
+    (p.paper?.score != null && p.paper.score > 0) ||
+    (p.fullReport?.overallScore != null && p.fullReport.overallScore > 0) ||
+    (p.dashboardData?.score != null && p.dashboardData.score > 0) ||
+    (p.fullReport?.reviewerPersonas && p.fullReport.reviewerPersonas.length > 0) ||
+    (p.fullReport?.dimensions != null) ||
+    p.fullReport?.editorialTriage?.outcome === "sent_for_review" ||
+    p.paper?.editorialTriage?.outcome === "sent_for_review" ||
+    p.paper?.editorialTriage?.sentToPeerReview === true ||
+    Boolean(p.fullReport?.editorialTriage?.summary?.includes("Cleared editorial triage")) ||
+    Boolean(p.paper?.editorialTriage?.summary?.includes("Cleared editorial triage"));
+
   const isNonAcademic =
-    p.paper?.ineligibilityReason === "non_academic_document" ||
-    p.fullReport?.ineligibilityReason === "non_academic_document" ||
-    (classification != null &&
-      (!classification.isAcademicManuscript ||
-        classification.category !== "academic_manuscript"));
+    !hasSubstantiveEvaluation && (
+      p.paper?.ineligibilityReason === "non_academic_document" ||
+      p.fullReport?.ineligibilityReason === "non_academic_document" ||
+      (classification != null &&
+        !classification.isAcademicManuscript &&
+        classification.category !== "academic_manuscript")
+    );
 
   const isAlreadyPublished =
     !isNonAcademic &&
