@@ -216,16 +216,18 @@ export function SidebarPaperList({
                           if (selectedPaperIds.size > 0) {
                             onToggleSelectPaper(paper.id);
                           } else {
-                            if (isSelected) {
-                              toggleSubmenu(paper.id);
-                            } else {
-                              setCollapsedSubmenus((prev) => {
+                            if (!isSelected) {
+                              onSelectPaper(paper.id);
+                            }
+                            onSelectView("overview");
+                            setCollapsedSubmenus((prev) => {
+                              if (prev.has(paper.id)) {
                                 const next = new Set(prev);
                                 next.delete(paper.id);
                                 return next;
-                              });
-                              onSelectPaper(paper.id);
-                            }
+                              }
+                              return prev;
+                            });
                           }
                         }}
                         className={`group/item w-full flex items-center justify-between px-2 py-1.5 rounded-xl text-xs text-left transition cursor-pointer select-none ${
@@ -320,21 +322,38 @@ export function SidebarPaperList({
                           </span>
                         )}
 
-                        {isSelected && !isReviewing && !isFailed && hasSubviews && (
-                          <span
+                        {!isReviewing && !isFailed && hasSubviews && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!isSelected) {
+                                onSelectPaper(paper.id);
+                                onSelectView("overview");
+                                setCollapsedSubmenus((prev) => {
+                                  const next = new Set(prev);
+                                  next.delete(paper.id);
+                                  return next;
+                                });
+                              } else {
+                                toggleSubmenu(paper.id, e);
+                              }
+                            }}
                             title={
                               collapsedSubmenus.has(paper.id)
                                 ? "Expand review sections"
                                 : "Collapse review sections"
                             }
-                            className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition p-0.5"
+                            className={`p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition cursor-pointer ${
+                              isSelected ? "opacity-100" : "opacity-0 group-hover/article:opacity-75 hover:!opacity-100"
+                            }`}
                           >
                             <ChevronDown
                               className={`w-3.5 h-3.5 transition-transform duration-200 ${
                                 collapsedSubmenus.has(paper.id) ? "-rotate-90" : ""
                               }`}
                             />
-                          </span>
+                          </button>
                         )}
                       </div>
                     </div>
