@@ -336,17 +336,18 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
 
   // =========================================================================
   // 6. Very short, fragmented, or list-dominated text (Shopping lists, To-Do, Notes)
+  // MUST strictly only apply to short/fragmented inputs (wordCount < 150)
+  // and MUST NEVER trigger on documents with academic sections.
   // =========================================================================
   const rawLines = clean.split('\n').map(l => l.trim()).filter(Boolean);
   const isShortOrFragment = wordCount < 60;
   
   const shoppingListKeywords = [
-    'buy', 'milk', 'eggs', 'bread', 'apples', 'groceries', 'store', 'tomorrow', 
-    'meeting', 'reminder', 'supermarket', 'todo', 'to-do', 'shopping', 'ingredient', 
-    'ingredients', 'recipe', 'chicken', 'potatoes', 'cheese', 'coffee', 'bananas', 
-    'hardware', 'screws', 'inventory', 'supplies', 'pack'
+    'buy', 'milk', 'eggs', 'bread', 'apples', 'groceries', 'supermarket',
+    'todo', 'to-do', 'shopping', 'ingredient', 'ingredients', 'recipe',
+    'chicken', 'potatoes', 'cheese', 'bananas', 'screws'
   ];
-  const matchedShopping = shoppingListKeywords.filter(k => lower.includes(k)).length;
+  const matchedShopping = shoppingListKeywords.filter(k => new RegExp(`\\b${k}\\b`, 'i').test(clean)).length;
 
   const isBulletOrNumbered = (line: string) => /^[-*•–—\d+\.)\]]/.test(line);
   const bulletLines = rawLines.filter(isBulletOrNumbered);
@@ -356,26 +357,30 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
     shortLines.length / rawLines.length > 0.70
   );
 
-  const hasExplicitDoi = /doi:\s*10\.\d{4,9}\//i.test(clean);
-  const hasAcademicStructureBasic = /(?:^|\n)\s*(?:abstract|materials and methods|methodology)\b/i.test(clean);
+  const hasExplicitDoi = /(?:doi:\s*10\.\d{4,9}\/|https?:\/\/doi\.org\/10\.\d{4,9}\/)/i.test(clean);
+  const hasAcademicStructureBasic = /(?:^|\n)\s*(?:abstract|materials\s+and\s+methods|methodology|introduction|results|references)\b/i.test(clean);
 
-  if ((matchedShopping >= 2 && !hasExplicitDoi) || 
-      (isListDominated && !hasExplicitDoi && !hasAcademicStructureBasic) || 
-      (isShortOrFragment && !hasExplicitDoi && !/(?:doi:\s*10\.|p\s*[<=]\s*0\.\d+|abstract)/i.test(clean))) {
-    return {
-      category: 'random_unstructured',
-      categoryLabel: 'Unstructured / Random Text',
-      isAcademicManuscript: false,
-      confidence: 0.96,
-      detectedFeatures: [
-        isListDominated ? 'Bulleted / itemized list structure detected' : `Word count is very low (${wordCount} words)`,
-        'No scholarly structure (Title, Abstract, Methods, Results, or References)',
-        'Informal or fragmented phrasing'
-      ],
-      salutation: 'Attention: Unstructured or Non-Academic Text Detected',
-      advisoryMessage: 'The submitted content consists of unstructured text, shopping/to-do lists, casual notes, or brief fragments rather than a scholarly manuscript. Academic peer review requires a coherent research narrative: a title, research context (abstract/introduction), formal methodology, empirical findings, and references.',
-      customGuidance: "To see how ManuView evaluates a genuine research paper, click 'Load Sample Preprint' above or upload a complete .docx or .pdf manuscript with Title, Abstract, Methods, and References."
-    };
+  // An unstructured or shopping list classification ONLY applies if:
+  // 1. The document is truly short/fragmented (wordCount < 150)
+  // 2. AND it lacks basic academic sections (no Abstract, Introduction, Methods, Results, or References)
+  // 3. AND it matches shopping patterns, list domination, or extreme shortness without empirical data.
+  if (wordCount < 150 && !hasAcademicStructureBasic && !hasExplicitDoi) {
+    if (matchedShopping >= 2 || isListDominated || (isShortOrFragment && !/(?:p\s*[<=]\s*0\.\d+|doi:)/i.test(clean))) {
+      return {
+        category: 'random_unstructured',
+        categoryLabel: 'Unstructured / Random Text',
+        isAcademicManuscript: false,
+        confidence: 0.96,
+        detectedFeatures: [
+          isListDominated ? 'Bulleted / itemized list structure detected' : `Word count is very low (${wordCount} words)`,
+          'No scholarly structure (Title, Abstract, Methods, Results, or References)',
+          'Informal or fragmented phrasing'
+        ],
+        salutation: 'Attention: Unstructured or Non-Academic Text Detected',
+        advisoryMessage: 'The submitted content consists of unstructured text, shopping/to-do lists, casual notes, or brief fragments rather than a scholarly manuscript. Academic peer review requires a coherent research narrative: a title, research context (abstract/introduction), formal methodology, empirical findings, and references.',
+        customGuidance: "To see how ManuView evaluates a genuine research paper, click 'Load Sample Preprint' above or upload a complete .docx or .pdf manuscript with Title, Abstract, Methods, and References."
+      };
+    }
   }
 
   // =========================================================================

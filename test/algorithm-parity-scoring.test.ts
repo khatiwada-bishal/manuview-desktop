@@ -378,3 +378,35 @@ Python, ROOT, Monte Carlo Simulations, C++`;
   assert.equal(report.funnelStageReached, "stage0_integrity");
 });
 
+test("classifyDocument: empirical engineering paper with hardware/pack/store terms is classified as academic, never random_unstructured", () => {
+  const ewastePaperText = `Benchmarking Deep Convolutional and Vision Transformer Architectures for Autonomous E-Waste Component Classification in Mixed Scrap Streams
+Bishal Khatiwada
+Department of Environmental Management, Faculty of Environmental Management, Prince of Songkla University, Hat Yai, Songkhla 9110, Thailand
+Correspondence: bishal.khatiwada@psu.ac.th
+
+Abstract
+Global electronic waste (e-waste) generation reached 62 million tonnes in 2022, yet only 22.3% was documented as properly collected and recycled. Automated visual sorting using deep learning can improve material recovery purity. We curate a harmonised dataset across seven categories including battery pack, hardware, and scrap inventory. All models benchmarked at 640x640 resolution with transfer learning. RT-DETR-L achieves mAP@50 of 92.5 ± 0.5%.
+
+1. Introduction
+Electronic waste (e-waste) is the fastest-growing waste stream globally. We evaluate GPU hardware accelerators to restore high-throughput sorting lines.
+
+2. Materials and Methods
+We curated 15,000 annotated images. The 7-class taxonomy maps material fractions and recovery targets. Models evaluate battery pack safety and hardware cost trade-offs.
+
+3. Results
+RT-DETR-L outperforms YOLOv9s by 7.0 percentage points. The Battery->Plastic misclassification rate reaches 3.2%.
+
+4. Conclusions
+This study presents a systematic benchmark for autonomous e-waste component classification in mixed scrap streams.
+
+References
+1. Baldé, C. P., et al. (2024). The Global E-waste Monitor 2024. ITU & UNITAR.
+2. Zhao, Y., et al. (2024). DETRs beat YOLOs on real-time object detection. CVPR.`;
+
+  const classification = classifyDocument(ewastePaperText, "Khatiwada_2026_EWaste_CV_Benchmark_1.pdf");
+  assert.equal(classification.isAcademicManuscript, true, "Paper MUST be classified as an academic research manuscript");
+  assert.equal(classification.category, "academic_manuscript");
+  assert.notEqual(classification.category, "random_unstructured", "Paper must NEVER be flagged as unstructured text");
+});
+
+
