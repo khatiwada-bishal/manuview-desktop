@@ -25,7 +25,7 @@ import {
   type LayaProgress,
 } from "@/lib/laya/laya-service";
 import { isDesktopApp, isMacOS } from "@/lib/desktop";
-import { Settings, ShieldCheck, X, CheckCircle2, Activity, RefreshCw, AlertCircle, Zap, Check, ChevronDown, Sparkles, Search, KeyRound, Cpu, Download, Loader2, Info } from "lucide-react";
+import { Settings, ShieldCheck, X, CheckCircle2, Activity, RefreshCw, AlertCircle, Zap, Check, ChevronDown, Sparkles, Search, KeyRound, Cpu, Download, Loader2 } from "lucide-react";
 import { GeminiLogo, OpenAILogo, GroqLogo, AnthropicLogo, OllamaLogo, LayaLogo } from "./BrandLogos";
 
 interface Props {
@@ -513,24 +513,19 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                     type="button"
                     onClick={() => handleProviderChange("laya")}
                     title="ModernBERT 421M • Fast Diagnostic Scan • 100% On-Device & Zero API"
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                    className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
                       config.provider === "laya" || config.provider === "typesafe"
                         ? "bg-blue-500/10 border-blue-500 ring-1 ring-blue-500/50 text-neutral-900 dark:text-white shadow-2xs"
                         : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
                     }`}
                   >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="p-1 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400 shrink-0">
-                        <LayaLogo className="w-3.5 h-3.5" />
-                      </span>
-                      <span className="truncate">Laya</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {(config.provider === "laya" || config.provider === "typesafe") && (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                      )}
-                      <Info className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-200 transition" />
-                    </div>
+                    <span className="p-1 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400 shrink-0">
+                      <LayaLogo className="w-3.5 h-3.5" />
+                    </span>
+                    <span>Laya</span>
+                    {(config.provider === "laya" || config.provider === "typesafe") && (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                    )}
                   </button>
 
                   {/* Information Tooltip */}
@@ -549,24 +544,19 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                     type="button"
                     onClick={() => handleProviderChange("webllm")}
                     title="On-device Qwen / Llama via WebGPU • Zero External API • Private"
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                    className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
                       config.provider === "webllm"
                         ? "bg-purple-500/10 border-purple-500 ring-1 ring-purple-500/50 text-neutral-900 dark:text-white shadow-2xs"
                         : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
                     }`}
                   >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="p-1 rounded-lg bg-purple-500/15 text-purple-600 dark:text-purple-400 shrink-0">
-                        <Cpu className="w-3.5 h-3.5" />
-                      </span>
-                      <span className="truncate">Local SLM</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {config.provider === "webllm" && (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                      )}
-                      <Info className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-200 transition" />
-                    </div>
+                    <span className="p-1 rounded-lg bg-purple-500/15 text-purple-600 dark:text-purple-400 shrink-0">
+                      <Cpu className="w-3.5 h-3.5" />
+                    </span>
+                    <span>Local SLM</span>
+                    {config.provider === "webllm" && (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+                    )}
                   </button>
 
                   {/* Information Tooltip */}
@@ -585,24 +575,19 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                     type="button"
                     onClick={() => handleProviderChange("ollama")}
                     title="Local server (localhost:11434) • Self-hosted custom models"
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                    className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
                       config.provider === "ollama"
                         ? "bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500/50 text-neutral-900 dark:text-white shadow-2xs"
                         : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
                     }`}
                   >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="p-1 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0">
-                        <OllamaLogo className="w-3.5 h-3.5" />
-                      </span>
-                      <span className="truncate">Ollama</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {config.provider === "ollama" && (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                      )}
-                      <Info className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-200 transition" />
-                    </div>
+                    <span className="p-1 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0">
+                      <OllamaLogo className="w-3.5 h-3.5" />
+                    </span>
+                    <span>Ollama</span>
+                    {config.provider === "ollama" && (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    )}
                   </button>
 
                   {/* Information Tooltip */}
@@ -779,44 +764,44 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
               </div>
             </div>
           ) : config.provider === "webllm" ? (
-            <div className="space-y-1.5">
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-[#787774] dark:text-neutral-400">
-                2. On-Device Execution &amp; Storage
-              </label>
-              <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-900 dark:text-purple-200 space-y-2.5">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#787774] dark:text-neutral-400">
+                  2. WebGPU On-Device Execution
+                </label>
+                {onOpenLocalModel && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenLocalModel();
+                    }}
+                    className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Manage Local Models</span>
+                  </button>
+                )}
+              </div>
+              <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-900 dark:text-purple-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 font-semibold">
                     <Cpu className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                    <span>On-Device GPU Execution (WebGPU)</span>
+                    <span>Hardware Accelerated GPU Execution</span>
                   </div>
                   <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-700 dark:text-purple-300">
                     Zero External API
                   </span>
                 </div>
                 <p className="text-[11px] opacity-90 leading-relaxed">
-                  Small Language Models execute on your device&apos;s GPU via WebGPU. No API key or external cloud connection required.
+                  Small Language Models execute strictly on your local GPU via WebGPU. Completely confidential and offline.
                 </p>
                 {isDesktopApp() && isMacOS() && (
-                  <div className="p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-[11px] text-amber-900 dark:text-amber-200">
-                    <span className="font-semibold">macOS Desktop Notice:</span> macOS desktop webview restricts WebGPU storage buffers to 9 (WebLLM requires 10). For local private models on macOS, we recommend using <strong>Ollama</strong> (select above) which runs natively with full GPU speed.
-                  </div>
-                )}
-                {onOpenLocalModel && (
-                  <div className="pt-2 flex items-center justify-between border-t border-purple-500/20">
-                    <span className="text-[11px] text-purple-800 dark:text-purple-300 font-medium">
-                      Model weights storage &amp; download:
+                  <div className="p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-[11px] text-amber-900 dark:text-amber-200 flex items-center gap-2">
+                    <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span>
+                      <strong>macOS Notice:</strong> Webview limits WebGPU buffers. For peak performance, <strong>Ollama</strong> is recommended.
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onClose();
-                        onOpenLocalModel();
-                      }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs transition shadow-xs cursor-pointer"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Manage Local Models</span>
-                    </button>
                   </div>
                 )}
               </div>
@@ -1298,30 +1283,6 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
               </div>
             )}
 
-            {/* If Local SLM model is not downloaded, display actionable download banner */}
-            {config.provider === "webllm" && cachedModels[config.model] === false && (
-              <div className="mt-2.5 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-900 dark:text-amber-200 flex items-center justify-between gap-3 animate-fadeIn">
-                <div className="flex items-center gap-2 min-w-0">
-                  <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                  <span className="truncate">
-                    Model <strong>{config.model}</strong> is not stored locally on this machine yet.
-                  </span>
-                </div>
-                {onOpenLocalModel && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClose();
-                      onOpenLocalModel();
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs shrink-0 transition shadow-xs cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Download Model</span>
-                  </button>
-                )}
-              </div>
-            )}
           </div>
         )}
 
