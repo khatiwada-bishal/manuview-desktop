@@ -155,11 +155,16 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
         if (models.some((m) => m.isLive)) {
           setHasFetchedLive(true);
         }
-        // If current model is not set or empty, pick the recommended or first
-        if (!targetConfig.model) {
-          const rec = models.find((m: AvailableModel) => m.recommended) || models[0];
-          setConfig((prev) => ({ ...prev, model: rec.id }));
-        }
+        // Self-heal model if current model is empty or invalid for the target provider
+        setConfig((prev) => {
+          if (prev.provider !== targetConfig.provider) return prev;
+          const currentValid = models.some((m) => m.id === prev.model);
+          if (!prev.model || !currentValid) {
+            const rec = models.find((m: AvailableModel) => m.recommended) || models[0];
+            return { ...prev, model: rec.id };
+          }
+          return prev;
+        });
       }
     } catch (err) {
       console.error("Failed to load models for provider:", err);
@@ -252,6 +257,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
       model: defaultModel,
     };
     delete (updated as any).apiKey;
+    setConfig(updated);
     const isLocal =
       newProvider === "laya" ||
       newProvider === "typesafe" ||
@@ -516,7 +522,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                       <LayaLogo className="w-4 h-4" />
                     </span>
                     <div className="min-w-0">
-                      <div className="font-semibold text-xs text-neutral-900 dark:text-white truncate">
+                      <div className="font-semibold text-xs text-neutral-900 dark:text-white leading-snug">
                         Laya Decision Model
                       </div>
                       <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-tight">
@@ -544,7 +550,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                       <Cpu className="w-4 h-4" />
                     </span>
                     <div className="min-w-0">
-                      <div className="font-semibold text-xs text-neutral-900 dark:text-white truncate">
+                      <div className="font-semibold text-xs text-neutral-900 dark:text-white leading-snug">
                         Local SLM (Web GPU)
                       </div>
                       <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-tight">
@@ -572,7 +578,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                       <OllamaLogo className="w-4 h-4" />
                     </span>
                     <div className="min-w-0">
-                      <div className="font-semibold text-xs text-neutral-900 dark:text-white truncate">
+                      <div className="font-semibold text-xs text-neutral-900 dark:text-white leading-snug">
                         Ollama (Self Hosted)
                       </div>
                       <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-tight">
@@ -1041,7 +1047,8 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
           )}
 
           {/* 3. Available Models Picker (Dropdown Selector) */}
-          <div ref={dropdownRef} className="relative z-20">
+          {config.provider !== "laya" && config.provider !== "typesafe" && (
+            <div ref={dropdownRef} className="relative z-20">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-[#787774] dark:text-neutral-400">
@@ -1292,6 +1299,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
               </div>
             )}
           </div>
+        )}
 
           {/* Connection Test Feedback Box (Notion Pastel & High Contrast) */}
           {testResult && (
@@ -1359,12 +1367,24 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
               {testing ? (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#0A85EA] dark:text-blue-400" />
-                  <span>{config.provider === "webllm" ? "Checking WebGPU & Cache..." : "Pinging API & Fetching Models..."}</span>
+                  <span>
+                    {config.provider === "webllm"
+                      ? "Checking WebGPU & Cache..."
+                      : config.provider === "laya" || config.provider === "typesafe"
+                      ? "Verifying Laya Engine..."
+                      : "Pinging API & Fetching Models..."}
+                  </span>
                 </>
               ) : (
                 <>
                   <Activity className="w-3.5 h-3.5 text-[#0A85EA] dark:text-blue-400" />
-                  <span>{config.provider === "webllm" ? "Check WebGPU & Cache Status" : "Check Connection & Refresh Models"}</span>
+                  <span>
+                    {config.provider === "webllm"
+                      ? "Check WebGPU & Cache Status"
+                      : config.provider === "laya" || config.provider === "typesafe"
+                      ? "Verify Laya Engine Status"
+                      : "Check Connection & Refresh Models"}
+                  </span>
                 </>
               )}
             </button>

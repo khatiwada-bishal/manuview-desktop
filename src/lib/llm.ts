@@ -1687,6 +1687,17 @@ export async function testLLMConnection(
       if (geminiModel.includes("2.5")) {
         geminiModel = "gemini-2.0-flash";
       }
+      // Defensive fallback if a cross-provider model ID was passed
+      if (
+        geminiModel.includes("convaiinnovations") ||
+        geminiModel.includes("laya") ||
+        geminiModel.includes("Qwen") ||
+        geminiModel.includes("llama") ||
+        geminiModel.includes("gpt-") ||
+        geminiModel.includes("claude-")
+      ) {
+        geminiModel = "gemini-2.0-flash";
+      }
       const cleanKey = apiKey.trim();
       let cleanModel = encodeURIComponent(geminiModel);
       let endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent`;
@@ -1707,8 +1718,8 @@ export async function testLLMConnection(
         signal: controller.signal,
       });
 
-      // If requested model returns 404, auto-fallback probe to gemini-2.0-flash
-      if (!response.ok && response.status === 404 && geminiModel !== "gemini-2.0-flash") {
+      // If requested model returns 404 or 400 (bad model name), auto-fallback probe to gemini-2.0-flash
+      if (!response.ok && (response.status === 404 || response.status === 400) && geminiModel !== "gemini-2.0-flash") {
         geminiModel = "gemini-2.0-flash";
         cleanModel = encodeURIComponent(geminiModel);
         endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent`;
