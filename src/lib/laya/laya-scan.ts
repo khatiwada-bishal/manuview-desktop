@@ -49,18 +49,20 @@ export interface ScanGroup {
   signals: ScanSignal[];
 }
 
-export interface TypeSafeUsage {
+export interface LayaUsage {
   input_tokens: number;
   output_tokens: number;
 }
+export type TypeSafeUsage = LayaUsage;
 
-export interface SystemOneResponse {
+export interface LayaResponse {
   model: string;
   answers: Record<string, any>;
-  usage?: TypeSafeUsage;
+  usage?: LayaUsage;
 }
+export type SystemOneResponse = LayaResponse;
 
-export interface TypeSafeScanResult {
+export interface LayaScanResult {
   model: string;
   targetJournal?: string;
   journalScope?: string;
@@ -73,9 +75,10 @@ export interface TypeSafeScanResult {
   signals: ScanSignal[];
   groups: ScanGroup[];
   flags: ScanSignal[]; // signals that warrant attention (bad tone or low confidence)
-  usage?: TypeSafeUsage;
-  raw: SystemOneResponse;
+  usage?: LayaUsage;
+  raw: LayaResponse;
 }
+export type TypeSafeScanResult = LayaScanResult;
 
 // ---------------------------------------------------------------------------
 // Question Specifications (27-Question Diagnostic Battery)
@@ -774,7 +777,7 @@ function evaluateSpecDeterministically(
 }
 
 // ---------------------------------------------------------------------------
-// Orchestrator: runTypeSafeScan (Laya In-Browser Decision Model Engine)
+// Orchestrator: runLayaScan (Laya In-Browser Decision Model Engine)
 // ---------------------------------------------------------------------------
 
 export interface RunScanOptions {
@@ -787,15 +790,17 @@ export interface RunScanOptions {
   context?: Record<string, any>;
   onProgress?: (step: string, percent: number) => void;
 }
+export type LayaScanOptions = RunScanOptions;
+export type TypeSafeScanOptions = RunScanOptions;
 
 /**
  * Runs the full 27-question diagnostic scan locally using Laya (ModernBERT-large).
  * Zero external API calls, zero API keys, 100% on-device execution.
  */
-export async function runTypeSafeScan(
+export async function runLayaScan(
   manuscriptText: string,
   options: RunScanOptions = {}
-): Promise<TypeSafeScanResult> {
+): Promise<LayaScanResult> {
   const text = (manuscriptText || "").trim();
   if (!text) {
     throw new Error("No manuscript text to scan. Paste or load a document first.");
@@ -1159,3 +1164,6 @@ export async function runTypeSafeScan(
     raw: rawResponse,
   };
 }
+
+export const runTypeSafeScan = runLayaScan;
+

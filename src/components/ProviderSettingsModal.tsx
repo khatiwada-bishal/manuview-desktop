@@ -112,7 +112,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
     setIsKeyDirty(false);
     setBaseUrlError(null);
     setProviderCategory(
-      currentConfig.provider === "typesafe"
+      currentConfig.provider === "laya" || currentConfig.provider === "typesafe"
         ? "free"
         : currentConfig.provider === "webllm" || currentConfig.provider === "ollama"
         ? "local"
@@ -241,7 +241,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
         ? "claude-3-7-sonnet-20250219"
         : newProvider === "groq"
         ? "llama-3.3-70b-versatile"
-        : newProvider === "typesafe"
+        : newProvider === "laya" || newProvider === "typesafe"
         ? "convaiinnovations/laya"
         : newProvider === "webllm"
         ? "Qwen2.5-0.5B-Instruct-q4f16_1-MLC"
@@ -254,7 +254,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
     };
     delete (updated as any).apiKey;
     setConfig(updated);
-    setProviderCategory(newProvider === "typesafe" ? "free" : newProvider === "webllm" || newProvider === "ollama" ? "local" : "cloud");
+    setProviderCategory(newProvider === "laya" || newProvider === "typesafe" ? "free" : newProvider === "webllm" || newProvider === "ollama" ? "local" : "cloud");
     setTestResult(null);
     setFetchFeedback(null);
     setHasFetchedLive(false);
@@ -454,7 +454,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                 type="button"
                 onClick={() => {
                   setProviderCategory("free");
-                  handleProviderChange("typesafe");
+                  handleProviderChange("laya");
                 }}
                 className={`py-1.5 px-2 rounded-xl text-xs font-semibold transition cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 ${
                   providerCategory === "free"
@@ -470,7 +470,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                 type="button"
                 onClick={() => {
                   setProviderCategory("cloud");
-                  if (config.provider === "typesafe" || config.provider === "webllm" || config.provider === "ollama") {
+                  if (config.provider === "laya" || config.provider === "typesafe" || config.provider === "webllm" || config.provider === "ollama") {
                     handleProviderChange("gemini");
                   }
                 }}

@@ -3,7 +3,7 @@ export interface HumanReadableScanError {
   explanation: string;
   action: string;
   technical?: string;
-  category: "auth" | "rate_limit" | "network" | "context_length" | "device_memory" | "registry" | "typesafe_decision_model" | "general";
+  category: "auth" | "rate_limit" | "network" | "context_length" | "device_memory" | "registry" | "laya_decision_model" | "typesafe_decision_model" | "general";
 }
 
 /**
@@ -135,16 +135,16 @@ export function translateScanError(rawError: any): HumanReadableScanError {
     };
   }
 
-  // 7. TypeSafe / Jev Decision Model Guard
-  if (lower.includes("typesafe") || lower.includes("jev")) {
+  // 7. Laya / Decision Model Guard
+  if (lower.includes("laya") || lower.includes("typesafe") || lower.includes("jev")) {
     return {
-      title: "TypeSafe Jev is a Decision Model (Not a Text Generator)",
+      title: "Laya is an On-Device Decision Model (Not a Text Generator)",
       explanation:
-        "TypeSafe (Jev) evaluates typed questions (Choice / Score / Noul) and returns calibrated probabilities, but does not generate prose. The 5-Persona simulated peer review requires a text model (Gemini, Groq, OpenAI, Claude, or Ollama) to write reviewer critiques.",
+        "Laya evaluates structured diagnostic questions (Choice / Score / Noul) and returns calibrated probabilities directly on your device, but does not generate freeform prose. The 5-Persona simulated peer review requires a text model (Gemini, Groq, OpenAI, Claude, or Ollama) to write reviewer critiques.",
       action:
-        "To run the 5-Persona Peer Review, switch to a text provider in Settings (Cmd+,). Alternatively, run the dedicated TypeSafe Structured Scan on this document.",
+        "To run the 5-Persona Peer Review, switch to a text provider in Settings (Cmd+,). Alternatively, run the dedicated Laya Fast Scan on this document.",
       technical: errString,
-      category: "typesafe_decision_model",
+      category: "laya_decision_model",
     };
   }
 

@@ -177,6 +177,9 @@ export function SidebarCollapsedView({
                         (paper.classification != null &&
                           (!paper.classification.isAcademicManuscript ||
                             paper.classification.category !== "academic_manuscript")) ||
+                        (paper.layaResult?.classification != null &&
+                          (!paper.layaResult.classification.isAcademicManuscript ||
+                            paper.layaResult.classification.category !== "academic_manuscript")) ||
                         (paper.typesafeResult?.classification != null &&
                           (!paper.typesafeResult.classification.isAcademicManuscript ||
                             paper.typesafeResult.classification.category !== "academic_manuscript")) ||

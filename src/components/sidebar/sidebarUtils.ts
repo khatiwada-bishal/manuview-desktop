@@ -134,14 +134,14 @@ export function buildSidebarServices(params: {
 
   return [
     {
-      id: "typesafe-scan",
-      name: "TypeSafe Structured Scan",
-      description: "Typed Jev diagnostics",
+      id: "laya-scan",
+      name: "Fast Scan (Laya)",
+      description: "On-device 27-point audit",
       icon: Gauge,
       color: "text-blue-600 bg-blue-50 dark:bg-blue-950/50 dark:text-blue-400",
       squircleBg: "bg-blue-600 text-white shadow-xs",
       action: () => {
-        if (onSelectService) onSelectService("typesafe-scan");
+        if (onSelectService) onSelectService("laya-scan");
         else onNewReview();
       },
     },
@@ -225,12 +225,19 @@ export function buildSidebarServices(params: {
  * e.g., gemini-2.0-flash / gemini-1.5-pro -> "Gemini"
  * gpt-4o / gpt-4o-mini / o1 / o3 -> "OpenAI"
  * claude-3-5-sonnet -> "Claude"
- * typesafe -> "TypeSafe"
+ * laya -> "Laya"
  */
 export function getPaperApiLabel(paper: PaperItem): string {
-  // 1. Explicit TypeSafe scan check
-  if (paper.scanType === "typesafe" || paper.typesafeResult != null || paper.provider === "typesafe") {
-    return "TypeSafe";
+  // 1. Explicit Laya / decision scan check
+  if (
+    paper.scanType === "laya" ||
+    paper.scanType === "typesafe" ||
+    paper.layaResult != null ||
+    paper.typesafeResult != null ||
+    paper.provider === "laya" ||
+    paper.provider === "typesafe"
+  ) {
+    return "Laya";
   }
 
   // 2. Direct provider field
@@ -246,7 +253,7 @@ export function getPaperApiLabel(paper: PaperItem): string {
 
   // 3. Inspect aiEngine and model strings
   const raw = `${paper.model || ""} ${paper.aiEngine || ""}`.toLowerCase();
-  if (raw.includes("typesafe") || raw.includes("fast scan")) return "TypeSafe";
+  if (raw.includes("laya") || raw.includes("typesafe") || raw.includes("fast scan")) return "Laya";
   if (raw.includes("gemini")) return "Gemini";
   if (
     raw.includes("gpt") ||
@@ -275,6 +282,7 @@ export function getPaperApiLabel(paper: PaperItem): string {
  */
 export function getApiBadgeStyle(apiLabel: string): string {
   switch (apiLabel) {
+    case "Laya":
     case "TypeSafe":
       return "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border-blue-200/60 dark:border-blue-800/60";
     case "Gemini":

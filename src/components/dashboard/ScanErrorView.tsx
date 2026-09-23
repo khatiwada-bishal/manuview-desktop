@@ -56,6 +56,7 @@ export function ScanErrorView({
         return <BookOpen className="w-6 h-6 text-purple-500" />;
       case "device_memory":
         return <Cpu className="w-6 h-6 text-indigo-500" />;
+      case "laya_decision_model":
       case "typesafe_decision_model":
         return <ShieldCheck className="w-6 h-6 text-blue-500" />;
       default:
@@ -110,16 +111,16 @@ export function ScanErrorView({
 
           {/* Primary Action Buttons */}
           <div className="flex flex-wrap items-center gap-3 pt-2">
-            {error.category === "typesafe_decision_model" ? (
+            {error.category === "laya_decision_model" || error.category === "typesafe_decision_model" ? (
               <>
                 {onOpenService && (
                   <button
                     type="button"
-                    onClick={() => onOpenService("typesafe-scan")}
+                    onClick={() => onOpenService("laya-scan")}
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition shadow-xs cursor-pointer active:scale-95"
                   >
                     <ShieldCheck className="w-4 h-4 shrink-0" />
-                    <span>Run TypeSafe Structured Scan</span>
+                    <span>Run Laya Fast Scan</span>
                     <ArrowRight className="w-3.5 h-3.5 shrink-0 opacity-80" />
                   </button>
                 )}

@@ -19,8 +19,8 @@ import { DesktopPrismaView } from "@/components/services/DesktopPrismaView";
 import { DesktopReportingChecklistView } from "@/components/services/DesktopReportingChecklistView";
 import { DesktopCoverLetterView } from "@/components/services/DesktopCoverLetterView";
 import { DesktopResponseBuilderView } from "@/components/services/DesktopResponseBuilderView";
-import { DesktopTypeSafeScanView } from "@/components/services/DesktopTypeSafeScanView";
-import { DesktopTypeSafeDashboardView } from "@/components/services/DesktopTypeSafeDashboardView";
+import { DesktopLayaScanView } from "@/components/services/DesktopLayaScanView";
+import { DesktopLayaDashboardView } from "@/components/services/DesktopLayaDashboardView";
 import { DesktopEmptyDashboard } from "@/components/DesktopEmptyDashboard";
 import { DeleteConfirmationModal } from "@/components/DeleteConfirmationModal";
 import { ProviderSettingsModal } from "@/components/ProviderSettingsModal";
@@ -297,7 +297,8 @@ export default function App() {
       prisma: { title: "PRISMA Flow Diagram", shortName: "PRISMA 2020" },
       "cover-letter": { title: "Journal Cover Letter", shortName: "Cover Letter" },
       "response-builder": { title: "Review Response Builder", shortName: "Response Matrix" },
-      "typesafe-scan": { title: "Fast Scan (TypeSafe)", shortName: "Fast Scan" },
+      "laya-scan": { title: "Fast Scan (Laya)", shortName: "Fast Scan" },
+      "typesafe-scan": { title: "Fast Scan (Laya)", shortName: "Fast Scan" },
     };
 
     const toolInfo = toolMap[normalizedServiceId];
@@ -698,8 +699,8 @@ function AppWorkspace({
     if (activeTabId === "tool-response-builder") {
       return <DesktopResponseBuilderView onOpenSettings={() => setIsSettingsOpen(true)} />;
     }
-    if (activeTabId === "tool-typesafe-scan") {
-      return <DesktopTypeSafeScanView onOpenSettings={() => setIsSettingsOpen(true)} />;
+    if (activeTabId === "tool-laya-scan" || activeTabId === "tool-typesafe-scan") {
+      return <DesktopLayaScanView onOpenSettings={() => setIsSettingsOpen(true)} />;
     }
 
     // Article Review Lifecycle: Active in-progress background scan
@@ -725,12 +726,12 @@ function AppWorkspace({
     }
 
     // Default: Completed Article Review Dashboard
-    if (currentPaper && currentPaper.scanType === "typesafe") {
+    if (currentPaper && (currentPaper.scanType === "laya" || currentPaper.scanType === "typesafe")) {
       return (
-        <DashboardErrorBoundary fallbackTitle="TypeSafe Dashboard Display Error">
-          <DesktopTypeSafeDashboardView
+        <DashboardErrorBoundary fallbackTitle="Laya Dashboard Display Error">
+          <DesktopLayaDashboardView
             paper={currentPaper}
-            scanResult={currentPaper.typesafeResult}
+            scanResult={currentPaper.layaResult || currentPaper.typesafeResult}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onNewScan={() => !isScanning && handleOpenService("ai-review")}
             onDeleteArticle={() => setPapersToDelete(currentPaper ? [currentPaper] : null)}

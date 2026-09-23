@@ -185,7 +185,7 @@ export async function resolveActiveConfig(config?: ProviderConfig): Promise<Prov
     else if (provider === "groq") apiKey = getEnv('GROQ_API_KEY');
     else if (provider === "openai") apiKey = getEnv('OPENAI_API_KEY');
     else if (provider === "anthropic") apiKey = getEnv('ANTHROPIC_API_KEY');
-    else if (provider === "typesafe") {
+    else if (provider === "laya" || provider === "typesafe") {
       apiKey = "on-device-laya";
     }
   }
@@ -199,15 +199,15 @@ export async function resolveActiveConfig(config?: ProviderConfig): Promise<Prov
       provider === "gemini" ? "gemini-2.0-flash" :
       provider === "groq" ? "llama-3.3-70b-versatile" :
       provider === "openai" ? "gpt-4o-mini" :
-      provider === "typesafe" ? "convaiinnovations/laya" :
+      (provider === "laya" || provider === "typesafe") ? "convaiinnovations/laya" :
       "claude-3-5-sonnet-20241022"
     ),
     baseUrl: baseUrl || (
       provider === "openai" ? "https://api.openai.com/v1" :
-      provider === "typesafe" ? "local://laya" :
+      (provider === "laya" || provider === "typesafe") ? "local://laya" :
       "http://localhost:11434"
     ),
-    hasSecureKey: provider === "webllm" || provider === "ollama" || provider === "typesafe" || Boolean(apiKey),
+    hasSecureKey: provider === "webllm" || provider === "ollama" || provider === "laya" || provider === "typesafe" || Boolean(apiKey),
   };
 }
 
@@ -307,7 +307,7 @@ export function getServerConfigStatus(): {
   }
 
   const hasServerKey = serverProviders.length > 0;
-  const hasClientKey = Boolean(saved && (saved.apiKey || saved.hasSecureKey || saved.provider === "ollama" || saved.provider === "webllm" || saved.provider === "typesafe"));
+  const hasClientKey = Boolean(saved && (saved.apiKey || saved.hasSecureKey || saved.provider === "ollama" || saved.provider === "webllm" || saved.provider === "laya" || saved.provider === "typesafe"));
 
   if (hasClientKey && saved) {
     return {
@@ -476,7 +476,7 @@ export async function callLLM(
 
   // Laya is a non-autoregressive decision model, not a generative text LLM.
   // Route structured document audits through the Fast Scan service instead.
-  if (provider === "typesafe") {
+  if (provider === "laya" || provider === "typesafe") {
     throw new Error(
       "Laya is an on-device decision model, not a generative chat LLM. Use the Fast Scan service to review manuscripts with Laya, and select a text model (e.g. Gemini, OpenAI, Claude, or Ollama) for persona peer review."
     );
@@ -1183,6 +1183,15 @@ export const CURATED_MODELS: Record<LLMProvider, AvailableModel[]> = {
       recommended: false,
     },
   ],
+  laya: [
+    {
+      id: "convaiinnovations/laya",
+      name: "Laya (ModernBERT-large 421M)",
+      description: "On-device non-autoregressive decision model running 100% in-browser via Transformers.js & WebGPU.",
+      tag: "✨ On-Device",
+      recommended: true,
+    },
+  ],
   typesafe: [
     {
       id: "convaiinnovations/laya",
@@ -1508,7 +1517,7 @@ export async function fetchAvailableModels(
           isLive: true,
         },
       ];
-    } else if (provider === "typesafe") {
+    } else if (provider === "laya" || provider === "typesafe") {
       try {
         const { listTypeSafeModels } = await import("./typesafe");
         const live = await listTypeSafeModels(apiKey);
@@ -1518,13 +1527,13 @@ export async function fetchAvailableModels(
             return {
               id: m.name,
               name: existing?.name || m.name,
-              description: existing?.description || m.description || "TypeSafe System One model",
-              tag: existing?.tag || (m.name.includes("latest") ? "✨ Recommended" : undefined),
-              recommended: existing?.recommended || m.name === "jev-latest",
+              description: existing?.description || m.description || "Laya On-Device Decision Model",
+              tag: existing?.tag || (m.name.includes("laya") ? "✨ Recommended" : undefined),
+              recommended: existing?.recommended || m.name === "convaiinnovations/laya",
               isLive: true,
             };
           });
-          // Keep curated jev entries the API omitted (versioned IDs are still valid).
+          // Keep curated entries the API omitted
           for (const d of defaultList) {
             if (!mapped.some((x) => x.id === d.id)) mapped.push(d);
           }
@@ -1598,10 +1607,10 @@ export async function testLLMConnection(
     } else if (provider === "anthropic") {
       apiKey = getEnv('ANTHROPIC_API_KEY');
       model = model || getEnv('ANTHROPIC_MODEL') || "claude-3-5-sonnet-20241022";
-    } else if (provider === "typesafe") {
+    } else if (provider === "laya" || provider === "typesafe") {
       const { resolveTypeSafeKey } = await import("./typesafe");
       apiKey = await resolveTypeSafeKey();
-      model = model || "jev-latest";
+      model = model || "convaiinnovations/laya";
     }
   }
 
@@ -1652,14 +1661,14 @@ export async function testLLMConnection(
     // -----------------------------------------------------------
     // 0. Laya On-Device Decision Model Probe
     // -----------------------------------------------------------
-    if (provider === "typesafe") {
+    if (provider === "laya" || provider === "typesafe") {
       const tsModel = model || "convaiinnovations/laya";
       const { testTypeSafeConnection } = await import("./typesafe");
       await testTypeSafeConnection(apiKey, tsModel);
       const latencyMs = Date.now() - startTime;
       return {
         success: true,
-        provider: "typesafe",
+        provider: provider,
         model: tsModel,
         latencyMs,
         message: `Laya On-Device Decision Model (${tsModel}) is active with zero API dependencies.`,

@@ -65,8 +65,8 @@ export function OllamaLogo({ className = "w-4 h-4" }: LogoProps) {
   );
 }
 
-// 6. TypeSafe Brand Logo (Precision Gauge / Typed Diagnostic Mark)
-export function TypeSafeLogo({ className = "w-4 h-4" }: LogoProps) {
+// 6. Laya Brand Logo (Precision Gauge / ModernBERT On-Device Diagnostic Mark)
+export function LayaLogo({ className = "w-4 h-4" }: LogoProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg">
       <path d="m12 14 4-4" />
@@ -74,6 +74,7 @@ export function TypeSafeLogo({ className = "w-4 h-4" }: LogoProps) {
     </svg>
   );
 }
+export const TypeSafeLogo = LayaLogo;
 
 // 7. Generic API Provider Icon dispatcher
 export function ApiProviderIcon({
@@ -86,8 +87,9 @@ export function ApiProviderIcon({
   switch (apiLabel) {
     case "Gemini":
       return <GeminiLogo className={className} />;
+    case "Laya":
     case "TypeSafe":
-      return <TypeSafeLogo className={className} />;
+      return <LayaLogo className={className} />;
     case "OpenAI":
       return <OpenAILogo className={`${className} text-[#10A37F]`} />;
     case "Claude":

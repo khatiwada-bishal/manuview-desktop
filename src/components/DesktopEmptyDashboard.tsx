@@ -392,9 +392,9 @@ export function DesktopEmptyDashboard({
             Research &amp; Diagnostic Services
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {/* 0. TypeSafe Structured Scan */}
+            {/* 0. Laya Fast Diagnostic Scan */}
             <div
-              onClick={() => onOpenService("typesafe-scan")}
+              onClick={() => onOpenService("laya-scan")}
               className="rounded-2xl liquid-glass-card liquid-glass-card-interactive card-interactive-lift p-5 transition cursor-pointer group space-y-2.5"
             >
               <div className="flex items-center justify-between">
@@ -402,15 +402,15 @@ export function DesktopEmptyDashboard({
                   <Gauge className="w-5 h-5" />
                 </div>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20">
-                  Fast Scan · TypeSafe
+                  Fast Scan · Laya
                 </span>
               </div>
               <div>
                 <h3 className="text-xs font-bold text-[#111827] dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
-                  Fast Scan (TypeSafe)
+                  Fast Scan (Laya)
                 </h3>
                 <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2">
-                  Fast typed diagnostics — desk-reject risk, methods, claims, and confidence — powered by TypeSafe in one call.
+                  Fast on-device diagnostics — desk-reject risk, methods, claims, and confidence — powered by Laya (ModernBERT-large) with zero API calls.
                 </p>
               </div>
             </div>

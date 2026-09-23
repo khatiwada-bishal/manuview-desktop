@@ -119,7 +119,7 @@ export function DesktopPreSubmissionScanView({
     selectModel: handleSelectModel,
   } = useApiConnection();
 
-  const scanEngine: "persona" | "typesafe" = provider === "typesafe" ? "typesafe" : "persona";
+  const scanEngine: "persona" | "laya" | "typesafe" = (provider === "laya" || provider === "typesafe") ? "laya" : "persona";
 
   const activeProviderInfo = useMemo(() => ({
     name: providerName || "AI Engine",
@@ -489,10 +489,10 @@ export function DesktopPreSubmissionScanView({
                 </p>
               </div>
             </div>
-            {provider === "typesafe" ? (
+            {(provider === "laya" || provider === "typesafe") ? (
               <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center gap-1.5">
                 <ShieldCheck className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                <span>TypeSafe Free Audit Active</span>
+                <span>Laya (On-Device) Active</span>
               </span>
             ) : targetJournal ? (
               <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">

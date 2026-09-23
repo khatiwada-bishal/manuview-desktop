@@ -59,9 +59,9 @@ export function ScanModelPickerBar({
 
   const handleSwitchToFreeTier = () => {
     const freeConfig = {
-      provider: "typesafe",
-      model: "jev-latest",
-      baseUrl: "https://api.typesafe.ai/v1",
+      provider: "laya",
+      model: "convaiinnovations/laya",
+      baseUrl: "local://laya",
     };
     localStorage.setItem("manuview_provider_config", JSON.stringify(freeConfig));
     if (typeof window !== "undefined") {
@@ -181,7 +181,7 @@ export function ScanModelPickerBar({
                   </div>
 
                   <div className="pt-2 border-t border-[#E5E7EB] dark:border-[#334155] flex items-center justify-between px-1">
-                    {!activeProviderInfo.name?.toLowerCase().includes("typesafe") ? (
+                    {!activeProviderInfo.name?.toLowerCase().includes("laya") && !activeProviderInfo.name?.toLowerCase().includes("typesafe") ? (
                       <button
                         type="button"
                         onClick={() => {
@@ -191,11 +191,11 @@ export function ScanModelPickerBar({
                         className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-semibold cursor-pointer inline-flex items-center gap-1"
                       >
                         <ShieldCheck className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                        <span>Use Free TypeSafe Service</span>
+                        <span>Use On-Device Laya (Free)</span>
                       </button>
                     ) : (
                       <span className="text-[11px] text-blue-600 dark:text-blue-400 font-semibold">
-                        Free TypeSafe Tier Active
+                        Laya (On-Device) Active
                       </span>
                     )}
                     <button
@@ -226,7 +226,7 @@ export function ScanModelPickerBar({
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition cursor-pointer"
               >
                 <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                <span>Use Free TypeSafe Service &rarr;</span>
+                <span>Use On-Device Laya (Free) &rarr;</span>
               </button>
               {onOpenSettings && (
                 <button

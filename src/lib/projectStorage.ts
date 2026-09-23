@@ -75,6 +75,7 @@ export function sanitizeSavedProject(p: SavedProject): SavedProject {
   const classification =
     p.paper?.classification ||
     p.fullReport?.classification ||
+    p.paper?.layaResult?.classification ||
     p.paper?.typesafeResult?.classification;
 
   const isNonAcademic =
@@ -144,7 +145,9 @@ export function sanitizeSavedProject(p: SavedProject): SavedProject {
       ? "scope_mismatch"
       : undefined,
     classification,
-    provider: p.paper?.provider || (p.paper?.scanType === "typesafe" ? "typesafe" : undefined),
+    provider: p.paper?.provider || (p.paper?.scanType === "laya" || p.paper?.scanType === "typesafe" ? "laya" : undefined),
+    layaResult: p.paper?.layaResult || p.paper?.typesafeResult,
+    typesafeResult: p.paper?.typesafeResult || p.paper?.layaResult,
     model: p.paper?.model,
     aiEngine: p.paper?.aiEngine || p.dashboardData?.aiEngine,
     targetJournalEvaluation: isMismatch

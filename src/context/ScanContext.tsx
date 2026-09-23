@@ -17,7 +17,7 @@ export interface ScanParams {
   targetJournal: string;
   file?: File | null;
   rawText?: string;
-  scanEngine?: "persona" | "typesafe";
+  scanEngine?: "persona" | "laya" | "typesafe";
 }
 
 interface ScanContextValue {
@@ -77,9 +77,9 @@ export function ScanProvider({
       try {
         onProgressRef.current(paperId, "Verifying AI provider connection & credentials...", 10);
         const activeConfig = await resolveActiveConfig();
-        const isTypeSafeScan = params.scanEngine === "typesafe";
+        const isLayaScan = params.scanEngine === "laya" || params.scanEngine === "typesafe";
 
-        if (isTypeSafeScan) {
+        if (isLayaScan) {
           // Laya executes 100% locally on-device via Transformers.js with zero external API key requirement.
         } else {
           const isConfigUsable =
@@ -125,31 +125,29 @@ export function ScanProvider({
         );
         const liveScope = await fetchLiveJournalScope(params.targetJournal);
 
-        // 3. Execution: TypeSafe Objective Audit vs 5-Persona Peer Review
-        if (isTypeSafeScan) {
-          onProgressRef.current(paperId, "Running Fast Scan objective evaluation battery...", 55);
-          const { runTypeSafeScan } = await import("@/lib/typesafe-scan");
-          const { resolveTypeSafeKey, TYPESAFE_DEFAULT_MODEL } = await import("@/lib/typesafe");
-          const typeSafeKey = await resolveTypeSafeKey();
+        // 3. Execution: Laya Objective Audit vs 5-Persona Peer Review
+        if (isLayaScan) {
+          onProgressRef.current(paperId, "Running Laya Fast Scan objective evaluation battery...", 55);
+          const { runLayaScan } = await import("@/lib/laya/laya-scan");
+          const { LAYA_MODEL } = await import("@/lib/laya/laya-service");
           const targetModel =
-            activeConfig.provider === "typesafe" && activeConfig.model
+            (activeConfig.provider === "laya" || activeConfig.provider === "typesafe") && activeConfig.model
               ? activeConfig.model
-              : TYPESAFE_DEFAULT_MODEL;
+              : LAYA_MODEL.id;
 
           const rawManuscript =
             params.rawText ||
             (params.file ? await extractTextFromFile(params.file) : "") ||
             `${parsed.title}\n\n${parsed.abstract}`;
 
-          const scanResult = await runTypeSafeScan(rawManuscript, {
+          const scanResult = await runLayaScan(rawManuscript, {
             model: targetModel,
             targetJournal: params.targetJournal,
             journalScope: liveScope?.aimsAndScope || undefined,
-            apiKey: typeSafeKey,
             filename: params.file?.name,
           });
 
-          onProgressRef.current(paperId, "Compiling Fast Scan calibrated diagnostics...", 90);
+          onProgressRef.current(paperId, "Compiling Laya Fast Scan calibrated diagnostics...", 90);
 
           const classification = scanResult.classification || parsed.classification;
           const isNonAcademic =
@@ -170,11 +168,12 @@ export function ScanProvider({
               .join(" "),
             journal: params.targetJournal,
             score: isNonAcademic ? undefined : scanResult.readiness,
-            scanType: "typesafe",
+            scanType: "laya",
+            layaResult: scanResult,
             typesafeResult: scanResult,
-            provider: "typesafe",
+            provider: "laya",
             model: targetModel,
-            aiEngine: "TypeSafe",
+            aiEngine: "Laya",
             isEligibleForReview: !isNonAcademic,
             ineligibilityReason: isNonAcademic
               ? "non_academic_document"
@@ -197,7 +196,7 @@ export function ScanProvider({
               ? `Document Ineligible for Peer Review (${classification?.categoryLabel || "Non-Academic"})`
               : `${params.targetJournal} Pre-Submission Audit (Fast Scan)`,
             targetJournal: completedPaper.journal,
-            aiEngine: "Fast Scan (TypeSafe)",
+            aiEngine: "Fast Scan (Laya)",
             latencyMs: 140,
             score: isNonAcademic ? undefined : scanResult.readiness,
             isDeskReject,
@@ -376,17 +375,17 @@ export function ScanProvider({
         .slice(0, 3)
         .join(" ");
 
-      const isTypeSafe = params.scanEngine === "typesafe";
-      const activeConfig = isTypeSafe ? null : await resolveActiveConfig().catch(() => null);
+      const isLaya = params.scanEngine === "laya" || params.scanEngine === "typesafe";
+      const activeConfig = isLaya ? null : await resolveActiveConfig().catch(() => null);
       const pendingPaper: PaperItem = {
         id: paperId,
         title: title,
         shortName: shortName,
         journal: params.targetJournal,
-        scanType: isTypeSafe ? "typesafe" : "persona",
-        provider: isTypeSafe ? "typesafe" : (activeConfig?.provider || "gemini"),
-        model: isTypeSafe ? undefined : activeConfig?.model,
-        aiEngine: isTypeSafe ? "TypeSafe" : (activeConfig?.provider || "Gemini"),
+        scanType: isLaya ? "laya" : "persona",
+        provider: isLaya ? "laya" : (activeConfig?.provider || "gemini"),
+        model: isLaya ? undefined : activeConfig?.model,
+        aiEngine: isLaya ? "Laya" : (activeConfig?.provider || "Gemini"),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         status: "reviewing",

@@ -300,9 +300,9 @@ export function DesktopScanModal({
     if (!compatibilityMatch) return;
     if (isScanning) return;
 
-    if (provider === "typesafe") {
+    if (provider === "laya" || provider === "typesafe") {
       setError(
-        "TypeSafe (Jev) is an atomic decision engine that powers the TypeSafe Structured Scan service, but cannot generate written text for the 5-Persona Peer Review. Please switch to a text model (Gemini, Groq, OpenAI, Claude, or Ollama) in Settings (Cmd+,) to run this review, or use TypeSafe Structured Scan from the sidebar."
+        "Laya is an on-device decision model that powers the Fast Scan service, but does not generate prose for the 5-Persona Peer Review. Please switch to a text model (Gemini, Groq, OpenAI, Claude, or Ollama) in Settings (Cmd+,) to run this review, or use Fast Scan (Laya) from the sidebar."
       );
       return;
     }

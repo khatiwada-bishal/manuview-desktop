@@ -47,7 +47,8 @@ export interface PaperItem {
   targetJournalEvaluation?: any;
   isDeskReject?: boolean;
   classification?: DocumentClassification;
-  scanType?: "persona" | "typesafe";
+  scanType?: "persona" | "laya" | "typesafe";
+  layaResult?: any;
   typesafeResult?: any;
   provider?: string;
   model?: string;
@@ -368,8 +369,8 @@ export function DesktopSidebar({
                 </div>
                 <div className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate font-medium">
                   {connectionStatus === "connected"
-                    ? provider === "typesafe"
-                      ? "Fast Scan • TypeSafe API"
+                    ? provider === "laya" || provider === "typesafe"
+                      ? "Fast Scan • Laya On-Device"
                       : `${activeModelName || "Local AI"} • 100% Private`
                     : "Configure provider"}
                 </div>
