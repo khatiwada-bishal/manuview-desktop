@@ -300,7 +300,7 @@ export function SidebarPaperList({
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="flex items-center shrink-0">
                         {isReviewing ? (
                           <span
                             title="Background review in progress"
@@ -316,44 +316,44 @@ export function SidebarPaperList({
                         ) : (
                           <span
                             title={`Reviewed with ${apiLabel}`}
-                            className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 opacity-75 group-hover/article:opacity-100 transition"
+                            className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 opacity-75 group-hover/item:opacity-100 transition"
                           >
                             <ApiProviderIcon apiLabel={apiLabel} className="w-3.5 h-3.5 shrink-0" />
                           </span>
                         )}
 
                         {!isReviewing && !isFailed && hasSubviews && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!isSelected) {
-                                onSelectPaper(paper.id);
-                                onSelectView("overview");
-                                setCollapsedSubmenus((prev) => {
-                                  const next = new Set(prev);
-                                  next.delete(paper.id);
-                                  return next;
-                                });
-                              } else {
-                                toggleSubmenu(paper.id, e);
+                          <div className="overflow-hidden max-w-0 opacity-0 group-hover/item:max-w-[28px] group-hover/item:opacity-100 group-hover/item:ml-1 transition-all duration-200 ease-out flex items-center shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!isSelected) {
+                                  onSelectPaper(paper.id);
+                                  onSelectView("overview");
+                                  setCollapsedSubmenus((prev) => {
+                                    const next = new Set(prev);
+                                    next.delete(paper.id);
+                                    return next;
+                                  });
+                                } else {
+                                  toggleSubmenu(paper.id, e);
+                                }
+                              }}
+                              title={
+                                collapsedSubmenus.has(paper.id)
+                                  ? "Expand review sections"
+                                  : "Collapse review sections"
                               }
-                            }}
-                            title={
-                              collapsedSubmenus.has(paper.id)
-                                ? "Expand review sections"
-                                : "Collapse review sections"
-                            }
-                            className={`p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition cursor-pointer ${
-                              isSelected ? "opacity-100" : "opacity-0 group-hover/article:opacity-75 hover:!opacity-100"
-                            }`}
-                          >
-                            <ChevronDown
-                              className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                                collapsedSubmenus.has(paper.id) ? "-rotate-90" : ""
-                              }`}
-                            />
-                          </button>
+                              className="w-5 h-5 flex items-center justify-center rounded-md hover:bg-black/10 dark:hover:bg-white/10 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition cursor-pointer"
+                            >
+                              <ChevronDown
+                                className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                                  collapsedSubmenus.has(paper.id) ? "-rotate-90" : ""
+                                }`}
+                              />
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
