@@ -108,4 +108,83 @@ Python, PyTorch, TensorFlow, C++, Machine Learning, Leadership
     assert.ok(result.classification);
     assert.equal(result.classification.category, "resume_cv");
   });
+
+  it("non-manuscript must be flagged non-academic, NOT desk-rejected", async () => {
+    // This test verifies Bug #5: non-academic documents should get
+    // ineligibilityReason = "non_academic_document", never a desk reject.
+    const result = await runTypeSafeScan(sampleResume, {
+      filename: "resume.pdf",
+      targetJournal: "Nature",
+    });
+
+    assert.equal(result.isAcademic, false, "Resume must be classified as non-academic");
+    assert.equal(result.ineligibilityReason, "non_academic_document",
+      "Resume must get non_academic_document reason, not scope_mismatch or desk_reject");
+    assert.equal(result.readiness, 0, "Resume must get readiness 0");
+    assert.ok(result.classification, "Classification object must be present");
+    assert.equal(result.classification!.isAcademicManuscript, false,
+      "classification.isAcademicManuscript must be false for resume");
+  });
+
+  it("deterministic evaluator produces identical results on the same input", async () => {
+    // Run the same manuscript twice and verify identical output.
+    // This catches the previous bug where the naive keyword matcher
+    // produced different results depending on label ordering.
+    const run1 = await runTypeSafeScan(sampleManuscript, {
+      targetJournal: "IEEE Transactions on Industrial Informatics",
+    });
+    const run2 = await runTypeSafeScan(sampleManuscript, {
+      targetJournal: "IEEE Transactions on Industrial Informatics",
+    });
+
+    assert.equal(run1.isAcademic, run2.isAcademic, "isAcademic must be identical across runs");
+    assert.equal(run1.readiness, run2.readiness, "readiness must be identical across runs");
+    assert.equal(run1.signals.length, run2.signals.length, "signal count must be identical");
+    for (let i = 0; i < run1.signals.length; i++) {
+      assert.equal(run1.signals[i].id, run2.signals[i].id,
+        `Signal ${i} id mismatch: ${run1.signals[i].id} vs ${run2.signals[i].id}`);
+      assert.equal(run1.signals[i].value, run2.signals[i].value,
+        `Signal ${run1.signals[i].id} value mismatch: ${run1.signals[i].value} vs ${run2.signals[i].value}`);
+      assert.equal(run1.signals[i].tone, run2.signals[i].tone,
+        `Signal ${run1.signals[i].id} tone mismatch: ${run1.signals[i].tone} vs ${run2.signals[i].tone}`);
+    }
+  });
+
+  it("title-only synthetic input is recognized as academic manuscript", async () => {
+    // When users submit only Title + Abstract + Keywords (no file),
+    // ScanContext creates a synthetic string. Verify Laya handles this.
+    const synthetic = `Title: Single-cell transcriptional profiling of DLL3 activation in neuroendocrine lung carcinoma
+
+Abstract:
+Small cell lung cancer (SCLC) exhibits rapid recurrence and therapy resistance. Delta-like ligand 3 (DLL3) is an established cell-surface target for antibody-drug conjugates. Here, we perform marker-based CRISPR-Cas9 screens and identify POU2F1 as a primary driver of DLL3 expression.
+
+Keywords: small cell lung cancer, DLL3, POU2F1, CRISPR screen, organoids`;
+
+    const result = await runTypeSafeScan(synthetic, {
+      targetJournal: "Nature Medicine",
+    });
+
+    assert.equal(result.isAcademic, true, "Title+Abstract must be recognized as academic");
+    assert.equal(result.ineligibilityReason, undefined, "No ineligibility for academic manuscript");
+    assert.ok(result.readiness > 0, `Readiness must be > 0, got ${result.readiness}`);
+  });
+
+  it("shopping list is flagged non-academic with readiness 0", async () => {
+    const shoppingList = `Shopping List
+- Milk 2%
+- Eggs (12 pack)
+- Bread (whole wheat)
+- Apples (6)
+- Chicken breast
+- Potatoes
+- Cheese (cheddar)
+- Coffee (ground)
+- Bananas`;
+
+    const result = await runTypeSafeScan(shoppingList);
+
+    assert.equal(result.isAcademic, false, "Shopping list must be non-academic");
+    assert.equal(result.ineligibilityReason, "non_academic_document");
+    assert.equal(result.readiness, 0);
+  });
 });

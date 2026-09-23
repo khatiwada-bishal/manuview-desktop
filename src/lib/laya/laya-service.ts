@@ -280,7 +280,27 @@ export async function initLayaModel(forceDevice?: "webgpu" | "wasm"): Promise<an
       statusText: `Compiling ${activeDevice.toUpperCase()} decision engine...`,
     });
 
-    await new Promise((r) => setTimeout(r, 300));
+    // Attempt to create a real zero-shot-classification pipeline.
+    // If the model supports NLI, this enables true neural inference.
+    // Otherwise we gracefully fall back to the deterministic evaluator.
+    try {
+      const nliPipeline = await pipeline(
+        "zero-shot-classification",
+        LAYA_MODEL.id,
+        { device: preferredDevice }
+      );
+      activePipeline = nliPipeline;
+      console.info("Laya NLI pipeline loaded successfully via Transformers.js");
+    } catch (pipelineErr) {
+      console.warn(
+        "Could not create NLI pipeline (model may not support zero-shot-classification). " +
+        "Deterministic evaluator will be used:",
+        pipelineErr
+      );
+      // Flag as "ready" so callers know config is cached, but mark as
+      // non-function so runLayaClassification uses deterministic fallback.
+      activePipeline = true;
+    }
 
     if (typeof window !== "undefined") {
       localStorage.setItem("manuview_laya_cached", "true");
@@ -292,11 +312,11 @@ export async function initLayaModel(forceDevice?: "webgpu" | "wasm"): Promise<an
           parameters: LAYA_MODEL.parameters,
           downloadedAt: Date.now(),
           device: activeDevice,
+          hasNLIPipeline: typeof activePipeline === "function",
         })
       );
     }
 
-    activePipeline = true;
     notifyListeners({
       state: "ready",
       progress: 1,
@@ -370,28 +390,25 @@ export async function runLayaClassification(
       }
     }
 
-    // Calibrated non-autoregressive decision scoring across labels
-    const lower = text.toLowerCase();
-    const scores = labels.map((label) => {
-      const words = label.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
-      if (words.length === 0) return 0.5;
-      let matches = 0;
-      for (const w of words) {
-        if (lower.includes(w)) matches++;
-      }
-      const ratio = matches / words.length;
-      return Math.min(0.98, Math.max(0.12, 0.4 + ratio * 0.55));
-    });
-
+    // Deterministic fallback: when no real NLI pipeline is available, return
+    // labels in their original order with a monotonically decreasing spread.
+    // The deterministic evaluator in laya-scan.ts already performed the real
+    // classification via calibrated regex checks — this fallback just needs
+    // to be stable so the evaluator's chosen label index wins consistently.
+    //
+    // Previous implementation did naive keyword-matching (counting 4+ char
+    // words from label descriptions found in the text) which produced
+    // semi-random results because labels like "Primary empirical study
+    // reporting original results" and "Curriculum vitae, resume, or career
+    // record" share common words like "record", "study", "report" with
+    // most manuscript text.
+    const scores = labels.map((_, i) => Math.max(0.05, 1 - i * 0.12));
     const sum = scores.reduce((a, b) => a + b, 0);
     const normalized = scores.map((s) => s / (sum || 1));
 
-    const paired = labels.map((l, i) => ({ label: l, score: normalized[i] }));
-    paired.sort((a, b) => b.score - a.score);
-
     return {
-      labels: paired.map((p) => p.label),
-      scores: paired.map((p) => p.score),
+      labels: [...labels],
+      scores: normalized,
     };
   } finally {
     notifyListeners({ state: "ready", statusText: `Ready (${activeDevice.toUpperCase()})` });

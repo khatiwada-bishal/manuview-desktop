@@ -149,10 +149,12 @@ export function ScanProvider({
 
           onProgressRef.current(paperId, "Compiling Laya Fast Scan calibrated diagnostics...", 90);
 
-          const classification = scanResult.classification || parsed.classification;
-          const isNonAcademic =
-            !scanResult.isAcademic ||
-            (classification && !classification.isAcademicManuscript);
+          // Use ONLY scanResult's classification — runLayaScan() already runs
+          // classifyDocument() internally (line 811).  Using parsed.classification
+          // as a secondary check created double-jeopardy where two independent
+          // runs of the same classifier could disagree on edge cases.
+          const classification = scanResult.classification;
+          const isNonAcademic = !scanResult.isAcademic;
 
           const isDeskReject =
             !isNonAcademic &&

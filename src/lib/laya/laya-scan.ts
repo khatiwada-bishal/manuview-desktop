@@ -12,8 +12,6 @@ import { classifyDocument } from "../parser";
 import type { DocumentClassification } from "../types";
 import {
   runLayaClassification,
-  initLayaModel,
-  isLayaCached,
   LAYA_MODEL,
 } from "./laya-service";
 
@@ -866,21 +864,19 @@ export async function runLayaScan(
     );
   }
 
-  // Attempt to initialize or check Laya in browser environment
-  let useLiveLaya = false;
-  try {
-    if (typeof window !== "undefined" && typeof navigator !== "undefined") {
-      const isCached = await isLayaCached();
-      if (isCached || navigator.onLine) {
-        options.onProgress?.("Loading Laya ModernBERT neural decision engine...", 20);
-        await initLayaModel();
-        useLiveLaya = true;
-      }
-    }
-  } catch (initErr) {
-    console.warn("Laya on-device pipeline initialization deferred; using calibrated deterministic decision engine:", initErr);
-    useLiveLaya = false;
-  }
+  // ---------------------------------------------------------------------------
+  // Laya Pipeline Resolution
+  // ---------------------------------------------------------------------------
+  // The on-device Laya pipeline requires a real NLI model loaded via
+  // Transformers.js pipeline("zero-shot-classification", ...).  Until that is
+  // properly integrated (initLayaModel currently downloads config JSONs but
+  // never instantiates a pipeline function), the "live" path falls through to
+  // a naive keyword-matching heuristic that produces semi-random results.
+  //
+  // The deterministic evaluator (evaluateSpecDeterministically) uses carefully
+  // calibrated regex checks and is the ONLY reliable classifier.  Always use it.
+  // ---------------------------------------------------------------------------
+  const useLiveLaya = false;
 
   options.onProgress?.("Evaluating 27 diagnostic checkpoints across manuscript...", 40);
 
@@ -1043,19 +1039,14 @@ export async function runLayaScan(
   const flags = signals.filter((s) => s.tone === "bad" || s.needsReview);
 
   const docTypeSignal = signals.find((s) => s.id === "document_type");
-  const academicSignal = signals.find((s) => s.id === "is_academic");
 
-  const isModelNonAcademic =
-    !heuristicClassification.isAcademicManuscript &&
-    ((academicSignal && academicSignal.value < 0.45) ||
-      Boolean(
-        docTypeSignal?.display &&
-          /(?:curriculum\s+vitae|resume\b|product\s+requirements|\bprd\b|grant\s+proposal|invoice\s*#|unstructured\s+notes)/i.test(
-            docTypeSignal.display
-          )
-      ));
-
-  const isAcademic = heuristicClassification.isAcademicManuscript && !isModelNonAcademic;
+  // The heuristic classifier (classifyDocument) and deterministic evaluator
+  // use the same regex-based logic, so they agree.  Trust the heuristic as
+  // the single source of truth for academic vs non-academic classification.
+  // The previous isModelNonAcademic check matched against formatted display
+  // strings (e.g. "Resume Cv") which was fragile and caused misclassifications
+  // when the keyword-matching fallback produced random results.
+  const isAcademic = heuristicClassification.isAcademicManuscript;
 
   let classification: DocumentClassification;
   if (!isAcademic) {
