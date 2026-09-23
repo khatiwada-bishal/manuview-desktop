@@ -292,7 +292,30 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
   }
 
   // =========================================================================
-  // 5. Business or Administrative Document
+  // 5. Evaluation / Peer-Review Diagnostic Report
+  // Catches exported evaluation reports, referee comments, or diagnostic suites
+  // (which quote from papers and thus have academic terms, but are NOT manuscripts)
+  // =========================================================================
+  const evalReportRegex = /(?:manuview\s+diagnostic\s+suite|peer-review\s+calibrated\s+pre-submission\s+evaluation|overall\s+acceptance\s+potential\s+score|simulated\s+peer-review\s+panel|editorial\s+synthesis\s+&\s+triage\s+assessment|diagnostic\s+scoring\s+dimensions|priority\s+action\s+items|manuview\s+academic\s+diagnostic\s+report|(?:^|\n)\s*(?:referee\s+report|peer\s+review\s+report|evaluator\s+comments)\b)/i;
+  if (evalReportRegex.test(clean)) {
+    return {
+      category: 'business_or_admin',
+      categoryLabel: 'Peer-Review Evaluation / Diagnostic Report',
+      isAcademicManuscript: false,
+      confidence: 0.98,
+      detectedFeatures: [
+        'Peer-review diagnostic evaluation structure detected (e.g. simulated referees, editorial triage, readiness scores)',
+        'Evaluative feedback format rather than original research manuscript architecture',
+        'Meta-assessment containing critiques and action items'
+      ],
+      salutation: 'Notice to Submitter (Peer-Review Evaluation / Diagnostic Report)',
+      advisoryMessage: 'We detected that this file is an evaluation or peer-review diagnostic report (such as an exported ManuView report, referee comments, or editorial triage assessment) rather than an original academic manuscript draft. ManuView is designed to evaluate original manuscripts, preprints, and research drafts.',
+      customGuidance: 'Please upload your original manuscript file (.pdf, .docx, .tex) containing Title, Abstract, Introduction, Methods, and Results instead of an evaluation or review report.'
+    };
+  }
+
+  // =========================================================================
+  // 6. Business or Administrative Document
   // =========================================================================
   const businessAdminRegex = /(?:invoice\s*#|bill\s+to\s*:|total\s+due\s*:|statement\s+of\s+work|\bnda\b|non-disclosure\s+agreement|purchase\s+order|meeting\s+minutes|payment\s+terms|balance\s+sheet)/i;
   if (businessAdminRegex.test(clean) && !hasRealScholarlyReferences) {

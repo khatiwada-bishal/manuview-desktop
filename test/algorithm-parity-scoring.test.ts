@@ -314,3 +314,34 @@ test("classifyDocument: empty string returns non-academic (not crash)", () => {
   const classification = classifyDocument("", "untitled.txt");
   assert.equal(classification.isAcademicManuscript, false);
 });
+
+test("classifyDocument: peer-review diagnostic / evaluation report is flagged as non-academic", () => {
+  const diagnosticReportText = `MANUVIEW DIAGNOSTIC SUITE Target: Science
+Khatiwada_2026_EWaste_CV_Benchmark_1
+Generated on 19 September 2026 • Peer-Review Calibrated Pre-Submission Evaluation
+70 / 100 OVERALL ACCEPTANCE POTENTIAL SCORE
+1. Editorial Synthesis & Triage Assessment
+This manuscript presents a structured scholarly investigation within Multidisciplinary, comprising approximately 6,173 words and
+supported by 25 bibliography citations. Diagnostic scanning identified quantitative inference relying on 1 statistical metric(s) (p = 0.5).
+
+2. Simulated Peer-Review Panel (5 Expert Referees)
+Reviewer 1: Lead Handling Editor Major Revision
+Expertise Focus: Editorial triage, broad readership interest, and desk-rejection risk assessment
+Key Challenge: Demarcating the conceptual advance and subscriber interest specifically for readers of Science.
+
+3. Diagnostic Scoring Dimensions
+Originality & Novelty 4 / 5
+Methodological & Statistical Soundness 4 / 5
+
+4. Priority Action Items (2 Items)
+Priority B [Statistics] Sample Power Specification & Variance Reporting in Methodology`;
+
+  const classification = classifyDocument(diagnosticReportText, "111.pdf");
+  assert.equal(classification.isAcademicManuscript, false, "Diagnostic report must NOT be classified as manuscript");
+  assert.equal(classification.category, "business_or_admin");
+  assert.ok(
+    classification.categoryLabel.toLowerCase().includes("diagnostic") ||
+    classification.categoryLabel.toLowerCase().includes("evaluation"),
+    `Expected label to mention diagnostic or evaluation, got ${classification.categoryLabel}`
+  );
+});

@@ -234,10 +234,10 @@ export function DesktopLayaDashboardView({
         priority: (f.tone === "bad" ? "A" : "B") as "A" | "B" | "C",
         title: f.label,
         category: "Methodology" as const,
-        description: f.detail || f.display,
+        description: f.detail || (f.tone === "bad" ? `Deficiency identified in ${f.label.toLowerCase()}: requires rectification.` : f.display),
         location: "Manuscript text",
-        reviewerQuote: f.detail || f.display,
-        actionableFix: `Address ${f.label} findings to protect against desk rejection.`,
+        reviewerQuote: f.detail || `${f.label}: ${f.display}`,
+        actionableFix: `Address ${f.label.toLowerCase()} findings to protect against desk rejection.`,
       })),
       reviewerPersonas: [
         {
@@ -248,11 +248,11 @@ export function DesktopLayaDashboardView({
           expertise: "Multi-Criteria Academic Manuscript Screening",
           roleDescription: "Evaluates empirical rigor, methodology, and target journal fit with calibrated probabilities",
           decisionRecommendation: isDeskReject ? "Desk Reject" : score >= 80 ? "Minor Revision" : "Major Revision",
-          keyChallenge: flags[0]?.detail || flags[0]?.display || "Methodological clarification and journal standards fit",
+          keyChallenge: flags[0]?.detail || (flags[0] ? `${flags[0].label}: ${flags[0].display}` : "Methodological clarification and journal standards fit"),
           assessment: summaryText,
-          majorCritiques: flags.map((f) => f.detail || f.display),
+          majorCritiques: flags.map((f) => f.detail || `${f.label}: ${f.display}`),
           missingControlsOrAnalyses: [],
-          mustAddressItems: flags.filter((f) => f.tone === "bad").map((f) => f.detail || f.display),
+          mustAddressItems: flags.filter((f) => f.tone === "bad").map((f) => f.detail || `${f.label}: ${f.display}`),
         },
       ],
       journalRecommendations: [

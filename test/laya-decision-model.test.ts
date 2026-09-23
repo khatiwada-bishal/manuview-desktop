@@ -187,4 +187,43 @@ Keywords: small cell lung cancer, DLL3, POU2F1, CRISPR screen, organoids`;
     assert.equal(result.ineligibilityReason, "non_academic_document");
     assert.equal(result.readiness, 0);
   });
+
+  it("exported peer-review diagnostic report (e.g. 111.pdf) is flagged non-academic", async () => {
+    const diagnosticReport = `MANUVIEW DIAGNOSTIC SUITE Target: Science
+Khatiwada_2026_EWaste_CV_Benchmark_1
+Generated on 19 September 2026 • Peer-Review Calibrated Pre-Submission Evaluation
+70 / 100 OVERALL ACCEPTANCE POTENTIAL SCORE
+1. Editorial Synthesis & Triage Assessment
+This manuscript presents a structured scholarly investigation within Multidisciplinary, comprising approximately 6,173 words.
+Diagnostic scanning identified quantitative inference relying on 1 statistical metric(s) (p = 0.5).
+
+2. Simulated Peer-Review Panel (5 Expert Referees)
+Reviewer 1: Lead Handling Editor Major Revision
+Expertise Focus: Editorial triage, broad readership interest, and desk-rejection risk assessment`;
+
+    const result = await runTypeSafeScan(diagnosticReport, {
+      filename: "111.pdf",
+      targetJournal: "Nature",
+    });
+
+    assert.equal(result.isAcademic, false, "Diagnostic report must be classified as non-academic");
+    assert.equal(result.ineligibilityReason, "non_academic_document");
+    assert.equal(result.readiness, 0);
+    assert.equal(result.readinessLabel, "Review Bypassed");
+  });
+
+  it("Noul signals have human-readable detail populated rather than undefined", async () => {
+    const result = await runTypeSafeScan(sampleManuscript, {
+      targetJournal: "IEEE Transactions on Industrial Informatics",
+    });
+
+    const abstractSig = result.signals.find((s) => s.id === "has_abstract");
+    assert.ok(abstractSig);
+    assert.ok(abstractSig.detail, "has_abstract must have detail populated");
+    assert.ok(abstractSig.detail!.length > 5, "Detail must be a descriptive string");
+
+    const ethicsSig = result.signals.find((s) => s.id === "ethics_statement");
+    assert.ok(ethicsSig);
+    assert.ok(ethicsSig.detail, "ethics_statement must have detail populated");
+  });
 });

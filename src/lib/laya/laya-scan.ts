@@ -599,9 +599,14 @@ function evaluateSpecDeterministically(
   if (spec.kind === "noul") {
     let p = 0.5;
     if (spec.id === "is_academic") {
-      const academicHits = /(?:abstract|introduction|methodology|results|conclusion|references|doi:|\bet\s+al\b)/i.test(text);
-      const nonAcademicHits = /(?:curriculum\s+vitae|(?:^|\n)\s*#{1,3}\s*resume\b|work\s+experience|education:\s*\n|technical\s+skills:\s*\n|invoice\s*#|bill\s+to\s*:)/i.test(text);
-      p = (nonAcademicHits && !academicHits) ? 0.05 : academicHits ? 0.94 : 0.4;
+      const isEvalReport = /(?:manuview\s+diagnostic\s+suite|peer-review\s+calibrated|overall\s+acceptance\s+potential\s+score|simulated\s+peer-review\s+panel|editorial\s+synthesis\s+&\s+triage\s+assessment|diagnostic\s+scoring\s+dimensions|priority\s+action\s+items|manuview\s+academic\s+diagnostic\s+report|(?:^|\n)\s*(?:referee\s+report|peer\s+review\s+report)\b)/i.test(text);
+      if (isEvalReport) {
+        p = 0.02;
+      } else {
+        const academicHits = /(?:abstract|introduction|methodology|results|conclusion|references|doi:|\bet\s+al\b)/i.test(text);
+        const nonAcademicHits = /(?:curriculum\s+vitae|(?:^|\n)\s*#{1,3}\s*resume\b|work\s+experience|education:\s*\n|technical\s+skills:\s*\n|invoice\s*#|bill\s+to\s*:)/i.test(text);
+        p = (nonAcademicHits && !academicHits) ? 0.05 : academicHits ? 0.94 : 0.4;
+      }
     } else if (spec.id === "has_abstract") {
       p = /(?:abstract|executive\s+summary)[\s\S]{50,1500}/i.test(text) ? 0.95 : 0.15;
     } else if (spec.id === "has_methods") {
@@ -649,6 +654,11 @@ function evaluateSpecDeterministically(
     else if (goodProb >= 0.66) tone = "good";
     else if (goodProb <= 0.34) tone = "bad";
 
+    const noulSpec = spec as NoulSpec;
+    const detail = noulSpec.criteria
+      ? (p >= 0.5 ? noulSpec.criteria.true : noulSpec.criteria.false)
+      : undefined;
+
     const signal: ScanSignal = {
       id: spec.id,
       group: spec.group,
@@ -657,6 +667,7 @@ function evaluateSpecDeterministically(
       value: p,
       display: `${Math.round(p * 100)}% yes`,
       tone,
+      detail,
       needsReview,
     };
     return { answer: { type: "noul", noul: p }, signal };
@@ -728,8 +739,12 @@ function evaluateSpecDeterministically(
   let conf = 0.85;
 
   if (spec.id === "document_type") {
+    const isEvalReport = /(?:manuview\s+diagnostic\s+suite|peer-review\s+calibrated|overall\s+acceptance\s+potential\s+score|simulated\s+peer-review\s+panel|editorial\s+synthesis\s+&\s+triage\s+assessment|diagnostic\s+scoring\s+dimensions|priority\s+action\s+items|manuview\s+academic\s+diagnostic\s+report|(?:^|\n)\s*(?:referee\s+report|peer\s+review\s+report)\b)/i.test(text);
     const hasAcademicArchitecture = /(?:abstract|materials\s+and\s+methods|methodology|results|numerical\s+results)\b/i.test(text);
-    if (!hasAcademicArchitecture && /(?:curriculum\s+vitae|(?:^|\n)\s*(?:#{1,3}\s*)?resume\b|work\s+experience|education:\s*\n|technical\s+skills:\s*\n)/i.test(text)) {
+    if (isEvalReport) {
+      chosenKey = "non_academic";
+      conf = 0.98;
+    } else if (!hasAcademicArchitecture && /(?:curriculum\s+vitae|(?:^|\n)\s*(?:#{1,3}\s*)?resume\b|work\s+experience|education:\s*\n|technical\s+skills:\s*\n)/i.test(text)) {
       chosenKey = "resume_cv";
       conf = 0.95;
     } else if (!hasAcademicArchitecture && /(?:grant\s+proposal|specific\s+aims|project\s+narrative|funding\s+agency)/i.test(text)) {
@@ -752,6 +767,7 @@ function evaluateSpecDeterministically(
 
   const tone: SignalTone = spec.toneByOption?.[chosenKey] ?? "info";
   const needsReview = conf < REVIEW_CONFIDENCE_FLOOR;
+  const choiceSpec = spec as ChoiceSpec;
   const signal: ScanSignal = {
     id: spec.id,
     group: spec.group,
@@ -761,6 +777,7 @@ function evaluateSpecDeterministically(
     display: prettyOption(chosenKey),
     confidence: conf,
     tone: needsReview && tone === "info" ? "warn" : tone,
+    detail: choiceSpec.criteria?.[chosenKey] || prettyOption(chosenKey),
     needsReview,
   };
 
