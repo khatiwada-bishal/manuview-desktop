@@ -25,7 +25,7 @@ import {
   type LayaProgress,
 } from "@/lib/laya/laya-service";
 import { isDesktopApp, isMacOS } from "@/lib/desktop";
-import { Settings, ShieldCheck, X, CheckCircle2, Activity, RefreshCw, AlertCircle, Zap, Check, ChevronDown, Sparkles, Search, KeyRound, Cpu, Download, Loader2 } from "lucide-react";
+import { Settings, ShieldCheck, X, CheckCircle2, Activity, RefreshCw, AlertCircle, Zap, Check, ChevronDown, Sparkles, Search, KeyRound, Cpu, Download, Loader2, Info } from "lucide-react";
 import { GeminiLogo, OpenAILogo, GroqLogo, AnthropicLogo, OllamaLogo, LayaLogo } from "./BrandLogos";
 
 interface Props {
@@ -523,9 +523,6 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                       <LayaLogo className="w-3.5 h-3.5" />
                     </span>
                     <span>Laya</span>
-                    {(config.provider === "laya" || config.provider === "typesafe") && (
-                      <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                    )}
                   </button>
 
                   {/* Information Tooltip */}
@@ -554,9 +551,6 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                       <Cpu className="w-3.5 h-3.5" />
                     </span>
                     <span>Local SLM</span>
-                    {config.provider === "webllm" && (
-                      <CheckCircle2 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
-                    )}
                   </button>
 
                   {/* Information Tooltip */}
@@ -585,9 +579,6 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                       <OllamaLogo className="w-3.5 h-3.5" />
                     </span>
                     <span>Ollama</span>
-                    {config.provider === "ollama" && (
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    )}
                   </button>
 
                   {/* Information Tooltip */}
@@ -784,26 +775,41 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                 )}
               </div>
               <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-900 dark:text-purple-200 space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 font-semibold">
-                    <Cpu className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                    <Cpu className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
                     <span>Hardware Accelerated GPU Execution</span>
                   </div>
-                  <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-700 dark:text-purple-300">
-                    Zero External API
-                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-700 dark:text-purple-300">
+                      Zero External API
+                    </span>
+                    {isDesktopApp() && isMacOS() && (
+                      <div className="relative group/macos inline-flex items-center">
+                        <button
+                          type="button"
+                          className="p-0.5 rounded-md text-amber-600 dark:text-amber-400 hover:bg-amber-500/15 transition cursor-help flex items-center justify-center"
+                          title="macOS Notice: Webview limits WebGPU buffers. For peak performance, Ollama is recommended."
+                        >
+                          <Info className="w-3.5 h-3.5" />
+                        </button>
+                        <div className="absolute bottom-full right-0 mb-2 w-64 p-2.5 rounded-xl bg-neutral-900 dark:bg-neutral-800 text-white text-[11px] shadow-xl pointer-events-none opacity-0 group-hover/macos:opacity-100 transition-opacity z-50 leading-relaxed text-left border border-white/10">
+                          <div className="font-semibold text-amber-400 flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            macOS Desktop Notice
+                          </div>
+                          <div className="text-neutral-300 text-[10px] mt-1">
+                            Webview limits WebGPU buffers. For peak performance, <strong>Ollama</strong> is recommended.
+                          </div>
+                          <div className="absolute top-full right-2.5 -mt-1 border-4 border-transparent border-t-neutral-900 dark:border-t-neutral-800" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <p className="text-[11px] opacity-90 leading-relaxed">
                   Small Language Models execute strictly on your local GPU via WebGPU. Completely confidential and offline.
                 </p>
-                {isDesktopApp() && isMacOS() && (
-                  <div className="p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-[11px] text-amber-900 dark:text-amber-200 flex items-center gap-2">
-                    <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                    <span>
-                      <strong>macOS Notice:</strong> Webview limits WebGPU buffers. For peak performance, <strong>Ollama</strong> is recommended.
-                    </span>
-                  </div>
-                )}
               </div>
             </div>
           ) : config.provider !== "ollama" ? (
@@ -1270,9 +1276,6 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                                   {m.description || m.name}
                                 </p>
                               </div>
-                              {isSelected && (
-                                <Check className="w-4 h-4 text-[#0A85EA] dark:text-blue-400 flex-shrink-0 mt-1" />
-                              )}
                             </button>
                           );
                         });
