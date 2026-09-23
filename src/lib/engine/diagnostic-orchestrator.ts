@@ -1304,6 +1304,8 @@ export async function runManuscriptDiagnostic(
   const calibratedAcceptance = calculateCalibratedAcceptanceProbability({
     overallScore: finalOverallScore,
     dimensions: finalDimensions,
+    reviewerPersonas: finalPersonas,
+    reportingGuideline: domainSynthesis.reportingGuideline,
     targetJournal: targetJournalName,
     targetJournalEvaluation: journalMatches.targetJournalEvaluation,
     isScopeMismatch: isDeskRejectByScope,
@@ -1354,8 +1356,9 @@ export async function runManuscriptDiagnostic(
     };
   });
 
-  const panelConsensus = computePanelConsensus(finalPersonas, finalOverallScore);
   const isEffectiveDeskReject = isDeskRejectByScope || Boolean(journalMatches.targetJournalEvaluation?.isDisciplinaryMismatch);
+  const authoritativeScore = isEffectiveDeskReject ? undefined : calibratedAcceptance.overallScore;
+  const panelConsensus = computePanelConsensus(finalPersonas, authoritativeScore);
 
   const report: FullReviewReport = {
     mode: "full",
@@ -1379,7 +1382,7 @@ export async function runManuscriptDiagnostic(
     calibratedAcceptance,
     isEligibleForReview: !isEffectiveDeskReject,
     ineligibilityReason: isEffectiveDeskReject ? "scope_mismatch" : undefined,
-    overallScore: isEffectiveDeskReject ? undefined : finalOverallScore,
+    overallScore: authoritativeScore,
     panelConsensus: isEffectiveDeskReject ? undefined : panelConsensus,
     complianceAudit: domainSynthesis.complianceAudit,
     summary: finalSummary,

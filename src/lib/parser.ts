@@ -193,28 +193,46 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
   // Evaluated BEFORE academic papers so academic CVs (which list publications and universities)
   // are never misclassified as journal manuscripts!
   // =========================================================================
-  const resumeHeadingRegex = /(?:\bcurriculum\s+vitae\b|\bresume\b|work\s+experience|professional\s+experience|employment\s+history|education\s*(?::|\n)|technical\s+skills|skills\s*&?\s*expertise|certifications\s*(?::|\n)|honors\s*(&|and)\s*awards|teaching\s+experience|references\s+available\s+upon\s+request)/i;
-  const contactPatternRegex = /(?:email\s*:|phone\s*:|linkedin\.com\/|github\.com\/|\bgpa\s*:\s*\d|\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b)/i;
+  // =========================================================================
+  // 2. Resume / Curriculum Vitae (Strict Priority Gate)
+  // Evaluated BEFORE academic papers so academic CVs (which list publications and universities)
+  // are NEVER misclassified as journal manuscripts, even if they contain references!
+  // =========================================================================
+  const hasCvTitle = /(?:^|\n)\s*(?:curriculum\s+vitae|curriculum\s+vitæ|\bresume\b)/i.test(clean);
+  const contactPatternRegex = /(?:email\s*:|phone\s*:|cell\s*:|mobile\s*:|linkedin\.com\/|github\.com\/|\bgpa\s*:\s*\d|\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b)/i;
   
-  const cvHeadingMatches = (clean.match(/(?:\bcurriculum\s+vitae\b|\bresume\b|work\s+experience|professional\s+experience|employment\s+history|education\s*(?::|\n)|technical\s+skills|skills\s*&?\s*expertise|teaching\s+experience|honors\s*(&|and)\s*awards|grants\s+and\s+fellowships)/gi) || []).length;
-
-  const hasAcademicStructure = /(?:abstract|introduction|materials and methods|methodology|results|discussion|conclusion|references\s*:|doi:\s*10\.)/i.test(clean);
-
-  const isResumeByFilename = Boolean(filename && /(?:^|[_\-.])(?:cv|resume|curriculum[_\s\-]*vitae)(?:$|[_\-.])/i.test(filename));
+  const cvSectionPatterns = [
+    /(?:^|\n)\s*(?:work\s+experience|professional\s+experience|employment\s+history|career\s+history|experience\s*(?::|\n))\b/i,
+    /(?:^|\n)\s*(?:education|academic\s+background|academic\s+qualifications|degrees?\s+held)\b/i,
+    /(?:^|\n)\s*(?:technical\s+skills|skills\s*&?\s*expertise|core\s+competencies|skills\s+summary|proficiencies)\b/i,
+    /(?:^|\n)\s*(?:teaching\s+experience|courses\s+taught)\b/i,
+    /(?:^|\n)\s*(?:honors\s*(?:&|and)\s*awards|fellowships\s*(?:&|and)\s*grants|scholarships)\b/i,
+    /(?:^|\n)\s*(?:certifications|licenses\s*(?:&|and)\s*certifications)\b/i,
+    /(?:^|\n)\s*(?:references\s+available\s+upon\s+request|references\s*(?::|\n|\r)\s*(?:available|upon|on\s+request))\b/i,
+    /(?:^|\n)\s*(?:selected\s+publications|peer-reviewed\s+publications|conference\s+proceedings)\b/i,
+  ];
+  const cvSectionMatches = cvSectionPatterns.filter(p => p.test(clean)).length;
+  const isCvAcronymInFilename = Boolean(filename && /(?:^|[_\-.])cv(?:$|[_\-.])/i.test(filename));
+  const isExplicitResumeFilename = Boolean(filename && /(?:^|[_\-.])(?:resume|curriculum[_\s\-]*vitae)(?:$|[_\-.])/i.test(filename));
+  // In AI and imaging papers, "CV" in filename frequently denotes Computer Vision (e.g. EWaste_CV_Benchmark)
+  const isComputerVisionContext = /computer\s+vision|object\s+detection|benchmark|rt-detr|yolo|faster\s+r-cnn|deep\s+learning/i.test(clean);
+  const isResumeByFilename = 
+    isExplicitResumeFilename || 
+    (isCvAcronymInFilename && !isComputerVisionContext && (cvSectionMatches >= 1 || contactPatternRegex.test(clean)));
 
   const isResume = 
-    (isResumeByFilename && !hasAcademicStructure) ||
-    lower.includes('curriculum vitae') || 
-    /^\s*resume\s*$/im.test(clean) ||
-    (cvHeadingMatches >= 2 && contactPatternRegex.test(clean)) ||
-    (resumeHeadingRegex.test(clean) && contactPatternRegex.test(clean) && !hasAcademicStructure);
+    hasCvTitle ||
+    /^\s*resume\b/im.test(clean) ||
+    isResumeByFilename ||
+    (cvSectionMatches >= 2 && contactPatternRegex.test(clean)) ||
+    (cvSectionMatches >= 3);
 
   if (isResume) {
     return {
       category: 'resume_cv',
       categoryLabel: 'Curriculum Vitae / Resume',
       isAcademicManuscript: false,
-      confidence: 0.95,
+      confidence: 0.96,
       detectedFeatures: [
         'Curriculum Vitae or Resume section headings identified',
         'Professional experience, education, or skill listings detected',
@@ -247,16 +265,18 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
   }
 
   // =========================================================================
-  // 4. Technical Documentation / Whitepaper
+  // 4. Technical Documentation / Whitepaper / Product Requirements
   // =========================================================================
-  const techDocRegex = /(?:api\s+reference|endpoints?\s*:|installation\s+guide|getting\s+started|sdk\s+reference|architecture\s+overview|prerequisites\s*:|quickstart|product\s+requirements|\bprd\b|feature\s+spec|system\s+design|acceptance\s+criteria)/i;
+  const techDocRegex = /(?:api\s+reference|endpoints?\s*:|installation\s+guide|getting\s+started|sdk\s+reference|architecture\s+overview|prerequisites\s*:|quickstart|product\s+requirements|\bprd\b|feature\s+spec|system\s+design|acceptance\s+criteria|user\s+stories|sprint\s+backlog)/i;
   const isTechDocByFilename = Boolean(filename && /(?:^|[_\-.])(?:prd|spec|specs|requirements|roadmap|architecture)(?:$|[_\-.])/i.test(filename));
-  if ((techDocRegex.test(clean) || isTechDocByFilename) && !hasAcademicStructure) {
+  const hasRealScholarlyReferences = /(?:references|bibliography)\s*[:\n\r][\s\S]{0,120}(?:doi:\s*10\.|\b(?:19|20)\d{2}\b|\[\d+\])/i.test(clean);
+
+  if ((techDocRegex.test(clean) || isTechDocByFilename) && !hasRealScholarlyReferences) {
     return {
       category: 'technical_doc',
       categoryLabel: 'Technical Documentation / Whitepaper',
       isAcademicManuscript: false,
-      confidence: 0.85,
+      confidence: 0.88,
       detectedFeatures: [
         'Technical documentation or software specification headings found',
         'Instructional or API reference structure'
@@ -270,13 +290,13 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
   // =========================================================================
   // 5. Business or Administrative Document
   // =========================================================================
-  const businessAdminRegex = /(?:invoice\s*#|bill\s+to\s*:|total\s+due\s*:|statement\s+of\s+work|\bnda\b|non-disclosure\s+agreement|purchase\s+order|meeting\s+minutes|payment\s+terms)/i;
-  if (businessAdminRegex.test(clean) && !hasAcademicStructure) {
+  const businessAdminRegex = /(?:invoice\s*#|bill\s+to\s*:|total\s+due\s*:|statement\s+of\s+work|\bnda\b|non-disclosure\s+agreement|purchase\s+order|meeting\s+minutes|payment\s+terms|balance\s+sheet)/i;
+  if (businessAdminRegex.test(clean) && !hasRealScholarlyReferences) {
     return {
       category: 'business_or_admin',
       categoryLabel: 'Administrative / Business Document',
       isAcademicManuscript: false,
-      confidence: 0.90,
+      confidence: 0.92,
       detectedFeatures: [
         'Administrative, commercial, or legal formatting detected',
         'Absence of scholarly hypotheses and empirical data'
@@ -291,7 +311,7 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
   // 6. Very short, fragmented, or list-dominated text (Shopping lists, To-Do, Notes)
   // =========================================================================
   const rawLines = clean.split('\n').map(l => l.trim()).filter(Boolean);
-  const isShortOrFragment = wordCount < 50;
+  const isShortOrFragment = wordCount < 60;
   
   const shoppingListKeywords = [
     'buy', 'milk', 'eggs', 'bread', 'apples', 'groceries', 'store', 'tomorrow', 
@@ -309,9 +329,12 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
     shortLines.length / rawLines.length > 0.70
   );
 
-  if ((matchedShopping >= 2 && !hasAcademicStructure) || 
-      (isListDominated && !hasAcademicStructure) || 
-      (isShortOrFragment && !/(?:doi:\s*10\.|p\s*[<=]\s*0\.\d+|abstract)/i.test(clean))) {
+  const hasExplicitDoi = /doi:\s*10\.\d{4,9}\//i.test(clean);
+  const hasAcademicStructureBasic = /(?:^|\n)\s*(?:abstract|materials and methods|methodology)\b/i.test(clean);
+
+  if ((matchedShopping >= 2 && !hasExplicitDoi) || 
+      (isListDominated && !hasExplicitDoi && !hasAcademicStructureBasic) || 
+      (isShortOrFragment && !hasExplicitDoi && !/(?:doi:\s*10\.|p\s*[<=]\s*0\.\d+|abstract)/i.test(clean))) {
     return {
       category: 'random_unstructured',
       categoryLabel: 'Unstructured / Random Text',
@@ -344,9 +367,15 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
   const hasDiscussionOrImplications = /(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Discussion|Practical Implications|Managerial Insights)\b/i.test(clean);
   const hasConclusion = /(?:^|\n)\s*(?:\d+[\.\s]+)?(?:Conclusion|Conclusions|Concluding Remarks|Summary and Outlook)\b/i.test(clean);
   
-  const hasReferences = /(?:^|\n)\s*(?:References|Bibliography|Works Cited|Literature Cited)\s*[:\n\r]/i.test(clean) ||
-                        /DOI:\s*10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+/i.test(clean) ||
-                        /(?:\n\s*(?:\[\d+\]|\d+\.)\s+[A-Z][a-z]+,\s*[A-Z])/i.test(clean);
+  const hasRealReferences = 
+    /(?:^|\n)\s*(?:References|Bibliography|Works Cited|Literature Cited)\s*[:\n\r]/i.test(clean) &&
+    (/(?:\[\d+\]|\d+\.\s+[A-Z]|doi:\s*10\.|\b(?:19|20)\d{2}\b)/i.test(clean));
+
+  const hasDoiInText = /DOI:\s*10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+/i.test(clean);
+  const hasFormalCitations = /(?:\n\s*(?:\[\d+\]|\d+\.)\s+[A-Z][a-z]+,\s*[A-Z])/i.test(clean) ||
+                            /(?:\([A-Z][a-z]+(?:\s+et\s+al\.)?,\s*(?:19|20)\d{2}\))/i.test(clean);
+
+  const hasCitationStructure = hasRealReferences || hasDoiInText || hasFormalCitations;
 
   // Scholarly metadata (publishers, peer review status, university affiliation, editorial tracking)
   const hasScholarlyMeta = /(?:Department of\s+|Faculty of\s+|University\b|Institute of\s+|doi:\s*10\.\d+|Received:\s*\d|Accepted:\s*\d|©\s*The Author|Keywords\s*[:\s]|Index Terms|Corresponding author|Springer|Elsevier|IEEE|Nature|Wiley)/i.test(clean);
@@ -356,7 +385,7 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
 
   let academicScore = 0;
   if (hasAbstract) academicScore += 3;
-  if (hasReferences) academicScore += 3;
+  if (hasCitationStructure) academicScore += 3;
   if (hasIntro) academicScore += 2;
   if (hasMethodsOrModel) academicScore += 2;
   if (hasResultsOrNumerical) academicScore += 2;
@@ -365,29 +394,38 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
   if (hasScholarlyMeta) academicScore += 2;
   if (hasAcademicTerms) academicScore += 1;
 
-  const isAcademic = (academicScore >= 5) || 
-                     (hasAbstract && (hasReferences || hasIntro || hasMethodsOrModel || hasResultsOrNumerical)) ||
-                     (hasReferences && (hasIntro || hasMethodsOrModel || hasResultsOrNumerical));
+  // Real academic paper requires substantive body length and academic structure
+  const hasSubstantiveBody = wordCount >= 80;
+  const isAcademic = hasSubstantiveBody && (
+    (academicScore >= 6) || 
+    (hasAbstract && hasCitationStructure && (hasMethodsOrModel || hasResultsOrNumerical || hasIntro)) ||
+    (hasCitationStructure && hasMethodsOrModel && hasResultsOrNumerical)
+  );
 
   if (isAcademic) {
     const detected: string[] = [];
     if (hasAbstract) detected.push('Abstract / Summary section identified');
     if (hasMethodsOrModel) detected.push('Methodology / Theoretical Model formulation identified');
     if (hasResultsOrNumerical) detected.push('Results / Numerical experiments identified');
-    if (hasReferences) detected.push('Scholarly Bibliography / Reference citations detected');
+    if (hasCitationStructure) detected.push('Scholarly Bibliography / Reference citations detected');
     if (hasScholarlyMeta) detected.push('Academic metadata & institutional affiliation detected');
     if (hasAcademicTerms) detected.push('Domain scientific & quantitative terminology verified');
 
     let subType = 'Empirical / Theoretical Research Article';
-    if (/e-waste|weee|waste electrical|trade statistics|customs microdata|material flow|circular economy/i.test(clean)) {
-      subType = 'Empirical Study in Environmental & Resource Economics';
-    } else if (/nonlinear optimization|inventory model|decision variable|kkt\b|convex optimization|karush-kuhn-tucker|eoq\b/i.test(clean)) {
-      subType = 'Theoretical & Operations Research Formulation';
+    // 1. Computer Vision, Deep Learning, & Benchmark Studies (prioritized before domain keywords like e-waste)
+    const isComputerVisionOrDL = /rt-detr|yolov\d+|faster\s+r-cnn|object\s+detection|bounding\s+box|mean\s+average\s+precision|\bmap@|segmentation\s+model|vision\s+transformer|convolutional\s+neural|deep\s+learning|transformer\s+architecture|benchmark\s+dataset/i.test(clean);
+    
+    if (isComputerVisionOrDL) {
+      subType = 'Computational & Algorithmic Research (Computer Vision & Machine Learning)';
+    } else if (/systematic review|meta-analysis|prisma\b|scoping review/i.test(clean)) {
+      subType = 'Review / Synthesis Article';
     } else if (/in vivo|in vitro|clinical trial|patient|cohort|assay|crispr|tumor|pathology|oncology/i.test(clean)) {
       subType = 'Empirical Laboratory / Clinical Study';
-    } else if (/systematic review|meta-analysis|prisma|literature review|scoping review/i.test(clean)) {
-      subType = 'Review / Synthesis Article';
-    } else if (/neural network|deep learning|transformer|computer vision|representation learning/i.test(clean)) {
+    } else if (/nonlinear optimization|inventory model|decision variable|kkt\b|convex optimization|karush-kuhn-tucker|eoq\b/i.test(clean)) {
+      subType = 'Theoretical & Operations Research Formulation';
+    } else if (/e-waste|weee|waste electrical|trade statistics|customs microdata|material flow|circular economy|carbon tax/i.test(clean)) {
+      subType = 'Empirical Study in Environmental & Resource Economics';
+    } else if (/neural network|deep learning|transformer|algorithm|representation learning/i.test(clean)) {
       subType = 'Computational & Algorithmic Research';
     } else if (/econometric|panel data|time series|gdp|growth intensity|macroeconomic/i.test(clean)) {
       subType = 'Empirical Economic & Statistical Investigation';

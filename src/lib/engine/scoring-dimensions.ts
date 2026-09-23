@@ -281,6 +281,8 @@ export function estimateJournalBaselineSelectivity(
 export interface CalibratedAcceptanceParams {
   overallScore?: number;
   dimensions?: Record<ScoreDimension, DimensionScore>;
+  reviewerPersonas?: import("../types").ReviewerPersonaFeedback[];
+  reportingGuideline?: import("../types").ReportingGuidelineCheck;
   targetJournal?: string;
   targetJournalEvaluation?: TargetJournalEvaluation;
   isScopeMismatch?: boolean;
@@ -419,6 +421,8 @@ export function calculateCalibratedAcceptanceProbability(
   const {
     overallScore,
     dimensions,
+    reviewerPersonas,
+    reportingGuideline,
     targetJournal,
     targetJournalEvaluation,
     isScopeMismatch = false,
@@ -443,11 +447,15 @@ export function calculateCalibratedAcceptanceProbability(
   let weightedDimScore = 0;
   let totalWeight = 0;
   let lowestDim: { dim: ScoreDimension; score: number; label: string } | null = null;
+  let allDimsHigh = true;
 
   if (dimensions) {
     for (const [dimKey, weight] of Object.entries(DIM_WEIGHTS) as [ScoreDimension, number][]) {
       const dimData = dimensions[dimKey];
       if (dimData && typeof dimData.score === "number") {
+        if (dimData.score < 4.5) {
+          allDimsHigh = false;
+        }
         // Normalize 1-5 scale to 0-100
         const normScore = Math.max(0, Math.min(100, ((dimData.score - 1) / 4) * 100));
         weightedDimScore += normScore * weight;
@@ -456,23 +464,110 @@ export function calculateCalibratedAcceptanceProbability(
         if (!lowestDim || dimData.score < lowestDim.score) {
           lowestDim = { dim: dimKey, score: dimData.score, label: dimData.label || dimKey };
         }
+      } else {
+        allDimsHigh = false;
       }
     }
+  } else {
+    allDimsHigh = false;
   }
 
-  let compositeScore = 55;
-  if (totalWeight > 0) {
-    const dimNormalized = weightedDimScore / totalWeight;
-    if (typeof overallScore === "number" && !isNaN(overallScore)) {
-      compositeScore = Math.round(0.65 * dimNormalized + 0.35 * overallScore);
-    } else {
-      compositeScore = Math.round(dimNormalized);
+  const dimNormalized = totalWeight > 0 ? (weightedDimScore / totalWeight) : 50;
+
+  // 3. Reviewer Panel Consensus Score
+  let panelVerdictScore: number | undefined = undefined;
+  let rejectVoteCount = 0;
+  let majorRevCount = 0;
+  let minorRevOrAcceptCount = 0;
+
+  if (reviewerPersonas && reviewerPersonas.length > 0) {
+    let verdictSum = 0;
+    for (const p of reviewerPersonas) {
+      const rec = (p.decisionRecommendation || "").toLowerCase();
+      if (rec.includes("desk reject")) {
+        verdictSum += 0;
+        rejectVoteCount++;
+      } else if (rec.includes("reject")) {
+        verdictSum += 20;
+        rejectVoteCount++;
+      } else if (rec.includes("minor") || rec.includes("accept")) {
+        verdictSum += 85;
+        minorRevOrAcceptCount++;
+      } else {
+        // Default / Major Revision
+        verdictSum += 50;
+        majorRevCount++;
+      }
     }
-  } else if (typeof overallScore === "number" && !isNaN(overallScore)) {
-    compositeScore = Math.round(overallScore);
+    panelVerdictScore = Math.round(verdictSum / reviewerPersonas.length);
   }
 
-  // 3. Critical Hazard Identification
+  // Calculate unconstrained base score
+  let compositeScore: number;
+  if (panelVerdictScore !== undefined) {
+    // 65% weighted dimensional evaluation + 35% simulated referee consensus
+    compositeScore = Math.round(0.65 * dimNormalized + 0.35 * panelVerdictScore);
+  } else if (typeof overallScore === "number" && !isNaN(overallScore)) {
+    // Fallback: blend dimensions with domain synthesis baseline
+    compositeScore = Math.round(0.70 * dimNormalized + 0.30 * overallScore);
+  } else {
+    compositeScore = Math.round(dimNormalized);
+  }
+
+  // 4. Strict Academic Ceiling Bounds (Deterministic Sanity Guardrails)
+  // Ceiling Cap 1: Any Reject / Resubmit or Desk Reject verdict
+  const hasRejectVote = rejectVoteCount > 0;
+  if (hasRejectVote) {
+    // A single solid Reject / Resubmit verdict strictly caps pre-submission readiness at <= 45
+    compositeScore = Math.min(compositeScore, 45);
+  }
+
+  // Ceiling Cap 2: Multiple Major Revisions
+  if (majorRevCount >= 3) {
+    compositeScore = Math.min(compositeScore, 65);
+  } else if (majorRevCount >= 1) {
+    // Any major revision caps score at <= 72 (manuscript is not yet a "Strong Candidate")
+    compositeScore = Math.min(compositeScore, 72);
+  }
+
+  // Ceiling Cap 3: Scope Mismatch or Missing Methods
+  if (isScopeMismatch) {
+    compositeScore = Math.min(compositeScore, 25);
+  }
+  if (isMethodsMissing) {
+    compositeScore = Math.min(compositeScore, 40);
+  }
+
+  // Ceiling Cap 4: Citation Integrity Hazards
+  const hasRetraction = Boolean(citationIntegrity && citationIntegrity.retractedCount > 0);
+  if (hasRetraction) {
+    compositeScore = Math.min(compositeScore, 35);
+  } else if (citationIntegrity && citationIntegrity.unresolvableCount > 5) {
+    compositeScore = Math.min(compositeScore, 68);
+  }
+
+  // Ceiling Cap 5: Reporting Guideline Compliance Failure
+  let guidelineFailed = false;
+  if (reportingGuideline && typeof reportingGuideline.scorePercent === "number") {
+    if (reportingGuideline.scorePercent < 50) {
+      guidelineFailed = true;
+      compositeScore = Math.min(compositeScore, 70);
+    }
+  }
+
+  // Ceiling Cap 6: Perfection Guard
+  // A score >= 90 is strictly prohibited unless all dimensions are >= 4.5/5, no major/reject votes, no retractions
+  if (compositeScore >= 90) {
+    const isEligibleForTopTier = allDimsHigh && rejectVoteCount === 0 && majorRevCount === 0 && !hasRetraction && !guidelineFailed;
+    if (!isEligibleForTopTier) {
+      compositeScore = Math.min(compositeScore, 88);
+    }
+  }
+
+  // Cap absolute pre-submission maximum at 96 (pre-submission peer review always carries uncertainty)
+  compositeScore = Math.max(0, Math.min(96, compositeScore));
+
+  // 5. Critical Hazard Identification
   let primaryHazard: string | undefined;
   let keyOpportunity: string | undefined;
 
@@ -490,7 +585,6 @@ export function calculateCalibratedAcceptanceProbability(
     }
   }
 
-  const hasRetraction = Boolean(citationIntegrity && citationIntegrity.retractedCount > 0);
   if (hasRetraction) {
     if (!primaryHazard) {
       primaryHazard = `Retracted Citations Detected: Bibliography contains ${citationIntegrity?.retractedCount} formally retracted paper(s).`;
@@ -522,17 +616,17 @@ export function calculateCalibratedAcceptanceProbability(
     keyOpportunity = "Address reviewer line-level critiques and provide explicit author rebuttal letters.";
   }
 
-  // 4. Deterministic Editorial Readiness Band & Decision Outcome
+  // 6. Deterministic Editorial Readiness Band & Decision Outcome
   let decisionOutcome: ExpectedDecisionOutcome;
   let readinessBand: "Desk Reject Hazard" | "Substantial Revision Needed" | "Competitive / Moderate Readiness" | "Strong Submission Readiness";
 
   if (isScopeMismatch || isMethodsMissing || hasRetraction) {
     decisionOutcome = "Desk Reject Hazard";
     readinessBand = "Desk Reject Hazard";
-  } else if (compositeScore < 50 || (lowestDim && lowestDim.score <= 2)) {
+  } else if (hasRejectVote || compositeScore < 50 || (lowestDim && lowestDim.score <= 2)) {
     decisionOutcome = "High Risk / Substantial Rebuttal Required";
     readinessBand = "Substantial Revision Needed";
-  } else if (compositeScore < 72) {
+  } else if (compositeScore < 72 || majorRevCount > 0) {
     decisionOutcome = "Competitive with Major Revisions";
     readinessBand = "Competitive / Moderate Readiness";
   } else {
