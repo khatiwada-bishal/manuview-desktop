@@ -25,7 +25,7 @@ import {
   type LayaProgress,
 } from "@/lib/laya/laya-service";
 import { isDesktopApp, isMacOS } from "@/lib/desktop";
-import { Settings, ShieldCheck, X, CheckCircle2, Activity, RefreshCw, AlertCircle, Zap, Check, ChevronDown, Sparkles, Search, KeyRound, Cpu, Download, Loader2 } from "lucide-react";
+import { Settings, ShieldCheck, X, CheckCircle2, Activity, RefreshCw, AlertCircle, Zap, Check, ChevronDown, Sparkles, Search, KeyRound, Cpu, Download, Loader2, Info } from "lucide-react";
 import { GeminiLogo, OpenAILogo, GroqLogo, AnthropicLogo, OllamaLogo, LayaLogo } from "./BrandLogos";
 
 interface Props {
@@ -506,90 +506,114 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
 
             {/* Provider Grid */}
             {providerCategory === "local" ? (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {/* 1. Laya Decision Model */}
-                <button
-                  type="button"
-                  onClick={() => handleProviderChange("laya")}
-                  className={`flex items-start justify-between p-3 rounded-2xl border text-left transition cursor-pointer ${
-                    config.provider === "laya" || config.provider === "typesafe"
-                      ? "bg-blue-500/10 border-blue-500 ring-1 ring-blue-500/50 text-neutral-900 dark:text-white shadow-xs"
-                      : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
-                  }`}
-                >
-                  <div className="flex items-start gap-2.5 min-w-0">
-                    <span className="p-2 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 shrink-0">
-                      <LayaLogo className="w-4 h-4" />
-                    </span>
-                    <div className="min-w-0">
-                      <div className="font-semibold text-xs text-neutral-900 dark:text-white leading-snug">
-                        Laya Decision Model
-                      </div>
-                      <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-tight">
-                        ModernBERT 421M &bull; Fast Diagnostic Scan
-                      </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {/* 1. Laya */}
+                <div className="relative group">
+                  <button
+                    type="button"
+                    onClick={() => handleProviderChange("laya")}
+                    title="ModernBERT 421M • Fast Diagnostic Scan • 100% On-Device & Zero API"
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                      config.provider === "laya" || config.provider === "typesafe"
+                        ? "bg-blue-500/10 border-blue-500 ring-1 ring-blue-500/50 text-neutral-900 dark:text-white shadow-2xs"
+                        : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="p-1 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400 shrink-0">
+                        <LayaLogo className="w-3.5 h-3.5" />
+                      </span>
+                      <span className="truncate">Laya</span>
                     </div>
-                  </div>
-                  {(config.provider === "laya" || config.provider === "typesafe") && (
-                    <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 ml-1.5 mt-0.5" />
-                  )}
-                </button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {(config.provider === "laya" || config.provider === "typesafe") && (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      )}
+                      <Info className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-200 transition" />
+                    </div>
+                  </button>
 
-                {/* 2. Local SLM (Web GPU) */}
-                <button
-                  type="button"
-                  onClick={() => handleProviderChange("webllm")}
-                  className={`flex items-start justify-between p-3 rounded-2xl border text-left transition cursor-pointer ${
-                    config.provider === "webllm"
-                      ? "bg-purple-500/10 border-purple-500 ring-1 ring-purple-500/50 text-neutral-900 dark:text-white shadow-xs"
-                      : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
-                  }`}
-                >
-                  <div className="flex items-start gap-2.5 min-w-0">
-                    <span className="p-2 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 shrink-0">
-                      <Cpu className="w-4 h-4" />
-                    </span>
-                    <div className="min-w-0">
-                      <div className="font-semibold text-xs text-neutral-900 dark:text-white leading-snug">
-                        Local SLM (Web GPU)
-                      </div>
-                      <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-tight">
-                        On-device &bull; Qwen / Llama &bull; WebGPU
-                      </div>
+                  {/* Information Tooltip */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-2.5 rounded-xl bg-neutral-900 dark:bg-neutral-800 text-white text-[11px] shadow-xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 leading-relaxed text-center border border-white/10">
+                    <div className="font-semibold text-white">Laya Decision Model</div>
+                    <div className="text-neutral-300 text-[10px] mt-0.5">
+                      ModernBERT 421M &bull; Fast Diagnostic Scan &bull; 100% On-Device &bull; Zero API
                     </div>
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-neutral-900 dark:border-t-neutral-800" />
                   </div>
-                  {config.provider === "webllm" && (
-                    <CheckCircle2 className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 ml-1.5 mt-0.5" />
-                  )}
-                </button>
+                </div>
 
-                {/* 3. Ollama (Self Hosted) */}
-                <button
-                  type="button"
-                  onClick={() => handleProviderChange("ollama")}
-                  className={`flex items-start justify-between p-3 rounded-2xl border text-left transition cursor-pointer ${
-                    config.provider === "ollama"
-                      ? "bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500/50 text-neutral-900 dark:text-white shadow-xs"
-                      : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
-                  }`}
-                >
-                  <div className="flex items-start gap-2.5 min-w-0">
-                    <span className="p-2 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0">
-                      <OllamaLogo className="w-4 h-4" />
-                    </span>
-                    <div className="min-w-0">
-                      <div className="font-semibold text-xs text-neutral-900 dark:text-white leading-snug">
-                        Ollama (Self Hosted)
-                      </div>
-                      <div className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 leading-tight">
-                        Local server &bull; localhost:11434
-                      </div>
+                {/* 2. Local SLM */}
+                <div className="relative group">
+                  <button
+                    type="button"
+                    onClick={() => handleProviderChange("webllm")}
+                    title="On-device Qwen / Llama via WebGPU • Zero External API • Private"
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                      config.provider === "webllm"
+                        ? "bg-purple-500/10 border-purple-500 ring-1 ring-purple-500/50 text-neutral-900 dark:text-white shadow-2xs"
+                        : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="p-1 rounded-lg bg-purple-500/15 text-purple-600 dark:text-purple-400 shrink-0">
+                        <Cpu className="w-3.5 h-3.5" />
+                      </span>
+                      <span className="truncate">Local SLM</span>
                     </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {config.provider === "webllm" && (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                      )}
+                      <Info className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-200 transition" />
+                    </div>
+                  </button>
+
+                  {/* Information Tooltip */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-2.5 rounded-xl bg-neutral-900 dark:bg-neutral-800 text-white text-[11px] shadow-xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 leading-relaxed text-center border border-white/10">
+                    <div className="font-semibold text-white">Local SLM (WebGPU)</div>
+                    <div className="text-neutral-300 text-[10px] mt-0.5">
+                      On-device Qwen / Llama &bull; Hardware Accelerated &bull; Zero External API
+                    </div>
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-neutral-900 dark:border-t-neutral-800" />
                   </div>
-                  {config.provider === "ollama" && (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 ml-1.5 mt-0.5" />
-                  )}
-                </button>
+                </div>
+
+                {/* 3. Ollama */}
+                <div className="relative group">
+                  <button
+                    type="button"
+                    onClick={() => handleProviderChange("ollama")}
+                    title="Local server (localhost:11434) • Self-hosted custom models"
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                      config.provider === "ollama"
+                        ? "bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500/50 text-neutral-900 dark:text-white shadow-2xs"
+                        : "bg-white dark:bg-[#161F30] border-[#EBEBEA] dark:border-[#334155] hover:bg-[#F7F7F5] dark:hover:bg-[#1E293B] text-[#787774] dark:text-neutral-400 hover:text-[#2F3437] dark:hover:text-white"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="p-1 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0">
+                        <OllamaLogo className="w-3.5 h-3.5" />
+                      </span>
+                      <span className="truncate">Ollama</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {config.provider === "ollama" && (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      )}
+                      <Info className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-200 transition" />
+                    </div>
+                  </button>
+
+                  {/* Information Tooltip */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-2.5 rounded-xl bg-neutral-900 dark:bg-neutral-800 text-white text-[11px] shadow-xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-50 leading-relaxed text-center border border-white/10">
+                    <div className="font-semibold text-white">Ollama (Self-Hosted)</div>
+                    <div className="text-neutral-300 text-[10px] mt-0.5">
+                      Local Server &bull; http://localhost:11434 &bull; Custom self-hosted models
+                    </div>
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-neutral-900 dark:border-t-neutral-800" />
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
