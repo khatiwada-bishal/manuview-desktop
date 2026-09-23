@@ -75,27 +75,8 @@ export function ScanProvider({
       setActiveScanPaperId(paperId);
 
       try {
-        onProgressRef.current(paperId, "Verifying AI provider connection & credentials...", 10);
-        const activeConfig = await resolveActiveConfig();
-        const isLayaScan = params.scanEngine === "laya" || params.scanEngine === "typesafe";
-
-        if (isLayaScan) {
-          // Laya executes 100% locally on-device via Transformers.js with zero external API key requirement.
-        } else {
-          const isConfigUsable =
-            Boolean(activeConfig.apiKey && activeConfig.apiKey.trim().length > 0) ||
-            Boolean(activeConfig.hasSecureKey) ||
-            activeConfig.provider === "ollama" ||
-            activeConfig.provider === "webllm";
-
-          if (!isConfigUsable) {
-            throw new Error(
-              "No AI model provider configured. A review requires one configured provider: Ollama (local server), Local SLM (WebLLM), or Cloud LLM API. Please open Settings (Cmd+,) to configure."
-            );
-          }
-        }
-
-        // 1. Text Parsing
+        // 1. Text Parsing & Categorization (Gatekeeper for ALL engines)
+        onProgressRef.current(paperId, "Screening document format & scholarly categorization...", 10);
         let parsed: ParsedManuscript;
         if (params.file) {
           onProgressRef.current(paperId, "Extracting text from manuscript document...", 20);
@@ -117,7 +98,127 @@ export function ScanProvider({
           parsed.abstract = params.abstract?.trim() || "";
         }
 
-        // 2. Fetch Journal Scope & Aims
+        const classification = parsed.classification;
+        const isLayaScan = params.scanEngine === "laya" || params.scanEngine === "typesafe";
+
+        // =========================================================================
+        // UNIVERSAL CATEGORIZATION GATE
+        // Works identically across Cloud AI, Local AI (Ollama), Local SLM, and Laya.
+        // If a document is ineligible (CV, PRD, source code, invoice, shopping list,
+        // diagnostic/evaluation report, etc.), immediately bypass all further review
+        // without making external API calls, wasting tokens, or causing model disparity.
+        // =========================================================================
+        if (!classification.isAcademicManuscript) {
+          onProgressRef.current(paperId, `Document ineligible: classified as ${classification.categoryLabel}`, 100);
+
+          const activeConfig = isLayaScan ? null : await resolveActiveConfig().catch(() => null);
+          const aiEngineLabel = isLayaScan ? "Laya" : (activeConfig?.provider?.toUpperCase() || "AI ENGINE");
+
+          const completedPaper: PaperItem = {
+            id: paperId,
+            title: parsed.title || params.title || "Untitled Document",
+            shortName: (parsed.title || params.title || "Document").split(" ").slice(0, 3).join(" "),
+            journal: params.targetJournal,
+            score: undefined,
+            scanType: isLayaScan ? "laya" : "persona",
+            provider: isLayaScan ? "laya" : (activeConfig?.provider || "gemini"),
+            model: isLayaScan ? undefined : activeConfig?.model,
+            aiEngine: aiEngineLabel,
+            isEligibleForReview: false,
+            ineligibilityReason: "non_academic_document",
+            isDeskReject: false,
+            classification,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            status: "completed",
+            scanStep: "Review Bypassed (Non-Academic Document)",
+            scanPercent: 100,
+            scanParams: params,
+          };
+
+          const dashboardData: DesktopDashboardData = {
+            paperTitle: completedPaper.title,
+            headlineTitle: `Document Ineligible for Peer Review (${classification.categoryLabel})`,
+            targetJournal: completedPaper.journal,
+            aiEngine: isLayaScan ? "Fast Scan (Laya)" : aiEngineLabel,
+            latencyMs: 35,
+            score: undefined,
+            isDeskReject: false,
+            statusText: `Review Bypassed (${classification.categoryLabel})`,
+            vulnerabilities: [],
+            reviewers: [],
+            citationAudit: { verifiedCount: 0, totalCount: 0, retractedCount: 0 },
+          };
+
+          const fullReport: FullReviewReport = {
+            mode: "full",
+            id: `rep_${Date.now()}`,
+            createdAt: new Date().toISOString(),
+            title: completedPaper.title,
+            targetJournal: completedPaper.journal,
+            funnelStageReached: "stage0_integrity",
+            isEligibleForReview: false,
+            ineligibilityReason: "non_academic_document",
+            summary: classification.advisoryMessage,
+            classification,
+            reviewerPersonas: [],
+            priorityIssues: [
+              {
+                id: "issue-non-academic",
+                priority: "A",
+                title: "Document Ineligible for Peer Review",
+                category: "Scope/Fit",
+                description: classification.advisoryMessage,
+                actionableFix: classification.customGuidance,
+                reviewerQuote: classification.advisoryMessage,
+                source: "heuristic",
+              },
+            ],
+            dimensions: undefined,
+            journalRecommendations: [],
+            citationIntegrity: {
+              totalReferences: 0,
+              sampledCount: 0,
+              checkedCount: 0,
+              verifiedCount: 0,
+              unresolvableCount: 0,
+              uncheckedCount: 0,
+              retractedCount: 0,
+              coverageNote: "Bypassed for non-academic document",
+              retractionCheckAvailable: true,
+              references: [],
+            },
+            reportingGuideline: undefined,
+            displayItemAudit: undefined,
+            executionMode: "llm_synthesized",
+            reviewStatus: "complete",
+          };
+
+          onCompletedRef.current(paperId, completedPaper, dashboardData, fullReport);
+          setIsScanning(false);
+          setActiveScanPaperId(null);
+          return;
+        }
+
+        // 2. Provider Credentials Verification (For academic manuscripts only)
+        onProgressRef.current(paperId, "Verifying AI provider connection & credentials...", 35);
+        const activeConfig = await resolveActiveConfig();
+
+        if (!isLayaScan) {
+          const isConfigUsable =
+            Boolean(activeConfig.apiKey && activeConfig.apiKey.trim().length > 0) ||
+            Boolean(activeConfig.hasSecureKey) ||
+            activeConfig.provider === "ollama" ||
+            activeConfig.provider === "webllm";
+
+          if (!isConfigUsable) {
+            throw new Error(
+              "No AI model provider configured. A review requires one configured provider: Ollama (local server), Local SLM (WebLLM), or Cloud LLM API. Please open Settings (Cmd+,) to configure."
+            );
+          }
+        }
+
+        // 3. Fetch Journal Scope & Aims
         onProgressRef.current(
           paperId,
           `Searching aims & scope for "${params.targetJournal}" via scholarly registries...`,
@@ -125,7 +226,7 @@ export function ScanProvider({
         );
         const liveScope = await fetchLiveJournalScope(params.targetJournal);
 
-        // 3. Execution: Laya Objective Audit vs 5-Persona Peer Review
+        // 4. Execution: Laya Objective Audit vs 5-Persona Peer Review
         if (isLayaScan) {
           onProgressRef.current(paperId, "Running Laya Fast Scan objective evaluation battery...", 55);
           const { runLayaScan } = await import("@/lib/laya/laya-scan");

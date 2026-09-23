@@ -399,6 +399,66 @@ export async function runManuscriptDiagnostic(
   onProgress?: (update: DiagnosticProgressUpdate) => void,
   preloadedScope?: JournalScopeProfile | null
 ): Promise<FullReviewReport> {
+  const heuristicClassification = manuscript.classification || classifyDocument(manuscript.rawText);
+  manuscript.classification = heuristicClassification;
+
+  // Immediate Gate: If document is non-academic (CV, PRD, source code, invoice,
+  // shopping list, diagnostic report, etc.), immediately complete with Stage 0 block.
+  // Never spend network calls on Crossref / OpenAlex or require LLM credentials for non-academic files.
+  if (!heuristicClassification.isAcademicManuscript) {
+    onProgress?.({
+      stage: "completed",
+      message: `Stage 0 Blocked: Document identified as ${heuristicClassification.categoryLabel || "Non-Academic"}, not a scholarly research manuscript.`,
+      percent: 100,
+    });
+    return {
+      mode: "full",
+      id: generateReportId("rev_"),
+      createdAt: new Date().toISOString(),
+      title: manuscript.title,
+      authors: manuscript.authors,
+      targetJournal: targetJournalName,
+      funnelStageReached: "stage0_integrity",
+      isEligibleForReview: false,
+      ineligibilityReason: "non_academic_document",
+      publishedDetails: undefined,
+      overallScore: undefined,
+      summary: heuristicClassification.advisoryMessage || `Document identified as ${heuristicClassification.categoryLabel || "non-academic"}, not a scholarly research manuscript.`,
+      classification: heuristicClassification,
+      reviewerPersonas: [],
+      priorityIssues: [
+        {
+          id: "iss-stage0-non-academic",
+          priority: "A" as const,
+          title: "Stage 0 Technical Screening Blocker",
+          category: "Scope/Fit" as const,
+          description: heuristicClassification.advisoryMessage || `Document identified as ${heuristicClassification.categoryLabel || "non-academic"}, not a scholarly research manuscript.`,
+          reviewerQuote: "",
+          actionableFix: heuristicClassification.customGuidance || "Please submit an academic research draft.",
+          source: "heuristic" as const,
+        },
+      ],
+      dimensions: undefined,
+      journalRecommendations: [],
+      citationIntegrity: {
+        totalReferences: 0,
+        sampledCount: 0,
+        checkedCount: 0,
+        verifiedCount: 0,
+        unresolvableCount: 0,
+        uncheckedCount: 0,
+        retractedCount: 0,
+        coverageNote: "Bypassed for non-academic document",
+        retractionCheckAvailable: true,
+        references: [],
+      },
+      reportingGuideline: undefined,
+      displayItemAudit: undefined,
+      executionMode: "llm_synthesized",
+      reviewStatus: "complete",
+    };
+  }
+
   const activeConfig = await resolveActiveConfig(config);
   const isConfigUsable = Boolean(
     activeConfig?.provider &&
@@ -419,9 +479,6 @@ export async function runManuscriptDiagnostic(
     message: "Stage 0: Screening technical completeness & publication integrity...",
     percent: 15,
   });
-
-  const heuristicClassification = manuscript.classification || classifyDocument(manuscript.rawText);
-  manuscript.classification = heuristicClassification;
 
   const publishedDetails = await detectPublishedArticle(manuscript.rawText, manuscript.title);
   
@@ -898,17 +955,22 @@ export async function runManuscriptDiagnostic(
   }
 
   const rawCategory = parsedLLM?.classification?.category;
-  const category: DocumentCategory = isDocumentCategory(rawCategory)
+  // If the deterministic gate verified this as an academic manuscript,
+  // never allow an LLM hallucination to flip it to non-academic or assign a non-academic category.
+  const isAcademicManuscript = heuristicClassification.isAcademicManuscript;
+  const isRawCategoryAcademic = rawCategory === "academic_manuscript";
+  const category: DocumentCategory = (isAcademicManuscript && !isRawCategoryAcademic)
+    ? heuristicClassification.category
+    : isDocumentCategory(rawCategory)
     ? rawCategory
     : heuristicClassification.category;
 
   const finalClassification: DocumentClassification = {
     category,
-    categoryLabel: parsedLLM?.classification?.categoryLabel || heuristicClassification.categoryLabel,
-    isAcademicManuscript:
-      parsedLLM?.classification?.isAcademicManuscript !== undefined
-        ? Boolean(parsedLLM.classification.isAcademicManuscript)
-        : heuristicClassification.isAcademicManuscript,
+    categoryLabel: (isAcademicManuscript && parsedLLM?.classification?.categoryLabel && !parsedLLM.classification.categoryLabel.toLowerCase().includes("non-academic"))
+      ? parsedLLM.classification.categoryLabel
+      : heuristicClassification.categoryLabel,
+    isAcademicManuscript,
     confidence: typeof parsedLLM?.classification?.confidence === "number" ? parsedLLM.classification.confidence : heuristicClassification.confidence,
     detectedFeatures:
       parsedLLM?.classification?.detectedFeatures && parsedLLM.classification.detectedFeatures.length > 0

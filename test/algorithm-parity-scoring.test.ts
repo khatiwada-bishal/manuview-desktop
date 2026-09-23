@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { classifyDocument } from "../src/lib/parser.ts";
+import { classifyDocument, parseManuscriptText } from "../src/lib/parser.ts";
 import { calculateCalibratedAcceptanceProbability } from "../src/lib/engine/scoring-dimensions.ts";
-import { ReviewerPersonaFeedback } from "../src/lib/types.ts";
+import { ReviewerPersonaFeedback, AppConfig } from "../src/lib/types.ts";
+import { runManuscriptDiagnostic } from "../src/lib/engine/diagnostic-orchestrator.ts";
 
 test("classifyDocument: flags academic CVs as resume_cv even if they contain 'References' or 'Abstract'", () => {
   const academicCvText = `
@@ -345,3 +346,35 @@ Priority B [Statistics] Sample Power Specification & Variance Reporting in Metho
     `Expected label to mention diagnostic or evaluation, got ${classification.categoryLabel}`
   );
 });
+
+test("diagnosticOrchestrator: Stage 0 immediately blocks non-academic documents across all engines without requiring API keys", async () => {
+  const dummyResume = `Curriculum Vitae
+Dr. Alex Mercer
+Email: alex@example.com | Phone: (555) 012-3456
+Education:
+Ph.D. in Physics, MIT, 2020
+Work Experience:
+Postdoctoral Researcher, CERN, 2020-2024
+Technical Skills:
+Python, ROOT, Monte Carlo Simulations, C++`;
+
+  const parsed = parseManuscriptText(dummyResume, "alex_cv.pdf");
+  assert.equal(parsed.classification?.isAcademicManuscript, false);
+
+  // Fake dummy config with no API key
+  const mockConfig: AppConfig = {
+    provider: "gemini",
+    model: "gemini-2.5-flash",
+    apiKey: "",
+    customEndpoint: "",
+    timeoutMs: 30000,
+  };
+
+  const report = await runManuscriptDiagnostic(parsed, mockConfig, "Nature");
+  assert.equal(report.isEligibleForReview, false, "Must be marked ineligible for review");
+  assert.equal(report.ineligibilityReason, "non_academic_document", "Ineligibility reason must be non_academic_document");
+  assert.equal(report.overallScore, undefined, "Score must be suppressed");
+  assert.equal(report.reviewerPersonas.length, 0, "No reviewer personas should be generated");
+  assert.equal(report.funnelStageReached, "stage0_integrity");
+});
+
