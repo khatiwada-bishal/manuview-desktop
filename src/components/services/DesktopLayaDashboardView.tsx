@@ -21,6 +21,7 @@ import {
   Check,
   RotateCcw,
   Upload,
+  ExternalLink,
 } from "lucide-react";
 import type { PaperItem } from "@/components/DesktopSidebar";
 import type { LayaScanResult, ScanSignal, TypeSafeScanResult } from "@/lib/laya/laya-scan";
@@ -103,10 +104,17 @@ export function DesktopLayaDashboardView({
     paper.classification ||
     result?.classification;
 
-  const isNonAcademic = result
+  const publishedDetails = result?.publishedDetails || paper.publishedDetails;
+  const isAlreadyPublished =
+    paper.ineligibilityReason === "already_published" ||
+    result?.ineligibilityReason === "already_published" ||
+    Boolean(paper.isPublished) ||
+    Boolean(publishedDetails?.isPublished);
+
+  const isNonAcademic = !isAlreadyPublished && (result
     ? !result.isAcademic
     : paper.ineligibilityReason === "non_academic_document" ||
-      Boolean(classification && !classification.isAcademicManuscript);
+      Boolean(classification && !classification.isAcademicManuscript));
 
   // Overview Accordions
   const [expandedCards, setExpandedCards] = useState({
@@ -123,9 +131,10 @@ export function DesktopLayaDashboardView({
   const exportDropdownRef = useRef<HTMLDivElement>(null);
 
   // Score & Desk reject determination
-  const score = isNonAcademic ? 0 : (result?.readiness ?? paper.score ?? 70);
+  const score = isNonAcademic || isAlreadyPublished ? 0 : (result?.readiness ?? paper.score ?? 70);
   const isDeskReject =
     !isNonAcademic &&
+    !isAlreadyPublished &&
     (Boolean(paper.isDeskReject) ||
       (result?.signals || []).some((s) => s.id === "desk_reject_risk" && s.value >= 2) ||
       (result?.signals || []).some((s) => s.id === "journal_scope_fit" && s.display?.toLowerCase().includes("out of scope")));
@@ -135,6 +144,16 @@ export function DesktopLayaDashboardView({
   const signals = result?.signals || [];
 
   const summaryText = useMemo(() => {
+    if (isAlreadyPublished) {
+      return (
+        publishedDetails?.advisoryMessage ||
+        `This manuscript has already appeared in published literature${
+          publishedDetails?.journalName ? ` in "${publishedDetails.journalName}"` : ""
+        }${
+          publishedDetails?.doi ? ` (DOI: ${publishedDetails.doi})` : ""
+        }. Pre-submission peer-review simulation, acceptance forecasting, and simulated referee personas are safely bypassed for finalized publications.`
+      );
+    }
     if (isNonAcademic) {
       return (
         classification?.advisoryMessage ||
@@ -145,7 +164,7 @@ export function DesktopLayaDashboardView({
       `Fast calibrated objective pre-submission audit. Evaluated against ${paper.journal} editorial criteria with an overall readiness rating of "${result?.readinessLabel || theme.label}" (${score}%).\n\n` +
       `The manuscript "${paper.title}" demonstrates substantial academic structure. Diagnostic evaluation across atomic criteria confirms baseline empirical reporting. Address the prioritized action items below prior to formal submission.`
     );
-  }, [isNonAcademic, classification?.advisoryMessage, classification?.categoryLabel, paper.title, paper.journal, result?.readinessLabel, theme.label, score]);
+  }, [isAlreadyPublished, isNonAcademic, publishedDetails, classification?.advisoryMessage, classification?.categoryLabel, paper.title, paper.journal, result?.readinessLabel, theme.label, score]);
 
   // Toggle card
   const toggleCard = (key: keyof typeof expandedCards) => {
@@ -159,25 +178,46 @@ export function DesktopLayaDashboardView({
       createdAt: paper.createdAt || new Date().toISOString(),
       mode: "full",
       title: paper.title,
-      targetJournal: paper.journal,
-      overallScore: isNonAcademic ? 0 : score,
-      isEligibleForReview: !isNonAcademic && !isDeskReject,
-      ineligibilityReason: isNonAcademic ? "non_academic_document" : (isDeskReject ? "scope_mismatch" : undefined),
+      targetJournal: publishedDetails?.journalName || paper.journal,
+      overallScore: isNonAcademic || isAlreadyPublished ? undefined : score,
+      isEligibleForReview: !isNonAcademic && !isDeskReject && !isAlreadyPublished,
+      ineligibilityReason: isAlreadyPublished
+        ? "already_published"
+        : isNonAcademic
+        ? "non_academic_document"
+        : isDeskReject
+        ? "scope_mismatch"
+        : undefined,
+      publishedDetails,
       summary: summaryText,
       classification: classification || {
         category: "academic_manuscript",
-        categoryLabel: result?.documentType || "Academic Research Manuscript",
-        isAcademicManuscript: result?.isAcademic ?? true,
+        categoryLabel: isAlreadyPublished
+          ? "Published Journal Article"
+          : result?.documentType || "Academic Research Manuscript",
+        isAcademicManuscript: true,
         confidence: 0.95,
         detectedFeatures: ["Abstract", "Methodology", "Empirical Findings"],
-        salutation: "Dear Author / Researcher",
-        advisoryMessage: "Academic manuscript format recognized by Laya Decision Model.",
-        customGuidance: "Review objective findings and address identified vulnerabilities.",
+        salutation: isAlreadyPublished ? "Published Author" : "Dear Author / Researcher",
+        advisoryMessage: isAlreadyPublished
+          ? "Academic publication record verified."
+          : "Academic manuscript format recognized by Laya Decision Model.",
+        customGuidance: isAlreadyPublished
+          ? "Pre-submission simulation bypassed for published work."
+          : "Review objective findings and address identified vulnerabilities.",
       },
       editorialTriage: {
-        sentToPeerReview: !isNonAcademic && !isDeskReject,
-        outcome: isNonAcademic ? "sent_for_review" : isDeskReject ? "desk_reject" : "sent_for_review",
-        summary: isNonAcademic
+        sentToPeerReview: !isNonAcademic && !isDeskReject && !isAlreadyPublished,
+        outcome: isAlreadyPublished
+          ? "sent_for_review"
+          : isNonAcademic
+          ? "sent_for_review"
+          : isDeskReject
+          ? "desk_reject"
+          : "sent_for_review",
+        summary: isAlreadyPublished
+          ? `Peer-review simulation bypassed: Article already published in ${publishedDetails?.journalName || "scholarly literature"}.`
+          : isNonAcademic
           ? `Peer-review simulation bypassed: Document classified as ${classification?.categoryLabel || "Non-Academic"}.`
           : isDeskReject
           ? `High desk-rejection risk detected against ${paper.journal} editorial standards. Scope or methodological criteria require revision.`
@@ -483,14 +523,21 @@ export function DesktopLayaDashboardView({
             <div className="flex items-center gap-3 shrink-0">
               <span
                 className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold shadow-2xs ${
-                  isNonAcademic
+                  isAlreadyPublished
+                    ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-800/60"
+                    : isNonAcademic
                     ? "bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800/60"
                     : isDeskReject
                     ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300/60 dark:border-rose-800/60"
                     : theme.badgeClass
                 }`}
               >
-                {isNonAcademic ? (
+                {isAlreadyPublished ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>Published Article</span>
+                  </>
+                ) : isNonAcademic ? (
                   <>
                     <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                     <span>Review Bypassed (N/A)</span>
@@ -513,7 +560,94 @@ export function DesktopLayaDashboardView({
             </div>
           </div>
 
-          {isNonAcademic ? (
+          {isAlreadyPublished ? (
+            <div className="space-y-6 mt-4">
+              {/* Already Published Emerald Banner */}
+              <div className="p-5 sm:p-6 rounded-3xl border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-50/90 via-white/80 to-emerald-50/50 dark:from-emerald-950/40 dark:via-[#161F30] dark:to-emerald-950/20 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-200/60 dark:border-emerald-900/40 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                      <CheckCircle2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-sm font-bold text-emerald-950 dark:text-emerald-200 block">
+                        Already Published Article Detected
+                      </span>
+                      <span className="text-[11px] text-emerald-800 dark:text-emerald-400">
+                        Established record in scholarly literature &bull; Pre-Submission Simulation Bypassed
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                      Published Article (N/A)
+                    </span>
+                    {onNewScan && (
+                      <button
+                        type="button"
+                        onClick={onNewScan}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition cursor-pointer shadow-2xs"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Upload Manuscript</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 4-Box Metadata Grid */}
+                {(publishedDetails?.journalName || publishedDetails?.publicationDate || publishedDetails?.publisher || publishedDetails?.doi) && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 text-xs">
+                    {publishedDetails.journalName && (
+                      <div className="p-3 rounded-xl bg-white/90 border border-emerald-200/60 dark:bg-[#111827] dark:border-emerald-800/40">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">Published Journal</span>
+                        <span className="font-semibold text-emerald-950 dark:text-emerald-200 truncate block mt-0.5" title={publishedDetails.journalName}>
+                          {publishedDetails.journalName}
+                        </span>
+                      </div>
+                    )}
+                    {publishedDetails.publicationDate && (
+                      <div className="p-3 rounded-xl bg-white/90 border border-emerald-200/60 dark:bg-[#111827] dark:border-emerald-800/40">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">Publication Date</span>
+                        <span className="font-semibold text-emerald-950 dark:text-emerald-200 block mt-0.5">
+                          {publishedDetails.publicationDate}
+                        </span>
+                      </div>
+                    )}
+                    {publishedDetails.publisher && (
+                      <div className="p-3 rounded-xl bg-white/90 border border-emerald-200/60 dark:bg-[#111827] dark:border-emerald-800/40">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">Publisher</span>
+                        <span className="font-semibold text-emerald-950 dark:text-emerald-200 truncate block mt-0.5" title={publishedDetails.publisher}>
+                          {publishedDetails.publisher}
+                        </span>
+                      </div>
+                    )}
+                    {publishedDetails.doi && (
+                      <div className="p-3 rounded-xl bg-white/90 border border-emerald-200/60 dark:bg-[#111827] dark:border-emerald-800/40">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">Official Article DOI</span>
+                        <a
+                          href={`https://doi.org/${publishedDetails.doi}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-mono text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-200 hover:underline inline-flex items-center gap-1 truncate block mt-0.5"
+                        >
+                          <span className="truncate">{publishedDetails.doi}</span>
+                          <ExternalLink className="w-3 h-3 shrink-0" />
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="p-3.5 rounded-xl bg-white/80 border border-emerald-200/60 dark:bg-[#111827] dark:border-emerald-800/40 text-xs text-neutral-700 dark:text-neutral-300">
+                  <span className="font-bold text-emerald-950 dark:text-emerald-200 block mb-1">Status Note:</span>
+                  <p className="leading-relaxed">
+                    {summaryText}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : isNonAcademic ? (
             <div className="space-y-6 mt-4">
               {/* Document Ineligible Amber Banner */}
               <div className="p-5 sm:p-6 rounded-3xl border-2 border-amber-500/40 bg-gradient-to-br from-amber-50/90 via-white/80 to-amber-50/50 dark:from-amber-950/40 dark:via-[#161F30] dark:to-amber-950/20 shadow-xs space-y-4">
@@ -793,8 +927,8 @@ export function DesktopLayaDashboardView({
           )}
         </div>
 
-        {/* Overview Diagnostics Header with Expand/Collapse All (Omitted for non-academic documents) */}
-        {!isNonAcademic && (
+        {/* Overview Diagnostics Header with Expand/Collapse All (Omitted for non-academic & already published documents) */}
+        {!isNonAcademic && !isAlreadyPublished && (
           <div className="space-y-4">
             <div className="flex items-center justify-between pt-1 px-1">
               <span className="text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-neutral-400">

@@ -256,9 +256,11 @@ export function ScanProvider({
           // runs of the same classifier could disagree on edge cases.
           const classification = scanResult.classification;
           const isNonAcademic = !scanResult.isAcademic;
+          const isAlreadyPublished = scanResult.ineligibilityReason === "already_published";
 
           const isDeskReject =
             !isNonAcademic &&
+            !isAlreadyPublished &&
             (scanResult.signals.some((s) => s.id === "desk_reject_risk" && s.value >= 2) ||
             scanResult.signals.some((s) => s.id === "journal_scope_fit" && s.display?.toLowerCase().includes("out of scope")));
 
@@ -269,20 +271,25 @@ export function ScanProvider({
               .split(" ")
               .slice(0, 3)
               .join(" "),
-            journal: params.targetJournal,
-            score: isNonAcademic ? undefined : scanResult.readiness,
+            journal: scanResult.publishedDetails?.journalName || params.targetJournal,
+            score: isNonAcademic || isAlreadyPublished ? undefined : scanResult.readiness,
             scanType: "laya",
             layaResult: scanResult,
             typesafeResult: scanResult,
             provider: "laya",
             model: targetModel,
             aiEngine: "Laya",
-            isEligibleForReview: !isNonAcademic,
-            ineligibilityReason: isNonAcademic
+            isEligibleForReview: !isNonAcademic && !isAlreadyPublished,
+            ineligibilityReason: isAlreadyPublished
+              ? "already_published"
+              : isNonAcademic
               ? "non_academic_document"
               : isDeskReject
               ? "scope_mismatch"
               : undefined,
+            isPublished: isAlreadyPublished,
+            publishedJournal: scanResult.publishedDetails?.journalName,
+            publishedDetails: scanResult.publishedDetails,
             isDeskReject,
             classification,
             createdAt: new Date().toISOString(),
@@ -295,15 +302,19 @@ export function ScanProvider({
 
           const dashboardData: DesktopDashboardData = {
             paperTitle: completedPaper.title,
-            headlineTitle: isNonAcademic
+            headlineTitle: isAlreadyPublished
+              ? `${completedPaper.journal} (Published Article)`
+              : isNonAcademic
               ? `Document Ineligible for Peer Review (${classification?.categoryLabel || "Non-Academic"})`
               : `${params.targetJournal} Pre-Submission Audit (Fast Scan)`,
             targetJournal: completedPaper.journal,
             aiEngine: "Fast Scan (Laya)",
             latencyMs: 140,
-            score: isNonAcademic ? undefined : scanResult.readiness,
+            score: isNonAcademic || isAlreadyPublished ? undefined : scanResult.readiness,
             isDeskReject,
-            statusText: isNonAcademic
+            statusText: isAlreadyPublished
+              ? "Already Published Article"
+              : isNonAcademic
               ? "Review Bypassed (Non-Academic Document)"
               : isDeskReject
               ? "Editorial Desk Reject (High Risk)"
@@ -359,12 +370,11 @@ export function ScanProvider({
           (fullReport.editorialTriage?.outcome === "desk_reject" ||
           fullReport.ineligibilityReason === "scope_mismatch" ||
           fullReport.targetJournalEvaluation?.isDisciplinaryMismatch === true);
-        fullReport.isDeskReject = isDeskReject;
-        const isEligible = !isDeskReject && fullReport.isEligibleForReview !== false;
         const isPublished =
           !isDeskReject &&
           (fullReport.ineligibilityReason === "already_published" ||
             Boolean(fullReport.publishedDetails?.isPublished));
+        const isEligible = !isDeskReject && !isPublished && fullReport.isEligibleForReview !== false;
 
         const completedPaper: PaperItem = {
           id: paperId,
@@ -374,16 +384,21 @@ export function ScanProvider({
             .slice(0, 3)
             .join(" "),
           journal: fullReport.publishedDetails?.journalName || params.targetJournal,
-          score: isDeskReject ? undefined : isEligible ? fullReport.overallScore || 80 : undefined,
+          score: isDeskReject || isPublished ? undefined : isEligible ? fullReport.overallScore || 80 : undefined,
           scanType: "persona",
           provider: activeConfig.provider || "gemini",
           model: activeConfig.model,
           aiEngine: activeConfig.provider?.toUpperCase() || "GEMINI",
           isEligibleForReview: !isDeskReject && isEligible,
           isDeskReject: isDeskReject,
-          ineligibilityReason: isDeskReject ? "scope_mismatch" : fullReport.ineligibilityReason,
+          ineligibilityReason: isDeskReject
+            ? "scope_mismatch"
+            : isPublished
+            ? "already_published"
+            : fullReport.ineligibilityReason,
           isPublished: isPublished,
           publishedJournal: fullReport.publishedDetails?.journalName,
+          publishedDetails: fullReport.publishedDetails,
           editorialTriage: fullReport.editorialTriage,
           targetJournalEvaluation: fullReport.targetJournalEvaluation,
           classification: fullReport.classification,
@@ -405,7 +420,7 @@ export function ScanProvider({
           targetJournal: completedPaper.journal,
           aiEngine: activeConfig.provider?.toUpperCase() || "AI ENGINE",
           latencyMs: 120,
-          score: isDeskReject ? undefined : isEligible ? fullReport.overallScore || 80 : undefined,
+          score: isDeskReject || isPublished ? undefined : isEligible ? fullReport.overallScore || 80 : undefined,
           isDeskReject: isDeskReject,
           editorialTriage: fullReport.editorialTriage,
           statusText: isDeskReject

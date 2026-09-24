@@ -435,7 +435,8 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
   const isAcademic = hasSubstantiveBody && (
     (academicScore >= 5) || 
     (hasAbstract && (hasCitationStructure || hasIntro || hasMethodsOrModel || hasResultsOrNumerical)) ||
-    (hasCitationStructure && (hasIntro || hasMethodsOrModel || hasResultsOrNumerical))
+    (hasCitationStructure && (hasIntro || hasMethodsOrModel || hasResultsOrNumerical)) ||
+    (hasExplicitDoi && (hasScholarlyMeta || hasCitationStructure || academicScore >= 3))
   );
 
   if (isAcademic) {

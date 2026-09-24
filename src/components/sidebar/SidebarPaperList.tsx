@@ -189,7 +189,13 @@ export function SidebarPaperList({
                       ? classifyDocument(paper.scanParams!.rawText!, paper.title)
                       : undefined
                   );
+                  const isAlreadyPublished =
+                    paper.ineligibilityReason === "already_published" ||
+                    paper.isPublished === true ||
+                    paper.publishedDetails?.isPublished === true;
+
                   const isNonAcademic =
+                    !isAlreadyPublished &&
                     !hasSubstantiveEvaluation && (
                       paper.ineligibilityReason === "non_academic_document" ||
                       (paper.classification != null &&
@@ -209,6 +215,7 @@ export function SidebarPaperList({
                     !isReviewing &&
                     !isFailed &&
                     !isNonAcademic &&
+                    !isAlreadyPublished &&
                     (paper.editorialTriage?.outcome === "desk_reject" ||
                       paper.ineligibilityReason === "scope_mismatch" ||
                       paper.targetJournalEvaluation?.isDisciplinaryMismatch === true ||
@@ -217,6 +224,7 @@ export function SidebarPaperList({
                   const hasSubviews =
                     paper.scanType !== "laya" &&
                     paper.scanType !== "typesafe" &&
+                    !isAlreadyPublished &&
                     (paper.isEligibleForReview !== false || isDeskReject);
 
                   const apiLabel = getPaperApiLabel(paper);
@@ -290,7 +298,7 @@ export function SidebarPaperList({
                                 <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
                               ) : isFailed || isDeskReject ? (
                                 <AlertCircle className="w-3.5 h-3.5 text-white" />
-                              ) : paper.isEligibleForReview === false && paper.ineligibilityReason === "already_published" ? (
+                              ) : isAlreadyPublished || (paper.isEligibleForReview === false && paper.ineligibilityReason === "already_published") ? (
                                 <CheckCircle2 className="w-3.5 h-3.5 text-white" />
                               ) : paper.isEligibleForReview === false || isNonAcademic ? (
                                 <FileQuestion className="w-3.5 h-3.5 text-white" />

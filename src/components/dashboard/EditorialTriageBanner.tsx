@@ -12,6 +12,7 @@ import {
   Users,
   ShieldCheck,
   CheckSquare,
+  ExternalLink,
 } from "lucide-react";
 import type { EditorialTriageOutcome } from "@/lib/types";
 import { DashboardGlassIllustration } from "./DashboardGlassIllustration";
@@ -56,6 +57,11 @@ export const EditorialTriageBanner: React.FC<EditorialTriageBannerProps> = ({
     (isDeskReject || Boolean(targetJournalEvaluation?.isDisciplinaryMismatch));
 
   if (isAlreadyPublished) {
+    const journalName = publishedDetails?.journalName || publishedDetails?.journal || targetJournal;
+    const doi = publishedDetails?.doi;
+    const publisher = publishedDetails?.publisher;
+    const pubDate = publishedDetails?.publicationDate;
+
     return (
       <div className="p-5 sm:p-6 rounded-3xl border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-50/90 via-white/80 to-emerald-50/50 dark:from-emerald-950/40 dark:via-[#161F30] dark:to-emerald-950/20 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-200/60 dark:border-emerald-900/40 pb-3">
@@ -65,19 +71,19 @@ export const EditorialTriageBanner: React.FC<EditorialTriageBannerProps> = ({
             </div>
             <div>
               <h3 className="text-sm font-bold text-emerald-950 dark:text-emerald-200 flex items-center gap-2 flex-wrap">
-                <span>Already Published Manuscript</span>
+                <span>Already Published Article Detected</span>
                 <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-300/60 dark:border-emerald-800/60 px-2 py-0.5 rounded-full">
-                  Verified Record
+                  Verified Scholarly Record
                 </span>
               </h3>
               <p className="text-xs text-emerald-800/90 dark:text-emerald-400">
-                Peer-Reviewed Publication Record Identified &bull; Pre-Submission Simulation Bypassed
+                Established record in scholarly literature &bull; Pre-submission peer-review simulation safely bypassed
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
-              Published Record (N/A)
+              Published Article (N/A)
             </span>
             {onNewScan && (
               <button
@@ -86,20 +92,67 @@ export const EditorialTriageBanner: React.FC<EditorialTriageBannerProps> = ({
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition cursor-pointer shadow-2xs"
               >
                 <Upload className="w-3.5 h-3.5" />
-                <span>Upload New Paper</span>
+                <span>Upload Manuscript</span>
               </button>
             )}
           </div>
         </div>
 
-        <p className="text-xs text-emerald-950/90 dark:text-emerald-200/90 leading-relaxed font-normal">
-          {publishedDetails?.advisoryMessage ||
-            `This manuscript has already appeared in published literature${
-              publishedDetails?.journal ? ` in "${publishedDetails.journal}"` : ""
-            }${
-              publishedDetails?.doi ? ` (DOI: ${publishedDetails.doi})` : ""
-            }. Acceptance forecasting is bypassed for finalized literature.`}
-        </p>
+        {/* 4-Box Publication Metadata Grid */}
+        {(journalName || pubDate || publisher || doi) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 text-xs">
+            {journalName && (
+              <div className="p-3 rounded-xl bg-white/90 border border-emerald-200/60 dark:bg-[#111827] dark:border-emerald-800/40">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">Published Journal</span>
+                <span className="font-semibold text-emerald-950 dark:text-emerald-200 truncate block mt-0.5" title={journalName}>
+                  {journalName}
+                </span>
+              </div>
+            )}
+            {pubDate && (
+              <div className="p-3 rounded-xl bg-white/90 border border-emerald-200/60 dark:bg-[#111827] dark:border-emerald-800/40">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">Publication Date</span>
+                <span className="font-semibold text-emerald-950 dark:text-emerald-200 block mt-0.5">
+                  {pubDate}
+                </span>
+              </div>
+            )}
+            {publisher && (
+              <div className="p-3 rounded-xl bg-white/90 border border-emerald-200/60 dark:bg-[#111827] dark:border-emerald-800/40">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">Publisher</span>
+                <span className="font-semibold text-emerald-950 dark:text-emerald-200 truncate block mt-0.5" title={publisher}>
+                  {publisher}
+                </span>
+              </div>
+            )}
+            {doi && (
+              <div className="p-3 rounded-xl bg-white/90 border border-emerald-200/60 dark:bg-[#111827] dark:border-emerald-800/40">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">Official Article DOI</span>
+                <a
+                  href={`https://doi.org/${doi}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-mono text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-200 hover:underline inline-flex items-center gap-1 truncate block mt-0.5"
+                >
+                  <span className="truncate">{doi}</span>
+                  <ExternalLink className="w-3 h-3 shrink-0" />
+                </a>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="p-3.5 rounded-xl bg-white/80 border border-emerald-200/60 dark:bg-[#111827] dark:border-emerald-800/40 text-xs text-neutral-700 dark:text-neutral-300">
+          <span className="font-bold text-emerald-950 dark:text-emerald-200 block mb-1">Status Note:</span>
+          <p className="leading-relaxed">
+            {publishedDetails?.advisoryMessage ||
+              `This manuscript has already appeared in published literature${
+                journalName ? ` in "${journalName}"` : ""
+              }${
+                doi ? ` (DOI: ${doi})` : ""
+              }. Standard pre-submission peer-review simulation, acceptance forecasting, and simulated referee personas are bypassed for finalized publications.`}
+          </p>
+        </div>
       </div>
     );
   }

@@ -320,7 +320,11 @@ export function getSidebarIconBgClass(
   if (isFailed || isDeskReject) {
     return "bg-rose-500 text-white";
   }
-  if (paper.isEligibleForReview === false && paper.ineligibilityReason === "already_published") {
+  if (
+    paper.ineligibilityReason === "already_published" ||
+    paper.isPublished === true ||
+    paper.publishedDetails?.isPublished === true
+  ) {
     return "bg-emerald-500 text-white";
   }
   if (paper.isEligibleForReview === false || isNonAcademic) {

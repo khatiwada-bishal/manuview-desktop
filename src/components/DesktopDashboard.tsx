@@ -62,6 +62,7 @@ import {
   EditorialTriageOutcome,
   CalibratedAcceptanceRating,
   DeskRejectPillarEvaluation,
+  PublishedArticleDetails,
 } from "@/lib/types";
 import { isSubstantiveReviewerObservation, extractReferencesFromText } from "@/lib/utils";
 import { batchVerifyReferences } from "@/lib/crossref";
@@ -92,6 +93,9 @@ export interface DesktopDashboardData {
   isDeskReject?: boolean;
   editorialTriage?: EditorialTriageOutcome;
   calibratedAcceptance?: CalibratedAcceptanceRating;
+  isPublished?: boolean;
+  publishedDetails?: PublishedArticleDetails;
+  ineligibilityReason?: "already_published" | "non_academic_document" | "scope_mismatch";
   vulnerabilities: Array<{
     type: "overclaim" | "sample_size" | "control" | "generic";
     title: string;
@@ -386,13 +390,26 @@ export function DesktopDashboard({
       data?.statusText?.includes("Desk Reject") ||
       data?.isDeskReject === true);
 
-  const isReviewEligible = !isDeskReject && !isNonAcademic && (isExplicitlySentForReview || currentReport?.isEligibleForReview !== false);
+  const publishedDetails =
+    currentReport?.publishedDetails ||
+    fullReport?.publishedDetails ||
+    data?.publishedDetails;
+
   const isAlreadyPublished =
     !isDeskReject &&
     !isNonAcademic &&
     (ineligibilityReason === "already_published" ||
-    Boolean(currentReport?.publishedDetails?.isPublished));
-  const overallScore = isDeskReject || isNonAcademic
+      data?.ineligibilityReason === "already_published" ||
+      Boolean(data?.isPublished) ||
+      Boolean(publishedDetails?.isPublished));
+
+  const isReviewEligible =
+    !isDeskReject &&
+    !isNonAcademic &&
+    !isAlreadyPublished &&
+    (isExplicitlySentForReview || currentReport?.isEligibleForReview !== false);
+
+  const overallScore = isDeskReject || isNonAcademic || isAlreadyPublished
     ? undefined
     : (currentReport?.overallScore ?? (isReviewEligible ? data.score : undefined));
 
@@ -946,7 +963,7 @@ export function DesktopDashboard({
                 isAlreadyPublished={isAlreadyPublished}
                 isNonAcademic={isNonAcademic}
                 editorialTriage={currentReport?.editorialTriage || fullReport?.editorialTriage || data.editorialTriage}
-                publishedDetails={fullReport?.publishedDetails}
+                publishedDetails={publishedDetails}
                 classification={classification}
                 targetJournal={targetJournal}
                 detectedDiscipline={matchingJournalsData.detectedDiscipline}
@@ -959,7 +976,7 @@ export function DesktopDashboard({
             </div>
 
             {/* Overview Diagnostics & Audits Accordion Header */}
-            {!isNonAcademic && (
+            {!isNonAcademic && !isAlreadyPublished && (
               <div className="flex items-center justify-between pt-1 px-1">
                 <span className="text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-neutral-400">
                   Detailed Diagnoses &amp; Pre-Submission Audits
@@ -989,7 +1006,7 @@ export function DesktopDashboard({
             )}
 
             {/* CARD 1B: Calibrated Pre-Submission Acceptance Probability & Selectivity Analysis */}
-            {!isNonAcademic && calibratedAcceptance && (
+            {!isNonAcademic && !isAlreadyPublished && calibratedAcceptance && (
               <CalibratedAcceptanceCard
                 calibratedAcceptance={calibratedAcceptance}
                 targetJournal={targetJournal}
@@ -999,7 +1016,7 @@ export function DesktopDashboard({
             )}
 
             {/* CARD 1C: 5-Pillar Editorial Screening Matrix */}
-            {!isNonAcademic && (
+            {!isNonAcademic && !isAlreadyPublished && (
               <FivePillarTriageCard
                 triage={currentReport?.editorialTriage || fullReport?.editorialTriage || data.editorialTriage}
                 isDeskReject={isDeskReject}
@@ -1010,7 +1027,7 @@ export function DesktopDashboard({
             )}
 
             {/* CARD 2: Editorial Synthesis & Triage Assessment Card (Omitted for non-academic documents) */}
-            {!isNonAcademic && (
+            {!isNonAcademic && !isAlreadyPublished && (
               <div className="rounded-3xl liquid-glass-card border border-black/[0.08] dark:border-white/[0.1] overflow-hidden transition-all duration-200">
                 <button
                   type="button"

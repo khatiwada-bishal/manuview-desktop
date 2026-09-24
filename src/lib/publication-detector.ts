@@ -94,16 +94,26 @@ export function extractPublicationMarkers(rawText: string): {
   isPreprint: boolean;
   preprintServer?: string;
 } {
-  // Inspect the first 3,500 characters (page 1 / header) to avoid reference list citations
-  const headerSlice = rawText.slice(0, 3500);
+  // Inspect the first 8,000 characters (pages 1-2 header & footer) to capture DOIs and publisher headers
+  const headerSlice = rawText.slice(0, 8000);
 
-  // 1. Article DOI in header
+  // 1. Article DOI in header / footer
   let doi: string | undefined = undefined;
   const doiMatch = headerSlice.match(
-    /(?:https?:\/\/doi\.org\/|doi:\s*|doi\.org\/)(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)/i
+    /(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:\s*|doi\.org\/|\bdoi\s+)(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)/i
   );
   if (doiMatch && doiMatch[1]) {
     doi = doiMatch[1].trim().replace(/[.,;)]+$/, "");
+  } else {
+    // Check for bare 10.xxxx/... DOI pattern within header
+    const bareMatch = headerSlice.match(/\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)/i);
+    if (bareMatch && bareMatch[1]) {
+      const candidate = bareMatch[1].trim().replace(/[.,;)]+$/, "");
+      // Guard against version numbers or section numbering that might look like 10.x
+      if (candidate.length > 8 && candidate.includes("/")) {
+        doi = candidate;
+      }
+    }
   }
 
   // Check preprint classification first
@@ -112,10 +122,16 @@ export function extractPublicationMarkers(rawText: string): {
   // 2. Publication lifecycle dates
   let publicationDate: string | undefined = undefined;
   const publishedDateMatch = headerSlice.match(
-    /(?:published\s+(?:online\s+)?[:\s]+|available\s+online\s+[:\s]+)(\d{1,2}\s+[A-Za-z]+\s+\d{4}|\d{4}-\d{2}-\d{2}|[A-Za-z]+\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+[A-Za-z]+,?\s+\d{4})/i
+    /(?:published\s+(?:online\s+)?[:\s]+|available\s+online\s*[:\s]+)(\d{1,2}\s+[A-Za-z]+\s+\d{4}|\d{4}-\d{2}-\d{2}|[A-Za-z]+\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+[A-Za-z]+,?\s+\d{4})/i
   );
   if (publishedDateMatch && publishedDateMatch[1]) {
     publicationDate = publishedDateMatch[1].trim();
+  } else {
+    // Fall back to formal copyright year
+    const copyYearMatch = headerSlice.match(/(?:©|\bcopyright\b)\s*(\d{4})\b/i);
+    if (copyYearMatch) {
+      publicationDate = copyYearMatch[1];
+    }
   }
 
   const acceptedMatch = /(?:accepted(?:\s+date)?\s*[:\s]+(\d{1,2}\s+[A-Za-z]+\s+\d{4}|\d{4}-\d{2}-\d{2}|[A-Za-z]+\s+\d{1,2},?\s+\d{4}))/i.test(
@@ -141,11 +157,11 @@ export function extractPublicationMarkers(rawText: string): {
   // 4. Publisher copyright / publication notices
   let publisher: string | undefined = undefined;
   const publisherMatch = headerSlice.match(
-    /(?:Elsevier|Springer\s*Nature|Wiley|IEEE|Nature\s+Publishing\s+Group|Taylor\s*&\s*Francis|Sage|MDPI|Frontiers|Oxford\s+University\s+Press|Cambridge\s+University\s+Press|PLOS|BioMed\s+Central)/i
+    /(?:Elsevier|Springer(?:\s*Nature)?|Wiley(?:\s*Blackwell)?|IEEE|Nature\s+Publishing\s+Group|Nature|Taylor\s*&\s*Francis|Sage(?:\s*Publications)?|MDPI|Frontiers|Oxford\s+University\s+Press|Cambridge\s+University\s+Press|PLOS|BioMed\s+Central|Cell\s+Press|The\s+Lancet|BMJ|ACS(?:\s+Publications)?|American\s+Chemical\s+Society|RSC(?:\s+Publishing)?|Royal\s+Society\s+of\s+Chemistry|ACM(?:\s+Digital\s+Library)?|Association\s+for\s+Computing\s+Machinery|AIP\s+Publishing|American\s+Physical\s+Society|APS\s+Physics|AAAS|Science\s+Direct|Wolters\s+Kluwer|Lippincott|Emerald(?:\s+Publishing)?)/i
   );
   if (publisherMatch) publisher = publisherMatch[0];
 
-  const copyrightMatch = /(?:©\s*\d{4}\s+[A-Za-z\s]+|All rights reserved|This is an open access article under the CC BY|Published by [A-Za-z\s]+)/i.test(
+  const copyrightMatch = /(?:(?:©|\bcopyright\b)\s*(?:\d{4}|by\b)|all\s+rights\s+reserved|open\s+access\s+article|licensed\s+under\s+cc\s+by|cc\s+by(?:-nc|-nd|-sa)?(?:\s+\d\.\d)?|published\s+by\s+[A-Za-z\s]+)/i.test(
     headerSlice
   );
 
@@ -168,12 +184,15 @@ export function extractPublicationMarkers(rawText: string): {
   if (publisher || copyrightMatch) markerCount += 2;
   if (journalName) markerCount += 1;
 
-  // If the document is an un-refereed preprint, it must NOT be marked as already published
+  // If the document is an un-refereed preprint, it must NOT be marked as already published.
+  // Publication detection requires either a non-preprint article DOI or verified publication coordinates (volume/issue/pages alongside publisher/copyright).
   const hasPublishedMarkers =
     !preprintInfo.isPreprint &&
-    (((!!doi && (!!publicationDate || acceptedMatch || !!volume || !!publisher || copyrightMatch)) ||
-      (!!publicationDate && (acceptedMatch || !!volume || copyrightMatch)) ||
-      markerCount >= 5));
+    Boolean(
+      (doi && !preprintInfo.isPreprint) ||
+      ((publisher || copyrightMatch) && (volume || issue || pages)) ||
+      (publicationDate && (volume || issue || pages))
+    );
 
   return {
     doi,
@@ -266,6 +285,7 @@ export async function detectPublishedArticle(
 
         return {
           isPublished: true,
+          isPreprint: false,
           doi: localMarkers.doi,
           journalName: crJournal || localMarkers.journalName || "Academic Journal",
           publisher: msg.publisher || localMarkers.publisher || "Academic Publisher",
@@ -281,22 +301,27 @@ export async function detectPublishedArticle(
           detectedVia: "Crossref Official Article Registry",
         };
       }
-    } catch {
-      // Network request failed - fall back to strong local header evidence (only if NOT a preprint)
-      if (!localMarkers.isPreprint && localMarkers.hasPublishedMarkers) {
-        return {
-          isPublished: true,
-          doi: localMarkers.doi,
-          journalName: localMarkers.journalName || "Academic Journal",
-          publisher: localMarkers.publisher,
-          publicationDate: localMarkers.publicationDate,
-          volume: localMarkers.volume,
-          issue: localMarkers.issue,
-          pages: localMarkers.pages,
-          articleUrl: `https://doi.org/${localMarkers.doi}`,
-          detectedVia: "Publisher Header Metadata & Article DOI",
-        };
-      }
+    } catch (err) {
+      console.warn("Crossref article lookup error, falling back to local markers:", err);
+    }
+
+    // Network request failed or non-200 status: fall back immediately to strong local header evidence
+    if (!localMarkers.isPreprint && (localMarkers.hasPublishedMarkers || localMarkers.doi)) {
+      return {
+        isPublished: true,
+        isPreprint: false,
+        doi: localMarkers.doi,
+        journalName: localMarkers.journalName || "Academic Journal",
+        publisher: localMarkers.publisher || "Academic Publisher",
+        publicationDate: localMarkers.publicationDate,
+        volume: localMarkers.volume,
+        issue: localMarkers.issue,
+        pages: localMarkers.pages,
+        articleUrl: `https://doi.org/${localMarkers.doi}`,
+        detectedVia: localMarkers.publisher
+          ? `Publisher Header Metadata (${localMarkers.publisher}) & Official DOI`
+          : "Publisher Header Metadata & Article DOI",
+      };
     }
   }
 
@@ -347,6 +372,7 @@ export async function detectPublishedArticle(
 
             return {
               isPublished: true,
+              isPreprint: false,
               doi: topItem.DOI,
               journalName: crJournal,
               publisher: topItem.publisher,
@@ -370,14 +396,16 @@ export async function detectPublishedArticle(
 
   // Case C: Strong local markers alone indicate already published
   if (
+    !localMarkers.isPreprint &&
     localMarkers.hasPublishedMarkers &&
-    (localMarkers.publicationDate || localMarkers.volume)
+    (localMarkers.doi || (localMarkers.volume || localMarkers.pages || localMarkers.issue))
   ) {
     return {
       isPublished: true,
+      isPreprint: false,
       doi: localMarkers.doi,
       journalName: localMarkers.journalName || "Academic Journal",
-      publisher: localMarkers.publisher,
+      publisher: localMarkers.publisher || "Academic Publisher",
       publicationDate: localMarkers.publicationDate,
       volume: localMarkers.volume,
       issue: localMarkers.issue,
@@ -385,7 +413,7 @@ export async function detectPublishedArticle(
       articleUrl: localMarkers.doi
         ? `https://doi.org/${localMarkers.doi}`
         : undefined,
-      detectedVia: "Publisher Header Metadata & Publication Lifecycle Dates",
+      detectedVia: "Publisher Header Metadata & Publication Lifecycle",
     };
   }
 

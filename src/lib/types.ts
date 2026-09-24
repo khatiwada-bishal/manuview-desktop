@@ -369,6 +369,7 @@ export interface PublishedArticleDetails {
   detectedVia: string;
   isPreprint?: boolean;
   preprintServer?: string;
+  advisoryMessage?: string;
 }
 
 export interface TargetJournalEvaluation {

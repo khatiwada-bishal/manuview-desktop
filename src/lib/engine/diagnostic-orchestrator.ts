@@ -502,7 +502,63 @@ export async function runManuscriptDiagnostic(
   const heuristicClassification = manuscript.classification || classifyDocument(manuscript.rawText);
   manuscript.classification = heuristicClassification;
 
-  // Immediate Gate: If document is non-academic (CV, PRD, source code, invoice,
+  // Immediate Gate A: Prior publication screening.
+  // If document is already published in a peer-reviewed venue, immediately complete
+  // with Stage 0 already_published block. Never misclassify as non-academic or require LLM credentials.
+  const publishedDetails = await detectPublishedArticle(manuscript.rawText, manuscript.title);
+  if (publishedDetails?.isPublished && !publishedDetails.isPreprint) {
+    onProgress?.({
+      stage: "completed",
+      message: `Stage 0 Blocked: Manuscript already published in ${publishedDetails.journalName || "a peer-reviewed venue"}.`,
+      percent: 100,
+    });
+    return {
+      mode: "full",
+      id: generateReportId("rev_"),
+      createdAt: new Date().toISOString(),
+      title: manuscript.title,
+      authors: manuscript.authors,
+      targetJournal: publishedDetails.journalName || targetJournalName,
+      funnelStageReached: "stage0_integrity",
+      isEligibleForReview: false,
+      ineligibilityReason: "already_published",
+      publishedDetails,
+      overallScore: undefined,
+      summary: `Manuscript identified as already published in ${publishedDetails.journalName || "scholarly literature"}${publishedDetails.doi ? ` (DOI: ${publishedDetails.doi})` : ""}. Pre-submission peer-review simulation safely bypassed.`,
+      classification: {
+        category: "academic_manuscript",
+        categoryLabel: "Published Journal Article",
+        isAcademicManuscript: true,
+        confidence: 0.99,
+        detectedFeatures: ["Scholarly publication record", "Journal DOI", "Publisher metadata"],
+        salutation: "Published Author",
+        advisoryMessage: `This manuscript has already appeared in ${publishedDetails.journalName || "scholarly literature"}. Acceptance forecasting is bypassed for finalized literature.`,
+        customGuidance: "To run a pre-submission diagnostic, please upload an unpublished manuscript draft or preprint.",
+      },
+      reviewerPersonas: [],
+      priorityIssues: [],
+      dimensions: undefined,
+      journalRecommendations: [],
+      citationIntegrity: {
+        totalReferences: 0,
+        sampledCount: 0,
+        checkedCount: 0,
+        verifiedCount: 0,
+        unresolvableCount: 0,
+        uncheckedCount: 0,
+        retractedCount: 0,
+        coverageNote: "Bypassed for published article",
+        retractionCheckAvailable: true,
+        references: [],
+      },
+      reportingGuideline: undefined,
+      displayItemAudit: undefined,
+      executionMode: "llm_synthesized",
+      reviewStatus: "complete",
+    };
+  }
+
+  // Immediate Gate B: If document is non-academic (CV, PRD, source code, invoice,
   // shopping list, diagnostic report, etc.), immediately complete with Stage 0 block.
   // Never spend network calls on Crossref / OpenAlex or require LLM credentials for non-academic files.
   if (!heuristicClassification.isAcademicManuscript) {
@@ -579,8 +635,6 @@ export async function runManuscriptDiagnostic(
     message: "Stage 0: Screening technical completeness & publication integrity...",
     percent: 15,
   });
-
-  const publishedDetails = await detectPublishedArticle(manuscript.rawText, manuscript.title);
   
   // P0 §2.1: Reference & Retraction Verification in Main Review Flow
   let verifiedRefs: ReferenceVerification[] = [];

@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { isDesktopApp } from "@/lib/desktop";
 import { useTheme } from "@/context/ThemeContext";
-import { EditorialTriageOutcome, DocumentClassification } from "@/lib/types";
+import { EditorialTriageOutcome, DocumentClassification, PublishedArticleDetails } from "@/lib/types";
 import {
   type TimeCategory,
   type GroupedPapers,
@@ -43,6 +43,7 @@ export interface PaperItem {
   ineligibilityReason?: "already_published" | "non_academic_document" | "scope_mismatch";
   isPublished?: boolean;
   publishedJournal?: string;
+  publishedDetails?: PublishedArticleDetails;
   editorialTriage?: EditorialTriageOutcome;
   targetJournalEvaluation?: any;
   isDeskReject?: boolean;

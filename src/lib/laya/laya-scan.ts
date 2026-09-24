@@ -9,10 +9,12 @@
  */
 
 import { classifyDocument } from "../parser";
+import { detectPublishedArticle } from "../publication-detector";
 import type {
   CalibratedAcceptanceRating,
   DimensionScore,
   DocumentClassification,
+  PublishedArticleDetails,
   ReviewerPersonaFeedback,
   ScoreDimension,
 } from "../types";
@@ -83,6 +85,7 @@ export interface LayaScanResult {
   isAcademic: boolean;
   classification?: DocumentClassification;
   ineligibilityReason?: "already_published" | "non_academic_document" | "scope_mismatch";
+  publishedDetails?: PublishedArticleDetails;
   readiness: number; // 0–100 calibrated acceptance probability
   readinessLabel: string;
   technicalCompleteness?: number; // 0–100 raw checklist adherence
@@ -898,6 +901,48 @@ export async function runLayaScan(
   options.onProgress?.("Classifying document format & section hierarchy...", 10);
   const heuristicClassification = classifyDocument(text, options.filename);
 
+  // Publication detection gate: If document is already published, bypass peer review simulation
+  const publishedDetails = await detectPublishedArticle(text, options.filename);
+  if (publishedDetails?.isPublished && !publishedDetails.isPreprint) {
+    options.onProgress?.("Already published article detected. Bypassing pre-submission simulation...", 100);
+    const classification: DocumentClassification = {
+      category: "academic_manuscript",
+      categoryLabel: "Published Journal Article",
+      isAcademicManuscript: true,
+      confidence: 0.99,
+      detectedFeatures: ["Scholarly publication record", "Journal DOI", "Publisher metadata"],
+      salutation: "Published Author",
+      advisoryMessage: `This manuscript has already appeared in ${publishedDetails.journalName || "scholarly literature"}${publishedDetails.doi ? ` (DOI: ${publishedDetails.doi})` : ""}. Pre-submission peer-review simulation safely bypassed.`,
+      customGuidance: "To run a pre-submission diagnostic, please upload an unpublished manuscript draft or preprint.",
+    };
+
+    return {
+      model: LAYA_MODEL.id,
+      targetJournal: publishedDetails.journalName || options.targetJournal,
+      journalScope: options.journalScope,
+      documentType: "Published Journal Article",
+      isAcademic: true,
+      classification,
+      ineligibilityReason: "already_published",
+      publishedDetails,
+      readiness: 0,
+      readinessLabel: "Already Published",
+      technicalCompleteness: 100,
+      calibratedAcceptance: undefined,
+      signals: [],
+      groups: [],
+      flags: [],
+      usage: {
+        input_tokens: Math.round(text.length / 4),
+        output_tokens: 0,
+      },
+      raw: {
+        model: LAYA_MODEL.id,
+        answers: {},
+      },
+    };
+  }
+
   // Preserve head (intro/methods) and tail (conclusions/declarations)
   const HEAD_CHARS = 36_000;
   const TAIL_CHARS = 12_000;
@@ -1453,6 +1498,7 @@ export async function runLayaScan(
     isAcademic,
     classification,
     ineligibilityReason: isAcademic ? undefined : "non_academic_document",
+    publishedDetails: undefined,
     readiness: isAcademic ? calibratedScore : 0,
     readinessLabel: isAcademic
       ? readinessLabel(calibratedScore, calibratedRating?.decisionOutcome)
