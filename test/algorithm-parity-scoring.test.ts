@@ -350,6 +350,48 @@ Priority B [Statistics] Sample Power Specification & Variance Reporting in Metho
   );
 });
 
+test("classifyDocument: random corporate report with Summary and University mention is flagged as non-academic", () => {
+  const corporateReport = `
+Quarterly Operations Update - Q3 Strategy
+Prepared for Executive Leadership
+
+Summary:
+Over the past quarter, our logistical distribution networks have expanded across multiple regional hubs. We partnered with researchers at Stanford University to explore algorithmic routing improvements for supply chain efficiency.
+
+Key Priorities:
+1. Operational budget realignment
+2. Software deployment timelines
+3. Client stakeholder engagement
+
+Next Steps:
+Finalize vendor contracts and align team deliverables before the end of the fiscal year.
+  `;
+
+  const classification = classifyDocument(corporateReport, "q3_update.pdf");
+  assert.equal(classification.isAcademicManuscript, false, "Corporate update must NOT be classified as manuscript");
+  assert.notEqual(classification.category, "academic_manuscript");
+});
+
+test("classifyDocument: general essay with Introduction and Conclusion but no methods or references is flagged as non-academic", () => {
+  const generalEssay = `
+The Evolution of Digital Media and Modern Reading Habits
+By Jordan Miller
+
+Introduction
+In the 21st century, digital platforms have fundamentally changed how people interact with written information. Where previous generations spent hours immersed in physical books, contemporary readers increasingly consume fragmented content across multiple electronic screens.
+
+The Shift Toward Short-Form Content
+Social media applications and endless scrolling feeds encourage rapid consumption patterns. Attention spans have adjusted to prioritize immediate feedback over prolonged analytical engagement.
+
+Conclusion
+While digital media offers unprecedented accessibility to global knowledge, cultivating deep reading habits remains vital for critical thinking. Balanced media consumption will define intellectual literacy in future decades.
+  `;
+
+  const classification = classifyDocument(generalEssay, "digital_media_essay.docx");
+  assert.equal(classification.isAcademicManuscript, false, "General essay must NOT be classified as manuscript");
+  assert.equal(classification.category, "general_or_creative");
+});
+
 test("diagnosticOrchestrator: Stage 0 immediately blocks non-academic documents across all engines without requiring API keys", async () => {
   const dummyResume = `Curriculum Vitae
 Dr. Alex Mercer

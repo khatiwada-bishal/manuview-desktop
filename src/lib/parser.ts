@@ -392,7 +392,6 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
   // - Systematic Reviews & Meta-Analyses
   // =========================================================================
 
-  const hasAbstract = /(?:^|\n)\s*(?:#{1,3}\s*)?(?:Abstract|Summary)\s*[:\n\r]/i.test(clean) || /^\s*(?:#{1,3}\s*)?Abstract\b/im.test(clean);
   const hasIntro = /(?:^|\n)\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Introduction|Background|Literature Review)\b/i.test(clean);
   const hasMethodsOrModel = /(?:^|\n)\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Methods|Materials and Methods|Methodology|Model Development|Mathematical Formulation|Theoretical Framework|System Model|Problem Formulation|Assumptions|Solution Procedure|Algorithm \d+|Proposed (?:Method|Approach|Framework|System|Architecture|Model)|Experimental (?:Setup|Design)|Experiments)\b/i.test(clean);
   const hasResultsOrNumerical = /(?:^|\n)\s*(?:#{1,3}\s*)?(?:\d+[\.\s]+|[IVX]+[\.\s]+)?(?:Results|Findings|Numerical Example|Numerical Analysis|Numerical Results|Simulation Results|Computational Experiments|Sensitivity Analysis|Case Study|Evaluation|Performance Evaluation|Experimental Results|Empirical Results)\b/i.test(clean);
@@ -408,6 +407,11 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
                             /(?:\([A-Z][a-z]+(?:\s+et\s+al\.)?,\s*(?:19|20)\d{2}\))/i.test(clean);
 
   const hasCitationStructure = hasRealReferences || hasDoiInText || hasFormalCitations;
+
+  const hasAbstract =
+    /(?:^|\n)\s*(?:#{1,3}\s*)?Abstract\s*[:\n\r]/i.test(clean) ||
+    /^\s*(?:#{1,3}\s*)?Abstract\b/im.test(clean) ||
+    (/(?:^|\n)\s*(?:#{1,3}\s*)?(?:Summary|Executive Summary)\s*[:\n\r]/i.test(clean) && (hasCitationStructure || hasMethodsOrModel || hasResultsOrNumerical));
 
   // Scholarly metadata (publishers, peer review status, university affiliation, editorial tracking)
   const hasScholarlyMeta = /(?:Department of\s+|Faculty of\s+|University\b|Institute of\s+|doi:\s*10\.\d+|Received:\s*\d|Accepted:\s*\d|©\s*The Author|Keywords\s*[:\s]|Index Terms|Corresponding author|Springer|Elsevier|IEEE|Nature|Wiley)/i.test(clean);
@@ -426,13 +430,11 @@ export function classifyDocument(rawText: string, filename?: string): DocumentCl
   if (hasScholarlyMeta) academicScore += 2;
   if (hasAcademicTerms) academicScore += 1;
 
-  // Real academic paper requires substantive body length and academic structure
-  const hasSubstantiveBody = wordCount >= 25;
+  // Real academic paper requires substantive body length and verified scholarly architecture (restored from main)
+  const hasSubstantiveBody = wordCount >= 35;
   const isAcademic = hasSubstantiveBody && (
-    (academicScore >= 3) || 
-    (hasAbstract && (hasIntro || hasMethodsOrModel || hasResultsOrNumerical || hasAcademicTerms || hasScholarlyMeta || hasCitationStructure)) ||
-    (hasMethodsOrModel && hasResultsOrNumerical) ||
-    (hasIntro && (hasMethodsOrModel || hasResultsOrNumerical)) ||
+    (academicScore >= 5) || 
+    (hasAbstract && (hasCitationStructure || hasIntro || hasMethodsOrModel || hasResultsOrNumerical)) ||
     (hasCitationStructure && (hasIntro || hasMethodsOrModel || hasResultsOrNumerical))
   );
 
