@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Analytics } from "@vercel/analytics/react";
 import { DesktopHeader, TabItem } from "@/components/DesktopHeader";
 import {
   DesktopSidebar,
@@ -496,6 +497,7 @@ export default function App() {
           isOpen={isLocalModelOpen}
           onClose={() => setIsLocalModelOpen(false)}
         />
+        <Analytics />
       </ThemeProvider>
     );
   }
@@ -542,6 +544,7 @@ export default function App() {
           setViewMode={setViewMode}
         />
       </ScanProvider>
+      <Analytics />
     </ThemeProvider>
   );
 }
