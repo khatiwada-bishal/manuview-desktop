@@ -10,6 +10,7 @@ import {
   ChevronDown,
   Search,
   X,
+  Download,
 } from "lucide-react";
 import type { AvailableModel } from "@/lib/types";
 
@@ -27,6 +28,7 @@ interface ScanModelPickerBarProps {
   handleSelectModel: (id: string) => void;
   checkProviderStatus: () => void;
   onOpenSettings?: () => void;
+  onOpenLocalModel?: () => void;
   isScanning?: boolean;
 }
 
@@ -44,6 +46,7 @@ export function ScanModelPickerBar({
   handleSelectModel,
   checkProviderStatus,
   onOpenSettings,
+  onOpenLocalModel,
   isScanning = false,
 }: ScanModelPickerBarProps) {
   const filteredModels = React.useMemo(() => {
@@ -135,27 +138,63 @@ export function ScanModelPickerBar({
                   <div className="max-h-72 overflow-y-auto py-1 space-y-1 [scrollbar-width:thin]">
                     {filteredModels.map((m) => {
                       const isCur = activeProviderInfo.model === m.id;
+                      const isLocalProvider =
+                        activeProviderInfo.name?.toLowerCase().includes("local") ||
+                        activeProviderInfo.name?.toLowerCase().includes("webllm") ||
+                        activeProviderInfo.name?.toLowerCase().includes("ollama");
+                      const isNotDownloaded = isLocalProvider && m.isDownloaded === false;
+
+                      const triggerDownloadModal = (e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        setModelDropdownOpen(false);
+                        if (onOpenLocalModel) {
+                          onOpenLocalModel();
+                        } else if (typeof window !== "undefined") {
+                          window.dispatchEvent(new Event("manuview_open_local_models"));
+                        }
+                      };
+
                       return (
-                        <button
+                        <div
                           key={m.id}
-                          type="button"
                           onClick={() => {
+                            if (isNotDownloaded) {
+                              if (onOpenLocalModel) {
+                                onOpenLocalModel();
+                              } else if (typeof window !== "undefined") {
+                                window.dispatchEvent(new Event("manuview_open_local_models"));
+                              }
+                              setModelDropdownOpen(false);
+                              return;
+                            }
                             handleSelectModel(m.id);
                             setModelDropdownOpen(false);
                             setModelSearchQuery("");
                           }}
                           className={`w-full text-left px-3 py-2 rounded-xl transition flex items-start justify-between gap-3 ${
                             isCur
-                              ? "bg-neutral-100 dark:bg-[#1E293B] text-[#111827] dark:text-white font-semibold border border-neutral-300 dark:border-neutral-600"
-                              : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-[#1E293B]/60"
+                              ? "bg-neutral-100 dark:bg-[#1E293B] text-[#111827] dark:text-white font-semibold border border-neutral-300 dark:border-neutral-600 cursor-pointer"
+                              : isNotDownloaded
+                              ? "text-neutral-500 dark:text-neutral-400 bg-neutral-50/50 dark:bg-[#1E293B]/20 cursor-pointer hover:bg-neutral-100/60 dark:hover:bg-[#1E293B]/40"
+                              : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-[#1E293B]/60 cursor-pointer"
                           }`}
                         >
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-mono text-xs font-semibold text-[#0F172A] dark:text-neutral-100">
+                              <span className={`font-mono text-xs font-semibold ${isNotDownloaded ? "text-neutral-600 dark:text-neutral-400" : "text-[#0F172A] dark:text-neutral-100"}`}>
                                 {m.id}
                               </span>
-                              {m.tag && (
+                              {isLocalProvider && m.isDownloaded === true && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                                  <Check className="w-2.5 h-2.5" /> Downloaded
+                                </span>
+                              )}
+                              {isNotDownloaded && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1">
+                                  <Download className="w-2.5 h-2.5" /> Not Downloaded
+                                </span>
+                              )}
+                              {m.tag && !isLocalProvider && (
                                 <span className="text-[10px] px-2 py-0.5 rounded-md font-medium bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                                   {m.tag}
                                 </span>
@@ -167,10 +206,21 @@ export function ScanModelPickerBar({
                               </div>
                             )}
                           </div>
-                          {isCur && (
+                          {isCur && !isNotDownloaded && (
                             <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                           )}
-                        </button>
+                          {isNotDownloaded && (
+                            <button
+                              type="button"
+                              onClick={triggerDownloadModal}
+                              title="Download model weights locally"
+                              className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-[11px] flex items-center gap-1 transition cursor-pointer shrink-0 shadow-2xs mt-0.5"
+                            >
+                              <Download className="w-3 h-3" />
+                              <span>Download</span>
+                            </button>
+                          )}
+                        </div>
                       );
                     })}
                     {filteredModels.length === 0 && (

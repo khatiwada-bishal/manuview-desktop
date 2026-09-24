@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Sparkles,
   Tag,
@@ -68,11 +68,13 @@ References:
 interface DesktopPreSubmissionScanViewProps {
   onComplete?: (newPaper: PaperItem, data: DesktopDashboardData, fullReport?: FullReviewReport) => void;
   onOpenSettings?: () => void;
+  onOpenLocalModel?: () => void;
 }
 
 export function DesktopPreSubmissionScanView({
   onComplete,
   onOpenSettings,
+  onOpenLocalModel,
 }: DesktopPreSubmissionScanViewProps) {
   const [manuscriptTitle, setManuscriptTitle] = useState("");
   const [manuscriptAbstract, setManuscriptAbstract] = useState("");
@@ -116,8 +118,13 @@ export function DesktopPreSubmissionScanView({
     availableModels,
     errorMessage: apiErrorMessage,
     refresh: checkProviderStatus,
-    selectModel: handleSelectModel,
+    selectModel: rawSelectModel,
   } = useApiConnection();
+
+  const handleSelectModel = useCallback((modelId: string) => {
+    setError(null);
+    rawSelectModel(modelId);
+  }, [rawSelectModel]);
 
   const scanEngine: "persona" | "laya" | "typesafe" = (provider === "laya" || provider === "typesafe") ? "laya" : "persona";
 
@@ -539,6 +546,7 @@ export function DesktopPreSubmissionScanView({
             handleSelectModel={handleSelectModel}
             checkProviderStatus={checkProviderStatus}
             onOpenSettings={onOpenSettings}
+            onOpenLocalModel={onOpenLocalModel}
             isScanning={isScanning}
           />
         </div>

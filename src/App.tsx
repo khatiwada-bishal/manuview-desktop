@@ -643,8 +643,13 @@ function AppWorkspace({
         setIsSettingsOpen((prev) => !prev);
       }
     };
+    const handleOpenLocal = () => setIsLocalModelOpen(true);
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("manuview_open_local_models", handleOpenLocal);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("manuview_open_local_models", handleOpenLocal);
+    };
   }, [activeTabId, openTabs, isScanning, handleCloseTab]);
 
   const currentPaper = papers.find((p) => p.id === activeTabId) || null;
@@ -675,6 +680,7 @@ function AppWorkspace({
         <DesktopPreSubmissionScanView
           onComplete={handleScanComplete}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenLocalModel={() => setIsLocalModelOpen(true)}
         />
       );
     }

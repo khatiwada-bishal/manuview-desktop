@@ -1113,7 +1113,11 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                 <input
                   type="text"
                   value={config.model}
-                  onChange={(e) => setConfig({ ...config, model: e.target.value })}
+                  onChange={(e) => {
+                    setConfig({ ...config, model: e.target.value });
+                    setTestResult(null);
+                    setFetchFeedback(null);
+                  }}
                   placeholder="e.g. gemini-2.5-flash or custom-model-id"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#1E293B] border border-[#EBEBEA] dark:border-[#334155] focus:border-[#2F3437] dark:focus:border-blue-500 focus:outline-none text-xs text-[#2F3437] dark:text-white font-mono transition shadow-2xs"
                 />
@@ -1232,27 +1236,41 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
 
                         return filtered.map((m) => {
                           const isSelected = config.model === m.id;
+                          const isWebLLM = config.provider === "webllm";
+                          const isNotDownloaded = isWebLLM && !cachedModels[m.id];
+
+                          const handleSelect = (e?: React.MouseEvent) => {
+                            if (e) e.stopPropagation();
+                            if (isNotDownloaded) {
+                              if (onOpenLocalModel) onOpenLocalModel();
+                              setModelDropdownOpen(false);
+                              return;
+                            }
+                            setConfig({ ...config, model: m.id });
+                            setTestResult(null); // Automatically clear any connection warning/error message!
+                            setFetchFeedback(null);
+                            setModelDropdownOpen(false);
+                            setModelSearchQuery("");
+                          };
+
                           return (
-                            <button
+                            <div
                               key={m.id}
-                              type="button"
-                              onClick={() => {
-                                setConfig({ ...config, model: m.id });
-                                setModelDropdownOpen(false);
-                                setModelSearchQuery("");
-                              }}
+                              onClick={handleSelect}
                               className={`w-full text-left p-2.5 rounded-xl transition flex items-start justify-between gap-2.5 ${
                                 isSelected
-                                  ? "bg-[#F7F7F5] dark:bg-[#1E293B] text-[#2F3437] dark:text-white font-semibold"
-                                  : "text-[#2F3437] dark:text-neutral-300 hover:bg-[#FAF9F7] dark:hover:bg-[#161F30]"
+                                  ? "bg-[#F7F7F5] dark:bg-[#1E293B] text-[#2F3437] dark:text-white font-semibold cursor-pointer"
+                                  : isNotDownloaded
+                                  ? "text-[#787774] dark:text-neutral-400 bg-neutral-50/50 dark:bg-[#1E293B]/20 cursor-pointer hover:bg-neutral-100/60 dark:hover:bg-[#1E293B]/40"
+                                  : "text-[#2F3437] dark:text-neutral-300 hover:bg-[#FAF9F7] dark:hover:bg-[#161F30] cursor-pointer"
                               }`}
                             >
                               <div className="min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center gap-1.5">
-                                  <span className="font-mono text-xs font-semibold text-[#2F3437] dark:text-white">
+                                  <span className={`font-mono text-xs font-semibold ${isNotDownloaded ? "text-neutral-500 dark:text-neutral-400" : "text-[#2F3437] dark:text-white"}`}>
                                     {m.id}
                                   </span>
-                                  {config.provider === "webllm" && (
+                                  {isWebLLM && (
                                     cachedModels[m.id] ? (
                                       <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded-md border bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 flex items-center gap-1">
                                         <Check className="w-2.5 h-2.5" /> Downloaded
@@ -1288,7 +1306,24 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
                                   {m.description || m.name}
                                 </p>
                               </div>
-                            </button>
+                              {isSelected && !isNotDownloaded && (
+                                <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                              )}
+                              {isNotDownloaded && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (onOpenLocalModel) onOpenLocalModel();
+                                    setModelDropdownOpen(false);
+                                  }}
+                                  className="px-2 py-0.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-[10px] flex items-center gap-1 transition cursor-pointer shrink-0 shadow-2xs mt-0.5"
+                                >
+                                  <Download className="w-2.5 h-2.5" />
+                                  <span>Download</span>
+                                </button>
+                              )}
+                            </div>
                           );
                         });
                       })()}

@@ -163,6 +163,16 @@ export function ApiConnectionProvider({ children }: { children: React.ReactNode 
 
   const selectModel = useCallback(
     (modelId: string) => {
+      // Automatically clear connection error & warning message when switching models
+      setConnectionData((prev) => ({
+        ...prev,
+        errorMessage: undefined,
+        status: "checking",
+        isLoading: true,
+        rawModelId: modelId,
+        modelName: modelId.toUpperCase().replace(/-/g, " "),
+      }));
+
       let current: ProviderConfig = { provider: "gemini", model: modelId };
       if (typeof window !== "undefined") {
         const saved = localStorage.getItem("manuview_provider_config");

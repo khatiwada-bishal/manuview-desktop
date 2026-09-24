@@ -304,24 +304,6 @@ export function ScanInputForm({
         </div>
       </div>
 
-      {error && (
-        <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
-            <span className="break-words">{error}</span>
-          </div>
-          {onOpenSettings && (error.toLowerCase().includes("provider") || error.toLowerCase().includes("settings") || error.toLowerCase().includes("key")) && (
-            <button
-              type="button"
-              onClick={onOpenSettings}
-              className="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-medium text-xs whitespace-nowrap transition cursor-pointer shrink-0"
-            >
-              Configure Provider
-            </button>
-          )}
-        </div>
-      )}
-
       {/* Scope Match Verified Card (When Passed) */}
       {compatibilityMatch && (
         <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 dark:bg-emerald-950/40 dark:border-emerald-800 space-y-2 animate-fade-in">

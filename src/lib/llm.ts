@@ -982,11 +982,25 @@ export async function callLLM(
 export const CURATED_MODELS: Record<LLMProvider, AvailableModel[]> = {
   gemini: [
     {
+      id: "gemini-2.5-flash",
+      name: "Gemini 2.5 Flash",
+      description: "Google's latest flagship multimodal reasoning model. State-of-the-art academic triage & critique.",
+      tag: "✨ Latest Flagship",
+      recommended: true,
+    },
+    {
+      id: "gemini-2.5-pro",
+      name: "Gemini 2.5 Pro",
+      description: "Advanced reasoning with deep contextual understanding for complex empirical research.",
+      tag: "🧠 Deep Reasoning",
+      recommended: false,
+    },
+    {
       id: "gemini-2.0-flash",
       name: "Gemini 2.0 Flash",
       description: "Google's next-gen multimodal flagship model. Ultra-fast, highly accurate for peer-review triage.",
-      tag: "✨ Recommended",
-      recommended: true,
+      tag: "⚡ High Speed",
+      recommended: false,
     },
     {
       id: "gemini-1.5-flash",
@@ -1257,8 +1271,31 @@ export async function fetchAvailableModels(
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.models)) {
+          // Compatibility Filter: Only include active, supported generative text/chat models
+          // Exclude: deprecated 1.0 models (gemini-1.0-pro, gemini-pro, gemini-pro-vision)
+          // Exclude: embeddings, aqa, imagen, audio/speech, experimental robot models
+          const isCompatibleGemini = (id: string) => {
+            const lower = id.toLowerCase();
+            if (!lower.startsWith("gemini-")) return false;
+            if (lower.startsWith("gemini-1.0") || lower === "gemini-pro" || lower === "gemini-pro-vision") return false;
+            if (
+              lower.includes("embedding") ||
+              lower.includes("aqa") ||
+              lower.includes("imagen") ||
+              lower.includes("learnlm") ||
+              lower.includes("vision-latest")
+            ) {
+              return false;
+            }
+            // Must belong to 1.5, 2.0, or 2.5 series
+            return /gemini-(?:1\.5|2\.0|2\.5)/.test(lower);
+          };
+
           const liveModels: AvailableModel[] = data.models
-            .filter((m: any) => m.supportedGenerationMethods?.includes("generateContent"))
+            .filter((m: any) => {
+              const id = m.name?.replace(/^models\//, "") || "";
+              return isCompatibleGemini(id) && m.supportedGenerationMethods?.includes("generateContent");
+            })
             .map((m: any) => {
               const id = m.name.replace(/^models\//, "");
               const existing = defaultList.find((d) => d.id === id);
@@ -1266,8 +1303,8 @@ export async function fetchAvailableModels(
                 id,
                 name: m.displayName || existing?.name || id,
                 description: existing?.description || m.description || "Google Generative AI Model",
-                tag: existing?.tag || (id.includes("flash") ? "⚡ Fast" : id.includes("pro") ? "🧠 Frontier" : undefined),
-                recommended: existing?.recommended || id === "gemini-2.0-flash" || id === "gemini-1.5-flash",
+                tag: existing?.tag || (id.includes("2.5") ? "✨ Latest" : id.includes("flash") ? "⚡ Fast" : id.includes("pro") ? "🧠 Frontier" : undefined),
+                recommended: existing?.recommended || id === "gemini-2.5-flash" || id === "gemini-2.0-flash",
                 isLive: true,
               };
             });
@@ -1327,27 +1364,35 @@ export async function fetchAvailableModels(
           const chatModels = rawList.filter((m: any) => {
             const id = typeof m === "string" ? m : m.id;
             if (!id || typeof id !== "string") return false;
-            if (isOfficialOpenAI) {
-              return id.includes("gpt") || id.startsWith("o1") || id.startsWith("o3") || id.includes("chat");
-            }
-            // For custom/compatible endpoints: filter out non-generative tasks
             const lower = id.toLowerCase();
-            return (
-              !lower.includes("embed") &&
-              !lower.includes("clip") &&
-              !lower.includes("reward") &&
-              !lower.includes("safety-guard") &&
-              !lower.includes("content-safety") &&
-              !lower.includes("topic-control") &&
-              !lower.includes("rerank") &&
-              !lower.includes("detector") &&
-              !lower.includes("parse") &&
-              !lower.includes("calibration") &&
-              !lower.includes("whisper") &&
-              !lower.includes("tts") &&
-              !lower.includes("dall-e") &&
-              !lower.includes("moderation")
-            );
+            // Disallow non-generative / specialized endpoints
+            if (
+              lower.includes("embed") ||
+              lower.includes("clip") ||
+              lower.includes("reward") ||
+              lower.includes("safety-guard") ||
+              lower.includes("content-safety") ||
+              lower.includes("topic-control") ||
+              lower.includes("rerank") ||
+              lower.includes("detector") ||
+              lower.includes("parse") ||
+              lower.includes("calibration") ||
+              lower.includes("whisper") ||
+              lower.includes("tts") ||
+              lower.includes("dall-e") ||
+              lower.includes("moderation") ||
+              lower.includes("realtime") ||
+              lower.includes("audio") ||
+              lower.includes("instruct") ||
+              lower.startsWith("davinci") ||
+              lower.startsWith("babbage")
+            ) {
+              return false;
+            }
+            if (isOfficialOpenAI) {
+              return lower.startsWith("gpt-4") || lower.startsWith("o1") || lower.startsWith("o3") || lower.startsWith("gpt-3.5-turbo");
+            }
+            return true;
           });
 
           if (chatModels.length > 0) {
@@ -1392,8 +1437,14 @@ export async function fetchAvailableModels(
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.data)) {
+          const isCompatibleGroq = (id: string) => {
+            const lower = id.toLowerCase();
+            if (lower.includes("whisper") || lower.includes("guard") || lower.includes("vision-preview")) return false;
+            if (lower.includes("8192") && lower.startsWith("llama3-")) return false; // Decommissioned Groq llama3
+            return true;
+          };
           const mapped: AvailableModel[] = data.data
-            .filter((m: any) => m.active !== false)
+            .filter((m: any) => m.active !== false && isCompatibleGroq(m.id))
             .map((m: any) => {
               const id = m.id;
               const existing = defaultList.find((d) => d.id === id);
@@ -1484,6 +1535,7 @@ export async function fetchAvailableModels(
             tag: idx === 0 ? "✨ Active Local" : "Local",
             recommended: idx === 0,
             isLive: true,
+            isDownloaded: true,
           }));
           return installed;
         } else if (options?.throwOnError) {
@@ -1493,30 +1545,26 @@ export async function fetchAvailableModels(
         throw new Error(`Ollama server returned HTTP ${res.status}. Check that 'ollama serve' is running.`);
       }
     } else if (provider === "webllm") {
-      return [
-        {
-          id: "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
-          name: "Qwen 2.5 (0.5B Instruct)",
-          description: "Smallest, fastest local SLM (~380 MB)",
-          tag: "Recommended / 0.5B",
-          recommended: true,
-          isLive: true,
-        },
-        {
-          id: "Llama-3.2-1B-Instruct-q4f32_1-MLC",
-          name: "Llama 3.2 (1B Instruct)",
-          description: "Meta's compact model (~750 MB)",
-          tag: "Balanced / 1B",
-          isLive: true,
-        },
-        {
-          id: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC",
-          name: "Qwen 2.5 (1.5B Instruct)",
-          description: "High-accuracy scientific reasoning (~980 MB)",
-          tag: "Reasoning / 1.5B",
-          isLive: true,
-        },
-      ];
+      const { isModelCached, SUPPORTED_LOCAL_MODELS } = await import("./webllm/webllm-service");
+      return Promise.all(
+        SUPPORTED_LOCAL_MODELS.map(async (m) => {
+          let downloaded = false;
+          try {
+            downloaded = await isModelCached(m.id);
+          } catch {
+            downloaded = false;
+          }
+          return {
+            id: m.id,
+            name: m.name,
+            description: `${m.description} (~${m.sizeMB} MB)`,
+            tag: downloaded ? "✅ Downloaded" : "📥 Needs Download",
+            recommended: Boolean(m.isDefault),
+            isLive: true,
+            isDownloaded: downloaded,
+          };
+        })
+      );
     } else if (provider === "laya" || provider === "typesafe") {
       try {
         const { listTypeSafeModels } = await import("./typesafe");
@@ -1630,13 +1678,14 @@ export async function testLLMConnection(
       };
     }
     const cached = await isModelCached(targetModel);
+    const localModels = await fetchAvailableModels({ provider: "webllm", model: targetModel });
     return {
       success: true,
       provider: "webllm",
       model: targetModel,
       latencyMs: 0,
       message: cached ? "Model is cached and ready for offline execution." : "WebGPU supported. Model requires one-time download.",
-      availableModels: CURATED_MODELS.webllm,
+      availableModels: localModels,
     };
   }
 

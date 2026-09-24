@@ -620,5 +620,6 @@ export interface AvailableModel {
   tag?: string;
   recommended?: boolean;
   isLive?: boolean;
+  isDownloaded?: boolean;
 }
 
