@@ -389,6 +389,106 @@ export function synthesizeGroundedAcademicReview(
   };
 }
 
+export function assembleAndDeduplicateReviewerPersonas(
+  candidatePersonas: Partial<ReviewerPersonaFeedback>[] | undefined,
+  fallbackPersonas: ReviewerPersonaFeedback[]
+): {
+  finalPersonas: ReviewerPersonaFeedback[];
+  missingPersonaRoles: ReviewerPersonaFeedback["persona"][];
+} {
+  const missingPersonaRoles: ReviewerPersonaFeedback["persona"][] = [];
+  let finalPersonas: ReviewerPersonaFeedback[] = [];
+
+  if (candidatePersonas && candidatePersonas.length > 0) {
+    const formattedPersonas: ReviewerPersonaFeedback[] = candidatePersonas.map((p) => ({
+      persona: p.persona || ("domain_expert" as const),
+      name: p.name || "Reviewer",
+      title: p.title || "Senior Peer Reviewer",
+      affiliation: p.affiliation || "Editorial Review Board",
+      expertise: p.expertise || "Domain Specialist",
+      roleDescription: p.roleDescription || "Panel Referee",
+      decisionRecommendation: p.decisionRecommendation || ("Major Revision" as const),
+      keyChallenge: p.keyChallenge || "Methodological rigor and contribution significance",
+      assessment: p.assessment || "Thorough evaluation of manuscript rigor and validity required.",
+      strengths: p.strengths || [],
+      majorCritiques: p.majorCritiques || ["Document methodology and procedural controls systematically."],
+      concreteSolutions: p.concreteSolutions || [],
+      missingControlsOrAnalyses: p.missingControlsOrAnalyses || [],
+      mustAddressItems: p.mustAddressItems || [],
+      minorComments: p.minorComments || [],
+      source: "llm" as const,
+      evidenceAnchors: p.evidenceAnchors || [],
+      counterArguments: p.counterArguments || [],
+      confidentialEditorNote: p.confidentialEditorNote,
+    }));
+
+    // Deduplicate LLM personas strictly by canonical role (one persona per canonical role)
+    const dedupedLlmPersonas: ReviewerPersonaFeedback[] = [];
+    const seenRoles = new Set<ReviewerPersonaFeedback["persona"]>();
+
+    for (const p of formattedPersonas) {
+      if (CANONICAL_PERSONA_ROLES.includes(p.persona)) {
+        if (!seenRoles.has(p.persona)) {
+          seenRoles.add(p.persona);
+          dedupedLlmPersonas.push({ ...p });
+        } else {
+          // Merge unique critiques/action items from duplicate into the existing persona so critiques are preserved
+          const existing = dedupedLlmPersonas.find((e) => e.persona === p.persona);
+          if (existing) {
+            if (p.majorCritiques?.length) {
+              existing.majorCritiques = Array.from(new Set([...existing.majorCritiques, ...p.majorCritiques])).slice(0, 5);
+            }
+            if (p.concreteSolutions?.length) {
+              existing.concreteSolutions = Array.from(new Set([...existing.concreteSolutions, ...p.concreteSolutions])).slice(0, 5);
+            }
+            if (p.mustAddressItems?.length) {
+              existing.mustAddressItems = Array.from(new Set([...existing.mustAddressItems, ...p.mustAddressItems])).slice(0, 5);
+            }
+            if (p.minorComments?.length) {
+              existing.minorComments = Array.from(new Set([...existing.minorComments, ...p.minorComments])).slice(0, 5);
+            }
+          }
+        }
+      }
+    }
+
+    for (const role of CANONICAL_PERSONA_ROLES) {
+      if (!seenRoles.has(role)) {
+        missingPersonaRoles.push(role);
+      }
+    }
+
+    // Resilient Backfill: If any persona role is missing from the LLM response,
+    // backfill with the corresponding grounded persona from fallbackPersonas
+    // to guarantee all 5 personas are present and substantive.
+    const backfilledPersonas: ReviewerPersonaFeedback[] = [];
+    if (missingPersonaRoles.length > 0) {
+      for (const missingRole of missingPersonaRoles) {
+        const fallback = fallbackPersonas.find((p) => p.persona === missingRole);
+        if (fallback) {
+          backfilledPersonas.push(fallback);
+        }
+      }
+    }
+
+    const assembledPersonas = [...dedupedLlmPersonas, ...backfilledPersonas];
+    assembledPersonas.sort((a, b) => {
+      const idxA = CANONICAL_PERSONA_ROLES.indexOf(a.persona);
+      const idxB = CANONICAL_PERSONA_ROLES.indexOf(b.persona);
+      return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+    });
+
+    finalPersonas = assembledPersonas.map((p) => ({
+      ...p,
+      name: CANONICAL_ANONYMOUS_TRACKS[p.persona] || p.name,
+    }));
+  } else {
+    finalPersonas = [...fallbackPersonas];
+  }
+
+  return { finalPersonas, missingPersonaRoles };
+}
+
 // -----------------------------------------------------------------------------
 // MAIN DIAGNOSTIC WORKFLOW ENTRYPOINT
 // -----------------------------------------------------------------------------
@@ -1220,68 +1320,21 @@ export async function runManuscriptDiagnostic(
   finalPriorityIssues = [...additionalIssues, ...finalPriorityIssues];
 
   let finalPersonas: ReviewerPersonaFeedback[] = [];
-  const missingPersonaRoles: ReviewerPersonaFeedback["persona"][] = [];
+  let missingPersonaRoles: ReviewerPersonaFeedback["persona"][] = [];
 
   if (personaValidation.isValid && personaValidation.data && personaValidation.data.length > 0) {
-    const llmPersonas: ReviewerPersonaFeedback[] = personaValidation.data.map((p) => ({
-      persona: p.persona || ("domain_expert" as const),
-      name: p.name || "Reviewer",
-      title: p.title || "Senior Peer Reviewer",
-      affiliation: p.affiliation || "Editorial Review Board",
-      expertise: p.expertise || "Domain Specialist",
-      roleDescription: p.roleDescription || "Panel Referee",
-      decisionRecommendation: p.decisionRecommendation || ("Major Revision" as const),
-      keyChallenge: p.keyChallenge || "Methodological rigor and contribution significance",
-      assessment: p.assessment || "Thorough evaluation of manuscript rigor and validity required.",
-      strengths: p.strengths || [],
-      majorCritiques: p.majorCritiques || ["Document methodology and procedural controls systematically."],
-      concreteSolutions: p.concreteSolutions || [],
-      missingControlsOrAnalyses: p.missingControlsOrAnalyses || [],
-      mustAddressItems: p.mustAddressItems || [],
-      minorComments: p.minorComments || [],
-      source: "llm" as const,
+    const groundedLlmPersonas = personaValidation.data.map((p) => ({
+      ...p,
       evidenceAnchors: Array.isArray(p.evidenceAnchors)
         ? p.evidenceAnchors.map((a) => groundEvidenceAnchor(a, manuscript.rawText, manuscript.sections))
         : [],
-      counterArguments: p.counterArguments || [],
-      confidentialEditorNote: p.confidentialEditorNote,
     }));
-
-    const existingRoles = new Set(llmPersonas.map((p) => p.persona));
-    for (const role of CANONICAL_PERSONA_ROLES) {
-      if (!existingRoles.has(role)) {
-        missingPersonaRoles.push(role);
-      }
-    }
-
-    // Resilient Backfill: If any persona role is missing from the LLM response,
-    // backfill with the corresponding grounded persona from domainSynthesis
-    // to guarantee all 5 personas are present and substantive.
-    const backfilledPersonas: ReviewerPersonaFeedback[] = [];
-    if (missingPersonaRoles.length > 0) {
-      for (const missingRole of missingPersonaRoles) {
-        const fallback = domainSynthesis.personas.find((p) => p.persona === missingRole);
-        if (fallback) {
-          backfilledPersonas.push(fallback);
-        }
-      }
-    }
-
-    const assembledPersonas = [...llmPersonas, ...backfilledPersonas];
-    assembledPersonas.sort((a, b) => {
-      const idxA = CANONICAL_PERSONA_ROLES.indexOf(a.persona);
-      const idxB = CANONICAL_PERSONA_ROLES.indexOf(b.persona);
-      return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
-    });
-
-    finalPersonas = assembledPersonas.map((p) => ({
-      ...p,
-      name: CANONICAL_ANONYMOUS_TRACKS[p.persona] || p.name,
-    }));
+    const assembled = assembleAndDeduplicateReviewerPersonas(groundedLlmPersonas, domainSynthesis.personas);
+    finalPersonas = assembled.finalPersonas;
+    missingPersonaRoles = assembled.missingPersonaRoles;
   } else {
-    // Grounded fallback from domainSynthesis ensures a resilient 5-persona reviewer panel is always available
     finalPersonas = [...domainSynthesis.personas];
-    missingPersonaRoles.length = 0;
+    missingPersonaRoles = [];
 
     // Seamlessly enrich grounded personas with on-device Local SLM critiques
     if (parsedLLM?.handlingEditorCritique && finalPersonas[0]) {

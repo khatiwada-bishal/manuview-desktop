@@ -3,7 +3,10 @@ import assert from "node:assert/strict";
 import { classifyDocument, parseManuscriptText } from "../src/lib/parser.ts";
 import { calculateCalibratedAcceptanceProbability } from "../src/lib/engine/scoring-dimensions.ts";
 import { ReviewerPersonaFeedback, AppConfig } from "../src/lib/types.ts";
-import { runManuscriptDiagnostic } from "../src/lib/engine/diagnostic-orchestrator.ts";
+import {
+  runManuscriptDiagnostic,
+  assembleAndDeduplicateReviewerPersonas,
+} from "../src/lib/engine/diagnostic-orchestrator.ts";
 
 test("classifyDocument: flags academic CVs as resume_cv even if they contain 'References' or 'Abstract'", () => {
   const academicCvText = `
@@ -407,6 +410,112 @@ References
   assert.equal(classification.isAcademicManuscript, true, "Paper MUST be classified as an academic research manuscript");
   assert.equal(classification.category, "academic_manuscript");
   assert.notEqual(classification.category, "random_unstructured", "Paper must NEVER be flagged as unstructured text");
+});
+
+test("reviewer personas: deduplicates duplicate LLM persona roles down to 5 canonical reviewers", () => {
+  const fallbackPersonas: ReviewerPersonaFeedback[] = [
+    { persona: "journal_editor", name: "Reviewer 1", title: "", decisionRecommendation: "Major Revision", keyChallenge: "", assessment: "", majorCritiques: [] },
+    { persona: "domain_expert", name: "Reviewer 2", title: "", decisionRecommendation: "Major Revision", keyChallenge: "", assessment: "", majorCritiques: [] },
+    { persona: "methods_reviewer", name: "Reviewer 3", title: "", decisionRecommendation: "Major Revision", keyChallenge: "", assessment: "", majorCritiques: [] },
+    { persona: "statistician", name: "Reviewer 4", title: "", decisionRecommendation: "Major Revision", keyChallenge: "", assessment: "", majorCritiques: [] },
+    { persona: "devils_advocate", name: "Reviewer 5", title: "", decisionRecommendation: "Major Revision", keyChallenge: "", assessment: "", majorCritiques: [] },
+  ];
+
+  // Simulating the user's reported bug where LLM returned Reviewer 3: Research Methodology Referee 4 times (total 8 items)
+  const candidatePersonas: ReviewerPersonaFeedback[] = [
+    { persona: "journal_editor", decisionRecommendation: "Major Revision", keyChallenge: "Scope", assessment: "Editor notes", majorCritiques: ["Scope focus"] },
+    { persona: "domain_expert", decisionRecommendation: "Major Revision", keyChallenge: "Domain", assessment: "Domain notes", majorCritiques: ["Domain depth"] },
+    { persona: "methods_reviewer", decisionRecommendation: "Major Revision", keyChallenge: "Methods 1", assessment: "Method critique 1", majorCritiques: ["Critique A"] },
+    { persona: "methods_reviewer", decisionRecommendation: "Major Revision", keyChallenge: "Methods 2", assessment: "Method critique 2", majorCritiques: ["Critique B"] },
+    { persona: "methods_reviewer", decisionRecommendation: "Major Revision", keyChallenge: "Methods 3", assessment: "Method critique 3", majorCritiques: ["Critique C"] },
+    { persona: "methods_reviewer", decisionRecommendation: "Major Revision", keyChallenge: "Methods 4", assessment: "Method critique 4", majorCritiques: ["Critique D"] },
+    { persona: "statistician", decisionRecommendation: "Major Revision", keyChallenge: "Stats", assessment: "Stats critique", majorCritiques: ["Sample power"] },
+    { persona: "devils_advocate", decisionRecommendation: "Major Revision", keyChallenge: "Adversarial", assessment: "Adversarial critique", majorCritiques: ["Counter-evidence"] },
+  ];
+
+  const { finalPersonas } = assembleAndDeduplicateReviewerPersonas(candidatePersonas, fallbackPersonas);
+
+  assert.equal(finalPersonas.length, 5, `Expected exactly 5 personas, got ${finalPersonas.length}`);
+
+  const roleSet = new Set(finalPersonas.map((p) => p.persona));
+  assert.equal(roleSet.size, 5, `Expected 5 unique persona roles, got ${roleSet.size}`);
+
+  const nameSet = new Set(finalPersonas.map((p) => p.name));
+  assert.equal(nameSet.size, 5, `Expected 5 unique reviewer names, got ${nameSet.size}`);
+
+  // Reviewer 3 must occur exactly once
+  const reviewer3List = finalPersonas.filter((p) => p.persona === "methods_reviewer");
+  assert.equal(reviewer3List.length, 1);
+  assert.equal(reviewer3List[0].name, "Reviewer 3: Research Methodology Referee");
+  // Critiques from duplicates should have been merged
+  assert.ok(reviewer3List[0].majorCritiques.includes("Critique A"));
+  assert.ok(reviewer3List[0].majorCritiques.includes("Critique B"));
+});
+
+test("laya scan parity: applied CV benchmark targeting Science is calibrated to Major Revisions (score 60-68) instead of uncalibrated 86%", async () => {
+  const ewastePaperText = `Benchmarking Deep Convolutional and Vision Transformer Architectures for Autonomous E-Waste Component Classification in Mixed Scrap Streams
+Bishal Khatiwada
+Department of Environmental Management, Faculty of Environmental Management, Prince of Songkla University, Hat Yai, Songkhla 9110, Thailand
+Correspondence: bishal.khatiwada@psu.ac.th
+
+Abstract
+Global electronic waste (e-waste) generation reached 62 million tonnes in 2022, yet only 22.3% was documented as properly collected and recycled. Automated visual sorting using deep learning can improve material recovery purity. We curate a harmonised dataset across seven categories including battery pack, hardware, and scrap inventory. All models benchmarked at 640x640 resolution with transfer learning. RT-DETR-L achieves mAP@50 of 92.5 ± 0.5%.
+
+1. Introduction
+Electronic waste (e-waste) is the fastest-growing waste stream globally. We evaluate GPU hardware accelerators to restore high-throughput sorting lines.
+
+2. Materials and Methods
+We curated 15,000 annotated images. The 7-class taxonomy maps material fractions and recovery targets. Models evaluate battery pack safety and hardware cost trade-offs.
+
+3. Results
+RT-DETR-L outperforms YOLOv9s by 7.0 percentage points. The Battery->Plastic misclassification rate reaches 3.2%.
+
+4. Conclusions
+This study presents a systematic benchmark for autonomous e-waste component classification in mixed scrap streams.
+
+References
+1. Baldé, C. P., et al. (2024). The Global E-waste Monitor 2024. ITU & UNITAR.
+2. Zhao, Y., et al. (2024). DETRs beat YOLOs on real-time object detection. CVPR.`;
+
+  const { runLayaScan } = await import("../src/lib/laya/laya-scan.ts");
+  const result = await runLayaScan(ewastePaperText, {
+    targetJournal: "Science",
+  });
+
+  assert.equal(result.isAcademic, true);
+  // Calibrated score for Science must reflect elite selectivity ceiling (60-68), NOT raw 86%
+  assert.ok(
+    result.readiness >= 55 && result.readiness <= 68,
+    `Expected calibrated readiness for Science between 55 and 68, got: ${result.readiness}`
+  );
+  assert.equal(result.readinessLabel, "Major Revisions Prioritized");
+  // Technical completeness preserves checklist score
+  assert.ok(
+    result.technicalCompleteness !== undefined && result.technicalCompleteness > 0,
+    `Expected technicalCompleteness > 0, got ${result.technicalCompleteness}`
+  );
+});
+
+test("laya scan parity: out-of-scope target journal triggers Desk Reject Hazard (score <= 25)", async () => {
+  const ewastePaperText = `Benchmarking Deep Convolutional and Vision Transformer Architectures for Autonomous E-Waste Component Classification in Mixed Scrap Streams
+Abstract: Automated visual sorting using deep learning for e-waste.
+1. Introduction: E-waste sorting.
+2. Methods: RT-DETR and YOLOv8 training.
+3. Results: RT-DETR achieves 92.5% mAP.
+References:
+1. Lin, T. CVPR 2017.`;
+
+  const { runLayaScan } = await import("../src/lib/laya/laya-scan.ts");
+  const result = await runLayaScan(ewastePaperText, {
+    targetJournal: "Journal of Clinical Oncology",
+  });
+
+  assert.equal(result.isAcademic, true);
+  assert.ok(
+    result.readiness <= 25,
+    `Expected desk reject score <= 25 for out-of-scope journal, got: ${result.readiness}`
+  );
+  assert.equal(result.readinessLabel, "High Desk-Reject Hazard");
 });
 
 

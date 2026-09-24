@@ -9,7 +9,22 @@
  */
 
 import { classifyDocument } from "../parser";
-import type { DocumentClassification } from "../types";
+import type {
+  CalibratedAcceptanceRating,
+  DimensionScore,
+  DocumentClassification,
+  ReviewerPersonaFeedback,
+  ScoreDimension,
+} from "../types";
+import {
+  calculateCalibratedAcceptanceProbability,
+  estimateJournalBaselineSelectivity,
+} from "../engine/scoring-dimensions";
+import {
+  detectDiscipline,
+  inferJournalDiscipline,
+  isDisciplineMatch,
+} from "../journals";
 import {
   runLayaClassification,
   LAYA_MODEL,
@@ -68,8 +83,10 @@ export interface LayaScanResult {
   isAcademic: boolean;
   classification?: DocumentClassification;
   ineligibilityReason?: "already_published" | "non_academic_document" | "scope_mismatch";
-  readiness: number; // 0–100 composite computed in code
+  readiness: number; // 0–100 calibrated acceptance probability
   readinessLabel: string;
+  technicalCompleteness?: number; // 0–100 raw checklist adherence
+  calibratedAcceptance?: CalibratedAcceptanceRating;
   signals: ScanSignal[];
   groups: ScanGroup[];
   flags: ScanSignal[]; // signals that warrant attention (bad tone or low confidence)
@@ -560,11 +577,17 @@ function prettyOption(id: string): string {
     .join(" ");
 }
 
-function readinessLabel(pct: number): string {
-  if (pct >= 80) return "Submission-ready";
-  if (pct >= 65) return "Minor revisions";
-  if (pct >= 45) return "Needs work";
-  return "Major concerns";
+function readinessLabel(pct: number, calibratedOutcome?: string): string {
+  if (calibratedOutcome) {
+    if (calibratedOutcome.includes("Desk Reject")) return "High Desk-Reject Hazard";
+    if (calibratedOutcome.includes("Substantial") || calibratedOutcome.includes("High Risk")) return "Substantial Revisions Needed";
+    if (calibratedOutcome.includes("Major Revision")) return "Major Revisions Prioritized";
+    if (calibratedOutcome.includes("Strong") || calibratedOutcome.includes("Likely Acceptance")) return "High Acceptance Readiness";
+  }
+  if (pct >= 80) return "High Acceptance Readiness";
+  if (pct >= 65) return "Minor Revisions Anticipated";
+  if (pct >= 45) return "Major Revisions Prioritized";
+  return "High Desk-Reject Hazard";
 }
 
 function signalGoodness(spec: ScanSpec, signal: ScanSignal): number {
@@ -697,8 +720,25 @@ function evaluateSpecDeterministically(
       idx = novelMarkers ? 3 : 2;
       conf = 0.75;
     } else if (spec.id === "journal_standards_fit") {
-      idx = 2; // Appropriate
-      conf = 0.8;
+      if (targetJournal && targetJournal.trim()) {
+        const baselineRate = estimateJournalBaselineSelectivity(targetJournal);
+        if (baselineRate <= 10) {
+          // Flagship elite journal (Science, Nature, Cell, Lancet)
+          const hasExtensiveStats = /(?:p\s*[<=]|sample\s+size|confidence\s+interval|ci\s*\[|randomized|ablation)/i.test(text);
+          const hasExtensiveBaselines = /(?:baseline|benchmark|state-of-the-art|sota|comparison)/i.test(text);
+          idx = hasExtensiveStats && hasExtensiveBaselines ? 2 : 1;
+          conf = 0.85;
+        } else if (baselineRate <= 25) {
+          idx = 2; // Appropriate
+          conf = 0.82;
+        } else {
+          idx = 2; // Appropriate
+          conf = 0.88;
+        }
+      } else {
+        idx = 2; // Appropriate
+        conf = 0.8;
+      }
     }
 
     const norm = spec.levels > 1 ? clamp01(idx / (spec.levels - 1)) : 0;
@@ -761,8 +801,41 @@ function evaluateSpecDeterministically(
       conf = 0.88;
     }
   } else if (spec.id === "journal_scope_fit") {
-    chosenKey = "strong_core";
-    conf = 0.85;
+    if (targetJournal && targetJournal.trim()) {
+      const lines = text.trim().split("\n").map((l) => l.trim()).filter(Boolean);
+      const guessedTitle = lines[0] || "";
+      const guessedAbstract = lines.slice(1, 10).join(" ");
+      const detectedDiscipline = detectDiscipline(guessedTitle, guessedAbstract, targetJournal);
+      const journalDiscipline = inferJournalDiscipline(targetJournal);
+      const baselineRate = estimateJournalBaselineSelectivity(targetJournal);
+
+      if (journalDiscipline) {
+        const match = isDisciplineMatch(detectedDiscipline, journalDiscipline);
+        if (!match.isMatch) {
+          chosenKey = "out_of_scope";
+          conf = 0.90;
+        } else if (baselineRate <= 10) {
+          // Flagship multidisciplinary journal (Science, Nature, Cell, Lancet, PNAS)
+          // Applied engineering benchmarks or local domain software/tools without fundamental
+          // transformative claims are considered peripheral / high-desk-reject risk at Science/Nature
+          const isTransformativeFlagship = /(?:paradigm|revolutionary|fundamental\s+breakthrough|first-in-class|transformative)/i.test(text);
+          chosenKey = isTransformativeFlagship ? "strong_core" : "peripheral";
+          conf = 0.85;
+        } else if (match.isCrossDisciplinary) {
+          chosenKey = "peripheral";
+          conf = 0.80;
+        } else {
+          chosenKey = "strong_core";
+          conf = 0.88;
+        }
+      } else {
+        chosenKey = "strong_core";
+        conf = 0.75;
+      }
+    } else {
+      chosenKey = "strong_core";
+      conf = 0.85;
+    }
   }
 
   const tone: SignalTone = spec.toneByOption?.[chosenKey] ?? "info";
@@ -1036,7 +1109,7 @@ export async function runLayaScan(
     }
   }
 
-  const readiness = weightTotal > 0 ? Math.round((weightedSum / weightTotal) * 100) : 0;
+  const technicalCompleteness = weightTotal > 0 ? Math.round((weightedSum / weightTotal) * 100) : 0;
 
   // Group signals preserving spec order
   const groupOrder: string[] = [];
@@ -1060,9 +1133,6 @@ export async function runLayaScan(
   // The heuristic classifier (classifyDocument) and deterministic evaluator
   // use the same regex-based logic, so they agree.  Trust the heuristic as
   // the single source of truth for academic vs non-academic classification.
-  // The previous isModelNonAcademic check matched against formatted display
-  // strings (e.g. "Resume Cv") which was fragile and caused misclassifications
-  // when the keyword-matching fallback produced random results.
   const isAcademic = heuristicClassification.isAcademicManuscript;
 
   let classification: DocumentClassification;
@@ -1146,6 +1216,224 @@ export async function runLayaScan(
     classification = heuristicClassification;
   }
 
+  let calibratedScore = technicalCompleteness;
+  let calibratedRating: CalibratedAcceptanceRating | undefined = undefined;
+
+  if (isAcademic) {
+    // Map Laya signals into standard academic scoring dimensions (1-5 scale)
+    const rigorSig = signals.find((s) => s.id === "empirical_rigor" || s.id === "methods_reproducible");
+    const claimsSig = signals.find((s) => s.id === "claims_substantiated" || s.id === "claims_supported");
+    const noveltySig = signals.find((s) => s.id === "novelty");
+    const priorWorkSig = signals.find((s) => s.id === "prior_work");
+    const claritySig = signals.find((s) => s.id === "clarity" || s.id === "writing_clarity");
+    const scopeFitSig = signals.find((s) => s.id === "journal_scope_fit");
+    const standardsSig = signals.find((s) => s.id === "journal_standards_fit");
+    const methodsSig = signals.find((s) => s.id === "has_methods");
+
+    const isScopeMismatch = Boolean(scopeFitSig?.display?.toLowerCase().includes("out of scope"));
+    const isPeripheral = Boolean(scopeFitSig?.display?.toLowerCase().includes("peripheral"));
+    const isMethodsMissing = Boolean(methodsSig && methodsSig.value < 0.4);
+
+    const methodologyScore = isMethodsMissing
+      ? 1.5
+      : rigorSig
+      ? 2.5 + (rigorSig.value / 3) * 2.0
+      : 3.8;
+
+    const claimsScore = claimsSig
+      ? 2.5 + (claimsSig.value / 3) * 2.0
+      : 3.8;
+
+    const originalityScore = noveltySig
+      ? 2.5 + (noveltySig.value / 3) * 2.0
+      : 3.6;
+
+    const broadInterestScore = isScopeMismatch
+      ? 1.2
+      : isPeripheral
+      ? 2.8
+      : standardsSig
+      ? 2.5 + (standardsSig.value / 3) * 2.0
+      : 3.6;
+
+    const priorWorkScore = priorWorkSig
+      ? 2.5 + (priorWorkSig.value / 3) * 2.0
+      : 3.6;
+
+    const clarityScore = claritySig
+      ? 2.5 + (claritySig.value / 3) * 2.0
+      : 4.0;
+
+    const dimensions: Record<ScoreDimension, DimensionScore> = {
+      methodology: {
+        score: Math.round(methodologyScore * 10) / 10,
+        label: "Methodology & Rigor",
+        verdict: methodologyScore >= 4 ? "Strong" : methodologyScore >= 3 ? "Adequate" : "Needs Revision",
+        strengths: ["Empirical methodology documented in manuscript."],
+        vulnerabilities: isMethodsMissing ? ["Core methodology section missing or incomplete."] : [],
+      },
+      claims_vs_evidence: {
+        score: Math.round(claimsScore * 10) / 10,
+        label: "Claims vs. Evidence",
+        verdict: claimsScore >= 4 ? "Strong" : claimsScore >= 3 ? "Adequate" : "Needs Revision",
+        strengths: ["Empirical findings and results presented."],
+        vulnerabilities: [],
+      },
+      originality: {
+        score: Math.round(originalityScore * 10) / 10,
+        label: "Originality & Novelty",
+        verdict: originalityScore >= 4 ? "Strong" : originalityScore >= 3 ? "Adequate" : "Needs Revision",
+        strengths: ["Addresses an empirical research problem."],
+        vulnerabilities: [],
+      },
+      broad_interest: {
+        score: Math.round(broadInterestScore * 10) / 10,
+        label: "Broad Readership Interest",
+        verdict: broadInterestScore >= 4 ? "Strong" : broadInterestScore >= 3 ? "Adequate" : "Needs Revision",
+        strengths: [],
+        vulnerabilities: isPeripheral
+          ? ["Domain-specific focus; may require broader multidisciplinary framing for flagship venue."]
+          : isScopeMismatch
+          ? ["Manuscript topic diverges from target journal editorial remit."]
+          : [],
+      },
+      prior_work: {
+        score: Math.round(priorWorkScore * 10) / 10,
+        label: "Prior Work & Literature",
+        verdict: priorWorkScore >= 4 ? "Strong" : priorWorkScore >= 3 ? "Adequate" : "Needs Revision",
+        strengths: ["Cites related domain literature."],
+        vulnerabilities: [],
+      },
+      clarity: {
+        score: Math.round(clarityScore * 10) / 10,
+        label: "Clarity & Structure",
+        verdict: clarityScore >= 4 ? "Strong" : clarityScore >= 3 ? "Adequate" : "Needs Revision",
+        strengths: ["Manuscript follows structured academic conventions."],
+        vulnerabilities: [],
+      },
+    };
+
+    const reviewerPersonas: ReviewerPersonaFeedback[] = [
+      {
+        persona: "journal_editor",
+        name: "Reviewer 1: Lead Handling Editor",
+        title: "Senior Handling Editor",
+        affiliation: "Editorial Review Board",
+        expertise: "Editorial Scope & Triage",
+        roleDescription: "Aims & Scope Screening",
+        decisionRecommendation: isScopeMismatch
+          ? "Desk Reject"
+          : isPeripheral
+          ? "Major Revision"
+          : "Minor Revision",
+        keyChallenge: isScopeMismatch
+          ? "Disciplinary scope mismatch"
+          : "Readership interest alignment",
+        assessment: "Editorial triage evaluation.",
+        strengths: [],
+        majorCritiques: [],
+        concreteSolutions: [],
+        missingControlsOrAnalyses: [],
+        mustAddressItems: [],
+        minorComments: [],
+        source: "llm",
+        evidenceAnchors: [],
+        counterArguments: [],
+      },
+      {
+        persona: "domain_expert",
+        name: "Reviewer 2: Target Domain Specialist",
+        title: "Domain Specialist Referee",
+        affiliation: "Academic Panel",
+        expertise: "Subject Matter",
+        roleDescription: "Domain Depth Evaluation",
+        decisionRecommendation: "Major Revision",
+        keyChallenge: "Theoretical and domain contribution",
+        assessment: "Domain relevance evaluation.",
+        strengths: [],
+        majorCritiques: [],
+        concreteSolutions: [],
+        missingControlsOrAnalyses: [],
+        mustAddressItems: [],
+        minorComments: [],
+        source: "llm",
+        evidenceAnchors: [],
+        counterArguments: [],
+      },
+      {
+        persona: "methods_reviewer",
+        name: "Reviewer 3: Research Methodology Referee",
+        title: "Methodological Referee",
+        affiliation: "Academic Panel",
+        expertise: "Research Methods",
+        roleDescription: "Methodology Verification",
+        decisionRecommendation: isMethodsMissing ? "Reject / Resubmit" : "Major Revision",
+        keyChallenge: "Procedural controls and replication",
+        assessment: "Methodological audit.",
+        strengths: [],
+        majorCritiques: [],
+        concreteSolutions: [],
+        missingControlsOrAnalyses: [],
+        mustAddressItems: [],
+        minorComments: [],
+        source: "llm",
+        evidenceAnchors: [],
+        counterArguments: [],
+      },
+      {
+        persona: "statistician",
+        name: "Reviewer 4: Statistical & Quantitative Auditor",
+        title: "Quantitative Reviewer",
+        affiliation: "Academic Panel",
+        expertise: "Statistics & Data",
+        roleDescription: "Quantitative Rigor",
+        decisionRecommendation: "Major Revision",
+        keyChallenge: "Statistical power and uncertainty bounds",
+        assessment: "Quantitative evaluation.",
+        strengths: [],
+        majorCritiques: [],
+        concreteSolutions: [],
+        missingControlsOrAnalyses: [],
+        mustAddressItems: [],
+        minorComments: [],
+        source: "llm",
+        evidenceAnchors: [],
+        counterArguments: [],
+      },
+      {
+        persona: "devils_advocate",
+        name: "Reviewer 5: Adversarial Translation Referee",
+        title: "Translation Referee",
+        affiliation: "Academic Panel",
+        expertise: "Falsification & Critical Review",
+        roleDescription: "Stress-Testing Claims",
+        decisionRecommendation: "Major Revision",
+        keyChallenge: "Generalizability and boundary limits",
+        assessment: "Critical boundary analysis.",
+        strengths: [],
+        majorCritiques: [],
+        concreteSolutions: [],
+        missingControlsOrAnalyses: [],
+        mustAddressItems: [],
+        minorComments: [],
+        source: "llm",
+        evidenceAnchors: [],
+        counterArguments: [],
+      },
+    ];
+
+    calibratedRating = calculateCalibratedAcceptanceProbability({
+      overallScore: technicalCompleteness,
+      dimensions,
+      reviewerPersonas,
+      targetJournal: options.targetJournal,
+      isScopeMismatch,
+      isMethodsMissing,
+    });
+
+    calibratedScore = calibratedRating.overallScore;
+  }
+
   const rawResponse: SystemOneResponse = {
     model: LAYA_MODEL.id,
     answers: rawAnswers,
@@ -1165,8 +1453,12 @@ export async function runLayaScan(
     isAcademic,
     classification,
     ineligibilityReason: isAcademic ? undefined : "non_academic_document",
-    readiness: isAcademic ? readiness : 0,
-    readinessLabel: isAcademic ? readinessLabel(readiness) : "Review Bypassed",
+    readiness: isAcademic ? calibratedScore : 0,
+    readinessLabel: isAcademic
+      ? readinessLabel(calibratedScore, calibratedRating?.decisionOutcome)
+      : "Review Bypassed",
+    technicalCompleteness: isAcademic ? technicalCompleteness : 0,
+    calibratedAcceptance: isAcademic ? calibratedRating : undefined,
     signals,
     groups,
     flags,
