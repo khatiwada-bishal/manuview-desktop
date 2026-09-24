@@ -71,8 +71,8 @@ export function ApiConnectionProvider({ children }: { children: React.ReactNode 
               config.model = config.model.replace(/^models\//, "");
               modified = true;
             }
-            if (config && config.provider === "gemini" && (!config.model || config.model.includes("2.5"))) {
-              config.model = "gemini-2.0-flash";
+            if (config && config.provider === "gemini" && (!config.model || config.model.startsWith("gemini-2.0") || config.model.startsWith("gemini-1.0") || config.model === "gemini-pro")) {
+              config.model = "gemini-2.5-flash";
               modified = true;
             }
             if (modified) {
@@ -102,23 +102,29 @@ export function ApiConnectionProvider({ children }: { children: React.ReactNode 
           : currentProvider.toUpperCase();
 
       if (data && data.success) {
-        if (data.model && config && config.model !== data.model) {
-          config.model = data.model;
+        let activeModelId = data.model || config?.model || "AI Model";
+        if (resolvedModels.length > 0 && (!activeModelId || activeModelId.startsWith("gemini-2.0") || !resolvedModels.some(m => m.id === activeModelId))) {
+          const rec = resolvedModels.find(m => m.recommended && (currentProvider !== "webllm" || m.isDownloaded !== false)) || resolvedModels[0];
+          if (rec) {
+            activeModelId = rec.id;
+          }
+        }
+        if (config && config.model !== activeModelId) {
+          config.model = activeModelId;
           try {
             const sanitized = { ...config };
             delete (sanitized as any).apiKey;
             localStorage.setItem("manuview_provider_config", JSON.stringify(sanitized));
           } catch {}
         }
-        const rawModel = data.model || config?.model || "AI Model";
-        const cleanModel = rawModel.toUpperCase().replace(/-/g, " ");
+        const cleanModel = activeModelId.toUpperCase().replace(/-/g, " ");
 
         setConnectionData({
           status: "connected",
           isConnected: true,
           isLoading: false,
           modelName: cleanModel,
-          rawModelId: data.model || config?.model || rawModel,
+          rawModelId: activeModelId,
           latencyMs: data.latencyMs || 120,
           provider: currentProvider,
           providerName: providerLabel,

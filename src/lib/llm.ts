@@ -139,8 +139,8 @@ export function getSavedClientConfig(): ProviderConfig | undefined {
         parsed.model = parsed.model.replace(/^models\//, "");
         modified = true;
       }
-      if (parsed.provider === "gemini" && (!parsed.model || parsed.model.includes("2.5"))) {
-        parsed.model = "gemini-2.0-flash";
+      if (parsed.provider === "gemini" && (!parsed.model || parsed.model.startsWith("gemini-2.0") || parsed.model.startsWith("gemini-1.0") || parsed.model === "gemini-pro")) {
+        parsed.model = "gemini-2.5-flash";
         modified = true;
       }
       if (modified) {
@@ -161,7 +161,7 @@ export function getSavedClientConfig(): ProviderConfig | undefined {
  * from native OS Keychain, secure storage, or environment variables.
  */
 export async function resolveActiveConfig(config?: ProviderConfig): Promise<ProviderConfig> {
-  const base = config || getSavedClientConfig() || { provider: "gemini", model: "gemini-2.0-flash", baseUrl: "http://localhost:11434" };
+  const base = config || getSavedClientConfig() || { provider: "gemini", model: "gemini-2.5-flash", baseUrl: "http://localhost:11434" };
   let provider: LLMProvider = base.provider || "gemini";
   let apiKey = (base.apiKey || "").trim();
   let model = (base.model || "").trim();
@@ -196,7 +196,7 @@ export async function resolveActiveConfig(config?: ProviderConfig): Promise<Prov
     apiKey,
     model: model || (
       provider === "webllm" ? "Qwen2.5-0.5B-Instruct-q4f16_1-MLC" :
-      provider === "gemini" ? "gemini-2.0-flash" :
+      provider === "gemini" ? "gemini-2.5-flash" :
       provider === "groq" ? "llama-3.3-70b-versatile" :
       provider === "openai" ? "gpt-4o-mini" :
       (provider === "laya" || provider === "typesafe") ? "convaiinnovations/laya" :
@@ -499,12 +499,18 @@ export async function callLLM(
   // 1. Google Gemini API
   // -----------------------------------------------------------
   if (provider === "gemini" && apiKey) {
-    let geminiModel = (model || "gemini-2.0-flash").trim();
+    let geminiModel = (model || "gemini-2.5-flash").trim();
     if (geminiModel.startsWith("models/")) {
       geminiModel = geminiModel.replace(/^models\//, "");
     }
-    if (geminiModel.includes("2.5")) {
-      geminiModel = "gemini-2.0-flash";
+    // Upgrade discontinued models to latest 2.5 flash
+    if (
+      geminiModel.startsWith("gemini-2.0") ||
+      geminiModel.startsWith("gemini-1.0") ||
+      geminiModel === "gemini-pro" ||
+      geminiModel === "gemini-pro-vision"
+    ) {
+      geminiModel = "gemini-2.5-flash";
     }
     const cleanKey = apiKey.trim();
     const action = onChunk ? "streamGenerateContent?alt=sse" : "generateContent";
@@ -555,10 +561,11 @@ export async function callLLM(
         signal: controller.signal,
       });
 
-      // Fallback: If requested model returns 404 (e.g. legacy or discontinued model ID), auto-fallback to gemini-2.0-flash
-      if (!response.ok && response.status === 404 && geminiModel !== "gemini-2.0-flash") {
-        console.warn(`Gemini model "${geminiModel}" returned 404, auto-falling back to gemini-2.0-flash...`);
-        geminiModel = "gemini-2.0-flash";
+      // Fallback: If requested model returns 404 (e.g. legacy or discontinued model ID), auto-fallback to latest working model
+      if (!response.ok && response.status === 404) {
+        const fallbackTarget = geminiModel !== "gemini-2.5-flash" ? "gemini-2.5-flash" : "gemini-1.5-flash";
+        console.warn(`Gemini model "${geminiModel}" returned 404, auto-falling back to ${fallbackTarget}...`);
+        geminiModel = fallbackTarget;
         cleanModel = encodeURIComponent(geminiModel);
         geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:${action}`;
         response = await fetch(geminiUrl, {
@@ -996,17 +1003,10 @@ export const CURATED_MODELS: Record<LLMProvider, AvailableModel[]> = {
       recommended: false,
     },
     {
-      id: "gemini-2.0-flash",
-      name: "Gemini 2.0 Flash",
-      description: "Google's next-gen multimodal flagship model. Ultra-fast, highly accurate for peer-review triage.",
-      tag: "⚡ High Speed",
-      recommended: false,
-    },
-    {
       id: "gemini-1.5-flash",
       name: "Gemini 1.5 Flash",
       description: "Proven lightweight production model with balanced quality and speed.",
-      tag: "Stable",
+      tag: "⚡ Fast & Stable",
       recommended: false,
     },
     {
@@ -1014,13 +1014,6 @@ export const CURATED_MODELS: Record<LLMProvider, AvailableModel[]> = {
       name: "Gemini 1.5 Pro",
       description: "Massive 2M token context window for comprehensive manuscript + supplement analysis.",
       tag: "2M Context",
-      recommended: false,
-    },
-    {
-      id: "gemini-2.0-flash-lite",
-      name: "Gemini 2.0 Flash Lite",
-      description: "Cost-efficient lightweight model designed for high throughput and rapid scans.",
-      tag: "⚡ Ultra Fast",
       recommended: false,
     },
   ],
@@ -1272,12 +1265,19 @@ export async function fetchAvailableModels(
         const data = await res.json();
         if (Array.isArray(data.models)) {
           // Compatibility Filter: Only include active, supported generative text/chat models
-          // Exclude: deprecated 1.0 models (gemini-1.0-pro, gemini-pro, gemini-pro-vision)
+          // Exclude: deprecated 1.0 models and discontinued 2.0 models that return 404
           // Exclude: embeddings, aqa, imagen, audio/speech, experimental robot models
           const isCompatibleGemini = (id: string) => {
             const lower = id.toLowerCase();
             if (!lower.startsWith("gemini-")) return false;
-            if (lower.startsWith("gemini-1.0") || lower === "gemini-pro" || lower === "gemini-pro-vision") return false;
+            if (
+              lower.startsWith("gemini-1.0") ||
+              lower === "gemini-pro" ||
+              lower === "gemini-pro-vision" ||
+              lower.startsWith("gemini-2.0")
+            ) {
+              return false;
+            }
             if (
               lower.includes("embedding") ||
               lower.includes("aqa") ||
@@ -1287,8 +1287,8 @@ export async function fetchAvailableModels(
             ) {
               return false;
             }
-            // Must belong to 1.5, 2.0, or 2.5 series
-            return /gemini-(?:1\.5|2\.0|2\.5)/.test(lower);
+            // Must belong to 1.5, 2.5, or newer 3.x series
+            return /gemini-(?:1\.5|2\.5|[3-9]\.\d)/.test(lower);
           };
 
           const liveModels: AvailableModel[] = data.models
@@ -1299,17 +1299,31 @@ export async function fetchAvailableModels(
             .map((m: any) => {
               const id = m.name.replace(/^models\//, "");
               const existing = defaultList.find((d) => d.id === id);
+              const isFlagship = id === "gemini-2.5-flash" || id.includes("3.");
               return {
                 id,
                 name: m.displayName || existing?.name || id,
                 description: existing?.description || m.description || "Google Generative AI Model",
-                tag: existing?.tag || (id.includes("2.5") ? "✨ Latest" : id.includes("flash") ? "⚡ Fast" : id.includes("pro") ? "🧠 Frontier" : undefined),
-                recommended: existing?.recommended || id === "gemini-2.5-flash" || id === "gemini-2.0-flash",
+                tag: existing?.tag || (isFlagship ? "✨ Latest Flagship" : id.includes("2.5") ? "✨ Latest" : id.includes("flash") ? "⚡ Fast" : id.includes("pro") ? "🧠 Frontier" : undefined),
+                recommended: isFlagship || existing?.recommended || false,
                 isLive: true,
               };
             });
           if (liveModels.length > 0) {
-            return liveModels.sort((a, b) => (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0));
+            return liveModels.sort((a, b) => {
+              if (a.recommended !== b.recommended) return a.recommended ? -1 : 1;
+              const getWeight = (id: string) => {
+                if (id.includes("3.")) return 30;
+                if (id.includes("2.5")) return 25;
+                if (id.includes("1.5")) return 15;
+                return 10;
+              };
+              const diff = getWeight(b.id) - getWeight(a.id);
+              if (diff !== 0) return diff;
+              if (a.id.includes("flash") && !b.id.includes("flash")) return -1;
+              if (!a.id.includes("flash") && b.id.includes("flash")) return 1;
+              return a.name.localeCompare(b.name);
+            });
           }
         }
       } else if (options?.throwOnError) {
@@ -1642,7 +1656,7 @@ export async function testLLMConnection(
   if (!apiKey && provider !== "ollama" && provider !== "webllm") {
     if (provider === "gemini") {
       apiKey = getEnv('GEMINI_API_KEY') || getEnv('GOOGLE_API_KEY');
-      model = model || getEnv('GEMINI_MODEL') || "gemini-1.5-flash";
+      model = model || getEnv('GEMINI_MODEL') || "gemini-2.5-flash";
     } else if (provider === "groq") {
       apiKey = getEnv('GROQ_API_KEY');
       model = model || getEnv('GROQ_MODEL') || "llama-3.3-70b-versatile";
@@ -1743,12 +1757,18 @@ export async function testLLMConnection(
     // 1. Google Gemini Ping Probe
     // -----------------------------------------------------------
     if (provider === "gemini") {
-      let geminiModel = (model || "gemini-2.0-flash").trim();
+      let geminiModel = (model || "gemini-2.5-flash").trim();
       if (geminiModel.startsWith("models/")) {
         geminiModel = geminiModel.replace(/^models\//, "");
       }
-      if (geminiModel.includes("2.5")) {
-        geminiModel = "gemini-2.0-flash";
+      // Upgrade discontinued models to latest 2.5 flash
+      if (
+        geminiModel.startsWith("gemini-2.0") ||
+        geminiModel.startsWith("gemini-1.0") ||
+        geminiModel === "gemini-pro" ||
+        geminiModel === "gemini-pro-vision"
+      ) {
+        geminiModel = "gemini-2.5-flash";
       }
       // Defensive fallback if a cross-provider model ID was passed
       if (
@@ -1759,7 +1779,7 @@ export async function testLLMConnection(
         geminiModel.includes("gpt-") ||
         geminiModel.includes("claude-")
       ) {
-        geminiModel = "gemini-2.0-flash";
+        geminiModel = "gemini-2.5-flash";
       }
       const cleanKey = apiKey.trim();
       let cleanModel = encodeURIComponent(geminiModel);
@@ -1781,23 +1801,37 @@ export async function testLLMConnection(
         signal: controller.signal,
       });
 
-      // If requested model returns 404 or 400 (bad model name), auto-fallback probe to gemini-2.0-flash
-      if (!response.ok && (response.status === 404 || response.status === 400) && geminiModel !== "gemini-2.0-flash") {
-        geminiModel = "gemini-2.0-flash";
-        cleanModel = encodeURIComponent(geminiModel);
-        endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent`;
-        response = await fetch(endpoint, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": cleanKey,
-          },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: "ping" }] }],
-            generationConfig: { maxOutputTokens: 2 },
-          }),
-          signal: controller.signal,
-        });
+      // Auto-fallback: If requested model returns 404 (e.g. discontinued model) or 400, test working candidates
+      let autoUpgraded = false;
+      if (!response.ok && (response.status === 404 || response.status === 400)) {
+        const liveFallback = availableModels?.find((m) => m.isLive && m.id !== geminiModel && !m.id.startsWith("gemini-2.0"))?.id;
+        const fallbackCandidates = [liveFallback, "gemini-2.5-flash", "gemini-1.5-flash"].filter(Boolean) as string[];
+
+        for (const candidate of fallbackCandidates) {
+          if (candidate === geminiModel) continue;
+          cleanModel = encodeURIComponent(candidate);
+          endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent`;
+          try {
+            const fallbackRes = await fetch(endpoint, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-goog-api-key": cleanKey,
+              },
+              body: JSON.stringify({
+                contents: [{ role: "user", parts: [{ text: "ping" }] }],
+                generationConfig: { maxOutputTokens: 2 },
+              }),
+              signal: controller.signal,
+            });
+            if (fallbackRes.ok) {
+              response = fallbackRes;
+              geminiModel = candidate;
+              autoUpgraded = true;
+              break;
+            }
+          } catch {}
+        }
       }
       clearTimeout(timeoutId);
 
@@ -1809,7 +1843,9 @@ export async function testLLMConnection(
           provider: "gemini",
           model: geminiModel,
           latencyMs,
-          message: `Connected to Google Gemini (${geminiModel}) in ${latencyMs}ms`,
+          message: autoUpgraded
+            ? `Connected! Selected model is discontinued. Automatically upgraded to latest working model (${geminiModel}).`
+            : `Connected to Google Gemini (${geminiModel}) in ${latencyMs}ms`,
           availableModels,
           details: { statusCode: response.status },
         };

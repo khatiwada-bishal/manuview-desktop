@@ -38,7 +38,7 @@ interface Props {
 
 export const DEFAULT_CONFIG: ProviderConfig = {
   provider: "gemini",
-  model: "gemini-2.0-flash",
+  model: "gemini-2.5-flash",
   baseUrl: "http://localhost:11434",
   apiKey: "",
 };
@@ -238,7 +238,7 @@ export function ProviderSettingsModal({ isOpen, onClose, onSave, onOpenLocalMode
   const handleProviderChange = (newProvider: LLMProvider) => {
     const defaultModel =
       newProvider === "gemini"
-        ? "gemini-2.0-flash"
+        ? "gemini-2.5-flash"
         : newProvider === "openai"
         ? "gpt-4o"
         : newProvider === "anthropic"
