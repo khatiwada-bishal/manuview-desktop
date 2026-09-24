@@ -1060,13 +1060,13 @@ export function DesktopDashboard({
                   className="w-full text-left p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-black/[0.015] dark:hover:bg-white/[0.02] transition select-none"
                   aria-expanded={expandedOverviewCards.documentClassification}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 flex items-center justify-center shrink-0">
                       <Tag className="w-5 h-5 text-[#2563EB] dark:text-blue-400" />
                     </div>
-                    <div>
-                      <h2 className="text-base font-bold text-[#0F172A] dark:text-white">
-                        Document Classification: {classification?.categoryLabel || "Academic Research Manuscript"}
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-base font-bold text-[#0F172A] dark:text-white truncate sm:truncate-none">
+                        Document Classification
                       </h2>
                       <p className="text-xs text-[#64748B] dark:text-neutral-400 mt-0.5">
                         Detected document typology and tailored pre-submission guidance
@@ -1074,8 +1074,10 @@ export function DesktopDashboard({
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
-                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60">
-                      {classification?.categoryLabel || "Research Manuscript"}
+                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 max-w-xs truncate text-center">
+                      {classification?.categoryLabel ? (
+                        classification.categoryLabel.replace(/^Academic Manuscript\s*\((.*)\)$/, '$1')
+                      ) : "Research Manuscript"}
                     </span>
                     <div className="w-7 h-7 rounded-full bg-neutral-100 dark:bg-[#1E293B] flex items-center justify-center text-neutral-500 dark:text-neutral-400 ml-1 shrink-0">
                       <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expandedOverviewCards.documentClassification ? "rotate-180" : ""}`} />
@@ -1085,6 +1087,10 @@ export function DesktopDashboard({
 
                 {expandedOverviewCards.documentClassification && (
                   <div className="px-6 pb-6 sm:px-7 sm:pb-7 pt-2 border-t border-[#E2E8F0] dark:border-[#1F2937] space-y-3 animate-fade-in">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-[#0F172A] dark:text-white pb-1">
+                      <span className="text-neutral-400 dark:text-neutral-500">Typology:</span>
+                      <span>{classification?.categoryLabel || "Academic Research Manuscript"}</span>
+                    </div>
                     <p className="text-xs sm:text-sm text-[#334155] dark:text-neutral-300 leading-relaxed">
                       <strong className="font-bold text-[#0F172A] dark:text-white">
                         {classification?.salutation ? (classification.salutation.endsWith(":") ? classification.salutation : `${classification.salutation}:`) : "Dear Author / Contributing Researcher:"}
