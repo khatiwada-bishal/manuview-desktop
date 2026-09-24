@@ -26,6 +26,7 @@
     "@tauri-apps/plugin-dialog": "^2.7.3",
     "@tauri-apps/plugin-fs": "^2.5.2",
     "@tauri-apps/plugin-shell": "^2.3.6",
+    "@vercel/speed-insights": "^2.0.0",
     "clsx": "^2.1.1",
     "jspdf": "^4.2.1",
     "jszip": "^3.10.2",

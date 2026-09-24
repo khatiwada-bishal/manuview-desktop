@@ -9,6 +9,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { ApiConnectionProvider } from "@/lib/useApiConnection";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import "./index.css";
 
 interface ErrorBoundaryProps {
@@ -69,6 +70,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <ErrorBoundary>
       <ApiConnectionProvider>
         <App />
+        <SpeedInsights />
       </ApiConnectionProvider>
     </ErrorBoundary>
   </React.StrictMode>
